@@ -1,14 +1,27 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+/// 코어 트레이트가 담겨있는 모듈
+pub mod core;
+use crate::core::Fire;
+
+/// PE파일에 대한 구조체가 담겨있는 모듈
+pub mod pe;
+
+/// 모든 타입에 대한 파서를 저장하는 Enum
+#[derive(Debug)]
+pub enum Fireball {
+    /// PE파일에 대한 파서
+    PE(pe::PE),
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+impl Fireball {
+    /// 파일 경로를 통해 파서 객체를 생성한다.
+    pub fn from_path(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Fireball::PE(pe::PE::from_path(path)?))
+    }
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    /// 파서 객체를 반환한다.
+    pub fn get_object(&self) -> &dyn core::Fire {
+        match self {
+            Fireball::PE(pe) => pe,
+        }
     }
 }
