@@ -1,12 +1,6 @@
-[package]
-name = "fireman"
-version = "0.1.0"
-edition = "2021"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-goblin = "0.5.4"
-cpp_demangle = "0.3.5"
-capstone = "0.11.0"
-pdb = "0.8.0"
+members = [
+    "fireman",
+    "fireball",
+]

@@ -1,0 +1,12 @@
+[package]
+name = "fireman"
+version = "0.0.1"
+edition = "2021"
+authors = ["Eveheeero <xhve00000@gmail.com>"]
+repository = "https://github.com/Eveheeero/fireman"
+license = "MIT"
+description = "Running Binary of Fireball"
+homepage = "https://crates.io/crates/fireman"
+
+[dependencies]
+fireball = { path = "../fireball" }
