@@ -14,5 +14,5 @@ pub trait Fire {
     fn get_path(&self) -> Option<String>;
 
     /// 바이너리를 반환한다.
-    fn get_binary(&self) -> Vec<u8>;
+    fn get_binary(&self) -> &Vec<u8>;
 }

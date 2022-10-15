@@ -18,7 +18,7 @@ impl Fire for PE {
         self.path.clone()
     }
 
-    fn get_binary(&self) -> Vec<u8> {
-        self.binary.clone()
+    fn get_binary(&self) -> &Vec<u8> {
+        &self.binary
     }
 }
