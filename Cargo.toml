@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 goblin = "0.5.4"
+cpp_demangle = "0.3.5"
+capstone = "0.11.0"
+pdb = "0.8.0"
