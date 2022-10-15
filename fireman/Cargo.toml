@@ -9,4 +9,4 @@ description = "Running Binary of Fireball"
 homepage = "https://crates.io/crates/fireman"
 
 [dependencies]
-fireball = { path = "../fireball" }
+fireball = { path = "../fireball", version = "0.0.1" }
