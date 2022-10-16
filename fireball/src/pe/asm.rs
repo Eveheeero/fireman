@@ -1,6 +1,6 @@
-use capstone::Instructions;
-
 use super::PE;
+
+use capstone::Instructions;
 
 impl PE {
     /// 어셈블리 코드를 파싱한다.

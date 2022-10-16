@@ -1,7 +1,7 @@
-use capstone::prelude::BuildsCapstone;
-
 use super::PE;
 use crate::core::Fire;
+
+use capstone::prelude::BuildsCapstone;
 
 impl Fire for PE {
     fn from_path(path: &str) -> Result<PE, Box<dyn std::error::Error>> {
