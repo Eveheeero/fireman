@@ -1,18 +1,7 @@
-/// 파서 모듈에 대한 트레이트
-pub trait Fire {
-    /// 파일 경로를 기반으로 파서 객체를 생성한다.
-    fn from_path(path: &str) -> Result<Self, Box<dyn std::error::Error>>
-    where
-        Self: Sized;
+/// 파서 모듈에 대한 트레이트가 들어있는 모듈
+mod fire;
+pub use fire::Fire;
 
-    /// 바이너리를 기반으로 파서 객체를 생성한다.
-    fn from_binary(binary: Vec<u8>) -> Result<Self, Box<dyn std::error::Error>>
-    where
-        Self: Sized;
-
-    /// 파일 경로를 반환한다.
-    fn get_path(&self) -> Option<String>;
-
-    /// 바이너리를 반환한다.
-    fn get_binary(&self) -> &Vec<u8>;
-}
+/// 파일 내부에 지정되어있는 데이터에 대한 구조체가 들어있는 모듈
+mod pre_defined_offset;
+pub(crate) use pre_defined_offset::PreDefinedOffset;

@@ -25,6 +25,7 @@ impl Fire for PE {
             path: Some(path.to_string()),
             binary,
             capstone: Box::pin(capstone),
+            defined: Default::default(),
         })
     }
 
@@ -48,6 +49,7 @@ impl Fire for PE {
             path: None,
             binary,
             capstone: Box::pin(capstone),
+            defined: Default::default(),
         })
     }
 
