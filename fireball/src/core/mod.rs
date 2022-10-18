@@ -9,3 +9,7 @@ pub(crate) use pre_defined_offset::PreDefinedOffset;
 /// 주소에 대한 구조체가 들어있는 모듈
 mod address;
 pub(crate) use address::Address;
+
+/// 섹션에 대한 구조체가 들어있는 모듈
+mod section;
+pub(crate) use section::{Section, SECTIONS};
