@@ -1,6 +1,5 @@
-use crate::core::PreDefinedOffset;
-
 use super::PE;
+use crate::core::{Address, PreDefinedOffset};
 
 use capstone::prelude::BuildsCapstone;
 
@@ -42,7 +41,10 @@ impl PE {
                 let name = import.name.to_string();
                 let addr = import.offset;
 
-                defined.push(PreDefinedOffset { name, offset: addr });
+                defined.push(PreDefinedOffset {
+                    name,
+                    address: todo!("Goblin과 연동하여 주소를 생성해야함"),
+                });
             }
 
             defined
