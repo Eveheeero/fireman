@@ -36,14 +36,29 @@ impl PE {
             let mut defined = Vec::new();
 
             let imports = gl.imports;
+            let exports = gl.exports;
 
             for import in imports {
                 let name = import.name.to_string();
-                let addr = import.offset;
+                let offset = import.offset;
 
                 defined.push(PreDefinedOffset {
                     name,
-                    address: todo!("Goblin과 연동하여 주소를 생성해야함"),
+                    address: Address::from_virtual_address(&binary, offset),
+                });
+            }
+
+            for export in exports {
+                let name = if let Some(name) = export.name {
+                    name.to_string()
+                } else {
+                    format!("0x{:x}", export.offset.unwrap())
+                };
+                let offset = export.offset.unwrap();
+
+                defined.push(PreDefinedOffset {
+                    name,
+                    address: Address::from_virtual_address(&binary, offset),
                 });
             }
 
