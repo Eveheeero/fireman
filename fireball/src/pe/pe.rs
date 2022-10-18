@@ -1,3 +1,5 @@
+use crate::core::PreDefinedOffset;
+
 use super::PE;
 
 use capstone::prelude::BuildsCapstone;
@@ -31,7 +33,20 @@ impl PE {
         };
 
         // 바이너리에 이미 지정되어있는 정보 생성
-        let defined = Default::default();
+        let defined = {
+            let mut defined = Vec::new();
+
+            let imports = gl.imports;
+
+            for import in imports {
+                let name = import.name.to_string();
+                let addr = import.offset;
+
+                defined.push(PreDefinedOffset { name, offset: addr });
+            }
+
+            defined
+        };
 
         PE {
             path,
