@@ -2,69 +2,82 @@ use crate::core::{Section, SECTIONS};
 
 use goblin::Object;
 
-enum AddressType {
-    FileOffset,
-    VirtualAddress,
-}
-
 pub(crate) struct Address {
-    address_type: AddressType,
-    address_offset: usize,
+    address_virtual_offset: usize,
 
-    base_addr: Option<usize>,
     section: Section,
 }
 
 impl Address {
     pub(crate) fn from_file_offset(binary: &Vec<u8>, offset: usize) -> Self {
         let gl = Object::parse(binary).unwrap();
+        let mut name: String = Default::default();
+        let mut base_addr: usize = Default::default();
+
         match gl {
-            Object::PE(gl) => todo!(),
+            Object::PE(gl) => {
+                let sections = gl.sections;
+                for section in sections {
+                    let section_start = section.pointer_to_raw_data as usize;
+                    let section_end =
+                        section.pointer_to_raw_data as usize + section.size_of_raw_data as usize;
+                    if offset >= section_start && offset < section_end {
+                        // name = section.name.to_string();
+                        name = String::new();
+                        base_addr = section.virtual_address as usize;
+                        break;
+                    }
+                }
+            }
             _ => todo!(),
         };
-        todo!("Goblin을 이용해 섹션정보와 여러 주소를 파악함");
+
         Address {
-            address_type: AddressType::FileOffset,
-            address_offset: offset,
-            base_addr: None,
-            section: {
-                Section {
-                    name: Default::default(),
-                    base_addr: Default::default(),
-                }
-            },
+            address_virtual_offset: offset,
+            section: Section { name, base_addr },
         }
     }
 
     pub(crate) fn from_virtual_address(binary: &Vec<u8>, offset: usize) -> Self {
         let gl = Object::parse(binary).unwrap();
+        let mut name: String = Default::default();
+        let mut base_addr: usize = Default::default();
+
         match gl {
-            Object::PE(gl) => todo!(),
+            Object::PE(gl) => {
+                let sections = gl.sections;
+                for section in sections {
+                    if section.virtual_address as usize <= offset
+                        && offset <= (section.virtual_address + section.virtual_size) as usize
+                    {
+                        // name = section.name.to_owned();
+                        name = String::new();
+                        base_addr = section.virtual_address as usize;
+                        break;
+                    }
+                }
+            }
             _ => todo!(),
         };
-        todo!("Goblin을 이용해 섹션정보와 여러 주소를 파악함");
+
         Address {
-            address_type: AddressType::VirtualAddress,
-            address_offset: offset,
-            base_addr: todo!(),
-            section: {
-                Section {
-                    name: Default::default(),
-                    base_addr: Default::default(),
-                }
-            },
+            address_virtual_offset: offset,
+            section: Section { name, base_addr },
         }
     }
 
     pub(crate) fn get_file_offset(&self) -> usize {
-        todo!()
+        let virtual_offset = self.address_virtual_offset;
+        let base_addr = self.section.base_addr;
+        let offset = virtual_offset - base_addr;
+        offset
     }
 
     pub(crate) fn get_virtual_address(&self) -> usize {
-        todo!()
+        self.address_virtual_offset
     }
 
     pub(crate) fn get_section(&self) -> Section {
-        todo!()
+        self.section.clone()
     }
 }
