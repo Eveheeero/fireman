@@ -26,7 +26,7 @@ fn pe_hello_world_entry_parse() {
         }
     }
     let entry_of_raw = Address::from_file_offset(&binary.to_vec(), entry_of_raw);
-    let insts = pe.parse_range(entry_of_raw, 0x60).unwrap();
+    let insts = pe.parse_assem_range(entry_of_raw, 0x60).unwrap();
     for inst in insts.iter() {
         println!("{line}", line = inst.to_string());
     }

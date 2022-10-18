@@ -5,7 +5,11 @@ use capstone::Instructions;
 
 impl PE {
     /// 어셈블리 코드를 파싱한다.
-    pub(crate) fn parse_range(&self, offset: Address, size: usize) -> Result<Instructions, ()> {
+    pub(crate) fn parse_assem_range(
+        &self,
+        offset: Address,
+        size: usize,
+    ) -> Result<Instructions, ()> {
         let file_offset = offset.get_file_offset();
         let virtual_offset = offset.get_virtual_address();
         let insns = match self.capstone.disasm_all(
