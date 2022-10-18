@@ -4,7 +4,6 @@ use capstone::Instructions;
 
 impl PE {
     /// 어셈블리 코드를 파싱한다.
-    #[allow(dead_code)]
     pub(crate) fn parse_asm(&self, offset: usize, size: usize) -> Result<Instructions, ()> {
         let insns = match self
             .capstone
