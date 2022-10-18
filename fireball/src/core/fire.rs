@@ -15,4 +15,16 @@ pub trait Fire {
 
     /// 바이너리를 반환한다.
     fn get_binary(&self) -> &Vec<u8>;
+
+    /// 파일의 모든 내용을 분석한다.
+    fn parse_all(&self) -> Result<(), Box<dyn std::error::Error>>;
+
+    /// 엔트리포인트부터 분석한다.
+    fn parse_from_entry(&self) -> Result<(), Box<dyn std::error::Error>>;
+
+    /// 파일 오프셋을 기반으로 분석한다.
+    fn parse_from_file_offset(&self, address: u64) -> Result<(), Box<dyn std::error::Error>>;
+
+    /// 가상 주소를 기반으로 분석한다.
+    fn parse_from_virtual_address(&self, address: u64) -> Result<(), Box<dyn std::error::Error>>;
 }

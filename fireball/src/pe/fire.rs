@@ -18,4 +18,25 @@ impl Fire for PE {
     fn get_binary(&self) -> &Vec<u8> {
         &self.binary
     }
+
+    fn parse_all(&self) -> Result<(), Box<dyn std::error::Error>> {
+        self._parse_all()
+    }
+
+    fn parse_from_entry(&self) -> Result<(), Box<dyn std::error::Error>> {
+        self._parse_from_entry()
+    }
+
+    fn parse_from_file_offset(&self, address: u64) -> Result<(), Box<dyn std::error::Error>> {
+        self._parse_from_file_offset(address)
+    }
+
+    fn parse_from_virtual_address(&self, address: u64) -> Result<(), Box<dyn std::error::Error>> {
+        self._parse_from_virtual_address(address)
+    }
 }
+
+mod parse_all;
+mod parse_from_entry;
+mod parse_from_file_offset;
+mod parse_from_virtual_address;
