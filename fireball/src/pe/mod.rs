@@ -15,6 +15,9 @@ pub struct PE {
     defined: Vec<PreDefinedOffset>,
 }
 
+/// PE 구조체에 대한 구현이 담겨있는 모듈
+mod pe;
+
 /// 코어 트레이트에 대한 구현이 담겨있는 모듈
 mod fire;
 
