@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 /// 섹션에 대한 정보가 들어있는 구조체
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub(crate) struct Section {

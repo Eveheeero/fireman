@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 /// 파서 모듈에 대한 트레이트가 들어있는 모듈
 mod fire;
 pub use fire::Fire;
