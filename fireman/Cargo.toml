@@ -10,3 +10,4 @@ homepage = "https://crates.io/crates/fireman"
 
 [dependencies]
 fireball = { path = "../fireball", version = "0.0.1" }
+clap = { version = "4.0.17", features = ["derive"] }
