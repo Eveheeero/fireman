@@ -12,4 +12,4 @@ pub(crate) use address::Address;
 
 /// 섹션에 대한 구조체가 들어있는 모듈
 mod section;
-pub(crate) use section::{Section, SECTIONS};
+pub(crate) use section::{build_section, Section, SECTIONS};

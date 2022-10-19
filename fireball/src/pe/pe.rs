@@ -1,16 +1,20 @@
 use super::PE;
-use crate::core::{Address, PreDefinedOffset};
+use crate::core::{build_section, Address, PreDefinedOffset};
 
 use capstone::prelude::BuildsCapstone;
 
 impl PE {
     /// 바이너리를 기반으로 PE 구조체를 생성한다.
     pub(crate) fn new(path: Option<String>, binary: Vec<u8>) -> Self {
-        // 1. 캡스톤 객체 생성
-        // 2. 바이너리에 이미 지정되어있는 정보 생성
+        // 1. 섹션정보 생성
+        // 2. 캡스톤 객체 생성
+        // 3. 바이너리에 이미 지정되어있는 정보 생성
 
         // 공통적으로 사용되는 객체 생성
         let gl = goblin::pe::PE::parse(&binary).unwrap();
+
+        // 바이너리 전체에 대한 섹션정보 생성
+        build_section(&binary);
 
         // 캡스톤 객체 생성
         let capstone = {

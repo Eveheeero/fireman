@@ -22,8 +22,7 @@ impl Address {
                     let section_end =
                         section.pointer_to_raw_data as usize + section.size_of_raw_data as usize;
                     if offset >= section_start && offset < section_end {
-                        // name = section.name.to_string();
-                        name = String::new();
+                        name = section.name().unwrap().to_string();
                         base_addr = section.virtual_address as usize;
                         break;
                     }
@@ -50,8 +49,7 @@ impl Address {
                     if section.virtual_address as usize <= offset
                         && offset <= (section.virtual_address + section.virtual_size) as usize
                     {
-                        // name = section.name.to_owned();
-                        name = String::new();
+                        name = section.name().unwrap().to_string();
                         base_addr = section.virtual_address as usize;
                         break;
                     }
