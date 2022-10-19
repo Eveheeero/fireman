@@ -26,7 +26,7 @@ lazy_static::lazy_static! {
 }
 
 /// 섹션 정보를 빌드하는 함수
-pub(crate) fn build_section(binary: &Vec<u8>) {
+pub(crate) fn build_section(binary: &[u8]) {
     let gl = goblin::Object::parse(binary).unwrap();
     let mut section_writer = SECTIONS.write().unwrap();
 

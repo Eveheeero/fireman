@@ -5,5 +5,6 @@ use fireball::pe::PE;
 fn hello_world() {
     let binary = include_bytes!("resources/hello_world.exe");
     let pe = PE::from_binary(binary.to_vec()).unwrap();
+    pe.decom_from_entry().unwrap();
     dbg!(pe);
 }
