@@ -62,10 +62,14 @@ pub(crate) fn build_section(binary: &Vec<u8>) {
 /// 가상주소를 입력받아서 섹션 정보를 반환하는 함수
 pub(crate) fn get_section_from_virtual_address(virtual_address: u64) -> Option<Section> {
     let section_reader = SECTIONS.read().unwrap();
+    // 모든 섹션에 대한 검사
     for section in section_reader.iter() {
-        if section.virtual_address <= virtual_address
-            && virtual_address <= section.virtual_address + section.virtual_size
-        {
+        // 가상주소에 대한 섹션의 시작과 끝
+        let section_start_virtual = section.virtual_address;
+        let section_end_virtual = section.virtual_address + section.virtual_size;
+
+        // 가상주소가 섹션의 범위 안에 있으면 섹션 정보를 반환
+        if section_start_virtual <= virtual_address && virtual_address < section_end_virtual {
             return Some(section.clone());
         }
     }
@@ -75,10 +79,14 @@ pub(crate) fn get_section_from_virtual_address(virtual_address: u64) -> Option<S
 /// 파일 오프셋을 입력받아서 섹션 정보를 반환하는 함수
 pub(crate) fn get_section_from_file_offset(file_offset: u64) -> Option<Section> {
     let section_reader = SECTIONS.read().unwrap();
+    // 모든 섹션에 대한 검사
     for section in section_reader.iter() {
-        if section.file_offset <= file_offset
-            && file_offset <= section.file_offset + section.size_of_file
-        {
+        // 파일 오프셋에 대한 섹션의 시작과 끝
+        let section_start_file = section.file_offset;
+        let section_end_file = section.file_offset + section.size_of_file;
+
+        // 파일 오프셋이 섹션의 범위 안에 있으면 섹션 정보를 반환
+        if section_start_file <= file_offset && file_offset < section_end_file {
             return Some(section.clone());
         }
     }
@@ -88,7 +96,9 @@ pub(crate) fn get_section_from_file_offset(file_offset: u64) -> Option<Section> 
 /// 섹션 이름을 받아 섹션 정보를 반환하는 함수
 pub(crate) fn get_section_from_name(name: &str) -> Option<Section> {
     let section_reader = SECTIONS.read().unwrap();
+    // 모든 섹션에 대한 검사
     for section in section_reader.iter() {
+        // 섹션 이름이 일치하면 섹션 정보를 반환
         if section.name == name {
             return Some(section.clone());
         }
