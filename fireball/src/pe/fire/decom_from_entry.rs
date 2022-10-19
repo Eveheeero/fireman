@@ -9,7 +9,7 @@ impl PE {
         let insts = self.parse_assem_range(entry, 0x100).unwrap();
 
         for inst in insts.iter() {
-            println!("{}", inst.to_string());
+            println!("{}", inst);
             if inst.mnemonic().unwrap() == "call" {
                 let op = inst.op_str().unwrap();
                 if op.starts_with("0x") {

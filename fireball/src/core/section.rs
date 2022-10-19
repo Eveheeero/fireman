@@ -35,11 +35,7 @@ pub(crate) fn build_section(binary: &[u8]) {
             let sections = gl.sections;
             for section in sections {
                 let name = section.name().unwrap().to_string();
-                let real_name = if let Some(real_name) = section.real_name {
-                    Some(real_name.to_string())
-                } else {
-                    None
-                };
+                let real_name = section.real_name;
                 let virtual_address = section.virtual_address as u64;
                 let virtual_size = section.virtual_size as u64;
                 let file_offset = section.pointer_to_raw_data as u64;

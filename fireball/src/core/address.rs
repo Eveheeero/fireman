@@ -42,7 +42,7 @@ impl Address {
         let virtual_offset = self.virtual_offset;
         let section_virtual_offset_start = self.section.virtual_address;
         let section_file_offset_start = self.section.file_offset;
-        return (virtual_offset - section_virtual_offset_start) + section_file_offset_start;
+        (virtual_offset - section_virtual_offset_start) + section_file_offset_start
     }
 
     pub(crate) fn get_virtual_address(&self) -> u64 {
