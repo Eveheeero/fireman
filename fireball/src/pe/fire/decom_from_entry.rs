@@ -8,7 +8,17 @@ impl PE {
 
         let insts = self.parse_assem_range(entry, 0x100).unwrap();
 
-        dbg!(insts);
+        for inst in insts.iter() {
+            println!("{}", inst.to_string());
+            if inst.mnemonic().unwrap() == "call" {
+                let op = inst.op_str().unwrap();
+                for now in self.defined.iter() {
+                    if now.name == op {
+                        println!("{}: {}", now.name, now.address.get_virtual_address());
+                    }
+                }
+            }
+        }
 
         Ok(())
     }
