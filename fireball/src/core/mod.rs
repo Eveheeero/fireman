@@ -12,4 +12,7 @@ pub(crate) use address::Address;
 
 /// 섹션에 대한 구조체가 들어있는 모듈
 mod section;
-pub(crate) use section::{build_section, Section, SECTIONS};
+pub(crate) use section::{
+    build_section, get_section_from_file_offset, get_section_from_name,
+    get_section_from_virtual_address, Section,
+};

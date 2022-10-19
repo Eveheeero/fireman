@@ -1,4 +1,4 @@
-use crate::core::{Section, SECTIONS};
+use crate::core::{get_section_from_virtual_address, Section};
 
 use goblin::Object;
 
@@ -31,7 +31,7 @@ impl Address {
         };
 
         Address {
-            section: Section { name, base_addr },
+            section: get_section_from_virtual_address(offset).unwrap(),
             virtual_offset: offset,
         }
     }
@@ -58,16 +58,16 @@ impl Address {
         };
 
         Address {
-            section: Section { name, base_addr },
+            section: get_section_from_virtual_address(offset).unwrap(),
             virtual_offset: offset,
         }
     }
 
     pub(crate) fn get_file_offset(&self) -> u64 {
         let virtual_offset = self.virtual_offset;
-        let base_addr = self.section.base_addr;
-        let offset = virtual_offset - base_addr;
-        offset
+        let section_virtual_offset_start = self.section.virtual_address;
+        let section_file_offset_start = self.section.file_offset;
+        return (virtual_offset - section_virtual_offset_start) + section_file_offset_start;
     }
 
     pub(crate) fn get_virtual_address(&self) -> u64 {
