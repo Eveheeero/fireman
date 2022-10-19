@@ -1,4 +1,4 @@
-use crate::core::{get_section_from_virtual_address, Section};
+use crate::core::{get_section_from_file_offset, get_section_from_virtual_address, Section};
 
 use goblin::Object;
 
@@ -8,59 +8,34 @@ pub(crate) struct Address {
 }
 
 impl Address {
-    pub(crate) fn from_file_offset(binary: &[u8], offset: u64) -> Self {
-        let gl = Object::parse(binary).unwrap();
-        let mut name: String = Default::default();
-        let mut base_addr: u64 = Default::default();
-
-        match gl {
-            Object::PE(gl) => {
-                let sections = gl.sections;
-                for section in sections {
-                    let section_start = section.pointer_to_raw_data as u64;
-                    let section_end =
-                        section.pointer_to_raw_data as u64 + section.size_of_raw_data as u64;
-                    if offset >= section_start && offset < section_end {
-                        name = section.name().unwrap().to_string();
-                        base_addr = section.virtual_address as u64;
-                        break;
-                    }
-                }
-            }
-            _ => todo!(),
+    /// 파일 오프셋을 기반으로 Address 객체를 생성한다.
+    pub(crate) fn from_file_offset(offset: u64) -> Result<Self, ()> {
+        // 오프셋에 해당하는 섹션 찾기
+        let section = match get_section_from_file_offset(offset) {
+            Some(section) => section,
+            None => return Err(()),
         };
+        // 섹션정보를 기반으로 가상주소 연산
+        let virtual_offset = offset - section.file_offset + section.virtual_address;
 
-        Address {
-            section: get_section_from_virtual_address(offset).unwrap(),
-            virtual_offset: offset,
-        }
+        Ok(Self {
+            section,
+            virtual_offset,
+        })
     }
 
-    pub(crate) fn from_virtual_address(binary: &[u8], offset: u64) -> Self {
-        let gl = Object::parse(binary).unwrap();
-        let mut name: String = Default::default();
-        let mut base_addr: u64 = Default::default();
-
-        match gl {
-            Object::PE(gl) => {
-                let sections = gl.sections;
-                for section in sections {
-                    if section.virtual_address as u64 <= offset
-                        && offset <= (section.virtual_address + section.virtual_size) as u64
-                    {
-                        name = section.name().unwrap().to_string();
-                        base_addr = section.virtual_address as u64;
-                        break;
-                    }
-                }
-            }
-            _ => todo!(),
+    /// 가상 주소를 기반으로 Address 객체를 생성한다.
+    pub(crate) fn from_virtual_address(offset: u64) -> Result<Self, ()> {
+        // 가상주소에 해당하는 섹션 찾기
+        let section = match get_section_from_virtual_address(offset) {
+            Some(section) => section,
+            None => return Err(()),
         };
 
-        Address {
-            section: get_section_from_virtual_address(offset).unwrap(),
+        Ok(Self {
+            section,
             virtual_offset: offset,
-        }
+        })
     }
 
     pub(crate) fn get_file_offset(&self) -> u64 {

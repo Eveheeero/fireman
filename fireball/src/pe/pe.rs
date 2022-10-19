@@ -48,7 +48,7 @@ impl PE {
 
                 defined.push(PreDefinedOffset {
                     name,
-                    address: Address::from_virtual_address(&binary, offset),
+                    address: Address::from_virtual_address(offset).unwrap(),
                 });
             }
 
@@ -62,7 +62,7 @@ impl PE {
 
                 defined.push(PreDefinedOffset {
                     name,
-                    address: Address::from_virtual_address(&binary, offset),
+                    address: Address::from_virtual_address(offset).unwrap(),
                 });
             }
 

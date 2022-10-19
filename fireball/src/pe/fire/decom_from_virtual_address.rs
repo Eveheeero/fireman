@@ -6,7 +6,7 @@ impl PE {
         &self,
         address: u64,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let _address = Address::from_virtual_address(&self.binary, address);
+        let _address = Address::from_virtual_address(address);
         todo!();
     }
 }

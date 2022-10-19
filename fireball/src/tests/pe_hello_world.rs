@@ -17,7 +17,7 @@ fn pe_hello_world_entry_parse() {
     let gl = goblin::pe::PE::parse(binary).unwrap();
 
     // 가상주소 기반 어셈블리 파싱 확인
-    let entry_of_virtual_address = Address::from_virtual_address(&binary.to_vec(), gl.entry as u64);
+    let entry_of_virtual_address = Address::from_virtual_address(gl.entry as u64).unwrap();
     let insts_by_virtual_address = pe
         .parse_assem_range(entry_of_virtual_address, 0x60)
         .unwrap();
@@ -35,7 +35,7 @@ fn pe_hello_world_entry_parse() {
     }
 
     // 파일 오프셋 기반 어셈블리 파싱 확인
-    let entry_of_file_offset = Address::from_file_offset(&binary.to_vec(), entry_of_file_offset);
+    let entry_of_file_offset = Address::from_file_offset(entry_of_file_offset).unwrap();
     let insts_by_file_offset = pe.parse_assem_range(entry_of_file_offset, 0x60).unwrap();
 
     // 두 결과값이 일치하는지 확인
