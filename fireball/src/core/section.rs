@@ -2,7 +2,7 @@
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub(crate) struct Section {
     pub(crate) name: String,
-    pub(crate) base_addr: usize,
+    pub(crate) base_addr: u64,
 }
 
 lazy_static::lazy_static! {
@@ -21,7 +21,7 @@ pub(crate) fn build_section(binary: &Vec<u8>) {
             for section in sections {
                 let virtual_address = section.virtual_address as u64;
                 let name = section.name().unwrap().to_owned();
-                let base_addr = section.virtual_address as usize;
+                let base_addr = section.virtual_address as u64;
                 section_writer.insert(virtual_address, Section { name, base_addr });
             }
         }

@@ -44,7 +44,7 @@ impl PE {
 
             for import in imports {
                 let name = import.name.to_string();
-                let offset = import.offset;
+                let offset = import.offset as u64;
 
                 defined.push(PreDefinedOffset {
                     name,
@@ -58,7 +58,7 @@ impl PE {
                 } else {
                     format!("0x{:x}", export.offset.unwrap())
                 };
-                let offset = export.offset.unwrap();
+                let offset = export.offset.unwrap() as u64;
 
                 defined.push(PreDefinedOffset {
                     name,

@@ -17,11 +17,11 @@ fn pe_hello_world_entry_parse() {
     let gl = goblin::pe::PE::parse(binary).unwrap();
     let mut entry_of_raw = 0;
     for section in gl.sections {
-        let entry = gl.entry;
-        let section_start = section.virtual_address as usize;
-        let section_end = section.virtual_address as usize + section.virtual_size as usize;
+        let entry = gl.entry as u64;
+        let section_start = section.virtual_address as u64;
+        let section_end = section.virtual_address as u64 + section.virtual_size as u64;
         if entry >= section_start && entry < section_end {
-            entry_of_raw = entry - section_start + section.pointer_to_raw_data as usize;
+            entry_of_raw = entry - section_start + section.pointer_to_raw_data as u64;
             break;
         }
     }
