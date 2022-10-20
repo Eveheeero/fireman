@@ -5,6 +5,8 @@ use std::sync::Arc;
 /// 섹션에 대한 정보가 들어있는 구조체
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub(crate) struct Section {
+    /// 섹션 식별코드
+    pub(crate) id: usize,
     /// .text와 같은 이름
     pub(crate) name: String,
     /// 섹션의 이름
@@ -37,6 +39,7 @@ impl Section {
             goblin::Object::PE(gl) => {
                 let sections = gl.sections;
                 for section in sections {
+                    let id = section_writer.len();
                     let name = section.name().unwrap().to_string();
                     let real_name = section.real_name;
                     let virtual_address = section.virtual_address as u64;
@@ -45,6 +48,7 @@ impl Section {
                     let size_of_file = section.size_of_raw_data as u64;
 
                     section_writer.insert(Arc::new(Section {
+                        id,
                         name,
                         real_name,
                         virtual_address,
