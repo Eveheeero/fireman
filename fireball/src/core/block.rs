@@ -30,12 +30,13 @@ impl Block {
         section: Arc<Section>,
         start_address_virtual: Address,
         end_address_virtual: Option<Address>,
+        name: Option<String>,
     ) -> Arc<Self> {
         let mut blocks_writer = BLOCKS.write().unwrap();
 
         let new_block = Block {
             id: blocks_writer.len(),
-            name: None,
+            name,
             start_address_virtual,
             end_address_virtual,
             connected_from: Default::default(),
@@ -48,5 +49,14 @@ impl Block {
         blocks_writer.insert(new_block.clone());
 
         new_block
+    }
+
+    pub(crate) fn find_from_address(address: Address) -> Option<Arc<Self>> {
+        let blocks_reader = BLOCKS.read().unwrap();
+
+        blocks_reader
+            .iter()
+            .find(|block| block.start_address_virtual == address)
+            .map(Arc::clone)
     }
 }
