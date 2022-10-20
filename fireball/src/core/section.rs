@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 
+use std::sync::Arc;
+
 /// 섹션에 대한 정보가 들어있는 구조체
-#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq)]
 pub(crate) struct Section {
     /// .text와 같은 이름
     pub(crate) name: String,
@@ -22,7 +24,7 @@ pub(crate) struct Section {
 lazy_static::lazy_static! {
     /// 섹션 정보의 집합
     /// 가상주소(시작주소) : 섹션 정보
-    static ref SECTIONS: std::sync::RwLock<std::collections::HashSet<Section>> = Default::default();
+    static ref SECTIONS: std::sync::RwLock<std::collections::HashSet<Arc<Section>>> = Default::default();
 }
 
 impl Section {
@@ -42,14 +44,14 @@ impl Section {
                     let file_offset = section.pointer_to_raw_data as u64;
                     let size_of_file = section.size_of_raw_data as u64;
 
-                    section_writer.insert(Section {
+                    section_writer.insert(Arc::new(Section {
                         name,
                         real_name,
                         virtual_address,
                         virtual_size,
                         file_offset,
                         size_of_file,
-                    });
+                    }));
                 }
             }
             _ => todo!(),
@@ -57,7 +59,7 @@ impl Section {
     }
 
     /// 가상주소를 입력받아서 섹션 정보를 반환하는 함수
-    pub(crate) fn from_virtual_address(virtual_address: u64) -> Option<Section> {
+    pub(crate) fn from_virtual_address(virtual_address: u64) -> Option<Arc<Section>> {
         let section_reader = SECTIONS.read().unwrap();
         // 모든 섹션에 대한 검사
         for section in section_reader.iter() {
@@ -74,7 +76,7 @@ impl Section {
     }
 
     /// 파일 오프셋을 입력받아서 섹션 정보를 반환하는 함수
-    pub(crate) fn from_file_offset(file_offset: u64) -> Option<Section> {
+    pub(crate) fn from_file_offset(file_offset: u64) -> Option<Arc<Section>> {
         let section_reader = SECTIONS.read().unwrap();
         // 모든 섹션에 대한 검사
         for section in section_reader.iter() {
@@ -91,7 +93,7 @@ impl Section {
     }
 
     /// 섹션 이름을 받아 섹션 정보를 반환하는 함수
-    pub(crate) fn from_name(name: &str) -> Option<Section> {
+    pub(crate) fn from_name(name: &str) -> Option<Arc<Section>> {
         let section_reader = SECTIONS.read().unwrap();
         // 모든 섹션에 대한 검사
         for section in section_reader.iter() {

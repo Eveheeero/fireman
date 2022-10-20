@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use super::{Address, Relation, Section};
 
 /// 분석할 코드 블럭
-#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq)]
 pub(crate) struct Block {
     /// 블럭의 아이디
     id: usize,
@@ -16,19 +18,19 @@ pub(crate) struct Block {
     /// 현재 블럭과 연관된 블럭들을 담은 벡터
     connected_to: Vec<Relation>,
     /// 블럭의 섹션
-    section: Section,
+    section: Arc<Section>,
 }
 
 lazy_static::lazy_static! {
-    static ref BLOCKS: std::sync::RwLock<std::collections::HashSet<Block>> = Default::default();
+    static ref BLOCKS: std::sync::RwLock<std::collections::HashSet<Arc<Block>>> = Default::default();
 }
 
 impl Block {
     pub(crate) fn new(
-        section: Section,
+        section: Arc<Section>,
         start_address_virtual: Address,
         end_address_virtual: Option<Address>,
-    ) -> Self {
+    ) -> Arc<Self> {
         let mut blocks_writer = BLOCKS.write().unwrap();
 
         let new_block = Block {
@@ -40,6 +42,8 @@ impl Block {
             connected_to: Default::default(),
             section,
         };
+
+        let new_block = Arc::new(new_block);
 
         blocks_writer.insert(new_block.clone());
 

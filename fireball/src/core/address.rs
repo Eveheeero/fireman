@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use crate::core::Section;
 
 use goblin::Object;
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub(crate) struct Address {
-    section: Section,
+    section: Arc<Section>,
     virtual_offset: u64,
 }
 
@@ -50,7 +52,7 @@ impl Address {
         self.virtual_offset
     }
 
-    pub(crate) fn get_section(&self) -> Section {
+    pub(crate) fn get_section(&self) -> Arc<Section> {
         self.section.clone()
     }
 }
