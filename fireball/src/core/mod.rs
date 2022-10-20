@@ -19,3 +19,11 @@ pub(crate) use section::{
     build_section, get_section_from_file_offset, get_section_from_name,
     get_section_from_virtual_address, Section,
 };
+
+/// 파싱하는 코드 블럭이 들어있는 모듈
+mod block;
+pub(crate) use block::Block;
+
+/// 코드 블럭에 대한 연관 블럭이 들어있는 모듈
+mod relation;
+pub(crate) use relation::Relation;

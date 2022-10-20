@@ -2,6 +2,7 @@ use crate::core::{get_section_from_file_offset, get_section_from_virtual_address
 
 use goblin::Object;
 
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub(crate) struct Address {
     section: Section,
     virtual_offset: u64,

@@ -20,9 +20,9 @@ pub(crate) struct Section {
 }
 
 lazy_static::lazy_static! {
-  /// 섹션 정보의 집합
-  /// 가상주소(시작주소) : 섹션 정보
-  static ref SECTIONS: std::sync::RwLock< std::collections::HashSet<Section>> = Default::default();
+    /// 섹션 정보의 집합
+    /// 가상주소(시작주소) : 섹션 정보
+    static ref SECTIONS: std::sync::RwLock<std::collections::HashSet<Section>> = Default::default();
 }
 
 /// 섹션 정보를 빌드하는 함수
