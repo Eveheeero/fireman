@@ -1,4 +1,4 @@
-use crate::core::{get_section_from_file_offset, get_section_from_virtual_address, Section};
+use crate::core::Section;
 
 use goblin::Object;
 
@@ -12,7 +12,7 @@ impl Address {
     /// 파일 오프셋을 기반으로 Address 객체를 생성한다.
     pub(crate) fn from_file_offset(offset: u64) -> Result<Self, ()> {
         // 오프셋에 해당하는 섹션 찾기
-        let section = match get_section_from_file_offset(offset) {
+        let section = match Section::from_file_offset(offset) {
             Some(section) => section,
             None => return Err(()),
         };
@@ -28,7 +28,7 @@ impl Address {
     /// 가상 주소를 기반으로 Address 객체를 생성한다.
     pub(crate) fn from_virtual_address(offset: u64) -> Result<Self, ()> {
         // 가상주소에 해당하는 섹션 찾기
-        let section = match get_section_from_virtual_address(offset) {
+        let section = match Section::from_virtual_address(offset) {
             Some(section) => section,
             None => return Err(()),
         };

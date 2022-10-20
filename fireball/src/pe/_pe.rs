@@ -1,5 +1,5 @@
 use super::PE;
-use crate::core::{build_section, Address, PreDefinedOffset};
+use crate::core::{Address, PreDefinedOffset, Section};
 
 use capstone::prelude::BuildsCapstone;
 
@@ -14,7 +14,7 @@ impl PE {
         let gl = goblin::pe::PE::parse(&binary).unwrap();
 
         // 바이너리 전체에 대한 섹션정보 생성
-        build_section(&binary);
+        Section::build_all(&binary);
 
         // 캡스톤 객체 생성
         let capstone = {
