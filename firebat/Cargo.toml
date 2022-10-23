@@ -11,4 +11,4 @@ homepage = "https://crates.io/crates/firebat"
 
 [dependencies]
 fireball = { path = "../fireball", version = "0.0.1" }
-eframe = "0.19.0"
+eframe = "0.18.0"
