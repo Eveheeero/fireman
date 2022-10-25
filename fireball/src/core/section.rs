@@ -2,9 +2,16 @@
 
 use std::sync::Arc;
 
+#[derive(Default)]
+pub struct Sections {
+    /// 섹션 정보의 집합
+    /// 가상주소(시작주소) : 섹션 정보
+    data: std::sync::RwLock<std::collections::HashSet<Arc<Section>>>,
+}
+
 /// 섹션에 대한 정보가 들어있는 구조체
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub(crate) struct Section {
+pub struct Section {
     /// 섹션 식별코드
     pub(crate) id: usize,
     /// .text와 같은 이름
@@ -23,19 +30,13 @@ pub(crate) struct Section {
     pub(crate) size_of_file: u64,
 }
 
-lazy_static::lazy_static! {
-    /// 섹션 정보의 집합
-    /// 가상주소(시작주소) : 섹션 정보
-    static ref SECTIONS: std::sync::RwLock<std::collections::HashSet<Arc<Section>>> = Default::default();
-}
-
-impl Section {
+impl Sections {
     /// 섹션 정보를 빌드하는 함수
     ///
     /// 바이너리 파일의 모든 바이트를 읽어 섹션 정보를 로드해 저장한다.
-    pub(crate) fn build_all(binary: &[u8]) {
+    pub(crate) fn build_all(&self, binary: &[u8]) {
         let gl = goblin::Object::parse(binary).unwrap();
-        let mut section_writer = SECTIONS.write().unwrap();
+        let section_writer = &mut self.data.write().unwrap();
 
         match gl {
             goblin::Object::PE(gl) => {
@@ -65,8 +66,8 @@ impl Section {
     }
 
     /// 가상주소를 입력받아서 섹션 정보를 반환하는 함수
-    pub(crate) fn from_virtual_address(virtual_address: u64) -> Option<Arc<Section>> {
-        let section_reader = SECTIONS.read().unwrap();
+    pub(crate) fn from_virtual_address(&self, virtual_address: u64) -> Option<Arc<Section>> {
+        let section_reader = &self.data.read().unwrap();
         // 모든 섹션에 대한 검사
         for section in section_reader.iter() {
             // 가상주소에 대한 섹션의 시작과 끝
@@ -82,8 +83,8 @@ impl Section {
     }
 
     /// 파일 오프셋을 입력받아서 해당 오프셋이 속한 섹션 정보를 반환하는 함수
-    pub(crate) fn from_file_offset(file_offset: u64) -> Option<Arc<Section>> {
-        let section_reader = SECTIONS.read().unwrap();
+    pub(crate) fn from_file_offset(&self, file_offset: u64) -> Option<Arc<Section>> {
+        let section_reader = &self.data.read().unwrap();
         // 모든 섹션에 대한 검사
         for section in section_reader.iter() {
             // 파일 오프셋에 대한 섹션의 시작과 끝
@@ -99,8 +100,8 @@ impl Section {
     }
 
     /// 섹션 이름을 받아, 해당 이름을 가진 섹션 정보를 반환하는 함수
-    pub(crate) fn from_name(name: &str) -> Option<Arc<Section>> {
-        let section_reader = SECTIONS.read().unwrap();
+    pub(crate) fn from_name(&self, name: &str) -> Option<Arc<Section>> {
+        let section_reader = &self.data.read().unwrap();
         // 모든 섹션에 대한 검사
         for section in section_reader.iter() {
             // 섹션 이름이 일치하면 섹션 정보를 반환

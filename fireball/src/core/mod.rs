@@ -21,7 +21,7 @@ pub(crate) use address::Address;
 /// PE 구조체의 디컴파일 기능이 완성된 후, Sections라는 섹션 정보 모음 구조체가 생성되어
 /// PE 구조체의 내부에 해당 정보가 들어가야 합니다.
 mod section;
-pub(crate) use section::Section;
+pub use section::{Section, Sections};
 
 /// 파싱하는 코드 블럭이 들어있는 모듈
 mod block;

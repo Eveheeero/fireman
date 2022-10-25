@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::core::Section;
+use crate::core::{Section, Sections};
 
 use goblin::Object;
 
@@ -12,9 +12,9 @@ pub(crate) struct Address {
 
 impl Address {
     /// 파일 오프셋을 기반으로 Address 객체를 생성한다.
-    pub(crate) fn from_file_offset(offset: u64) -> Result<Self, ()> {
+    pub(crate) fn from_file_offset(sections: &Sections, offset: u64) -> Result<Self, ()> {
         // 오프셋에 해당하는 섹션 찾기
-        let section = match Section::from_file_offset(offset) {
+        let section = match sections.from_file_offset(offset) {
             Some(section) => section,
             None => return Err(()),
         };
@@ -28,9 +28,9 @@ impl Address {
     }
 
     /// 가상 주소를 기반으로 Address 객체를 생성한다.
-    pub(crate) fn from_virtual_address(offset: u64) -> Result<Self, ()> {
+    pub(crate) fn from_virtual_address(sections: &Sections, offset: u64) -> Result<Self, ()> {
         // 가상주소에 해당하는 섹션 찾기
-        let section = match Section::from_virtual_address(offset) {
+        let section = match sections.from_virtual_address(offset) {
             Some(section) => section,
             None => return Err(()),
         };
