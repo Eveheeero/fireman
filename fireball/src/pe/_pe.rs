@@ -1,5 +1,5 @@
 use super::PE;
-use crate::core::{Address, PreDefinedOffset, Sections};
+use crate::core::{Address, PreDefinedOffset, PreDefinedOffsets, Sections};
 
 use capstone::prelude::BuildsCapstone;
 
@@ -38,7 +38,7 @@ impl PE {
 
         // 바이너리에 이미 지정되어있는 정보 생성
         let defined = {
-            let mut defined = Vec::new();
+            let defined = PreDefinedOffsets::new();
 
             let imports = gl.imports;
             let exports = gl.exports;
@@ -47,7 +47,7 @@ impl PE {
                 let name = import.name.to_string();
                 let offset = import.offset as u64;
 
-                defined.push(PreDefinedOffset {
+                defined.insert(PreDefinedOffset {
                     name,
                     address: Address::from_virtual_address(&sections, offset).unwrap(),
                 });
@@ -61,7 +61,7 @@ impl PE {
                 };
                 let offset = export.offset.unwrap() as u64;
 
-                defined.push(PreDefinedOffset {
+                defined.insert(PreDefinedOffset {
                     name,
                     address: Address::from_virtual_address(&sections, offset).unwrap(),
                 });

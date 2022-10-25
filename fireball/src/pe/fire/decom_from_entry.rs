@@ -14,7 +14,7 @@ impl PE {
                 let op = inst.op_str().unwrap();
                 if op.starts_with("0x") {
                     let op_ptr = u64::from_str_radix(op.trim_start_matches("0x"), 16)?;
-                    for now in self.defined.iter() {
+                    for now in self.defined.get_reader().iter() {
                         if now.address.get_virtual_address() == op_ptr {
                             println!("{}: {}", now.name, now.address.get_virtual_address());
                         }

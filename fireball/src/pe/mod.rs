@@ -1,6 +1,6 @@
 use std::{pin::Pin, sync::Arc};
 
-use crate::core::{PreDefinedOffset, Sections};
+use crate::core::{PreDefinedOffsets, Sections};
 
 /// PE파일 파서
 pub struct PE {
@@ -12,7 +12,7 @@ pub struct PE {
     capstone: Pin<Box<capstone::Capstone>>,
 
     /// 파일 내부에서 이미 지정된 데이터
-    defined: Vec<PreDefinedOffset>,
+    defined: Arc<PreDefinedOffsets>,
     /// 섹션에 대한 정보를 담고 있는 데이터
     sections: Arc<Sections>,
 }
