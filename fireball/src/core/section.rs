@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 /// 섹션에 대한 정보가 들어있는 구조체
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq, Clone)]
 pub struct Section {
     /// 섹션 식별코드
     pub(crate) id: usize,
@@ -19,4 +19,17 @@ pub struct Section {
     pub(crate) file_offset: u64,
     /// 섹션에 해당하는 파일의 크기
     pub(crate) size_of_file: u64,
+}
+
+unsafe impl Send for Section {}
+
+impl std::fmt::Display for Section {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:#X} - {:#X}",
+            self.virtual_address,
+            self.virtual_address + self.virtual_size
+        )
+    }
 }
