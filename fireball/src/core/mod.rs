@@ -13,6 +13,10 @@ pub(crate) use pre_defined_offset::PreDefinedOffset;
 mod address;
 pub(crate) use address::Address;
 
+/// 모든 섹션에 대한 데이터가 들어가 있는 모듈
+mod sections;
+pub use sections::Sections;
+
 /// 섹션에 대한 구조체가 들어있는 모듈
 ///
 /// ## TODO
@@ -21,7 +25,7 @@ pub(crate) use address::Address;
 /// PE 구조체의 디컴파일 기능이 완성된 후, Sections라는 섹션 정보 모음 구조체가 생성되어
 /// PE 구조체의 내부에 해당 정보가 들어가야 합니다.
 mod section;
-pub use section::{Section, Sections};
+pub use section::Section;
 
 /// 파싱하는 코드 블럭이 들어있는 모듈
 mod block;

@@ -1,4 +1,5 @@
 #![windows_subsystem = "windows"]
+#![allow(unused_variables)]
 
 use eframe::egui;
 
