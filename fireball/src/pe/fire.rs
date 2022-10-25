@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use super::PE;
-use crate::core::Fire;
+use crate::core::{Fire, Sections};
 
 impl Fire for PE {
     fn from_path(path: &str) -> Result<PE, Box<dyn std::error::Error>> {
@@ -33,6 +35,10 @@ impl Fire for PE {
 
     fn decom_from_virtual_address(&self, address: u64) -> Result<(), Box<dyn std::error::Error>> {
         self._decom_from_virtual_address(address)
+    }
+
+    fn get_sections(&self) -> Arc<Sections> {
+        self.sections.clone()
     }
 }
 

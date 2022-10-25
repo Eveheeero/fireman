@@ -14,7 +14,7 @@ impl PE {
         let gl = goblin::pe::PE::parse(&binary).unwrap();
 
         // 바이너리 전체에 대한 섹션정보 생성
-        let sections = Sections::default();
+        let sections = Sections::new();
         sections.build_all(&binary);
 
         // 캡스톤 객체 생성

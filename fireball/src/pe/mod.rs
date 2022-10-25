@@ -1,4 +1,4 @@
-use std::pin::Pin;
+use std::{pin::Pin, sync::Arc};
 
 use crate::core::{PreDefinedOffset, Sections};
 
@@ -14,7 +14,7 @@ pub struct PE {
     /// 파일 내부에서 이미 지정된 데이터
     defined: Vec<PreDefinedOffset>,
     /// 섹션에 대한 정보를 담고 있는 데이터
-    sections: Sections,
+    sections: Arc<Sections>,
 }
 
 /// PE 구조체에 대한 구현이 담겨있는 모듈

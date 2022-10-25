@@ -3,7 +3,6 @@ use std::sync::Arc;
 use super::Section;
 
 /// 모든 섹션의 데이터가 담겨있는 구조체
-#[derive(Default)]
 pub struct Sections {
     /// 섹션 정보의 집합
     /// 가상주소(시작주소) : 섹션 정보
@@ -11,6 +10,12 @@ pub struct Sections {
 }
 
 impl Sections {
+    pub(crate) fn new() -> Arc<Self> {
+        Arc::new(Self {
+            data: Default::default(),
+        })
+    }
+
     /// 섹션 정보를 빌드하는 함수
     ///
     /// 바이너리 파일의 모든 바이트를 읽어 섹션 정보를 로드해 저장한다.
