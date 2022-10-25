@@ -5,7 +5,7 @@ use crate::core::{Section, Sections};
 use goblin::Object;
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
-pub(crate) struct Address {
+pub struct Address {
     section: Arc<Section>,
     virtual_offset: u64,
 }

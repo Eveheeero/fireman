@@ -15,7 +15,7 @@ pub use pre_defined_offset::PreDefinedOffset;
 
 /// 주소에 대한 구조체가 들어있는 모듈
 mod address;
-pub(crate) use address::Address;
+pub use address::Address;
 
 /// 모든 섹션에 대한 데이터가 들어가 있는 모듈
 mod sections;
@@ -31,9 +31,12 @@ pub use sections::Sections;
 mod section;
 pub use section::Section;
 
+mod blocks;
+pub use blocks::Blocks;
+
 /// 파싱하는 코드 블럭이 들어있는 모듈
 mod block;
-pub(crate) use block::Block;
+pub use block::Block;
 
 /// 코드 블럭에 대한 연관 블럭이 들어있는 모듈
 mod relation;

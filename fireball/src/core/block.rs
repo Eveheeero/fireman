@@ -4,7 +4,7 @@ use super::{Address, Relation, Section};
 
 /// 분석할 코드 블럭
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub(crate) struct Block {
+pub struct Block {
     /// 블럭의 아이디
     id: usize,
     /// 블럭의 이름
@@ -21,42 +21,52 @@ pub(crate) struct Block {
     section: Arc<Section>,
 }
 
-lazy_static::lazy_static! {
-    static ref BLOCKS: std::sync::RwLock<std::collections::HashSet<Arc<Block>>> = Default::default();
-}
-
 impl Block {
     pub(crate) fn new(
-        section: Arc<Section>,
+        id: usize,
+        name: Option<String>,
         start_address_virtual: Address,
         end_address_virtual: Option<Address>,
-        name: Option<String>,
+        connected_from: Vec<Relation>,
+        connected_to: Vec<Relation>,
+        section: Arc<Section>,
     ) -> Arc<Self> {
-        let mut blocks_writer = BLOCKS.write().unwrap();
-
-        let new_block = Block {
-            id: blocks_writer.len(),
+        Arc::new(Self {
+            id,
             name,
             start_address_virtual,
             end_address_virtual,
-            connected_from: Default::default(),
-            connected_to: Default::default(),
+            connected_from,
+            connected_to,
             section,
-        };
-
-        let new_block = Arc::new(new_block);
-
-        blocks_writer.insert(new_block.clone());
-
-        new_block
+        })
     }
 
-    pub(crate) fn find_from_address(address: Address) -> Option<Arc<Self>> {
-        let blocks_reader = BLOCKS.read().unwrap();
+    pub fn get_id(&self) -> usize {
+        self.id
+    }
 
-        blocks_reader
-            .iter()
-            .find(|block| block.start_address_virtual == address)
-            .map(Arc::clone)
+    pub fn get_name(&self) -> Option<&String> {
+        self.name.as_ref()
+    }
+
+    pub fn get_start_address_virtual(&self) -> &Address {
+        &self.start_address_virtual
+    }
+
+    pub fn get_end_address_virtual(&self) -> Option<&Address> {
+        self.end_address_virtual.as_ref()
+    }
+
+    pub fn get_connected_from(&self) -> &Vec<Relation> {
+        &self.connected_from
+    }
+
+    pub fn get_connected_to(&self) -> &Vec<Relation> {
+        &self.connected_to
+    }
+
+    pub fn get_section(&self) -> &Arc<Section> {
+        &self.section
     }
 }
