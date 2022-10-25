@@ -51,6 +51,7 @@ impl Sections {
     }
 
     /// 가상주소를 입력받아서 섹션 정보를 반환하는 함수
+    #[allow(clippy::wrong_self_convention)]
     pub(crate) fn from_virtual_address(&self, virtual_address: u64) -> Option<Arc<Section>> {
         let section_reader = &self.data.read().unwrap();
         // 모든 섹션에 대한 검사
@@ -68,6 +69,7 @@ impl Sections {
     }
 
     /// 파일 오프셋을 입력받아서 해당 오프셋이 속한 섹션 정보를 반환하는 함수
+    #[allow(clippy::wrong_self_convention)]
     pub(crate) fn from_file_offset(&self, file_offset: u64) -> Option<Arc<Section>> {
         let section_reader = &self.data.read().unwrap();
         // 모든 섹션에 대한 검사
@@ -85,6 +87,7 @@ impl Sections {
     }
 
     /// 섹션 이름을 받아, 해당 이름을 가진 섹션 정보를 반환하는 함수
+    #[allow(clippy::wrong_self_convention)]
     pub(crate) fn from_name(&self, name: &str) -> Option<Arc<Section>> {
         let section_reader = &self.data.read().unwrap();
         // 모든 섹션에 대한 검사
