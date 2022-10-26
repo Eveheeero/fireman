@@ -7,12 +7,16 @@ use clap::Parser;
 #[derive(Parser)]
 struct Args {
     /// 파일 경로
-    #[arg(short, long)]
-    path: String,
+    #[arg(short = 'i', long = "input", value_name = "PATH")]
+    input_path: String,
+
+    /// 설정값 경로
+    #[arg(short = 'j', long = "json", value_name = "PATH")]
+    json_path: Option<String>,
 }
 
 fn main() {
     let args = Args::parse();
-    let fire = Fireball::from_path(&args.path).unwrap();
+    let fire = Fireball::from_path(&args.input_path).unwrap();
     dbg!(fire);
 }
