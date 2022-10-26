@@ -33,3 +33,25 @@ impl std::fmt::Display for Section {
         )
     }
 }
+
+/// 테스트 모듈
+#[cfg(test)]
+mod tests {
+    use super::Section;
+
+    /// Section구조체를 Display로 출력했을 때 제대로 출력되는지 확인하기 위한 테스트
+    #[test]
+    fn display_test() {
+        let section = Section {
+            id: 10,
+            name: String::from("test"),
+            real_name: Some("TestFunction".to_owned()),
+            virtual_address: 0x1000,
+            virtual_size: 0x2A00,
+            file_offset: 0x30B0,
+            size_of_file: 0x400C,
+        };
+
+        assert_eq!(format!("{}", section), "0x1000 - 0x3A00");
+    }
+}
