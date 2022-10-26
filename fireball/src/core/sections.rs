@@ -2,7 +2,12 @@ use std::sync::Arc;
 
 use super::Section;
 
-/// 모든 섹션의 데이터가 담겨있는 구조체
+/// Struct that holding all section's information.
+/// Data in this struct is immutable, only can write when start analysis. (By build_all method)
+///
+///
+/// 모든 섹션을 담고 있는 구조체
+/// 해당 구조체 안에 있는 내용은 분석을 시작할 때 생성되며, 이후에는 변경되지 않는다. (build_all 메소드에서만 생성된다.)
 pub struct Sections {
     /// 섹션 정보의 집합
     /// 가상주소(시작주소) : 섹션 정보
@@ -10,16 +15,24 @@ pub struct Sections {
 }
 
 impl Sections {
+    /// Create new Sections struct.
+    ///
+    ///
+    /// 새로운 Sections 구조체를 생성한다.
     pub(crate) fn new() -> Arc<Self> {
         Arc::new(Self {
             data: Default::default(),
         })
     }
 
-    /// 섹션 정보를 빌드하는 함수
+    /// Build all section struct from binary.
+    /// This method is only called when start analysis.
     ///
-    /// 바이너리 파일의 모든 바이트를 읽어 섹션 정보를 로드해 저장한다.
+    ///
+    /// 바이너리를 파싱해 섹션 구조체를 생성하는 함수
+    /// 분석을 시작할 때 한 번만 호출된다.
     pub(crate) fn build_all(&self, binary: &[u8]) {
+        // golbin으로부터 모든 바이너리를 파싱해 섹션 정보를 가져온다.
         let gl = goblin::Object::parse(binary).unwrap();
         let section_writer = &mut self.data.write().unwrap();
 
@@ -50,7 +63,12 @@ impl Sections {
         }
     }
 
+    /// Function that return section by virtual address.
+    /// It calcs section's from and to address, and return section if virtual address is in range.
+    ///
+    ///
     /// 가상주소를 입력받아서 섹션 정보를 반환하는 함수
+    /// 섹션의 시작주소와 끝주소를 계산하여, 가상주소가 해당 범위에 속하면 섹션 정보를 반환한다.
     #[allow(clippy::wrong_self_convention)]
     pub(crate) fn from_virtual_address(&self, virtual_address: u64) -> Option<Arc<Section>> {
         let section_reader = &self.data.read().unwrap();
@@ -68,7 +86,12 @@ impl Sections {
         None
     }
 
+    /// Function that return section by file offset.
+    /// It calcs section's from and to offset, and return section if file offset is in range.
+    ///
+    ///
     /// 파일 오프셋을 입력받아서 해당 오프셋이 속한 섹션 정보를 반환하는 함수
+    /// 섹션의 파일 시작 오프셋과 끝 오프셋을 계산하여, 파일 오프셋이 해당 범위에 속하면 섹션 정보를 반환한다.
     #[allow(clippy::wrong_self_convention)]
     pub(crate) fn from_file_offset(&self, file_offset: u64) -> Option<Arc<Section>> {
         let section_reader = &self.data.read().unwrap();
@@ -86,6 +109,9 @@ impl Sections {
         None
     }
 
+    /// Function that return section by section name.
+    ///
+    ///
     /// 섹션 이름을 받아, 해당 이름을 가진 섹션 정보를 반환하는 함수
     #[allow(clippy::wrong_self_convention)]
     pub(crate) fn from_name(&self, name: &str) -> Option<Arc<Section>> {
