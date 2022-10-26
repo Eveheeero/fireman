@@ -24,7 +24,10 @@ pub use address::Address;
 mod sections;
 pub use sections::Sections;
 
-/// 섹션에 대한 구조체가 들어있는 모듈
+/// Module that contains structure that contains section's information
+///
+///
+/// 섹션에 대한 정보를 담은 구조체가 들어있는 모듈
 mod section;
 pub use section::Section;
 
