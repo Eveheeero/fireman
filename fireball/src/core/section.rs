@@ -45,7 +45,7 @@ mod tests {
         let section = Section {
             id: 10,
             name: String::from("test"),
-            real_name: Some("TestFunction".to_owned()),
+            real_name: Some("TestSection".to_owned()),
             virtual_address: 0x1000,
             virtual_size: 0x2A00,
             file_offset: 0x30B0,
