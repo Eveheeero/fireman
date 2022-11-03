@@ -6,6 +6,27 @@ pub struct Blocks {
     data: std::sync::RwLock<std::collections::HashSet<Arc<Block>>>,
 }
 
+// Block 구조체 생성 함수, 접근에 대한 문제 때문에 해당 파일에서 구현되었다.
+impl Block {
+    fn new(
+        id: usize,
+        name: Option<String>,
+        start_address_virtual: Address,
+        end_address_virtual: Option<Address>,
+        section: Arc<Section>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            id,
+            name,
+            start_address_virtual,
+            end_address_virtual,
+            connected_from: Default::default(),
+            connected_to: Default::default(),
+            section,
+        })
+    }
+}
+
 impl Blocks {
     pub(crate) fn new() -> Arc<Self> {
         Arc::new(Self {
@@ -27,8 +48,6 @@ impl Blocks {
             name,
             start_address_virtual,
             end_address_virtual,
-            Default::default(),
-            Default::default(),
             section,
         );
 
