@@ -19,7 +19,7 @@ impl PE {
     }
 
     /// 어셈블리 코드를 N개 파싱한다.
-    pub(crate) fn parse_assen_count(
+    pub(crate) fn parse_assem_count(
         &self,
         offset: Address,
         count: usize,

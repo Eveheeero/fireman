@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::PE;
-use crate::core::{Fire, Sections};
+use crate::core::{Address, Block, Fire, Relation, Sections};
 
 impl Fire for PE {
     fn from_path(path: &str) -> Result<PE, Box<dyn std::error::Error>> {
@@ -40,9 +40,14 @@ impl Fire for PE {
     fn get_sections(&self) -> Arc<Sections> {
         self.sections.clone()
     }
+
+    fn parse_block(&self, address: Address) -> (Arc<Block>, Option<Arc<Relation>>) {
+        self._parse_block(address)
+    }
 }
 
 mod decom_all;
 mod decom_from_entry;
 mod decom_from_file_offset;
 mod decom_from_virtual_address;
+mod parse_block;

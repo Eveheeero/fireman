@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::Sections;
+use super::{Address, Block, Relation, Sections};
 
 /// 파서 모듈에 대한 트레이트
 pub trait Fire {
@@ -34,4 +34,7 @@ pub trait Fire {
 
     /// 모든 섹션 정보를 가져온다.
     fn get_sections(&self) -> Arc<Sections>;
+
+    /// 파일 오프셋과 이어진 블록 정보를 가져온다.
+    fn parse_block(&self, address: Address) -> (Arc<Block>, Option<Arc<Relation>>);
 }
