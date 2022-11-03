@@ -1,6 +1,6 @@
 use std::{pin::Pin, sync::Arc};
 
-use crate::core::{PreDefinedOffsets, Sections};
+use crate::core::{PreDefinedOffsets, Relations, Sections};
 
 /// PE파일 파서
 pub struct PE {
@@ -15,6 +15,8 @@ pub struct PE {
     defined: Arc<PreDefinedOffsets>,
     /// 섹션에 대한 정보를 담고 있는 데이터
     sections: Arc<Sections>,
+    /// 여러 섹션에 대한 연관 정보를 담고 있는 데이터
+    relations: Arc<Relations>,
 }
 
 /// PE 구조체에 대한 구현이 담겨있는 모듈

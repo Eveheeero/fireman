@@ -39,5 +39,9 @@ mod block;
 pub use block::Block;
 
 /// 코드 블럭에 대한 연관 블럭이 들어있는 모듈
+mod relations;
+pub use relations::Relations;
+
+/// 코드 블럭에 대한 연관 블럭이 들어있는 모듈
 mod relation;
 pub use relation::Relation;

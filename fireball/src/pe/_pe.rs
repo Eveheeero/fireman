@@ -1,5 +1,5 @@
 use super::PE;
-use crate::core::{Address, PreDefinedOffset, PreDefinedOffsets, Sections};
+use crate::core::{Address, PreDefinedOffset, PreDefinedOffsets, Relations, Sections};
 
 use capstone::prelude::BuildsCapstone;
 
@@ -76,6 +76,7 @@ impl PE {
             capstone,
             defined,
             sections,
+            relations: Relations::new(),
         }
     }
 }
