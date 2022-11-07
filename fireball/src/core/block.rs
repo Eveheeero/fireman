@@ -22,6 +22,24 @@ pub struct Block {
 }
 
 impl Block {
+    pub(super) fn new(
+        id: usize,
+        name: Option<String>,
+        start_address_virtual: Address,
+        end_address_virtual: Option<Address>,
+        section: Arc<Section>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            id,
+            name,
+            start_address_virtual,
+            end_address_virtual,
+            connected_from: Default::default(),
+            connected_to: Default::default(),
+            section,
+        })
+    }
+
     pub fn get_id(&self) -> usize {
         self.id
     }
