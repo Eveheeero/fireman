@@ -36,5 +36,5 @@ pub trait Fire {
     fn get_sections(&self) -> Arc<Sections>;
 
     /// 파일 오프셋과 이어진 블록 정보를 가져온다.
-    fn parse_block(&self, address: Address) -> (Arc<Block>, Option<Arc<Relation>>);
+    fn parse_block(&self, address: Address) -> Arc<Block>;
 }

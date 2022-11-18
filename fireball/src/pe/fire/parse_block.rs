@@ -4,7 +4,7 @@ use super::PE;
 use crate::core::{Address, Block, Relation};
 
 impl PE {
-    pub(super) fn _parse_block(&self, address: Address) -> (Arc<Block>, Option<Arc<Relation>>) {
+    pub(super) fn _parse_block(&self, address: Address) -> Arc<Block> {
         /* 기본정보 파싱 및 변수 선언 */
         // 블록이 들어갈 섹션
         let section = self
@@ -16,7 +16,7 @@ impl PE {
         // 블록의 끝 주소
         let block_end: Address;
         // 블록이 가지고 있는, 다른 블록과의 관계
-        let relation: Option<Arc<Relation>>;
+        let connected_to: Option<Arc<Relation>>;
 
         /* 한 줄씩 인스트럭션을 불러오면서, 다른 구역으로 이동하는 명령이 있는지 확인 */
         let mut now_address = address;
@@ -33,7 +33,7 @@ impl PE {
                         target.parse::<u64>().unwrap(),
                     )
                     .unwrap();
-                    relation = Some(Relation::new(now_address.clone(), target_address));
+                    connected_to = Some(Relation::new(now_address.clone(), target_address));
                     block_end = now_address;
                     break;
                 }
@@ -49,6 +49,6 @@ impl PE {
         let block = self
             .blocks
             .generate_block(section, block_start, Some(block_end), None);
-        return (block, relation);
+        return block;
     }
 }

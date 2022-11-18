@@ -41,7 +41,7 @@ impl Fire for PE {
         self.sections.clone()
     }
 
-    fn parse_block(&self, address: Address) -> (Arc<Block>, Option<Arc<Relation>>) {
+    fn parse_block(&self, address: Address) -> Arc<Block> {
         self._parse_block(address)
     }
 }
