@@ -56,3 +56,18 @@ impl Address {
         self.section.clone()
     }
 }
+
+impl std::ops::AddAssign<u64> for Address {
+    fn add_assign(&mut self, rhs: u64) {
+        self.virtual_offset += rhs;
+    }
+}
+
+impl std::ops::Add<u64> for Address {
+    type Output = Self;
+
+    fn add(mut self, rhs: u64) -> Self::Output {
+        self += rhs;
+        self
+    }
+}

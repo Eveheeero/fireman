@@ -37,18 +37,38 @@ impl PE {
                     block_end = now_address;
                     break;
                 }
-                "jmp" => {}
-                "ret" => {}
-                _ =>
-                    /* now_address = now_address + inst.len() */
-                    {}
+                "jmp" => {
+                    let target = inst.op_str().unwrap();
+                    let target_address = Address::from_virtual_address(
+                        &self.sections,
+                        target.parse::<u64>().unwrap(),
+                    )
+                    .unwrap();
+                    connected_to = Some(Relation::new(now_address.clone(), target_address));
+                    block_end = now_address;
+                    break;
+                }
+                "ret" => {
+                    connected_to = None;
+                    block_end = now_address;
+                    break;
+                }
+                _ => {
+                    now_address = now_address + inst.len() as u64;
+                }
             }
         }
 
         /* 블록 생성 및 반환 */
+        // 블록 객체 생성
         let block = self
             .blocks
             .generate_block(section, block_start, Some(block_end), None);
+        // 블록과 연결된 좌표 등록
+        if let Some(connected_to) = connected_to {
+            block.add_connected_to(connected_to.clone());
+        }
+
         return block;
     }
 }

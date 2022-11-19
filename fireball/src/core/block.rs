@@ -1,9 +1,9 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 use super::{Address, Relation, Section};
 
 /// 분석할 코드 블럭
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Debug)]
 pub struct Block {
     /// 블럭의 아이디
     id: usize,
@@ -14,9 +14,9 @@ pub struct Block {
     /// 블럭의 끝
     end_address_virtual: Option<Address>,
     /// 현재 블럭과 연관되어있는 블럭들을 담은 벡터
-    connected_from: Vec<Arc<Relation>>,
+    connected_from: RwLock<Vec<Arc<Relation>>>,
     /// 현재 블럭과 연관된 블럭들을 담은 벡터
-    connected_to: Vec<Arc<Relation>>,
+    connected_to: RwLock<Vec<Arc<Relation>>>,
     /// 블럭의 섹션
     section: Arc<Section>,
 }
@@ -56,23 +56,41 @@ impl Block {
         self.end_address_virtual.as_ref()
     }
 
-    pub fn get_connected_from(&self) -> &Vec<Arc<Relation>> {
-        &self.connected_from
+    pub fn get_connected_from(&self) -> RwLockReadGuard<Vec<Arc<Relation>>> {
+        self.connected_from.read().unwrap()
     }
 
-    pub fn get_connected_to(&self) -> &Vec<Arc<Relation>> {
-        &self.connected_to
+    pub fn get_connected_to(&self) -> RwLockReadGuard<Vec<Arc<Relation>>> {
+        self.connected_to.read().unwrap()
     }
 
     pub fn get_section(&self) -> &Arc<Section> {
         &self.section
     }
 
-    pub(crate) fn add_connected_from(&mut self, relation: Arc<Relation>) {
-        self.connected_from.push(relation);
+    pub(crate) fn add_connected_from(&self, relation: Arc<Relation>) {
+        self.connected_from.write().unwrap().push(relation);
     }
 
-    pub(crate) fn add_connected_to(&mut self, relation: Arc<Relation>) {
-        self.connected_to.push(relation);
+    pub(crate) fn add_connected_to(&self, relation: Arc<Relation>) {
+        self.connected_to.write().unwrap().push(relation);
+    }
+}
+
+impl std::hash::Hash for Block {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
+impl Eq for Block {
+    fn assert_receiver_is_total_eq(&self) {
+        self.id.assert_receiver_is_total_eq();
+    }
+}
+
+impl PartialEq for Block {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
     }
 }
