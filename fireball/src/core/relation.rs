@@ -14,4 +14,12 @@ impl Relation {
     pub fn new(from: Address, to: Address) -> Arc<Self> {
         Arc::new(Self { from, to })
     }
+
+    pub fn from(&self) -> &Address {
+        &self.from
+    }
+
+    pub fn to(&self) -> &Address {
+        &self.to
+    }
 }
