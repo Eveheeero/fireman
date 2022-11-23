@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::PE;
-use crate::core::{Address, Block, Fire, Relation, Sections};
+use crate::core::{Address, Block, Fire, Sections};
 
 impl Fire for PE {
     fn from_path(path: &str) -> Result<PE, Box<dyn std::error::Error>> {
