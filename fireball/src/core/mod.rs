@@ -50,4 +50,4 @@ pub use relations::Relations;
 
 /// 분석중 나온 분기에 대한 연관관계를 정의하는 모듈
 mod relation;
-pub use relation::Relation;
+pub use relation::{Relation, RelationType};

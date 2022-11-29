@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::PE;
-use crate::core::{Address, Block, Relation};
+use crate::core::{Address, Block, Relation, RelationType};
 
 impl PE {
     /// ### Todo
@@ -34,23 +34,37 @@ impl PE {
                     let target = insn_to_opu64(now_address.clone(), &inst);
                     let target_address =
                         Address::from_virtual_address(&self.sections, target).unwrap();
-                    connected_to = Some(Relation::new(now_address.clone(), target_address));
+                    connected_to = Some(Relation::new(
+                        now_address.clone(),
+                        target_address,
+                        RelationType::Call,
+                    ));
                     block_end = now_address;
                     break;
                 }
-                "jmp" | "je" | "jle" => {
+
+                "jmp" | "jnc" | "jnz" | "je" | "js" | "jnb" | "ja" | "jg" | "jnle" | "jpojs"
+                | "jnae" | "jl" | "jna" | "jb" | "jne" | "jle" | "jrcxz" | "jns" | "jc" | "jo"
+                | "jnge" | "jnbe" | "jecxz" | "jpo" | "jz" | "jae" | "jpe" | "jnl" | "jp"
+                | "jge" | "jbe" | "jcxz" | "jno" | "jnp" | "jng" => {
                     let target = insn_to_opu64(now_address.clone(), &inst);
                     let target_address =
                         Address::from_virtual_address(&self.sections, target).unwrap();
-                    connected_to = Some(Relation::new(now_address.clone(), target_address));
+                    connected_to = Some(Relation::new(
+                        now_address.clone(),
+                        target_address,
+                        RelationType::Jump,
+                    ));
                     block_end = now_address;
                     break;
                 }
+
                 "ret" => {
                     connected_to = None;
                     block_end = now_address;
                     break;
                 }
+
                 _ => {
                     now_address = now_address + inst.len() as u64;
                 }

@@ -7,12 +7,24 @@ use super::Address;
 pub struct Relation {
     from: Address,
     to: Address,
+    relation_type: RelationType,
+}
+
+/// 코드 블럭의 연관 타입을 나타낸다.
+#[derive(Debug, Eq, Hash, PartialEq, Clone, Copy)]
+pub enum RelationType {
+    Call,
+    Jump,
 }
 
 impl Relation {
     /// 새로운 연관을 생성한다.
-    pub fn new(from: Address, to: Address) -> Arc<Self> {
-        Arc::new(Self { from, to })
+    pub fn new(from: Address, to: Address, relation_type: RelationType) -> Arc<Self> {
+        Arc::new(Self {
+            from,
+            to,
+            relation_type,
+        })
     }
 
     pub fn from(&self) -> &Address {
