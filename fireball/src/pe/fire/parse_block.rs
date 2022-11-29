@@ -1,13 +1,16 @@
 use std::sync::Arc;
 
 use super::PE;
-use crate::core::{Address, Block, Relation, RelationType};
+use crate::{
+    core::{Address, Block, Relation, RelationType},
+    prelude::BlockParsingError,
+};
 
 impl PE {
     /// ### Todo
     /// - jmp, je, jle외에도 모든 형태의 분기문에 대한 처리 필요
     /// - 점프한 주소가 범위를 벗어났을때 중단하는 처리 필요
-    pub(super) fn _parse_block(&self, address: Address) -> Arc<Block> {
+    pub(super) fn _parse_block(&self, address: Address) -> Result<Arc<Block>, BlockParsingError> {
         /* 기본정보 파싱 및 변수 선언 */
         // 블록이 들어갈 섹션
         let section = self
@@ -24,10 +27,8 @@ impl PE {
         /* 한 줄씩 인스트럭션을 불러오면서, 다른 구역으로 이동하는 명령이 있는지 확인 */
         let mut now_address = address;
         loop {
-            let insts = self
-                .parse_assem_count(now_address.clone(), 1)
-                .expect("Disassemble Error!");
-            let inst = &insts[0];
+            let insts = self.parse_assem_count(now_address.clone(), 1).unwrap();
+            let inst = &insts.get(0).ok_or(BlockParsingError::NoInstruction)?;
             println!("{}", inst);
             match inst.mnemonic().unwrap() {
                 "call" => {
@@ -81,7 +82,7 @@ impl PE {
             block.add_connected_to(connected_to.clone());
         }
 
-        return block;
+        Ok(block)
     }
 }
 

@@ -17,5 +17,6 @@ impl From<io_error::IoError> for FireballError {
     }
 }
 
+pub mod block_parsing_error;
 pub mod decompile_error;
 pub mod io_error;

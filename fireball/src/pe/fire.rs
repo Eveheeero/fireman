@@ -3,7 +3,7 @@ use std::sync::Arc;
 use super::PE;
 use crate::{
     core::{Address, Block, Fire, Sections},
-    prelude::{DecompileError, IoError},
+    prelude::{BlockParsingError, DecompileError, IoError},
 };
 
 impl Fire for PE {
@@ -44,7 +44,7 @@ impl Fire for PE {
         self.sections.clone()
     }
 
-    fn parse_block(&self, address: Address) -> Arc<Block> {
+    fn parse_block(&self, address: Address) -> Result<Arc<Block>, BlockParsingError> {
         self._parse_block(address)
     }
 }

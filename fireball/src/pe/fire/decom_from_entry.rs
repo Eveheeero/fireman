@@ -12,7 +12,11 @@ impl PE {
 
         let mut now = entry;
         loop {
-            let block = self.parse_block(now);
+            let block = if let Ok(block) = self.parse_block(now) {
+                block
+            } else {
+                break;
+            };
             let connected_to = match block.get_connected_to().first() {
                 Some(connected_to) => connected_to.clone(),
                 None => break,

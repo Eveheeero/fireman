@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::{Address, Block, Relation, Sections};
-use crate::prelude::{DecompileError, IoError};
+use crate::prelude::{BlockParsingError, DecompileError, IoError};
 
 /// ## Main Decompile Trait
 pub trait Fire {
@@ -71,5 +71,5 @@ pub trait Fire {
     /// ### Note
     /// - 해당 함수는 인자로 주어진 주소로부터 어떤 주소까지 점프 없이 수행되는지 파악 후 블록을 생성하여 반환한다.
     /// - 해당 함수의 내부에서, 블록이 어느 주소와 연결되어있는지 설정되며, 대상 주소에 해당하는 블록의 connected_from이 설정된다.
-    fn parse_block(&self, address: Address) -> Arc<Block>;
+    fn parse_block(&self, address: Address) -> Result<Arc<Block>, BlockParsingError>;
 }

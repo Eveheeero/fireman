@@ -28,7 +28,7 @@ impl Fireball {
     /// 파서 객체를 반환한다.
     pub fn get_object(&self) -> &dyn core::Fire {
         match self {
-            Fireball::PE(pe) => pe,
+            Self::PE(pe) => pe,
         }
     }
 }
