@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use super::{Address, Block, Relation, Sections};
+use crate::prelude::{DecompileError, IoError};
 
 /// ## Main Decompile Trait
 pub trait Fire {
@@ -8,7 +9,7 @@ pub trait Fire {
     ///
     /// ### Arguments
     /// - path - 읽어올 파일 경로
-    fn from_path(path: &str) -> Result<Self, Box<dyn std::error::Error>>
+    fn from_path(path: &str) -> Result<Self, IoError>
     where
         Self: Sized;
 
@@ -16,7 +17,7 @@ pub trait Fire {
     ///
     /// ### Arguments
     /// - binary - 파싱할 바이너리 데이터
-    fn from_binary(binary: Vec<u8>) -> Result<Self, Box<dyn std::error::Error>>
+    fn from_binary(binary: Vec<u8>) -> Result<Self, IoError>
     where
         Self: Sized;
 
@@ -39,16 +40,16 @@ pub trait Fire {
     fn get_binary(&self) -> &Vec<u8>;
 
     /// 파일의 모든 내용을 분석한다.
-    fn decom_all(&self) -> Result<(), Box<dyn std::error::Error>>;
+    fn decom_all(&self) -> Result<(), DecompileError>;
 
     /// 엔트리포인트부터 분석한다.
-    fn decom_from_entry(&self) -> Result<(), Box<dyn std::error::Error>>;
+    fn decom_from_entry(&self) -> Result<(), DecompileError>;
 
     /// 파일 오프셋을 기반으로 분석한다.
-    fn decom_from_file_offset(&self, address: u64) -> Result<(), Box<dyn std::error::Error>>;
+    fn decom_from_file_offset(&self, address: u64) -> Result<(), DecompileError>;
 
     /// 가상 주소를 기반으로 분석한다.
-    fn decom_from_virtual_address(&self, address: u64) -> Result<(), Box<dyn std::error::Error>>;
+    fn decom_from_virtual_address(&self, address: u64) -> Result<(), DecompileError>;
 
     /// 모든 섹션 정보를 가져온다.
     ///

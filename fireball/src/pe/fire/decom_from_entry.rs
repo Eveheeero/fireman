@@ -1,8 +1,11 @@
 use super::PE;
-use crate::core::{Address, Fire};
+use crate::{
+    core::{Address, Fire},
+    prelude::DecompileError,
+};
 
 impl PE {
-    pub(super) fn _decom_from_entry(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub(super) fn _decom_from_entry(&self) -> Result<(), DecompileError> {
         let gl = goblin::pe::PE::parse(&self.binary)?;
 
         let entry = Address::from_virtual_address(&self.sections, gl.entry as u64).unwrap();

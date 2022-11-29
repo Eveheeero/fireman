@@ -1,15 +1,18 @@
 use std::sync::Arc;
 
 use super::PE;
-use crate::core::{Address, Block, Fire, Sections};
+use crate::{
+    core::{Address, Block, Fire, Sections},
+    prelude::{DecompileError, IoError},
+};
 
 impl Fire for PE {
-    fn from_path(path: &str) -> Result<PE, Box<dyn std::error::Error>> {
+    fn from_path(path: &str) -> Result<PE, IoError> {
         let binary = std::fs::read(path)?;
         Ok(PE::new(Some(path.to_owned()), binary))
     }
 
-    fn from_binary(binary: Vec<u8>) -> Result<PE, Box<dyn std::error::Error>> {
+    fn from_binary(binary: Vec<u8>) -> Result<PE, IoError> {
         Ok(PE::new(None, binary))
     }
 
@@ -21,19 +24,19 @@ impl Fire for PE {
         &self.binary
     }
 
-    fn decom_all(&self) -> Result<(), Box<dyn std::error::Error>> {
+    fn decom_all(&self) -> Result<(), DecompileError> {
         self._decom_all()
     }
 
-    fn decom_from_entry(&self) -> Result<(), Box<dyn std::error::Error>> {
+    fn decom_from_entry(&self) -> Result<(), DecompileError> {
         self._decom_from_entry()
     }
 
-    fn decom_from_file_offset(&self, address: u64) -> Result<(), Box<dyn std::error::Error>> {
+    fn decom_from_file_offset(&self, address: u64) -> Result<(), DecompileError> {
         self._decom_from_file_offset(address)
     }
 
-    fn decom_from_virtual_address(&self, address: u64) -> Result<(), Box<dyn std::error::Error>> {
+    fn decom_from_virtual_address(&self, address: u64) -> Result<(), DecompileError> {
         self._decom_from_virtual_address(address)
     }
 
