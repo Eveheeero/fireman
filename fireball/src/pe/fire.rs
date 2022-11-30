@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use super::PE;
 use crate::{
-    core::{Address, Block, Fire, Sections},
+    core::{Address, Block, Fire, InstructionHistory, Sections},
     prelude::{BlockParsingError, DecompileError, IoError},
 };
 
@@ -44,8 +44,12 @@ impl Fire for PE {
         self.sections.clone()
     }
 
-    fn parse_block(&self, address: Address) -> Result<Arc<Block>, BlockParsingError> {
-        self._parse_block(address)
+    fn parse_block(
+        &self,
+        address: Address,
+        history: &mut InstructionHistory,
+    ) -> Result<Arc<Block>, BlockParsingError> {
+        self._parse_block(address, history)
     }
 }
 

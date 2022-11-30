@@ -51,3 +51,11 @@ pub use relations::Relations;
 /// 분석중 나온 분기에 대한 연관관계를 정의하는 모듈
 mod relation;
 pub use relation::{Relation, RelationType};
+
+/// 분석 중, 여태까지 실행했던 인스트럭션에 대한 기록을 가지고 있는 구조체를 정의하는 모듈
+mod instruction_history;
+pub use instruction_history::InstructionHistory;
+
+/// 복사할 수 있는 인스트럭션을 정의하는 모듈
+mod instruction;
+pub(crate) use instruction::Instruction;

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use super::PE;
 use crate::{
-    core::{Address, Block, Relation, RelationType},
+    core::{Address, Block, InstructionHistory, Relation, RelationType},
     prelude::BlockParsingError,
 };
 
@@ -10,7 +10,11 @@ impl PE {
     /// ### Todo
     /// - jmp, je, jle외에도 모든 형태의 분기문에 대한 처리 필요
     /// - 점프한 주소가 범위를 벗어났을때 중단하는 처리 필요
-    pub(super) fn _parse_block(&self, address: Address) -> Result<Arc<Block>, BlockParsingError> {
+    pub(super) fn _parse_block(
+        &self,
+        address: Address,
+        history: &mut InstructionHistory,
+    ) -> Result<Arc<Block>, BlockParsingError> {
         /* 기본정보 파싱 및 변수 선언 */
         // 블록이 들어갈 섹션
         let section = self
@@ -29,10 +33,11 @@ impl PE {
         loop {
             let insts = self.parse_assem_count(now_address.clone(), 1).unwrap();
             let inst = &insts.get(0).ok_or(BlockParsingError::NoInstruction)?;
+            history.data.push(inst.into());
             println!("{}", inst);
             match inst.mnemonic().unwrap() {
                 "call" => {
-                    let target = insn_to_opu64(now_address.clone(), &inst);
+                    let target = insn_to_opu64(now_address.clone(), &inst, history);
                     let target_address =
                         Address::from_virtual_address(&self.sections, target).unwrap();
                     connected_to = Some(Relation::new(
@@ -48,7 +53,7 @@ impl PE {
                 | "jnae" | "jl" | "jna" | "jb" | "jne" | "jle" | "jrcxz" | "jns" | "jc" | "jo"
                 | "jnge" | "jnbe" | "jecxz" | "jpo" | "jz" | "jae" | "jpe" | "jnl" | "jp"
                 | "jge" | "jbe" | "jcxz" | "jno" | "jnp" | "jng" => {
-                    let target = insn_to_opu64(now_address.clone(), &inst);
+                    let target = insn_to_opu64(now_address.clone(), &inst, history);
                     let target_address =
                         Address::from_virtual_address(&self.sections, target).unwrap();
                     connected_to = Some(Relation::new(
@@ -90,7 +95,11 @@ impl PE {
 ///
 /// ### Todo
 /// - dword ptr [eip + 0x??] 패던 외에도, eax나 다른 레지스터를 기반으로 점프하는 명령어에 대한 처리 필요
-fn insn_to_opu64(now_address: Address, inst: &capstone::Insn) -> u64 {
+fn insn_to_opu64(
+    now_address: Address,
+    inst: &capstone::Insn,
+    history: &mut InstructionHistory,
+) -> u64 {
     let op = inst.op_str().unwrap();
     if op.starts_with("0x") {
         // 형태가 0x1234인 경우

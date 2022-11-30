@@ -1,6 +1,6 @@
 use super::PE;
 use crate::{
-    core::{Address, Fire},
+    core::{Address, Fire, InstructionHistory},
     prelude::DecompileError,
 };
 
@@ -12,11 +12,13 @@ impl PE {
         let entry = Address::from_virtual_address(&self.sections, gl.entry as u64).unwrap();
         // 어떤 주소에서 다른 불록으로 이동했는지에 대한 스택
         let mut stack = Vec::new();
+        // 인스트럭션 기록
+        let mut history = InstructionHistory::default();
 
         let mut now = entry;
         loop {
             // 블록 파싱
-            let block = if let Ok(block) = self.parse_block(now) {
+            let block = if let Ok(block) = self.parse_block(now, &mut history) {
                 block
             } else {
                 // 블록 파싱에 실패했을 경우, 해당 블록에 진입하기 이전의 주소에서 다시 시작한다.
