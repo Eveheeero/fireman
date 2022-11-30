@@ -1,22 +1,60 @@
+# https://docs.github.com/en/actions/using-workflows/about-workflows
 name: Rust
 
 on:
-  push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+    push:
+        branches: ["**"]
+    pull_request:
+        branches: ["**"]
 
 env:
-  CARGO_TERM_COLOR: always
+    CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+    build:
+        strategy:
+            matrix:
+                os:
+                    # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
+                    [
+                        # windows-latest,
+                        windows-2022,
+                        windows-2019,
+                        # ubuntu-latest,
+                        ubuntu-22.04,
+                        ubuntu-20.04,
+                        # macos-latest,
+                        macos-12,
+                        macos-11,
+                    ]
+        runs-on: ${{ matrix.os }}
+        steps:
+            - uses: actions/checkout@v3
+            - name: Build Debug
+              run: cargo build --verbose
+            - name: Build Release
+              run: cargo build --release --verbose
 
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+    test:
+        strategy:
+            matrix:
+                os:
+                    # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
+                    [
+                        # windows-latest,
+                        windows-2022,
+                        windows-2019,
+                        # ubuntu-latest,
+                        ubuntu-22.04,
+                        ubuntu-20.04,
+                        # macos-latest,
+                        macos-12,
+                        macos-11,
+                    ]
+        runs-on: ${{ matrix.os }}
+        steps:
+            - uses: actions/checkout@v3
+            - name: Test Debug
+              run: cargo test --verbose
+            - name: Test Release
+              run: cargo test --release --verbose
