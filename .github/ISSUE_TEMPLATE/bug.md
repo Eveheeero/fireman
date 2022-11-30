@@ -2,7 +2,7 @@
 name: Bug
 about: Some Bug Occured!
 title: "[BUG] "
-labels: bug
+labels: Bug
 assignees: Eveheeero
 
 ---
