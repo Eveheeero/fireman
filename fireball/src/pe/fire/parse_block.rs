@@ -37,7 +37,7 @@ impl PE {
             println!("{}", inst);
             match inst.mnemonic().unwrap() {
                 "call" => {
-                    let target = insn_to_opu64(now_address.clone(), &inst, history);
+                    let target = insn_to_opu64(now_address.clone(), &inst, history)?;
                     let target_address =
                         Address::from_virtual_address(&self.sections, target).unwrap();
                     connected_to = Some(Relation::new(
@@ -53,7 +53,7 @@ impl PE {
                 | "jnae" | "jl" | "jna" | "jb" | "jne" | "jle" | "jrcxz" | "jns" | "jc" | "jo"
                 | "jnge" | "jnbe" | "jecxz" | "jpo" | "jz" | "jae" | "jpe" | "jnl" | "jp"
                 | "jge" | "jbe" | "jcxz" | "jno" | "jnp" | "jng" => {
-                    let target = insn_to_opu64(now_address.clone(), &inst, history);
+                    let target = insn_to_opu64(now_address.clone(), &inst, history)?;
                     let target_address =
                         Address::from_virtual_address(&self.sections, target).unwrap();
                     connected_to = Some(Relation::new(
@@ -93,45 +93,60 @@ impl PE {
 
 /// 인스트럭션을 입력값으로, 여러 형태의 대상 주소를 파싱해 u64형태로 반환한다.
 ///
+/// ### Arguments
+/// - `now_address: Address` - 현재 진행 주소
+/// - `inst: &capstone::Insn` - 파싱 대상 인스트럭션
+/// - `history: &mut InstructionHistory` - 인스트럭션 히스토리
+///
+/// ### Results
+/// - `Result<u64, &static str>` - 파싱에 성공할 경우 대상 주소를, 실패했을 경우(구현되지 않아 실패하는 등...) Err를 반환한다.
+///
 /// ### Todo
 /// - dword ptr [eip + 0x??] 패던 외에도, eax나 다른 레지스터를 기반으로 점프하는 명령어에 대한 처리 필요
 fn insn_to_opu64(
     now_address: Address,
     inst: &capstone::Insn,
     history: &mut InstructionHistory,
-) -> u64 {
+) -> Result<u64, &'static str> {
     let op = inst.op_str().unwrap();
+
+    /* 대상 주소 파싱 */
     if op.starts_with("0x") {
         // 형태가 0x1234인 경우
-        u64::from_str_radix(op.trim_start_matches("0x"), 16).unwrap()
+        Ok(u64::from_str_radix(op.trim_start_matches("0x"), 16).unwrap())
     } else if op.starts_with("dword ptr [") {
-        // 형태가 qword ptr [eip + 0x1234]인 경우
+        // 형태가 dword ptr [로 시작하는 경우
         if op.contains("eip") {
-            now_address.get_virtual_address()
+            // 형태가 dword ptr [eip + 0x1234]인 경우
+            Ok(now_address.get_virtual_address()
                 + u64::from_str_radix(
                     op.trim_start_matches("dword ptr [eip + 0x")
                         .trim_end_matches("]"),
                     16,
                 )
-                .unwrap()
+                .unwrap())
         } else {
-            todo!("eip외의 레지스터를 연산한 후, 해당 주소값을 구하는 방법 고안 필요")
+            // dword ptr [eax + 0x1234] 등의 형태인 경우
+            Err("eip외의 레지스터를 연산한 후, 해당 주소값을 구하는 방법 고안 필요")
         }
     } else if op.starts_with("qword ptr [") {
-        // 형태가 qword ptr [rip + 0x1234]인 경우
+        // 형태가 qword ptr [로 시작하는 경우
         if op.contains("rip") {
-            now_address.get_virtual_address()
+            // 형태가 qword ptr [rip + 0x1234]인 경우
+            Ok(now_address.get_virtual_address()
                 + u64::from_str_radix(
                     op.trim_start_matches("qword ptr [rip + 0x")
                         .trim_end_matches("]"),
                     16,
                 )
-                .unwrap()
+                .unwrap())
         } else {
-            todo!("rip외의 레지스터를 연산한 후, 해당 주소값을 구하는 방법 고안 필요")
+            // qword ptr [rax + 0x1234] 등의 형태인 경우
+            Err("rip외의 레지스터를 연산한 후, 해당 주소값을 구하는 방법 고안 필요")
         }
     } else {
-        unimplemented!()
+        // 그 외의 형태인 경우
+        Err("구현되지 않앗습니다.")
     }
     // 16비트 전용 jmp문?
 }
