@@ -51,7 +51,7 @@ impl Blocks {
         /* 저장소의 데이터에서 검사 */
         blocks_reader
             .iter()
-            .find(|block| block.get_start_address_virtual() == &address)
+            .find(|block| block.get_start_address() == &address)
             .map(Arc::clone)
     }
 }
