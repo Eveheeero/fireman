@@ -48,16 +48,28 @@ impl PE {
                     break;
                 }
 
-                "jmp" | "jnc" | "jnz" | "je" | "js" | "jnb" | "ja" | "jg" | "jnle" | "jpojs"
-                | "jnae" | "jl" | "jna" | "jb" | "jne" | "jle" | "jrcxz" | "jns" | "jc" | "jo"
-                | "jnge" | "jnbe" | "jecxz" | "jpo" | "jz" | "jae" | "jpe" | "jnl" | "jp"
-                | "jge" | "jbe" | "jcxz" | "jno" | "jnp" | "jng" => {
+                "jmp" => {
                     let target = insn_to_opu64(now_address.clone(), &inst, history)?;
                     let target_address = Address::from_virtual_address(&self.sections, target);
                     connected_to = Some(Relation::new(
                         now_address.clone(),
                         target_address,
                         RelationType::Jump,
+                    ));
+                    block_end = now_address;
+                    break;
+                }
+
+                "jnc" | "jnz" | "je" | "js" | "jnb" | "ja" | "jg" | "jnle" | "jpojs" | "jnae"
+                | "jl" | "jna" | "jb" | "jne" | "jle" | "jrcxz" | "jns" | "jc" | "jo" | "jnge"
+                | "jnbe" | "jecxz" | "jpo" | "jz" | "jae" | "jpe" | "jnl" | "jp" | "jge"
+                | "jbe" | "jcxz" | "jno" | "jnp" | "jng" => {
+                    let target = insn_to_opu64(now_address.clone(), &inst, history)?;
+                    let target_address = Address::from_virtual_address(&self.sections, target);
+                    connected_to = Some(Relation::new(
+                        now_address.clone(),
+                        target_address,
+                        RelationType::Jcc,
                     ));
                     block_end = now_address;
                     break;
@@ -109,42 +121,18 @@ fn insn_to_opu64(
     let op = inst.op_str().unwrap();
 
     /* 대상 주소 파싱 */
-    if op.starts_with("0x") {
-        // 형태가 0x1234인 경우
-        Ok(u64::from_str_radix(op.trim_start_matches("0x"), 16).unwrap())
-    } else if op.starts_with("dword ptr [") {
-        // 형태가 dword ptr [로 시작하는 경우
-        if op.contains("eip") {
-            // 형태가 dword ptr [eip + 0x1234]인 경우
-            Ok(now_address.get_virtual_address()
-                + u64::from_str_radix(
-                    op.trim_start_matches("dword ptr [eip + 0x")
-                        .trim_end_matches("]"),
-                    16,
-                )
-                .unwrap())
-        } else {
-            // dword ptr [eax + 0x1234] 등의 형태인 경우
-            Err("eip외의 레지스터를 연산한 후, 해당 주소값을 구하는 방법 고안 필요")
+    for (idx, pattern) in crate::arch::x86_64::op_patterns::PATTERNS
+        .iter()
+        .enumerate()
+    {
+        if let Some(captures) = pattern.captures(op) {
+            return crate::arch::x86_64::op_parse::FUNCTIONS[idx](
+                now_address,
+                inst,
+                history,
+                captures,
+            );
         }
-    } else if op.starts_with("qword ptr [") {
-        // 형태가 qword ptr [로 시작하는 경우
-        if op.contains("rip") {
-            // 형태가 qword ptr [rip + 0x1234]인 경우
-            Ok(now_address.get_virtual_address()
-                + u64::from_str_radix(
-                    op.trim_start_matches("qword ptr [rip + 0x")
-                        .trim_end_matches("]"),
-                    16,
-                )
-                .unwrap())
-        } else {
-            // qword ptr [rax + 0x1234] 등의 형태인 경우
-            Err("rip외의 레지스터를 연산한 후, 해당 주소값을 구하는 방법 고안 필요")
-        }
-    } else {
-        // 그 외의 형태인 경우
-        Err("구현되지 않앗습니다.")
     }
-    // 16비트 전용 jmp문?
+    panic!("패턴이 없는 인스트럭션을 파싱하려고 했습니다: {}", inst);
 }

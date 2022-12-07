@@ -1,6 +1,6 @@
 use super::PE;
 use crate::{
-    core::{Address, Fire, InstructionHistory},
+    core::{Address, Fire, InstructionHistory, RelationType},
     prelude::DecompileError,
 };
 
@@ -35,6 +35,9 @@ impl PE {
                 Some(connected_to) => connected_to.clone(),
                 None => break,
             };
+            if block.get_connected_to().first().unwrap().relation_type() == &RelationType::Jump {
+                break;
+            }
 
             // 다음에 시작할 주소와, 어떤 주소에서 해당 주소로 이동했는지를 저장한다.
             now = connected_to.to().clone();
