@@ -36,6 +36,7 @@ jobs:
               run: cargo build --release --verbose
 
     test:
+        needs: build
         strategy:
             matrix:
                 os:
