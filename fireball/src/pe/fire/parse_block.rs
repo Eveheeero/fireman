@@ -38,8 +38,7 @@ impl PE {
             match inst.mnemonic().unwrap() {
                 "call" => {
                     let target = insn_to_opu64(now_address.clone(), &inst, history)?;
-                    let target_address =
-                        Address::from_virtual_address(&self.sections, target).unwrap();
+                    let target_address = Address::from_virtual_address(&self.sections, target);
                     connected_to = Some(Relation::new(
                         now_address.clone(),
                         target_address,
@@ -54,8 +53,7 @@ impl PE {
                 | "jnge" | "jnbe" | "jecxz" | "jpo" | "jz" | "jae" | "jpe" | "jnl" | "jp"
                 | "jge" | "jbe" | "jcxz" | "jno" | "jnp" | "jng" => {
                     let target = insn_to_opu64(now_address.clone(), &inst, history)?;
-                    let target_address =
-                        Address::from_virtual_address(&self.sections, target).unwrap();
+                    let target_address = Address::from_virtual_address(&self.sections, target);
                     connected_to = Some(Relation::new(
                         now_address.clone(),
                         target_address,

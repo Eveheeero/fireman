@@ -9,7 +9,7 @@ impl PE {
         let gl = goblin::pe::PE::parse(&self.binary)?;
 
         // 프로그램의 엔트리포인트
-        let entry = Address::from_virtual_address(&self.sections, gl.entry as u64).unwrap();
+        let entry = Address::from_virtual_address(&self.sections, gl.entry as u64);
         // 어떤 주소에서 다른 불록으로 이동했는지에 대한 스택
         let mut stack = Vec::new();
         // 인스트럭션 기록
