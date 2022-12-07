@@ -22,21 +22,27 @@ impl PE {
                 block
             } else {
                 // 블록 파싱에 실패했을 경우, 해당 블록에 진입하기 이전의 주소에서 다시 시작한다.
-                now = match stack.pop() {
-                    Some(address) => address,
-                    None => break,
+                match self.rewind_stack(&mut stack) {
+                    Ok(address) => {
+                        now = address;
+                        continue;
+                    }
+                    Err(_) => break,
                 };
-                // 시작하기 이전 주소의 다음라인을 가져온다.
-                let insts = self.parse_assem_count(now.clone(), 1).unwrap();
-                now += insts[0].len() as u64;
-                continue;
             };
             let connected_to = match block.get_connected_to().first() {
                 Some(connected_to) => connected_to.clone(),
                 None => break,
             };
             if block.get_connected_to().first().unwrap().relation_type() == &RelationType::Jump {
-                break;
+                // 블록의 마지막 인스트럭션이 점프일 경우, 해당 블록에 진입하기 이전의 주소에서 다시 시작한다.
+                match self.rewind_stack(&mut stack) {
+                    Ok(address) => {
+                        now = address;
+                        continue;
+                    }
+                    Err(_) => break,
+                };
             }
 
             // 다음에 시작할 주소와, 어떤 주소에서 해당 주소로 이동했는지를 저장한다.
@@ -45,5 +51,20 @@ impl PE {
         }
 
         Ok(())
+    }
+
+    /// 스택프레임을 하나 해제한다.
+    fn rewind_stack(&self, stack: &mut Vec<Address>) -> Result<Address, ()> {
+        let mut now = match stack.pop() {
+            Some(address) => address,
+            None => return Err(()),
+        };
+
+        // 시작하기 이전 주소의 다음라인을 가져온다.
+        let insts = self
+            .parse_assem_count(now.clone(), 1)
+            .expect("어셈블리를 파싱하는데에 실패했습니다."); // 해당 라인에서 어셈블리 파싱은 반드시 실행해야 한다. 스택을 푼 후의, 다음 파싱할 주소가 파일 오프셋의 바깥일 리 없기 때문
+        now += insts[0].len() as u64;
+        Ok(now)
     }
 }
