@@ -4,6 +4,7 @@ pub enum BlockParsingError {
     Unknown,
     UnknwonWithMessage(String),
     NoInstruction,
+    TriedToParseOutsideOfSection,
 }
 
 impl std::fmt::Display for BlockParsingError {
@@ -12,6 +13,9 @@ impl std::fmt::Display for BlockParsingError {
             Self::Unknown => write!(f, "Unknown Error Occured!"),
             Self::UnknwonWithMessage(msg) => write!(f, "Unknown Error Occured! {}", msg),
             Self::NoInstruction => write!(f, "No Instruction Found!"),
+            Self::TriedToParseOutsideOfSection => {
+                write!(f, "Tried to parse outside of section!")
+            }
         }
     }
 }

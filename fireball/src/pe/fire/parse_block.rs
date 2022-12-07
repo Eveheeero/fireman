@@ -31,7 +31,10 @@ impl PE {
         /* 한 줄씩 인스트럭션을 불러오면서, 다른 구역으로 이동하는 명령이 있는지 확인 */
         let mut now_address = address;
         loop {
-            let insts = self.parse_assem_count(now_address.clone(), 1).unwrap();
+            let insts = self
+                .parse_assem_count(now_address.clone(), 1)
+                .ok()
+                .ok_or(BlockParsingError::TriedToParseOutsideOfSection)?;
             let inst = &insts.get(0).ok_or(BlockParsingError::NoInstruction)?;
             history.data.push(inst.into());
             println!("{}", inst);
