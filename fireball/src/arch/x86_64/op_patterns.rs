@@ -22,9 +22,11 @@ fn generate_other_pattern() -> Vec<Regex> {
     // https://docs.rs/regex/latest/regex/
     vec![
         // lea rax, [rbx + 0xabcdef]
-        Regex::new(r"^(?P<to>\w{2,3}), \[(?P<base>\w{2,3}) (?P<operator>[+-]) (?P<other>.+)]$").unwrap(), // https://regex101.com/r/l6QWI9/3
+        Regex::new(r"^(?P<to>\w{2,3}), \[(?P<base>\w{2,3}) (?P<operator>[+-]) 0x(?P<relative_address>[0-9a-fA-F]+)]$").unwrap(), // https://regex101.com/r/l6QWI9/3
         // rip
         Regex::new(r"^.?ip").unwrap(),
+        // mov rax, qword ptr [rip - 0xabcdef]
+        Regex::new(r"^(?P<to>\w{2,3}), \wword ptr \[(?P<base>\w{2,3}) (?P<operator>[+-]) 0x(?P<relative_address>[0-9a-fA-F]+)]$").unwrap(),
     ]
 }
 
@@ -46,5 +48,6 @@ mod tests {
     fn test_regex_others() {
         assert!(OTHERS[0].is_match("rax, [rbx + 0xabcdef]"));
         assert!(OTHERS[1].is_match("rip, [rbx + 0xabcdef]"));
+        assert!(OTHERS[2].is_match("rax, qword ptr [rip - 0xabcdef]"));
     }
 }

@@ -53,20 +53,36 @@ fn function2(
         if history.op.contains(target_register) {
             // OP (eax)등에 대한 연산이 들어갔으면
             match history.mnemonic.as_str() {
-                "mov" => todo!(),
+                "mov" => {
+                    let captures = OTHERS[2].captures(&history.op).unwrap();
+                    if captures["to"].to_string() == target_register {
+                        // mov eax, 0x1234 등의 형태인 경우
+                        if OTHERS[1].is_match(&captures["base"]) {
+                            let address_at_there =
+                                u64::from_str_radix(&captures["relative_address"], 16).unwrap();
+                            return Ok(address_at_there);
+                        } else {
+                            continue;
+                        }
+                    } else {
+                        continue;
+                    }
+                }
                 "lea" => {
                     let captures = OTHERS[0].captures(&history.op).unwrap();
                     if captures["to"].to_string() == target_register {
                         // lea eax, [rip + 0x1234] 등의 형태인 경우
                         let address_at_there = match &captures["operator"] {
-                            "+" if OTHERS[1].is_match(&captures["other"]) => {
+                            "+" if OTHERS[1].is_match(&captures["base"]) => {
                                 now_address.get_virtual_address() - history.address
-                                    + u64::from_str_radix(&captures["other"], 16).unwrap()
+                                    + u64::from_str_radix(&captures["relative_address"], 16)
+                                        .unwrap()
                             }
-                            "-" if OTHERS[1].is_match(&captures["other"]) => {
+                            "-" if OTHERS[1].is_match(&captures["base"]) => {
                                 now_address.get_virtual_address()
                                     - history.address
-                                    - u64::from_str_radix(&captures["other"], 16).unwrap()
+                                    - u64::from_str_radix(&captures["relative_address"], 16)
+                                        .unwrap()
                             }
                             _ => return Err("Invalid operator"),
                         };
