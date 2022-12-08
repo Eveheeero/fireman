@@ -5,6 +5,7 @@ use crate::{
 
 #[test]
 fn pe_hello_world() {
+    let _ = simplelog::SimpleLogger::init(log::LevelFilter::Trace, simplelog::Config::default());
     let binary = include_bytes!("../../tests/resources/hello_world.exe");
     let pe = PE::from_binary(binary.to_vec()).unwrap();
     dbg!(pe);
@@ -12,6 +13,7 @@ fn pe_hello_world() {
 
 #[test]
 fn pe_hello_world_entry_parse() {
+    let _ = simplelog::SimpleLogger::init(log::LevelFilter::Trace, simplelog::Config::default());
     let binary = include_bytes!("../../tests/resources/hello_world.exe");
     let pe = PE::from_binary(binary.to_vec()).unwrap();
     let gl = goblin::pe::PE::parse(binary).unwrap();
