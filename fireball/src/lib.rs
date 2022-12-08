@@ -22,6 +22,7 @@ pub enum Fireball {
 impl Fireball {
     /// 파일 경로를 통해 파서 객체를 생성한다.
     pub fn from_path(path: &str) -> Result<Self, FireballError> {
+        log::trace!("파일 경로 {}로 로거 생성", path);
         Ok(Fireball::PE(pe::PE::from_path(path)?))
     }
 

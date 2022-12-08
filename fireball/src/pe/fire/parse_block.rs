@@ -15,6 +15,8 @@ impl PE {
         address: Address,
         history: &mut InstructionHistory,
     ) -> Result<Arc<Block>, BlockParsingError> {
+        log::trace!("블럭 파싱 시작");
+
         /* 기본정보 파싱 및 변수 선언 */
         // 블록이 들어갈 섹션
         let section = self
@@ -37,9 +39,10 @@ impl PE {
                 .ok_or(BlockParsingError::TriedToParseOutsideOfSection)?;
             let inst = &insts.get(0).ok_or(BlockParsingError::NoInstruction)?;
             history.data.push(inst.into());
-            println!("{}", inst);
+            log::trace!("{}", inst);
             match inst.mnemonic().unwrap() {
                 "call" => {
+                    log::trace!("call 인스트럭션 발견");
                     let target = insn_to_opu64(now_address.clone(), &inst, history)?;
                     let target_address = Address::from_virtual_address(&self.sections, target);
                     connected_to = Some(Relation::new(
@@ -52,6 +55,7 @@ impl PE {
                 }
 
                 "jmp" => {
+                    log::trace!("jmp 인스트럭션 발견");
                     let target = insn_to_opu64(now_address.clone(), &inst, history)?;
                     let target_address = Address::from_virtual_address(&self.sections, target);
                     connected_to = Some(Relation::new(
@@ -67,6 +71,7 @@ impl PE {
                 | "jl" | "jna" | "jb" | "jne" | "jle" | "jrcxz" | "jns" | "jc" | "jo" | "jnge"
                 | "jnbe" | "jecxz" | "jpo" | "jz" | "jae" | "jpe" | "jnl" | "jp" | "jge"
                 | "jbe" | "jcxz" | "jno" | "jnp" | "jng" => {
+                    log::trace!("jcc 인스트럭션 발견");
                     let target = insn_to_opu64(now_address.clone(), &inst, history)?;
                     let target_address = Address::from_virtual_address(&self.sections, target);
                     connected_to = Some(Relation::new(
@@ -79,6 +84,7 @@ impl PE {
                 }
 
                 "ret" => {
+                    log::trace!("ret 인스트럭션 발견");
                     connected_to = None;
                     block_end = now_address;
                     break;
@@ -100,6 +106,7 @@ impl PE {
             block.add_connected_to(connected_to.clone());
         }
 
+        log::debug!("파싱된 블록 정보 : {:?}", block);
         Ok(block)
     }
 }
