@@ -33,6 +33,9 @@ impl Fireball {
     }
 }
 
+/// 여러 아키텍처 별 구현이 담겨있는 모듈
+pub mod arch;
+
 /// 테스트 모듈
 #[cfg(test)]
 mod tests;

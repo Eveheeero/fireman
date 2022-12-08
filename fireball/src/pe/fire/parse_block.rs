@@ -31,15 +31,17 @@ impl PE {
         /* 한 줄씩 인스트럭션을 불러오면서, 다른 구역으로 이동하는 명령이 있는지 확인 */
         let mut now_address = address;
         loop {
-            let insts = self.parse_assem_count(now_address.clone(), 1).unwrap();
+            let insts = self
+                .parse_assem_count(now_address.clone(), 1)
+                .ok()
+                .ok_or(BlockParsingError::TriedToParseOutsideOfSection)?;
             let inst = &insts.get(0).ok_or(BlockParsingError::NoInstruction)?;
             history.data.push(inst.into());
             println!("{}", inst);
             match inst.mnemonic().unwrap() {
                 "call" => {
-                    let target = insn_to_opu64(now_address.clone(), &inst, history);
-                    let target_address =
-                        Address::from_virtual_address(&self.sections, target).unwrap();
+                    let target = insn_to_opu64(now_address.clone(), &inst, history)?;
+                    let target_address = Address::from_virtual_address(&self.sections, target);
                     connected_to = Some(Relation::new(
                         now_address.clone(),
                         target_address,
@@ -49,17 +51,28 @@ impl PE {
                     break;
                 }
 
-                "jmp" | "jnc" | "jnz" | "je" | "js" | "jnb" | "ja" | "jg" | "jnle" | "jpojs"
-                | "jnae" | "jl" | "jna" | "jb" | "jne" | "jle" | "jrcxz" | "jns" | "jc" | "jo"
-                | "jnge" | "jnbe" | "jecxz" | "jpo" | "jz" | "jae" | "jpe" | "jnl" | "jp"
-                | "jge" | "jbe" | "jcxz" | "jno" | "jnp" | "jng" => {
-                    let target = insn_to_opu64(now_address.clone(), &inst, history);
-                    let target_address =
-                        Address::from_virtual_address(&self.sections, target).unwrap();
+                "jmp" => {
+                    let target = insn_to_opu64(now_address.clone(), &inst, history)?;
+                    let target_address = Address::from_virtual_address(&self.sections, target);
                     connected_to = Some(Relation::new(
                         now_address.clone(),
                         target_address,
                         RelationType::Jump,
+                    ));
+                    block_end = now_address;
+                    break;
+                }
+
+                "jnc" | "jnz" | "je" | "js" | "jnb" | "ja" | "jg" | "jnle" | "jpojs" | "jnae"
+                | "jl" | "jna" | "jb" | "jne" | "jle" | "jrcxz" | "jns" | "jc" | "jo" | "jnge"
+                | "jnbe" | "jecxz" | "jpo" | "jz" | "jae" | "jpe" | "jnl" | "jp" | "jge"
+                | "jbe" | "jcxz" | "jno" | "jnp" | "jng" => {
+                    let target = insn_to_opu64(now_address.clone(), &inst, history)?;
+                    let target_address = Address::from_virtual_address(&self.sections, target);
+                    connected_to = Some(Relation::new(
+                        now_address.clone(),
+                        target_address,
+                        RelationType::Jcc,
                     ));
                     block_end = now_address;
                     break;
@@ -93,45 +106,36 @@ impl PE {
 
 /// 인스트럭션을 입력값으로, 여러 형태의 대상 주소를 파싱해 u64형태로 반환한다.
 ///
+/// ### Arguments
+/// - `now_address: Address` - 현재 진행 주소
+/// - `inst: &capstone::Insn` - 파싱 대상 인스트럭션
+/// - `history: &mut InstructionHistory` - 인스트럭션 히스토리
+///
+/// ### Results
+/// - `Result<u64, &static str>` - 파싱에 성공할 경우 대상 주소를, 실패했을 경우(구현되지 않아 실패하는 등...) Err를 반환한다.
+///
 /// ### Todo
 /// - dword ptr [eip + 0x??] 패던 외에도, eax나 다른 레지스터를 기반으로 점프하는 명령어에 대한 처리 필요
 fn insn_to_opu64(
     now_address: Address,
     inst: &capstone::Insn,
     history: &mut InstructionHistory,
-) -> u64 {
+) -> Result<u64, &'static str> {
     let op = inst.op_str().unwrap();
-    if op.starts_with("0x") {
-        // 형태가 0x1234인 경우
-        u64::from_str_radix(op.trim_start_matches("0x"), 16).unwrap()
-    } else if op.starts_with("dword ptr [") {
-        // 형태가 qword ptr [eip + 0x1234]인 경우
-        if op.contains("eip") {
-            now_address.get_virtual_address()
-                + u64::from_str_radix(
-                    op.trim_start_matches("dword ptr [eip + 0x")
-                        .trim_end_matches("]"),
-                    16,
-                )
-                .unwrap()
-        } else {
-            todo!("eip외의 레지스터를 연산한 후, 해당 주소값을 구하는 방법 고안 필요")
+
+    /* 대상 주소 파싱 */
+    for (idx, pattern) in crate::arch::x86_64::op_patterns::PATTERNS
+        .iter()
+        .enumerate()
+    {
+        if let Some(captures) = pattern.captures(op) {
+            return crate::arch::x86_64::op_parse::FUNCTIONS[idx](
+                now_address,
+                inst,
+                history,
+                captures,
+            );
         }
-    } else if op.starts_with("qword ptr [") {
-        // 형태가 qword ptr [rip + 0x1234]인 경우
-        if op.contains("rip") {
-            now_address.get_virtual_address()
-                + u64::from_str_radix(
-                    op.trim_start_matches("qword ptr [rip + 0x")
-                        .trim_end_matches("]"),
-                    16,
-                )
-                .unwrap()
-        } else {
-            todo!("rip외의 레지스터를 연산한 후, 해당 주소값을 구하는 방법 고안 필요")
-        }
-    } else {
-        unimplemented!()
     }
-    // 16비트 전용 jmp문?
+    panic!("패턴이 없는 인스트럭션을 파싱하려고 했습니다: {}", inst);
 }

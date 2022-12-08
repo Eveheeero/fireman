@@ -15,6 +15,7 @@ pub struct Relation {
 pub enum RelationType {
     Call,
     Jump,
+    Jcc,
 }
 
 impl Relation {
@@ -33,5 +34,9 @@ impl Relation {
 
     pub fn to(&self) -> &Address {
         &self.to
+    }
+
+    pub fn relation_type(&self) -> &RelationType {
+        &self.relation_type
     }
 }
