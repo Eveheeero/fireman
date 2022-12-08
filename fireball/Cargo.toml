@@ -18,3 +18,5 @@ capstone = "0.11.0"
 pdb = "0.8.0"
 lazy_static = "1.4.0"
 regex = "1.7.0"
+log = { version = "0.4.17", features = ["std", "serde", "max_level_trace", "release_max_level_off"]}
+simplelog = "0.12.0"

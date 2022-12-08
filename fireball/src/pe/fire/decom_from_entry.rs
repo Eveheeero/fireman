@@ -17,6 +17,8 @@ impl PE {
 
         let mut now = entry;
         loop {
+            log::trace!("블록 파싱 시작");
+            log::trace!("블록 파싱 시작 주소 : {:#x}", now.get_virtual_address());
             // 블록 파싱
             let block = if let Ok(block) = self.parse_block(now, &mut history) {
                 block
