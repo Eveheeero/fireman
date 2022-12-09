@@ -97,9 +97,9 @@ fn find_register_from_history(
     }
     for (index, history) in history_o.data.iter().rev().enumerate().skip(index + 1) {
         log::debug!(
-            "이전 명령어 : op - {}, mnemonic - {}, len - {}",
-            history.op,
+            "{} {}, len : {}",
             history.mnemonic,
+            history.op,
             history.len
         );
 
@@ -152,8 +152,14 @@ fn find_register_from_history(
                         }
                     }
 
+                    log::debug!("패턴 매칭 : ?word ptr [???], ???");
+                    if OTHERS[4].is_match(&history.op) {
+                        // 해당 패턴은 타겟 레지스터에 영향을 줄 수 없다.
+                        continue;
+                    }
+
                     log::warn!("mov 대상 OP 파싱 실패 : {}", history.op);
-                    todo!()
+                    unimplemented!()
                 }
                 "lea" => {
                     log::trace!("lea 대상 패턴 파싱 시작");
@@ -180,7 +186,7 @@ fn find_register_from_history(
                     }
 
                     log::warn!("lea 대상 OP 파싱 실패 : {}", history.op);
-                    todo!()
+                    unimplemented!()
                 }
                 "add" => todo!(),
                 "sub" => todo!(),

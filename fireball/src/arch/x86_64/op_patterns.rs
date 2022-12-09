@@ -29,6 +29,8 @@ fn generate_other_pattern() -> Vec<Regex> {
         Regex::new(r"^(?P<to>\w{2,3}), \wword ptr \[(?P<base>\w{2,3}) (?P<operator>[+-]) 0x(?P<relative_address>[0-9a-fA-F]+)]$").unwrap(),
         // mov rax, qword ptr [rax + rdx*4]
         Regex::new(r"^(?P<to>\w{2,3}), \wword ptr \[(?P<base>\w{2,3}) (?P<operator>[+-]) (?P<other>\w{2,3})\*(?P<mul>\d+)]$").unwrap(),
+        // mov qword ptr [rax], rax
+        Regex::new(r"^?word ptr \[(?P<base>\w{2,3})\], (?P<to>\w{2,3})$").unwrap(),
     ]
 }
 
