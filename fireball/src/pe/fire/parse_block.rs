@@ -119,7 +119,7 @@ impl PE {
 /// - `history: &mut InstructionHistory` - 인스트럭션 히스토리
 ///
 /// ### Results
-/// - `Result<u64, &static str>` - 파싱에 성공할 경우 대상 주소를, 실패했을 경우(구현되지 않아 실패하는 등...) Err를 반환한다.
+/// - `Result<u64, BlockParsingError>` - 파싱에 성공할 경우 대상 주소를, 실패했을 경우 Err를 반환한다.
 ///
 /// ### Todo
 /// - dword ptr [eip + 0x??] 패던 외에도, eax나 다른 레지스터를 기반으로 점프하는 명령어에 대한 처리 필요
@@ -127,7 +127,7 @@ fn insn_to_opu64(
     now_address: Address,
     inst: &capstone::Insn,
     history: &mut InstructionHistory,
-) -> Result<u64, &'static str> {
+) -> Result<u64, BlockParsingError> {
     let op = inst.op_str().unwrap();
 
     /* 대상 주소 파싱 */

@@ -5,6 +5,7 @@ pub enum BlockParsingError {
     UnknwonWithMessage(String),
     NoInstruction,
     TriedToParseOutsideOfSection,
+    CantCalcRegister,
 }
 
 impl std::fmt::Display for BlockParsingError {
@@ -15,6 +16,9 @@ impl std::fmt::Display for BlockParsingError {
             Self::NoInstruction => write!(f, "No Instruction Found!"),
             Self::TriedToParseOutsideOfSection => {
                 write!(f, "Tried to parse outside of section!")
+            }
+            Self::CantCalcRegister => {
+                write!(f, "Register is based on ebp (usually used like arguments)!")
             }
         }
     }

@@ -1,4 +1,7 @@
-use crate::core::{Address, InstructionHistory};
+use crate::{
+    core::{Address, InstructionHistory},
+    prelude::BlockParsingError,
+};
 
 use regex::Captures;
 
@@ -7,14 +10,14 @@ pub const FUNCTIONS: &[&dyn Fn(
     &capstone::Insn,
     &mut InstructionHistory,
     Captures,
-) -> Result<u64, &'static str>] = &[&function0, &function1, &function2];
+) -> Result<u64, BlockParsingError>] = &[&function0, &function1, &function2];
 
 fn function0(
     _now_address: Address,
     _inst: &capstone::Insn,
     _history: &mut InstructionHistory,
     captures: Captures,
-) -> Result<u64, &'static str> {
+) -> Result<u64, BlockParsingError> {
     log::trace!("다음과 같은 패턴으로 분기 대상 주소 파싱 시작 : 0x????????");
     log::debug!("정규식 매칭 결과 : {:?}", captures);
 
@@ -29,7 +32,7 @@ fn function1(
     _inst: &capstone::Insn,
     _history: &mut InstructionHistory,
     captures: Captures,
-) -> Result<u64, &'static str> {
+) -> Result<u64, BlockParsingError> {
     log::trace!("다음과 같은 패턴으로 분기 대상 주소 파싱 시작 : ?word ptr [??? ? 0x????????]");
     log::debug!("정규식 매칭 결과 : {:?}", captures);
 
@@ -43,7 +46,7 @@ fn function1(
             virtual_address = now_address.get_virtual_address()
                 - u64::from_str_radix(&captures["relative_address"], 16).unwrap()
         }
-        _ => return Err("Invalid operator"),
+        _ => unreachable!("Invalid operator"),
     };
 
     log::debug!("파싱된 분기 대상 주소 : 0x{:x}", virtual_address);
@@ -55,7 +58,7 @@ fn function2(
     inst: &capstone::Insn,
     history: &mut InstructionHistory,
     captures: Captures,
-) -> Result<u64, &'static str> {
+) -> Result<u64, BlockParsingError> {
     log::trace!("다음과 같은 패턴으로 분기 대상 주소 파싱 시작 : ???");
     log::debug!("정규식 매칭 결과 : {:?}", captures);
 
@@ -73,14 +76,14 @@ fn function2(
 /// - `index: usize` - index번째 + 1의 명령어부터 탐색을 시작합니다.
 ///
 /// ### Returns
-/// `Result<u64, &'static str>` - 탐색 성공 시 레지스터의 값(모든것을 계산한 상대주소), 실패 시 에러 메세지
+/// `Result<u64, BlockParsingError>` - 탐색 성공 시 레지스터의 값(모든것을 계산한 상대주소), 실패 시 에러
 fn find_register_from_history(
     target: &str,
     history_o: &InstructionHistory,
     index: usize,
-) -> Result<u64, &'static str> {
+) -> Result<u64, BlockParsingError> {
     use super::op_patterns::OTHERS;
-    let mut result = Err("Not found");
+    let mut result = Err(BlockParsingError::Unknown);
 
     log::debug!("탐색 대상 레지스터 : {}", target);
     if OTHERS[1].is_match(target) {
@@ -121,7 +124,7 @@ fn find_register_from_history(
                             match &captures["operator"] {
                                 "+" => result = Ok(base + relative_address),
                                 "-" => result = Ok(base - relative_address),
-                                _ => result = Err("Invalid operator"),
+                                _ => unreachable!("Invalid operator"),
                             }
                             break;
                         } else {
@@ -143,7 +146,7 @@ fn find_register_from_history(
                             match &captures["operator"] {
                                 "+" => result = Ok(base + other * mul),
                                 "-" => result = Ok(base - other * mul),
-                                _ => result = Err("Invalid operator"),
+                                _ => unreachable!("Invalid operator"),
                             }
                             break;
                         } else {
@@ -176,7 +179,7 @@ fn find_register_from_history(
                             match &captures["operator"] {
                                 "+" => result = Ok(base + relative_address),
                                 "-" => result = Ok(base - relative_address),
-                                _ => result = Err("Invalid operator"),
+                                _ => unreachable!("Invalid operator"),
                             }
                             break;
                         } else {
