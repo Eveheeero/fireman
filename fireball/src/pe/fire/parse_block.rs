@@ -16,6 +16,7 @@ impl PE {
         history: &mut InstructionHistory,
     ) -> Result<Arc<Block>, BlockParsingError> {
         log::trace!("블럭 파싱 시작");
+        log::trace!("블럭 시작 주소: {}", address.get_virtual_address());
 
         /* 기본정보 파싱 및 변수 선언 */
         // 블록이 들어갈 섹션
@@ -106,7 +107,6 @@ impl PE {
             block.add_connected_to(connected_to.clone());
         }
 
-        log::debug!("파싱된 블록 정보 : {:?}", block);
         Ok(block)
     }
 }

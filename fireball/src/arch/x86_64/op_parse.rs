@@ -17,7 +17,9 @@ fn function0(
 ) -> Result<u64, &'static str> {
     log::trace!("다음과 같은 패턴으로 분기 대상 주소 파싱 시작 : 0x????????");
     log::debug!("정규식 매칭 결과 : {:?}", captures);
+
     let virtual_address = u64::from_str_radix(&captures["address"], 16).unwrap();
+
     log::debug!("파싱된 분기 대상 주소 : 0x{:x}", virtual_address);
     Ok(virtual_address)
 }
@@ -30,6 +32,7 @@ fn function1(
 ) -> Result<u64, &'static str> {
     log::trace!("다음과 같은 패턴으로 분기 대상 주소 파싱 시작 : ?word ptr [??? ? 0x????????]");
     log::debug!("정규식 매칭 결과 : {:?}", captures);
+
     let virtual_address;
     match &captures["operator"] {
         "+" => {
@@ -42,73 +45,142 @@ fn function1(
         }
         _ => return Err("Invalid operator"),
     };
+
     log::debug!("파싱된 분기 대상 주소 : 0x{:x}", virtual_address);
     Ok(virtual_address)
 }
 
 fn function2(
-    now_address: Address,
+    _now_address: Address,
     inst: &capstone::Insn,
     history: &mut InstructionHistory,
     captures: Captures,
 ) -> Result<u64, &'static str> {
     log::trace!("다음과 같은 패턴으로 분기 대상 주소 파싱 시작 : ???");
     log::debug!("정규식 매칭 결과 : {:?}", captures);
-    use super::op_patterns::OTHERS;
 
-    let target_register = inst.op_str().unwrap();
-    log::debug!("탐색 대상 레지스터 : {}", target_register);
-    for history in history.data.iter().rev().skip(1) {
+    let virtual_address = find_register_from_history(inst.op_str().unwrap(), history, 0)?;
+
+    log::debug!("파싱된 분기 대상 주소 : 0x{:x}", virtual_address);
+    Ok(virtual_address)
+}
+
+/// 인스트럭션의 기록을 기반으로 특정 레지스터의 값을 추측합니다.
+///
+/// ### Arguments
+/// - `target: &str` - 탐색 대상 레지스터
+/// - `history_o: &InstructionHistory` - 인스트럭션 기록
+/// - `index: usize` - index번째 + 1의 명령어부터 탐색을 시작합니다.
+///
+/// ### Returns
+/// `Result<u64, &'static str>` - 탐색 성공 시 레지스터의 값(모든것을 계산한 상대주소), 실패 시 에러 메세지
+fn find_register_from_history(
+    target: &str,
+    history_o: &InstructionHistory,
+    index: usize,
+) -> Result<u64, &'static str> {
+    use super::op_patterns::OTHERS;
+    let mut result = Err("Not found");
+
+    log::debug!("탐색 대상 레지스터 : {}", target);
+    if OTHERS[1].is_match(target) {
+        /* 탐색 대상 레지스터가 ip이면 */
+        log::debug!("탐색 대상 레지스터가 ip이므로, 이전 명령어의 주소를 반환");
+        return Ok(history_o
+            .data
+            .iter()
+            .rev()
+            .skip(index)
+            .next()
+            .unwrap()
+            .address);
+    }
+    for (index, history) in history_o.data.iter().rev().enumerate().skip(index + 1) {
         log::debug!(
             "이전 명령어 : op - {}, mnemonic - {}, len - {}",
             history.op,
             history.mnemonic,
             history.len
         );
-        if history.op.contains(target_register) {
-            // OP (eax)등에 대한 연산이 들어갔으면
+
+        if history.op.contains(target) {
+            // 탐색 대상에 대한 연산이 들어갔으면
             match history.mnemonic.as_str() {
                 "mov" => {
-                    log::trace!("mov 대상 패턴 파싱 시작 : ???, ?word ptr [??? ? 0x????????]");
-                    let captures = OTHERS[2].captures(&history.op).unwrap();
-                    if captures["to"].to_string() == target_register {
-                        // mov eax, 0x1234 등의 형태인 경우
-                        if OTHERS[1].is_match(&captures["base"]) {
-                            let address_at_there =
+                    log::trace!("mov 대상 패턴 파싱 시작");
+
+                    log::debug!("패턴 매칭 : ???, ?word ptr [??? ? 0x????????]");
+                    if let Some(captures) = OTHERS[2].captures(&history.op) {
+                        if captures["to"].to_string() == target {
+                            /* 타겟 레지스터에 영향을 주는 경우 */
+                            let base =
+                                find_register_from_history(&captures["base"], history_o, index)?;
+                            let relative_address =
                                 u64::from_str_radix(&captures["relative_address"], 16).unwrap();
-                            log::debug!("파싱된 분기 대상 주소 : 0x{:x}", address_at_there);
-                            return Ok(address_at_there);
+
+                            match &captures["operator"] {
+                                "+" => result = Ok(base + relative_address),
+                                "-" => result = Ok(base - relative_address),
+                                _ => result = Err("Invalid operator"),
+                            }
+                            break;
                         } else {
+                            /* 타겟 레지스터에 영향을 주지 않는 경우 */
                             continue;
                         }
-                    } else {
-                        continue;
                     }
+
+                    log::debug!("패턴 매칭 : ???, ?word ptr [??? ? ???*?]");
+                    if let Some(captures) = OTHERS[3].captures(&history.op) {
+                        if captures["to"].to_string() == target {
+                            /* 타겟 레지스터에 영향을 주는 경우 */
+                            let base =
+                                find_register_from_history(&captures["base"], history_o, index)?;
+                            let other =
+                                find_register_from_history(&captures["other"], history_o, index)?;
+                            let mul = u64::from_str_radix(&captures["mul"], 10).unwrap();
+
+                            match &captures["operator"] {
+                                "+" => result = Ok(base + other * mul),
+                                "-" => result = Ok(base - other * mul),
+                                _ => result = Err("Invalid operator"),
+                            }
+                            break;
+                        } else {
+                            /* 타겟 레지스터에 영향을 주지 않는 경우 */
+                            continue;
+                        }
+                    }
+
+                    log::warn!("mov 대상 OP 파싱 실패 : {}", history.op);
+                    todo!()
                 }
                 "lea" => {
-                    log::trace!("lea 대상 패턴 파싱 시작 : ???, [??? ? 0x????????]");
-                    let captures = OTHERS[0].captures(&history.op).unwrap();
-                    if captures["to"].to_string() == target_register {
-                        // lea eax, [rip + 0x1234] 등의 형태인 경우
-                        let address_at_there = match &captures["operator"] {
-                            "+" if OTHERS[1].is_match(&captures["base"]) => {
-                                now_address.get_virtual_address() - history.address
-                                    + u64::from_str_radix(&captures["relative_address"], 16)
-                                        .unwrap()
+                    log::trace!("lea 대상 패턴 파싱 시작");
+
+                    log::trace!("패턴 매칭 : ???, [??? ? 0x????????]");
+                    if let Some(captures) = OTHERS[0].captures(&history.op) {
+                        if captures["to"].to_string() == target {
+                            /* 타겟 레지스터에 영향을 주는 경우 */
+                            let base =
+                                find_register_from_history(&captures["base"], history_o, index)?;
+                            let relative_address =
+                                u64::from_str_radix(&captures["relative_address"], 16).unwrap();
+
+                            match &captures["operator"] {
+                                "+" => result = Ok(base + relative_address),
+                                "-" => result = Ok(base - relative_address),
+                                _ => result = Err("Invalid operator"),
                             }
-                            "-" if OTHERS[1].is_match(&captures["base"]) => {
-                                now_address.get_virtual_address()
-                                    - history.address
-                                    - u64::from_str_radix(&captures["relative_address"], 16)
-                                        .unwrap()
-                            }
-                            _ => return Err("Invalid operator"),
-                        };
-                        log::debug!("파싱된 분기 대상 주소 : 0x{:x}", address_at_there);
-                        return Ok(address_at_there);
-                    } else {
-                        continue;
+                            break;
+                        } else {
+                            /* 타겟 레지스터에 영향을 주지 않는 경우 */
+                            continue;
+                        }
                     }
+
+                    log::warn!("lea 대상 OP 파싱 실패 : {}", history.op);
+                    todo!()
                 }
                 "add" => todo!(),
                 "sub" => todo!(),
@@ -116,5 +188,7 @@ fn function2(
             }
         }
     }
-    Err("Not Found")
+
+    log::debug!("파싱된 값 : {:#?}", result);
+    result
 }

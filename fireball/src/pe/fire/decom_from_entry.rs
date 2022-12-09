@@ -18,7 +18,20 @@ impl PE {
         let mut now = entry;
         loop {
             log::trace!("블록 파싱 시작");
+            log::trace!("블럭의 깊이 : {}", stack.len());
             log::trace!("블록 파싱 시작 주소 : {:#x}", now.get_virtual_address());
+
+            if self.blocks.find_from_start_address(now.clone()).is_some() {
+                // 이미 파싱된 블록이라면, 다음 블록으로 넘어간다.
+                match self.rewind_stack(&mut stack) {
+                    Ok(address) => {
+                        now = address;
+                        continue;
+                    }
+                    Err(_) => break,
+                };
+            }
+
             // 블록 파싱
             let block = if let Ok(block) = self.parse_block(now, &mut history) {
                 block
@@ -34,22 +47,23 @@ impl PE {
             };
             let connected_to = match block.get_connected_to().first() {
                 Some(connected_to) => connected_to.clone(),
-                None => break,
+                None => {
+                    match self.rewind_stack(&mut stack) {
+                        Ok(address) => {
+                            now = address;
+                            continue;
+                        }
+                        Err(_) => break,
+                    };
+                }
             };
-            if block.get_connected_to().first().unwrap().relation_type() == &RelationType::Jump {
-                // 블록의 마지막 인스트럭션이 점프일 경우, 해당 블록에 진입하기 이전의 주소에서 다시 시작한다.
-                match self.rewind_stack(&mut stack) {
-                    Ok(address) => {
-                        now = address;
-                        continue;
-                    }
-                    Err(_) => break,
-                };
-            }
 
             // 다음에 시작할 주소와, 어떤 주소에서 해당 주소로 이동했는지를 저장한다.
             now = connected_to.to().clone();
-            stack.push(connected_to.from().clone());
+            if connected_to.relation_type() != &RelationType::Jump {
+                // 블록 연결 타입이 JMP가 아닐경우 스택에 저장한다.
+                stack.push(connected_to.from().clone());
+            }
         }
 
         Ok(())

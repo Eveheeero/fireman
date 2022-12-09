@@ -27,6 +27,8 @@ fn generate_other_pattern() -> Vec<Regex> {
         Regex::new(r"^.?ip").unwrap(),
         // mov rax, qword ptr [rip - 0xabcdef]
         Regex::new(r"^(?P<to>\w{2,3}), \wword ptr \[(?P<base>\w{2,3}) (?P<operator>[+-]) 0x(?P<relative_address>[0-9a-fA-F]+)]$").unwrap(),
+        // mov rax, qword ptr [rax + rdx*4]
+        Regex::new(r"^(?P<to>\w{2,3}), \wword ptr \[(?P<base>\w{2,3}) (?P<operator>[+-]) (?P<other>\w{2,3})\*(?P<mul>\d+)]$").unwrap(),
     ]
 }
 
@@ -49,5 +51,6 @@ mod tests {
         assert!(OTHERS[0].is_match("rax, [rbx + 0xabcdef]"));
         assert!(OTHERS[1].is_match("rip, [rbx + 0xabcdef]"));
         assert!(OTHERS[2].is_match("rax, qword ptr [rip - 0xabcdef]"));
+        assert!(OTHERS[3].is_match("rax, qword ptr [rax + rdx*4]"));
     }
 }
