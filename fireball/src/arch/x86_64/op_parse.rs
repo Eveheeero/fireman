@@ -86,25 +86,35 @@ fn find_register_from_history(
     let mut result = Err(BlockParsingError::Unknown);
 
     log::debug!("탐색 대상 레지스터 : {}", target);
-    if OTHERS[1].is_match(target) {
-        /* 탐색 대상 레지스터가 ip이면 */
-        log::debug!("탐색 대상 레지스터가 ip이므로, 이전 명령어의 주소를 반환");
-        return Ok(history_o
-            .data
-            .iter()
-            .rev()
-            .skip(index)
-            .next()
-            .unwrap()
-            .address);
+    match () {
+        () if OTHERS[1].is_match(target) => {
+            /* 탐색 대상 레지스터가 ip이면 */
+            log::debug!("탐색 대상 레지스터가 ip이므로, 이전 명령어의 주소를 반환");
+            return Ok(history_o
+                .data
+                .iter()
+                .rev()
+                .skip(index)
+                .next()
+                .unwrap()
+                .address);
+        }
+        () if OTHERS[5].is_match(target) => {
+            /* 탐색 대상 레지스터가 ?sp를 기반으로 두면 */
+            // Todo 추후 개발 필요
+            log::info!("스택 레지스터를 기반으로 연산하는 로직은 현재 개발되어있지 않으며, 추후 개발할 예정입니다.");
+            return Err(BlockParsingError::CantCalcRegister);
+        }
+        () if OTHERS[6].is_match(target) => {
+            /* 탐색 대상 레지스터가 ?bp를 기반으로 두면 */
+            // Todo 추후 개발 필요
+            log::info!("스택 레지스터를 기반으로 연산하는 로직은 현재 개발되어있지 않으며, 추후 개발할 예정입니다.");
+            return Err(BlockParsingError::CantCalcRegister);
+        }
+        _ => {}
     }
     for (index, history) in history_o.data.iter().rev().enumerate().skip(index + 1) {
-        log::debug!(
-            "{} {}, len : {}",
-            history.mnemonic,
-            history.op,
-            history.len
-        );
+        log::debug!("{} {} : {}", history.mnemonic, history.op, history.len);
 
         if history.op.contains(target) {
             // 탐색 대상에 대한 연산이 들어갔으면
@@ -159,6 +169,30 @@ fn find_register_from_history(
                     if OTHERS[4].is_match(&history.op) {
                         // 해당 패턴은 타겟 레지스터에 영향을 줄 수 없다.
                         continue;
+                    }
+
+                    log::debug!("패턴 매칭 : ???, ?word ptr [??? ? 4]");
+                    if let Some(captures) = OTHERS[7].captures(&history.op) {
+                        if captures["to"].to_string() == target {
+                            /* 타겟 레지스터에 영향을 주는 경우 */
+                            let base =
+                                find_register_from_history(&captures["base"], history_o, index)?;
+                            let other = u64::from(find_register_from_history(
+                                &captures["other"],
+                                history_o,
+                                index,
+                            )?);
+
+                            match &captures["operator"] {
+                                "+" => result = Ok(base + other),
+                                "-" => result = Ok(base - other),
+                                _ => unreachable!("Invalid operator"),
+                            }
+                            break;
+                        } else {
+                            /* 타겟 레지스터에 영향을 주지 않는 경우 */
+                            continue;
+                        }
                     }
 
                     log::warn!("mov 대상 OP 파싱 실패 : {}", history.op);
