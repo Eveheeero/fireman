@@ -225,7 +225,37 @@ fn find_register_from_history(
                     log::warn!("lea 대상 OP 파싱 실패 : {}", history.op);
                     unimplemented!()
                 }
-                "add" => todo!(),
+                "add" => {
+                    log::trace!("add 대상 패턴 파싱 시작");
+
+                    log::debug!("패턴 매칭 :???, 1234");
+                    if let Some(captures) = OTHERS[8].captures(&history.op) {
+                        if captures["to"].to_string() == target {
+                            /* 타겟 레지스터에 영향을 주는 경우 */
+                            let to = find_register_from_history(&captures["to"], history_o, index)?;
+                            let other = u64::from_str_radix(&captures["other"], 10).unwrap();
+
+                            result = Ok(to + other);
+                            break;
+                        }
+                    }
+
+                    log::debug!("패턴 매칭 :???, ???");
+                    if let Some(captures) = OTHERS[9].captures(&history.op) {
+                        if captures["to"].to_string() == target {
+                            /* 타겟 레지스터에 영향을 주는 경우 */
+                            let to = find_register_from_history(&captures["to"], history_o, index)?;
+                            let other =
+                                find_register_from_history(&captures["other"], history_o, index)?;
+
+                            result = Ok(to + other);
+                            break;
+                        }
+                    }
+
+                    log::warn!("add 대상 OP 파싱 실패 : {}", history.op);
+                    unimplemented!()
+                }
                 "sub" => todo!(),
                 _ => continue,
             }

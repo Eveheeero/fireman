@@ -37,6 +37,10 @@ fn generate_other_pattern() -> Vec<Regex> {
         Regex::new(r"^.?bp").unwrap(),
         // mov eax, dword ptr [rbp - 4]
         Regex::new(r"^(?P<to>\w{2,3}), \wword ptr \[(?P<base>\w{2,3}) (?P<operator>[+-]) (?P<other>\d+)]$").unwrap(),
+        // add eax, 10
+        Regex::new(r"^(?P<to>\w{2,3}), (?P<other>\d+)$").unwrap(),
+        // add eax, ebp
+        Regex::new(r"^(?P<to>\w{2,3}), (?P<other>\w{2,3})$").unwrap(),
     ]
 }
 
@@ -64,5 +68,7 @@ mod tests {
         assert!(OTHERS[5].is_match("rsp"));
         assert!(OTHERS[6].is_match("rbp"));
         assert!(OTHERS[7].is_match("eax, dword ptr [rbp - 4]"));
+        assert!(OTHERS[8].is_match("eax, 4000"));
+        assert!(OTHERS[9].is_match("eax, ebp"));
     }
 }
