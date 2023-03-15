@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use super::{Address, Block, Section};
 
-/// 어셈블리 단위의 블럭들을 고나리하는 구조체
+/// 어셈블리 단위의 블럭들을 관리하는 구조체
 ///
 /// 해당 구조체를 이용해 블럭을 생성하고, 이미 존재하는 블럭을 가져온다.
 pub struct Blocks {
