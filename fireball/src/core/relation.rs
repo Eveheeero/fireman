@@ -20,6 +20,7 @@ pub enum RelationType {
     Call,
     /// 해당 연결이 jmp 연결임을 나타낸다.
     Jump,
+    Jcc,
 }
 
 impl Relation {
@@ -54,5 +55,9 @@ impl Relation {
     /// - `&Address`: 연결의 도착 주소
     pub fn to(&self) -> &Address {
         &self.to
+    }
+
+    pub fn relation_type(&self) -> &RelationType {
+        &self.relation_type
     }
 }

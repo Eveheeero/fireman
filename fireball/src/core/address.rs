@@ -8,7 +8,7 @@ use crate::core::{Section, Sections};
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct Address {
     /// Address객체가 어느 섹션에 속하는지를 나타내는 섹션 정보
-    section: Arc<Section>,
+    section: Option<Arc<Section>>,
     /// Address객체의 가상 주소
     ///
     /// ### Note
@@ -24,22 +24,19 @@ impl Address {
     /// - `offset: u64` - 파일 오프셋
     ///
     /// ### Returns
-    /// - `Result<Self, ()>` - 섹션 정보를 찾을 수 없는 경우 에러를 반환한다.
-    pub(crate) fn from_file_offset(sections: &Sections, offset: u64) -> Result<Self, ()> {
-        /* 오프셋에 해당하는 섹션 찾기 */
-        let section = match sections.from_file_offset(offset) {
-            Some(section) => section,
-            None => return Err(()),
-        };
+    /// - `Self` - 파일 오프셋으로부터 생성된 Address 객체
+    pub(crate) fn from_file_offset(sections: &Sections, offset: u64) -> Self {
+        // 오프셋에 해당하는 섹션 찾기
+        let section = sections.from_file_offset(offset);
+        // 섹션정보를 기반으로 가상주소 연산
+        // 파일 오프셋에는 항상 섹션이 존재하기때문에 unwrap()을 사용해도 무방하다.
+        let virtual_offset = offset - section.as_ref().unwrap().file_offset
+            + section.as_ref().unwrap().virtual_address;
 
-        /* 섹션정보를 기반으로 가상주소 연산 */
-        let virtual_offset = offset - section.file_offset + section.virtual_address;
-
-        /* 객체 생성 및 반환 */
-        Ok(Self {
+        Self {
             section,
             virtual_offset,
-        })
+        }
     }
 
     /// 가상 주소를 기반으로 Address 객체를 생성한다.
@@ -49,37 +46,33 @@ impl Address {
     /// - `virtual_offset: u64` - 가상 주소
     ///
     /// ### Returns
-    /// - `Result<Self, ()>` - 섹션 정보를 찾을 수 없는 경우 에러를 반환한다.
-    ///
-    /// ### Todo
-    /// - 섹션 정보를 찾을 수 없는 경우 에러를 반환하는 것이 아닌, None을 반환하도록 수정해야 한다.
-    pub(crate) fn from_virtual_address(sections: &Sections, offset: u64) -> Result<Self, ()> {
-        /* 가상주소에 해당하는 섹션 찾기 */
-        let section = match sections.from_virtual_address(offset) {
-            Some(section) => section,
-            None => return Err(()),
-        };
+    /// - `Self` - 가상 주소로부터 생성된 Address 객체
+    pub(crate) fn from_virtual_address(sections: &Sections, offset: u64) -> Self {
+        // 가상주소에 해당하는 섹션 찾기
+        let section = sections.from_virtual_address(offset);
 
-        /* 객체 생성 및 값 반환 */
-        Ok(Self {
+        Self {
             section,
             virtual_offset: offset,
-        })
+        }
     }
 
     /// 파일 오프셋을 반환한다.
     ///
     /// ### Returns
-    /// - `u64` - 파일 오프셋
-    ///
-    /// ### Todo
-    /// - 파일 오프셋이 존재하지 않을 수 있으므로 파일 오프셋을 반환하는 것이 아닌, Option<u64>을 반환하도록 수정해야 한다.
-    /// - 다음 섹션에 대한 범위 체크를 진행해야 한다. (기본 바이너리에 없는 가상 주소를 참조하는 경우, None을 반환해야 한다.)
-    pub(crate) fn get_file_offset(&self) -> u64 {
-        let virtual_offset = self.virtual_offset;
-        let section_virtual_offset_start = self.section.virtual_address;
-        let section_file_offset_start = self.section.file_offset;
-        (virtual_offset - section_virtual_offset_start) + section_file_offset_start
+    /// - `Option<u64>` - 파일 오프셋
+    pub(crate) fn get_file_offset(&self) -> Option<u64> {
+        if let Some(section) = &self.section {
+            if self.virtual_offset - section.virtual_address > section.size_of_file {
+                return None;
+            }
+            let virtual_offset = self.virtual_offset;
+            let section_virtual_offset_start = section.virtual_address;
+            let section_file_offset_start = section.file_offset;
+            Some((virtual_offset - section_virtual_offset_start) + section_file_offset_start)
+        } else {
+            None
+        }
     }
 
     /// 가상 주소를 반환한다.
@@ -93,8 +86,8 @@ impl Address {
     /// 섹션 정보를 반환한다.
     ///
     /// ### Returns
-    /// - `Arc<Section>` - 섹션 정보
-    pub(crate) fn get_section(&self) -> Arc<Section> {
+    /// - `Option<Arc<Section>>` - 섹션 정보
+    pub(crate) fn get_section(&self) -> Option<Arc<Section>> {
         self.section.clone()
     }
 }

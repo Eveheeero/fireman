@@ -49,7 +49,7 @@ impl PE {
 
                 defined.insert(PreDefinedOffset {
                     name,
-                    address: Address::from_virtual_address(&sections, offset).unwrap(),
+                    address: Address::from_virtual_address(&sections, offset),
                 });
             }
 
@@ -63,7 +63,7 @@ impl PE {
 
                 defined.insert(PreDefinedOffset {
                     name,
-                    address: Address::from_virtual_address(&sections, offset).unwrap(),
+                    address: Address::from_virtual_address(&sections, offset),
                 });
             }
 
