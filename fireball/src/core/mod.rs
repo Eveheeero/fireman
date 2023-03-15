@@ -1,4 +1,3 @@
-#![allow(unused_imports)]
 #![allow(dead_code)]
 
 /// 디컴파일 공통 기능을 담당하는 "Fire"구조체에 대해 정의하는 모듈
