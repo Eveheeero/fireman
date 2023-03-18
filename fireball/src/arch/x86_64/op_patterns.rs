@@ -26,18 +26,12 @@ pub static NOT_JMP_TARGET_INST_PATTERNS: Lazy<Vec<Regex>> = Lazy::new(|| {
     vec![
         // lea rax, [rbx + 0xabcdef]
         Regex::new(r"^(?P<to>\w{2,3}), \[(?P<base>\w{2,3}) (?P<operator>[+-]) 0x(?P<relative_address>[0-9a-fA-F]+)]$").unwrap(), // https://regex101.com/r/l6QWI9/3
-        // rip
-        Regex::new(r"^.?ip").unwrap(),
         // mov rax, qword ptr [rip - 0xabcdef]
         Regex::new(r"^(?P<to>\w{2,3}), \wword ptr \[(?P<base>\w{2,3}) (?P<operator>[+-]) 0x(?P<relative_address>[0-9a-fA-F]+)]$").unwrap(),
         // mov rax, qword ptr [rax + rdx*4]
         Regex::new(r"^(?P<to>\w{2,3}), \wword ptr \[(?P<base>\w{2,3}) (?P<operator>[+-]) (?P<other>\w{2,3})\*(?P<mul>\d+)]$").unwrap(),
         // mov qword ptr [rax], rax
         Regex::new(r"^?word ptr \[(?P<base>\w{2,3})\], (?P<to>\w{2,3})$").unwrap(),
-        // rsp
-        Regex::new(r"^.?sp").unwrap(),
-        // rbp
-        Regex::new(r"^.?bp").unwrap(),
         // mov eax, dword ptr [rbp - 4]
         Regex::new(r"^(?P<to>\w{2,3}), \wword ptr \[(?P<base>\w{2,3}) (?P<operator>[+-]) (?P<other>\d+)]$").unwrap(),
         // add eax, 10
@@ -57,27 +51,24 @@ mod tests {
 
     #[test]
     #[rustfmt::skip]
-    fn test_regex() {
-        assert!(NOT_JMP_TARGET_INST_PATTERNS[0].is_match("0xabcdef"));
-        assert!(NOT_JMP_TARGET_INST_PATTERNS[1].is_match("dword ptr [eip + 0xabcdef]"));
-        assert!(NOT_JMP_TARGET_INST_PATTERNS[1].is_match("qword ptr [rip - 0xabcdef]"));
-        assert!(NOT_JMP_TARGET_INST_PATTERNS[2].is_match("eax"));
+    fn test_jmp_target_patterns() {
+        assert!(JMP_TARGET_INST_PATTERNS[0].is_match("0xabcdef"));
+        assert!(JMP_TARGET_INST_PATTERNS[1].is_match("dword ptr [eip + 0xabcdef]"));
+        assert!(JMP_TARGET_INST_PATTERNS[1].is_match("qword ptr [rip - 0xabcdef]"));
+        assert!(JMP_TARGET_INST_PATTERNS[2].is_match("eax"));
     }
 
     #[test]
     #[rustfmt::skip]
-    fn test_regex_others() {
-        assert!(JMP_TARGET_INST_PATTERNS[0].is_match("rax, [rbx + 0xabcdef]"));
-        assert!(JMP_TARGET_INST_PATTERNS[1].is_match("rip, [rbx + 0xabcdef]"));
-        assert!(JMP_TARGET_INST_PATTERNS[2].is_match("rax, qword ptr [rip - 0xabcdef]"));
-        assert!(JMP_TARGET_INST_PATTERNS[3].is_match("rax, qword ptr [rax + rdx*4]"));
-        assert!(JMP_TARGET_INST_PATTERNS[4].is_match("qword ptr [rax], rax"));
-        assert!(JMP_TARGET_INST_PATTERNS[5].is_match("rsp"));
-        assert!(JMP_TARGET_INST_PATTERNS[6].is_match("rbp"));
-        assert!(JMP_TARGET_INST_PATTERNS[7].is_match("eax, dword ptr [rbp - 4]"));
-        assert!(JMP_TARGET_INST_PATTERNS[8].is_match("eax, 4000"));
-        assert!(JMP_TARGET_INST_PATTERNS[9].is_match("eax, ebp"));
-        assert!(JMP_TARGET_INST_PATTERNS[10].is_match("eax, dword ptr [rdx + rax]"));
-        assert!(JMP_TARGET_INST_PATTERNS[11].is_match("rax, qword ptr [rax]"));
+    fn test_not_jmp_target_patterns() {
+        assert!(NOT_JMP_TARGET_INST_PATTERNS[0].is_match("rax, [rbx + 0xabcdef]"));
+        assert!(NOT_JMP_TARGET_INST_PATTERNS[1].is_match("rax, qword ptr [rip - 0xabcdef]"));
+        assert!(NOT_JMP_TARGET_INST_PATTERNS[2].is_match("rax, qword ptr [rax + rdx*4]"));
+        assert!(NOT_JMP_TARGET_INST_PATTERNS[3].is_match("qword ptr [rax], rax"));
+        assert!(NOT_JMP_TARGET_INST_PATTERNS[4].is_match("eax, dword ptr [rbp - 4]"));
+        assert!(NOT_JMP_TARGET_INST_PATTERNS[5].is_match("eax, 4000"));
+        assert!(NOT_JMP_TARGET_INST_PATTERNS[6].is_match("eax, ebp"));
+        assert!(NOT_JMP_TARGET_INST_PATTERNS[7].is_match("eax, dword ptr [rdx + rax]"));
+        assert!(NOT_JMP_TARGET_INST_PATTERNS[8].is_match("rax, qword ptr [rax]"));
     }
 }

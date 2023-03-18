@@ -131,7 +131,7 @@ fn insn_to_opu64(
     let op = inst.op_str().unwrap();
 
     /* 대상 주소 파싱 */
-    for (idx, pattern) in crate::arch::x86_64::op_patterns::NOT_JMP_TARGET_INST_PATTERNS
+    for (idx, pattern) in crate::arch::x86_64::op_patterns::JMP_TARGET_INST_PATTERNS
         .iter()
         .enumerate()
     {
