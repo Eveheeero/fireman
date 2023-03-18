@@ -195,6 +195,42 @@ fn find_register_from_history(
                         }
                     }
 
+                    log::debug!("패턴 매칭 : ???, ?word ptr [??? ? ???]");
+                    if let Some(captures) = OTHERS[10].captures(&history.op) {
+                        if captures["to"].to_string() == target {
+                            /* 타겟 레지스터에 영향을 주는 경우 */
+                            let base =
+                                find_register_from_history(&captures["base"], history_o, index)?;
+                            let other =
+                                find_register_from_history(&captures["other"], history_o, index)?;
+
+                            match &captures["operator"] {
+                                "+" => result = Ok(base + other),
+                                "-" => result = Ok(base - other),
+                                _ => unreachable!("Invalid operator"),
+                            }
+                            break;
+                        } else {
+                            /* 타겟 레지스터에 영향을 주지 않는 경우 */
+                            continue;
+                        }
+                    }
+
+                    log::debug!("패턴 매칭 : ???, ?word ptr [???]");
+                    if let Some(captures) = OTHERS[11].captures(&history.op) {
+                        if captures["to"].to_string() == target {
+                            /* 타겟 레지스터에 영향을 주는 경우 */
+                            let base =
+                                find_register_from_history(&captures["base"], history_o, index)?;
+
+                            result = Ok(base);
+                            break;
+                        } else {
+                            /* 타겟 레지스터에 영향을 주지 않는 경우 */
+                            continue;
+                        }
+                    }
+
                     log::warn!("mov 대상 OP 파싱 실패 : {}", history.op);
                     unimplemented!()
                 }
