@@ -16,6 +16,7 @@ impl PE {
         history: &mut InstructionHistory,
     ) -> Result<Arc<Block>, BlockParsingError> {
         log::trace!("블럭 파싱 시작");
+        log::trace!("블럭 시작 주소: {}", address.get_virtual_address());
 
         /* 기본정보 파싱 및 변수 선언 */
         // 블록이 들어갈 섹션
@@ -106,7 +107,6 @@ impl PE {
             block.add_connected_to(connected_to.clone());
         }
 
-        log::debug!("파싱된 블록 정보 : {:?}", block);
         Ok(block)
     }
 }
@@ -119,7 +119,7 @@ impl PE {
 /// - `history: &mut InstructionHistory` - 인스트럭션 히스토리
 ///
 /// ### Results
-/// - `Result<u64, &static str>` - 파싱에 성공할 경우 대상 주소를, 실패했을 경우(구현되지 않아 실패하는 등...) Err를 반환한다.
+/// - `Result<u64, BlockParsingError>` - 파싱에 성공할 경우 대상 주소를, 실패했을 경우 Err를 반환한다.
 ///
 /// ### Todo
 /// - dword ptr [eip + 0x??] 패던 외에도, eax나 다른 레지스터를 기반으로 점프하는 명령어에 대한 처리 필요
@@ -127,16 +127,16 @@ fn insn_to_opu64(
     now_address: Address,
     inst: &capstone::Insn,
     history: &mut InstructionHistory,
-) -> Result<u64, &'static str> {
+) -> Result<u64, BlockParsingError> {
     let op = inst.op_str().unwrap();
 
     /* 대상 주소 파싱 */
-    for (idx, pattern) in crate::arch::x86_64::op_patterns::PATTERNS
+    for (idx, pattern) in crate::arch::x86_64::op_patterns::JMP_TARGET_INST_PATTERNS
         .iter()
         .enumerate()
     {
         if let Some(captures) = pattern.captures(op) {
-            return crate::arch::x86_64::op_parse::FUNCTIONS[idx](
+            return crate::arch::x86_64::op_parse::JMP_TARGET_INST_PARSE[idx](
                 now_address,
                 inst,
                 history,
