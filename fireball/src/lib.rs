@@ -2,6 +2,9 @@
 pub mod core;
 use crate::core::Fire;
 
+/// IR 분석 관련 모듈
+pub mod ir;
+
 /// PE파일에 대한 구조체가 담겨있는 모듈
 pub mod pe;
 
@@ -27,7 +30,7 @@ impl Fireball {
     }
 
     /// 파서 객체를 반환한다.
-    pub fn get_object(&self) -> &dyn core::Fire {
+    pub fn get_object(&self) -> &impl core::Fire {
         match self {
             Self::PE(pe) => pe,
         }
