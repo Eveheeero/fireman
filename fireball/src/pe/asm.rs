@@ -1,5 +1,5 @@
 use super::PE;
-use crate::core::Address;
+use crate::{core::Address, prelude::trace};
 
 use capstone::Instructions;
 
@@ -9,7 +9,7 @@ impl PE {
         let file_offset = if let Some(file_offset) = offset.get_file_offset() {
             file_offset
         } else {
-            log::trace!(
+            trace!(
                 "파일 오프셋을 찾을 수 없음 : 가상주소 {:#x}",
                 offset.get_virtual_address()
             );
@@ -22,7 +22,7 @@ impl PE {
         ) {
             Ok(insts) => insts,
             Err(_) => {
-                log::trace!(
+                trace!(
                     "어셈블리 코드 파싱 실패 : 가상주소 {:#x}, 파일주소 {:#x}",
                     virtual_offset,
                     file_offset
@@ -42,7 +42,7 @@ impl PE {
         let file_offset = if let Some(file_offset) = offset.get_file_offset() {
             file_offset
         } else {
-            log::trace!(
+            trace!(
                 "파일 오프셋을 찾을 수 없음 : 가상주소 {:#x}",
                 offset.get_virtual_address()
             );
@@ -56,7 +56,7 @@ impl PE {
         ) {
             Ok(insts) => insts,
             Err(_) => {
-                log::trace!(
+                trace!(
                     "어셈블리 코드 파싱 실패 : 가상주소 {:#x}, 파일주소 {:#x}",
                     virtual_offset,
                     file_offset

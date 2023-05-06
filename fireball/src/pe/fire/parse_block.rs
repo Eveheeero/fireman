@@ -3,7 +3,7 @@ use std::sync::Arc;
 use super::PE;
 use crate::{
     core::{Address, Block, InstructionHistory},
-    prelude::BlockParsingError,
+    prelude::{trace, BlockParsingError},
 };
 
 impl PE {
@@ -15,8 +15,8 @@ impl PE {
         address: Address,
         _history: &mut InstructionHistory,
     ) -> Result<Arc<Block>, BlockParsingError> {
-        log::trace!("블럭 파싱 시작");
-        log::trace!("블럭 시작 주소: {}", address.get_virtual_address());
+        trace!("블럭 파싱 시작");
+        trace!("블럭 시작 주소: {}", address.get_virtual_address());
 
         todo!()
     }

@@ -1,7 +1,7 @@
 use super::PE;
 use crate::{
     core::{Address, Fire, InstructionHistory, RelationType},
-    prelude::DecompileError,
+    prelude::{trace, DecompileError},
 };
 
 impl PE {
@@ -17,9 +17,9 @@ impl PE {
 
         let mut now = entry;
         loop {
-            log::trace!("블록 파싱 시작");
-            log::trace!("블럭의 깊이 : {}", stack.len());
-            log::trace!("블록 파싱 시작 주소 : {:#x}", now.get_virtual_address());
+            trace!("블록 파싱 시작");
+            trace!("블럭의 깊이 : {}", stack.len());
+            trace!("블록 파싱 시작 주소 : {:#x}", now.get_virtual_address());
 
             if self.blocks.find_from_start_address(now.clone()).is_some() {
                 // 이미 파싱된 블록이라면, 다음 블록으로 넘어간다.
