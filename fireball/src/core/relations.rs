@@ -1,6 +1,7 @@
-use std::sync::Arc;
+//! "Relation"을 모아두는 구조체를 정의하는 모듈
 
 use super::Relation;
+use std::sync::Arc;
 
 /// 코드 블럭의 연결 데이터를 관리하는 구조체
 #[derive(Debug)]

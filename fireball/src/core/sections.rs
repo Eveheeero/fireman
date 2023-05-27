@@ -1,6 +1,10 @@
-use std::sync::Arc;
+//! Module that contains structure that contains all section information
+//!
+//!
+//! 프로그램의 모든 섹션 정보를 가지고 있는 구조체를 정의하는 모듈
 
 use super::Section;
+use std::sync::Arc;
 
 /// Struct that holding all section's information.
 /// Data in this struct is immutable, only can write when start analysis. (By build_all method)

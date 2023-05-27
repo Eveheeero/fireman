@@ -1,10 +1,9 @@
-use std::sync::Arc;
-
 use super::PE;
 use crate::{
     core::{Address, Block, InstructionHistory},
     prelude::{trace, BlockParsingError},
 };
+use std::sync::Arc;
 
 impl PE {
     /// ### Todo

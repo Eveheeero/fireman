@@ -1,6 +1,7 @@
+//! PE 구조체에 대한 구현이 담겨있는 모듈
+
 use super::PE;
 use crate::core::{Address, Blocks, PreDefinedOffset, PreDefinedOffsets, Relations, Sections};
-
 use capstone::prelude::BuildsCapstone;
 
 impl PE {

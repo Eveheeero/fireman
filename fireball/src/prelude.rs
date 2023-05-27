@@ -1,3 +1,5 @@
+//! 기본적으로 사용되는 use문 등이 들어가는 모듈
+
 pub(crate) use crate::utils::error::block_parsing_error::BlockParsingError;
 pub(crate) use crate::utils::error::decompile_error::DecompileError;
 pub(crate) use crate::utils::error::io_error::IoError;

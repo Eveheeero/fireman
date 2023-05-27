@@ -1,5 +1,7 @@
 //! x86_64 CPU 컴퓨터를 IR구조로 변환하는데 사용되는 서브모듈입니다.
 
+mod base;
+
 use crate::prelude::BitSlice;
 
 /// X64(32비트 포함) 레지스터를 가져오는 인터페이스입니다.
@@ -216,5 +218,3 @@ pub trait X64 {
     fn tmp32(&self) -> &BitSlice;
     fn tmp64(&self) -> &BitSlice;
 }
-
-mod base;

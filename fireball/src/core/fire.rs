@@ -1,7 +1,8 @@
-use std::sync::Arc;
+//! 디컴파일 공통 기능을 담당하는 "Fire"구조체에 대해 정의하는 모듈
 
 use super::{Address, Block, InstructionHistory, Sections};
 use crate::prelude::{BlockParsingError, DecompileError, IoError};
+use std::sync::Arc;
 
 /// ## Main Decompile Trait
 /// 해당 Trait는 디컴파일러를 작성할 때, 해당라이브러리에서 필요한 기능들을 정의해준다.

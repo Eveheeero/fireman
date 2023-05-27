@@ -1,3 +1,7 @@
+pub mod block_parsing_error;
+pub mod decompile_error;
+pub mod io_error;
+
 #[derive(Debug, Clone, Default)]
 pub enum FireballError {
     #[default]
@@ -16,7 +20,3 @@ impl From<io_error::IoError> for FireballError {
         Self::IoError(err)
     }
 }
-
-pub mod block_parsing_error;
-pub mod decompile_error;
-pub mod io_error;

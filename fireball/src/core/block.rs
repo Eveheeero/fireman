@@ -1,6 +1,7 @@
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+//! 프로그램을 분석하여 각 섹션별로 나온 "Block"을 정의하는 모듈
 
 use super::{Address, Relation, Section};
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 /// 분석에 의해 생성된 어셈블리단위 블럭
 ///

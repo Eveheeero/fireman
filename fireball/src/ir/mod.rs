@@ -1,4 +1,7 @@
-//! 컴퓨터의 동작을 추상화한 IR을 정의합니다.
+//! IR 분석 관련 모듈
+
+pub mod arm;
+pub mod x86_64;
 
 use crate::prelude::BitBox;
 
@@ -20,6 +23,3 @@ pub trait IRRaw {
     /// 가공되지 앟은 레지스터 데이터를 가져옵니다.
     fn get_register(&self) -> &BitBox;
 }
-
-pub mod arm;
-pub mod x86_64;

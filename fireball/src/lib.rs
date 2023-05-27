@@ -1,18 +1,13 @@
-/// 코어 트레이트가 담겨있는 모듈
+pub mod arch;
 pub mod core;
-use crate::core::Fire;
-
-/// IR 분석 관련 모듈
 pub mod ir;
-
-/// PE파일에 대한 구조체가 담겨있는 모듈
 pub mod pe;
-
-/// 공통적으로 사용되는 기능이 담겨있는 모듈
+pub mod prelude;
+#[cfg(test)]
+mod tests;
 pub mod utils;
 
-/// 기본적으로 사용되는 use문이 들어가는 모듈
-pub mod prelude;
+use crate::core::Fire;
 use crate::prelude::{trace, FireballError};
 
 /// 모든 타입에 대한 파서를 저장하는 Enum
@@ -36,10 +31,3 @@ impl Fireball {
         }
     }
 }
-
-/// 여러 아키텍처 별 구현이 담겨있는 모듈
-pub mod arch;
-
-/// 테스트 모듈
-#[cfg(test)]
-mod tests;

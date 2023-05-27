@@ -1,6 +1,7 @@
+//! 어셈블리 파싱 모듈
+
 use super::PE;
 use crate::{core::Address, prelude::trace};
-
 use capstone::Instructions;
 
 impl PE {

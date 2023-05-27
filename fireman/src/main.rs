@@ -1,6 +1,5 @@
-use fireball::Fireball;
-
 use clap::Parser;
+use fireball::Fireball;
 
 /// 디컴파일러 CLI 도구입니다.
 /// 현재 개발중입니다.
