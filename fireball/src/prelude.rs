@@ -7,8 +7,8 @@ pub(crate) use crate::utils::error::FireballError;
 #[allow(unused_imports)]
 pub(crate) use log::{debug, error, info, trace, warn};
 
-pub(crate) type BitBox = bitvec::prelude::BitBox<u16>;
-pub(crate) type BitSlice = bitvec::prelude::BitSlice<u16>;
+pub(crate) type BitBox = bitvec::prelude::BitBox<usize>;
+pub(crate) type BitSlice = bitvec::prelude::BitSlice<usize>;
 
 #[cfg(test)]
 mod tests {
