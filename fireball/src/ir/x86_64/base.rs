@@ -13,29 +13,28 @@ impl X64 for Ir {
         }
     }
 
-    fn eax(&self) -> &BitSlice {
-        // TODO X64컴퓨터의 eax레지스터는 ~부터 ~까지의 공간을 차지한다 로 구현해야 한다.
-        &self.register[0..16]
+    fn rax(&self) -> &BitSlice {
+        &self.register[0..64]
     }
 
-    fn rax(&self) -> &BitSlice {
-        todo!()
+    fn eax(&self) -> &BitSlice {
+        &self.register[0..32]
     }
 
     fn ax(&self) -> &BitSlice {
-        todo!()
+        &self.register[0..16]
     }
 
     fn al(&self) -> &BitSlice {
-        todo!()
+        &self.register[0..8]
     }
 
     fn ah(&self) -> &BitSlice {
-        todo!()
+        &self.register[8..16]
     }
 
     fn rbx(&self) -> &BitSlice {
-        todo!()
+        &self.register[64..128]
     }
 
     fn ebx(&self) -> &BitSlice {
@@ -55,7 +54,7 @@ impl X64 for Ir {
     }
 
     fn rcx(&self) -> &BitSlice {
-        todo!()
+        &self.register[128..192]
     }
 
     fn ecx(&self) -> &BitSlice {
@@ -75,7 +74,7 @@ impl X64 for Ir {
     }
 
     fn rdx(&self) -> &BitSlice {
-        todo!()
+        &self.register[192..256]
     }
 
     fn edx(&self) -> &BitSlice {
@@ -95,7 +94,7 @@ impl X64 for Ir {
     }
 
     fn rsp(&self) -> &BitSlice {
-        todo!()
+        &self.register[256..320]
     }
 
     fn esp(&self) -> &BitSlice {
@@ -111,7 +110,7 @@ impl X64 for Ir {
     }
 
     fn rbp(&self) -> &BitSlice {
-        todo!()
+        &self.register[320..384]
     }
 
     fn ebp(&self) -> &BitSlice {
@@ -127,7 +126,7 @@ impl X64 for Ir {
     }
 
     fn rsi(&self) -> &BitSlice {
-        todo!()
+        &self.register[384..448]
     }
 
     fn esi(&self) -> &BitSlice {
@@ -143,7 +142,7 @@ impl X64 for Ir {
     }
 
     fn rdi(&self) -> &BitSlice {
-        todo!()
+        &self.register[448..512]
     }
 
     fn edi(&self) -> &BitSlice {
@@ -159,7 +158,7 @@ impl X64 for Ir {
     }
 
     fn r8(&self) -> &BitSlice {
-        todo!()
+        &self.register[512..576]
     }
 
     fn r8d(&self) -> &BitSlice {
@@ -175,7 +174,7 @@ impl X64 for Ir {
     }
 
     fn r9(&self) -> &BitSlice {
-        todo!()
+        &self.register[576..640]
     }
 
     fn r9d(&self) -> &BitSlice {
@@ -191,7 +190,7 @@ impl X64 for Ir {
     }
 
     fn r10(&self) -> &BitSlice {
-        todo!()
+        &self.register[640..704]
     }
 
     fn r10d(&self) -> &BitSlice {
@@ -207,7 +206,7 @@ impl X64 for Ir {
     }
 
     fn r11(&self) -> &BitSlice {
-        todo!()
+        &self.register[704..768]
     }
 
     fn r11d(&self) -> &BitSlice {
@@ -223,7 +222,7 @@ impl X64 for Ir {
     }
 
     fn r12(&self) -> &BitSlice {
-        todo!()
+        &self.register[768..832]
     }
 
     fn r12d(&self) -> &BitSlice {
@@ -239,7 +238,7 @@ impl X64 for Ir {
     }
 
     fn r13(&self) -> &BitSlice {
-        todo!()
+        &self.register[832..896]
     }
 
     fn r13d(&self) -> &BitSlice {
@@ -255,7 +254,7 @@ impl X64 for Ir {
     }
 
     fn r14(&self) -> &BitSlice {
-        todo!()
+        &self.register[896..960]
     }
 
     fn r14d(&self) -> &BitSlice {
@@ -271,7 +270,7 @@ impl X64 for Ir {
     }
 
     fn r15(&self) -> &BitSlice {
-        todo!()
+        &self.register[960..1024]
     }
 
     fn r15d(&self) -> &BitSlice {
@@ -287,31 +286,33 @@ impl X64 for Ir {
     }
 
     fn cs(&self) -> &BitSlice {
-        todo!()
+        &self.register[1024..1040]
     }
 
     fn ds(&self) -> &BitSlice {
-        todo!()
+        &self.register[1040..1056]
     }
 
     fn es(&self) -> &BitSlice {
-        todo!()
+        &self.register[1056..1072]
     }
 
     fn fs(&self) -> &BitSlice {
-        todo!()
+        &self.register[1072..1088]
     }
 
     fn gs(&self) -> &BitSlice {
-        todo!()
+        &self.register[1088..1104]
     }
 
     fn ss(&self) -> &BitSlice {
-        todo!()
+        &self.register[1104..1120]
     }
 
+    // 최적화를 위해 1252까지 스킵
+
     fn rip(&self) -> &BitSlice {
-        todo!()
+        &self.register[1152..1216]
     }
 
     fn eip(&self) -> &BitSlice {
@@ -323,7 +324,7 @@ impl X64 for Ir {
     }
 
     fn rflags(&self) -> &BitSlice {
-        todo!()
+        &self.register[1216..1280]
     }
 
     fn eflags(&self) -> &BitSlice {
@@ -403,19 +404,21 @@ impl X64 for Ir {
     }
 
     fn less(&self) -> &BitSlice {
-        todo!()
+        &self.register[1280..1281]
     }
 
     fn less_or_equal(&self) -> &BitSlice {
-        todo!()
+        &self.register[1281..1282]
     }
 
     fn below_or_equal(&self) -> &BitSlice {
-        todo!()
+        &self.register[1282..1283]
     }
 
+    // 최적화를 위해 1344까지 스킵
+
     fn fpu_status_word(&self) -> &BitSlice {
-        todo!()
+        &self.register[1344..1360]
     }
 
     fn fpu_ie(&self) -> &BitSlice {
@@ -474,68 +477,70 @@ impl X64 for Ir {
         todo!()
     }
 
+    // 최적화를 위해 1408까지 스킵
+
     fn st0(&self) -> &BitSlice {
-        todo!()
+        &self.register[1408..1488]
     }
 
     fn st1(&self) -> &BitSlice {
-        todo!()
+        &self.register[1488..1568]
     }
 
     fn st2(&self) -> &BitSlice {
-        todo!()
+        &self.register[1568..1648]
     }
 
     fn st3(&self) -> &BitSlice {
-        todo!()
+        &self.register[1648..1728]
     }
 
     fn st4(&self) -> &BitSlice {
-        todo!()
+        &self.register[1728..1808]
     }
 
     fn st5(&self) -> &BitSlice {
-        todo!()
+        &self.register[1808..1888]
     }
 
     fn st6(&self) -> &BitSlice {
-        todo!()
+        &self.register[1888..1968]
     }
 
     fn st7(&self) -> &BitSlice {
-        todo!()
+        &self.register[1968..2048]
     }
 
     fn mm0(&self) -> &BitSlice {
-        todo!()
+        &self.register[2048..2112]
     }
 
     fn mm1(&self) -> &BitSlice {
-        todo!()
+        &self.register[2112..2176]
     }
 
     fn mm2(&self) -> &BitSlice {
-        todo!()
+        &self.register[2176..2240]
     }
 
     fn mm3(&self) -> &BitSlice {
-        todo!()
+        &self.register[2240..2304]
     }
 
     fn mm4(&self) -> &BitSlice {
-        todo!()
+        &self.register[2304..2368]
     }
 
     fn mm5(&self) -> &BitSlice {
-        todo!()
+        &self.register[2368..2432]
     }
 
     fn mm6(&self) -> &BitSlice {
-        todo!()
+        &self.register[2432..2496]
     }
 
     fn mm7(&self) -> &BitSlice {
-        todo!()
+        &self.register[2496..2560]
     }
 
     fn xmm0(&self) -> &BitSlice {
