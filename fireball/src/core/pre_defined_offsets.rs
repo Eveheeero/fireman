@@ -1,6 +1,7 @@
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+//! 프로그램에 대한 "PreDefinedOffset"를 모아두는 구조체를 정의하는 모듈
 
 use super::PreDefinedOffset;
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 /// 파일 내부에 미리 지정되어있는 정보를 관리하는 구조체
 pub struct PreDefinedOffsets {

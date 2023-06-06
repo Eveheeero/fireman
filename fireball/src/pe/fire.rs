@@ -1,10 +1,16 @@
-use std::sync::Arc;
+//! 코어 트레이트에 대한 구현이 담겨있는 모듈
+
+mod decom_all;
+mod decom_from_entry;
+mod decom_from_file_offset;
+mod decom_from_virtual_address;
 
 use super::PE;
 use crate::{
     core::{Address, Block, Fire, InstructionHistory, Sections},
     prelude::{BlockParsingError, DecompileError, IoError},
 };
+use std::sync::Arc;
 
 impl Fire for PE {
     fn from_path(path: &str) -> Result<PE, IoError> {
@@ -43,18 +49,4 @@ impl Fire for PE {
     fn get_sections(&self) -> Arc<Sections> {
         self.sections.clone()
     }
-
-    fn parse_block(
-        &self,
-        address: Address,
-        history: &mut InstructionHistory,
-    ) -> Result<Arc<Block>, BlockParsingError> {
-        self._parse_block(address, history)
-    }
 }
-
-mod decom_all;
-mod decom_from_entry;
-mod decom_from_file_offset;
-mod decom_from_virtual_address;
-mod parse_block;
