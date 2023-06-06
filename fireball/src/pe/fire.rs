@@ -4,7 +4,6 @@ mod decom_all;
 mod decom_from_entry;
 mod decom_from_file_offset;
 mod decom_from_virtual_address;
-mod parse_block;
 
 use super::PE;
 use crate::{
@@ -49,13 +48,5 @@ impl Fire for PE {
 
     fn get_sections(&self) -> Arc<Sections> {
         self.sections.clone()
-    }
-
-    fn parse_block(
-        &self,
-        address: Address,
-        history: &mut InstructionHistory,
-    ) -> Result<Arc<Block>, BlockParsingError> {
-        self._parse_block(address, history)
     }
 }
