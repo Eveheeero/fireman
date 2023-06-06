@@ -6,8 +6,7 @@ use crate::{
 impl X64 for Ir {
     fn new() -> Self {
         let mut register = bitvec::prelude::BitVec::new();
-        // TODO X64컴퓨터에 맞는 모든 레지스터 사이즈를 구해 넣어야 한다.
-        register.resize(100, false);
+        register.resize(5696, false);
         Self {
             register: register.into_boxed_bitslice(),
         }
@@ -544,210 +543,210 @@ impl X64 for Ir {
     }
 
     fn xmm0(&self) -> &BitSlice {
-        todo!()
+        &self.register[2560..2688]
     }
 
     fn xmm1(&self) -> &BitSlice {
-        todo!()
+        &self.register[2688..2816]
     }
 
     fn xmm2(&self) -> &BitSlice {
-        todo!()
+        &self.register[2816..2944]
     }
 
     fn xmm3(&self) -> &BitSlice {
-        todo!()
+        &self.register[2944..3072]
     }
 
     fn xmm4(&self) -> &BitSlice {
-        todo!()
+        &self.register[3072..3200]
     }
 
     fn xmm5(&self) -> &BitSlice {
-        todo!()
+        &self.register[3200..3328]
     }
 
     fn xmm6(&self) -> &BitSlice {
-        todo!()
+        &self.register[3328..3456]
     }
 
     fn xmm7(&self) -> &BitSlice {
-        todo!()
+        &self.register[3456..3584]
     }
 
     fn xmm8(&self) -> &BitSlice {
-        todo!()
+        &self.register[3584..3712]
     }
 
     fn xmm9(&self) -> &BitSlice {
-        todo!()
+        &self.register[3712..3840]
     }
 
     fn xmm10(&self) -> &BitSlice {
-        todo!()
+        &self.register[3840..3968]
     }
 
     fn xmm11(&self) -> &BitSlice {
-        todo!()
+        &self.register[3968..4096]
     }
 
     fn xmm12(&self) -> &BitSlice {
-        todo!()
+        &self.register[4096..4224]
     }
 
     fn xmm13(&self) -> &BitSlice {
-        todo!()
+        &self.register[4224..4352]
     }
 
     fn xmm14(&self) -> &BitSlice {
-        todo!()
+        &self.register[4352..4480]
     }
 
     fn xmm15(&self) -> &BitSlice {
-        todo!()
+        &self.register[4480..4608]
     }
 
     fn cr0(&self) -> &BitSlice {
-        todo!()
+        &self.register[4608..4640]
     }
 
     fn cr1(&self) -> &BitSlice {
-        todo!()
+        &self.register[4640..4672]
     }
 
     fn cr2(&self) -> &BitSlice {
-        todo!()
+        &self.register[4672..4704]
     }
 
     fn cr3(&self) -> &BitSlice {
-        todo!()
+        &self.register[4704..4736]
     }
 
     fn cr4(&self) -> &BitSlice {
-        todo!()
+        &self.register[4736..4768]
     }
 
     fn cr5(&self) -> &BitSlice {
-        todo!()
+        &self.register[4768..4800]
     }
 
     fn cr6(&self) -> &BitSlice {
-        todo!()
+        &self.register[4800..4832]
     }
 
     fn cr7(&self) -> &BitSlice {
-        todo!()
+        &self.register[4832..4864]
     }
 
     fn cr8(&self) -> &BitSlice {
-        todo!()
+        &self.register[4864..4896]
     }
 
     fn cr9(&self) -> &BitSlice {
-        todo!()
+        &self.register[4896..4928]
     }
 
     fn cr10(&self) -> &BitSlice {
-        todo!()
+        &self.register[4928..4960]
     }
 
     fn cr11(&self) -> &BitSlice {
-        todo!()
+        &self.register[4960..4992]
     }
 
     fn cr12(&self) -> &BitSlice {
-        todo!()
+        &self.register[4992..5024]
     }
 
     fn cr13(&self) -> &BitSlice {
-        todo!()
+        &self.register[5024..5056]
     }
 
     fn cr14(&self) -> &BitSlice {
-        todo!()
+        &self.register[5056..5088]
     }
 
     fn cr15(&self) -> &BitSlice {
-        todo!()
+        &self.register[5088..5120]
     }
 
     fn dr0(&self) -> &BitSlice {
-        todo!()
+        &self.register[5120..5152]
     }
 
     fn dr1(&self) -> &BitSlice {
-        todo!()
+        &self.register[5152..5184]
     }
 
     fn dr2(&self) -> &BitSlice {
-        todo!()
+        &self.register[5184..5216]
     }
 
     fn dr3(&self) -> &BitSlice {
-        todo!()
+        &self.register[5216..5248]
     }
 
     fn dr4(&self) -> &BitSlice {
-        todo!()
+        &self.register[5248..5280]
     }
 
     fn dr5(&self) -> &BitSlice {
-        todo!()
+        &self.register[5280..5312]
     }
 
     fn dr6(&self) -> &BitSlice {
-        todo!()
+        &self.register[5312..5344]
     }
 
     fn dr7(&self) -> &BitSlice {
-        todo!()
+        &self.register[5344..5376]
     }
 
     fn dr8(&self) -> &BitSlice {
-        todo!()
+        &self.register[5376..5408]
     }
 
     fn dr9(&self) -> &BitSlice {
-        todo!()
+        &self.register[5408..5440]
     }
 
     fn dr10(&self) -> &BitSlice {
-        todo!()
+        &self.register[5440..5472]
     }
 
     fn dr11(&self) -> &BitSlice {
-        todo!()
+        &self.register[5472..5504]
     }
 
     fn dr12(&self) -> &BitSlice {
-        todo!()
+        &self.register[5504..5536]
     }
 
     fn dr13(&self) -> &BitSlice {
-        todo!()
+        &self.register[5536..5568]
     }
 
     fn dr14(&self) -> &BitSlice {
-        todo!()
+        &self.register[5568..5600]
     }
 
     fn dr15(&self) -> &BitSlice {
-        todo!()
+        &self.register[5600..5632]
     }
 
     fn tmp8(&self) -> &BitSlice {
-        todo!()
+        &self.register[5632..5640]
     }
 
     fn tmp16(&self) -> &BitSlice {
-        todo!()
+        &self.register[5632..5648]
     }
 
     fn tmp32(&self) -> &BitSlice {
-        todo!()
+        &self.register[5632..5664]
     }
 
     fn tmp64(&self) -> &BitSlice {
-        todo!()
+        &self.register[5632..5696]
     }
 }
