@@ -7,7 +7,7 @@ use crate::{
 };
 
 /// x64_to_mut!(rax);가 들어올 경우 다음을 반환함
-/// ```rust
+/// ```ignore
 /// fn rax(&mut self) -> &mut BitSlice {
 ///     Self::const_bitslice_to_mut(X64::rax(self))
 /// }
