@@ -28,6 +28,10 @@ jobs:
         runs-on: ${{ matrix.os }}
         steps:
             - uses: actions/checkout@v3
+            - uses: actions/cache@v3
+              with:
+                  path: target
+                  key: ${{ matrix.os }}-fireman
             - name: Build Debug
               run: cargo build --verbose
             - name: Build Release
@@ -53,6 +57,10 @@ jobs:
         runs-on: ${{ matrix.os }}
         steps:
             - uses: actions/checkout@v3
+            - uses: actions/cache@v3
+              with:
+                  path: target
+                  key: ${{ matrix.os }}-fireman
             - name: Test Debug
               run: cargo test --verbose
             - name: Test Release
