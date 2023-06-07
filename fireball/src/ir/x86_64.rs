@@ -2,8 +2,10 @@
 
 mod base;
 mod r#mut;
+mod range;
 
 use crate::prelude::BitSlice;
+use std::ops::Range;
 
 macro_rules! generate_register {
     ($name:ident) => {
@@ -14,6 +16,12 @@ macro_rules! generate_register {
 macro_rules! generate_mutable_register {
     ($name:ident) => {
         fn $name(&mut self) -> &mut BitSlice;
+    };
+}
+
+macro_rules! generate_range {
+    ($name:ident) => {
+        fn $name() -> Range<usize>;
     };
 }
 
@@ -234,8 +242,6 @@ pub trait X64 {
 
 /// X64(32비트 포함) 수정할 수 있는 레지스터를 가져오는 인터페이스입니다.
 pub trait X64Mut {
-    fn const_bitslice_to_mut(data: &BitSlice) -> &mut BitSlice;
-
     generate_mutable_register!(rax);
     generate_mutable_register!(eax);
     generate_mutable_register!(ax);
@@ -445,4 +451,216 @@ pub trait X64Mut {
     generate_mutable_register!(tmp16);
     generate_mutable_register!(tmp32);
     generate_mutable_register!(tmp64);
+}
+
+pub(crate) trait X64Range {
+    generate_range!(rax);
+    generate_range!(eax);
+    generate_range!(ax);
+    generate_range!(al);
+    generate_range!(ah);
+
+    generate_range!(rbx);
+    generate_range!(ebx);
+    generate_range!(bx);
+    generate_range!(bl);
+    generate_range!(bh);
+
+    generate_range!(rcx);
+    generate_range!(ecx);
+    generate_range!(cx);
+    generate_range!(cl);
+    generate_range!(ch);
+
+    generate_range!(rdx);
+    generate_range!(edx);
+    generate_range!(dx);
+    generate_range!(dl);
+    generate_range!(dh);
+
+    generate_range!(rsp);
+    generate_range!(esp);
+    generate_range!(sp);
+    generate_range!(spl);
+
+    generate_range!(rbp);
+    generate_range!(ebp);
+    generate_range!(bp);
+    generate_range!(bpl);
+
+    generate_range!(rsi);
+    generate_range!(esi);
+    generate_range!(si);
+    generate_range!(sil);
+
+    generate_range!(rdi);
+    generate_range!(edi);
+    generate_range!(di);
+    generate_range!(dil);
+
+    generate_range!(r8);
+    generate_range!(r8d);
+    generate_range!(r8w);
+    generate_range!(r8b);
+
+    generate_range!(r9);
+    generate_range!(r9d);
+    generate_range!(r9w);
+    generate_range!(r9b);
+
+    generate_range!(r10);
+    generate_range!(r10d);
+    generate_range!(r10w);
+    generate_range!(r10b);
+
+    generate_range!(r11);
+    generate_range!(r11d);
+    generate_range!(r11w);
+    generate_range!(r11b);
+
+    generate_range!(r12);
+    generate_range!(r12d);
+    generate_range!(r12w);
+    generate_range!(r12b);
+
+    generate_range!(r13);
+    generate_range!(r13d);
+    generate_range!(r13w);
+    generate_range!(r13b);
+
+    generate_range!(r14);
+    generate_range!(r14d);
+    generate_range!(r14w);
+    generate_range!(r14b);
+
+    generate_range!(r15);
+    generate_range!(r15d);
+    generate_range!(r15w);
+    generate_range!(r15b);
+
+    generate_range!(cs);
+    generate_range!(ds);
+    generate_range!(es);
+    generate_range!(fs);
+    generate_range!(gs);
+    generate_range!(ss);
+
+    generate_range!(rip);
+    generate_range!(eip);
+    generate_range!(ip);
+
+    generate_range!(rflags);
+    generate_range!(eflags);
+    generate_range!(flags);
+    generate_range!(cf);
+    generate_range!(pf);
+    generate_range!(af);
+    generate_range!(zf);
+    generate_range!(sf);
+    generate_range!(tf);
+    generate_range!(r#if);
+    generate_range!(df);
+    generate_range!(of);
+    generate_range!(iopl);
+    generate_range!(nt);
+    generate_range!(rf);
+    generate_range!(vm);
+    generate_range!(ac);
+    generate_range!(vif);
+    generate_range!(vip);
+    generate_range!(id);
+
+    generate_range!(less);
+    generate_range!(less_or_equal);
+    generate_range!(below_or_equal);
+
+    generate_range!(fpu_status_word);
+    generate_range!(fpu_ie);
+    generate_range!(fpu_de);
+    generate_range!(fpu_ze);
+    generate_range!(fpu_oe);
+    generate_range!(fpu_ue);
+    generate_range!(fpu_pe);
+    generate_range!(fpu_sf);
+    generate_range!(fpu_es);
+    generate_range!(fpu_c0);
+    generate_range!(fpu_c1);
+    generate_range!(fpu_c2);
+    generate_range!(fpu_top);
+    generate_range!(fpu_c3);
+    generate_range!(fpu_b);
+
+    generate_range!(st0);
+    generate_range!(st1);
+    generate_range!(st2);
+    generate_range!(st3);
+    generate_range!(st4);
+    generate_range!(st5);
+    generate_range!(st6);
+    generate_range!(st7);
+
+    generate_range!(mm0);
+    generate_range!(mm1);
+    generate_range!(mm2);
+    generate_range!(mm3);
+    generate_range!(mm4);
+    generate_range!(mm5);
+    generate_range!(mm6);
+    generate_range!(mm7);
+
+    generate_range!(xmm0);
+    generate_range!(xmm1);
+    generate_range!(xmm2);
+    generate_range!(xmm3);
+    generate_range!(xmm4);
+    generate_range!(xmm5);
+    generate_range!(xmm6);
+    generate_range!(xmm7);
+    generate_range!(xmm8);
+    generate_range!(xmm9);
+    generate_range!(xmm10);
+    generate_range!(xmm11);
+    generate_range!(xmm12);
+    generate_range!(xmm13);
+    generate_range!(xmm14);
+    generate_range!(xmm15);
+
+    generate_range!(cr0);
+    generate_range!(cr1);
+    generate_range!(cr2);
+    generate_range!(cr3);
+    generate_range!(cr4);
+    generate_range!(cr5);
+    generate_range!(cr6);
+    generate_range!(cr7);
+    generate_range!(cr8);
+    generate_range!(cr9);
+    generate_range!(cr10);
+    generate_range!(cr11);
+    generate_range!(cr12);
+    generate_range!(cr13);
+    generate_range!(cr14);
+    generate_range!(cr15);
+
+    generate_range!(dr0);
+    generate_range!(dr1);
+    generate_range!(dr2);
+    generate_range!(dr3);
+    generate_range!(dr4);
+    generate_range!(dr5);
+    generate_range!(dr6);
+    generate_range!(dr7);
+    generate_range!(dr8);
+    generate_range!(dr9);
+    generate_range!(dr10);
+    generate_range!(dr11);
+    generate_range!(dr12);
+    generate_range!(dr13);
+    generate_range!(dr14);
+    generate_range!(dr15);
+
+    generate_range!(tmp8);
+    generate_range!(tmp16);
+    generate_range!(tmp32);
+    generate_range!(tmp64);
 }

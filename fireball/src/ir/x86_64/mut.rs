@@ -1,239 +1,234 @@
 use crate::{
     ir::{
-        x86_64::{X64Mut, X64},
+        x86_64::{X64Mut, X64Range},
         Ir,
     },
     prelude::BitSlice,
 };
 
-/// x64_to_mut!(rax);가 들어올 경우 다음을 반환함
+/// generate_register!(rax);가 들어올 경우 다음을 반환함
 /// ```ignore
 /// fn rax(&mut self) -> &mut BitSlice {
 ///     Self::const_bitslice_to_mut(X64::rax(self))
 /// }
 /// ```
-macro_rules! x64_to_mut {
+macro_rules! generate_register {
     ($reg:ident) => {
         #[inline(always)]
         fn $reg(&mut self) -> &mut BitSlice {
-            Self::const_bitslice_to_mut(X64::$reg(self))
+            unsafe { &mut (*self.register.get())[<Ir as X64Range>::$reg()] }
         }
     };
 }
 
 impl X64Mut for Ir {
-    #[inline(always)]
-    fn const_bitslice_to_mut(data: &BitSlice) -> &mut BitSlice {
-        unsafe { &mut *(data as *const BitSlice as *mut BitSlice) }
-    }
+    generate_register!(rax);
+    generate_register!(eax);
+    generate_register!(ax);
+    generate_register!(al);
+    generate_register!(ah);
 
-    x64_to_mut!(rax);
-    x64_to_mut!(eax);
-    x64_to_mut!(ax);
-    x64_to_mut!(al);
-    x64_to_mut!(ah);
+    generate_register!(rbx);
+    generate_register!(ebx);
+    generate_register!(bx);
+    generate_register!(bl);
+    generate_register!(bh);
 
-    x64_to_mut!(rbx);
-    x64_to_mut!(ebx);
-    x64_to_mut!(bx);
-    x64_to_mut!(bl);
-    x64_to_mut!(bh);
+    generate_register!(rcx);
+    generate_register!(ecx);
+    generate_register!(cx);
+    generate_register!(cl);
+    generate_register!(ch);
 
-    x64_to_mut!(rcx);
-    x64_to_mut!(ecx);
-    x64_to_mut!(cx);
-    x64_to_mut!(cl);
-    x64_to_mut!(ch);
+    generate_register!(rdx);
+    generate_register!(edx);
+    generate_register!(dx);
+    generate_register!(dl);
+    generate_register!(dh);
 
-    x64_to_mut!(rdx);
-    x64_to_mut!(edx);
-    x64_to_mut!(dx);
-    x64_to_mut!(dl);
-    x64_to_mut!(dh);
+    generate_register!(rsp);
+    generate_register!(esp);
+    generate_register!(sp);
+    generate_register!(spl);
 
-    x64_to_mut!(rsp);
-    x64_to_mut!(esp);
-    x64_to_mut!(sp);
-    x64_to_mut!(spl);
+    generate_register!(rbp);
+    generate_register!(ebp);
+    generate_register!(bp);
+    generate_register!(bpl);
 
-    x64_to_mut!(rbp);
-    x64_to_mut!(ebp);
-    x64_to_mut!(bp);
-    x64_to_mut!(bpl);
+    generate_register!(rsi);
+    generate_register!(esi);
+    generate_register!(si);
+    generate_register!(sil);
 
-    x64_to_mut!(rsi);
-    x64_to_mut!(esi);
-    x64_to_mut!(si);
-    x64_to_mut!(sil);
+    generate_register!(rdi);
+    generate_register!(edi);
+    generate_register!(di);
+    generate_register!(dil);
 
-    x64_to_mut!(rdi);
-    x64_to_mut!(edi);
-    x64_to_mut!(di);
-    x64_to_mut!(dil);
+    generate_register!(r8);
+    generate_register!(r8d);
+    generate_register!(r8w);
+    generate_register!(r8b);
 
-    x64_to_mut!(r8);
-    x64_to_mut!(r8d);
-    x64_to_mut!(r8w);
-    x64_to_mut!(r8b);
+    generate_register!(r9);
+    generate_register!(r9d);
+    generate_register!(r9w);
+    generate_register!(r9b);
 
-    x64_to_mut!(r9);
-    x64_to_mut!(r9d);
-    x64_to_mut!(r9w);
-    x64_to_mut!(r9b);
+    generate_register!(r10);
+    generate_register!(r10d);
+    generate_register!(r10w);
+    generate_register!(r10b);
 
-    x64_to_mut!(r10);
-    x64_to_mut!(r10d);
-    x64_to_mut!(r10w);
-    x64_to_mut!(r10b);
+    generate_register!(r11);
+    generate_register!(r11d);
+    generate_register!(r11w);
+    generate_register!(r11b);
 
-    x64_to_mut!(r11);
-    x64_to_mut!(r11d);
-    x64_to_mut!(r11w);
-    x64_to_mut!(r11b);
+    generate_register!(r12);
+    generate_register!(r12d);
+    generate_register!(r12w);
+    generate_register!(r12b);
 
-    x64_to_mut!(r12);
-    x64_to_mut!(r12d);
-    x64_to_mut!(r12w);
-    x64_to_mut!(r12b);
+    generate_register!(r13);
+    generate_register!(r13d);
+    generate_register!(r13w);
+    generate_register!(r13b);
 
-    x64_to_mut!(r13);
-    x64_to_mut!(r13d);
-    x64_to_mut!(r13w);
-    x64_to_mut!(r13b);
+    generate_register!(r14);
+    generate_register!(r14d);
+    generate_register!(r14w);
+    generate_register!(r14b);
 
-    x64_to_mut!(r14);
-    x64_to_mut!(r14d);
-    x64_to_mut!(r14w);
-    x64_to_mut!(r14b);
+    generate_register!(r15);
+    generate_register!(r15d);
+    generate_register!(r15w);
+    generate_register!(r15b);
 
-    x64_to_mut!(r15);
-    x64_to_mut!(r15d);
-    x64_to_mut!(r15w);
-    x64_to_mut!(r15b);
+    generate_register!(cs);
+    generate_register!(ds);
+    generate_register!(es);
+    generate_register!(fs);
+    generate_register!(gs);
+    generate_register!(ss);
 
-    x64_to_mut!(cs);
-    x64_to_mut!(ds);
-    x64_to_mut!(es);
-    x64_to_mut!(fs);
-    x64_to_mut!(gs);
-    x64_to_mut!(ss);
+    generate_register!(rip);
+    generate_register!(eip);
+    generate_register!(ip);
 
-    x64_to_mut!(rip);
-    x64_to_mut!(eip);
-    x64_to_mut!(ip);
+    generate_register!(rflags);
+    generate_register!(eflags);
+    generate_register!(flags);
+    generate_register!(cf);
+    generate_register!(pf);
+    generate_register!(af);
+    generate_register!(zf);
+    generate_register!(sf);
+    generate_register!(tf);
+    generate_register!(r#if);
+    generate_register!(df);
+    generate_register!(of);
+    generate_register!(iopl);
+    generate_register!(nt);
+    generate_register!(rf);
+    generate_register!(vm);
+    generate_register!(ac);
+    generate_register!(vif);
+    generate_register!(vip);
+    generate_register!(id);
 
-    x64_to_mut!(rflags);
-    x64_to_mut!(eflags);
-    x64_to_mut!(flags);
-    x64_to_mut!(cf);
-    x64_to_mut!(pf);
-    x64_to_mut!(af);
-    x64_to_mut!(zf);
-    x64_to_mut!(sf);
-    x64_to_mut!(tf);
-    x64_to_mut!(r#if);
-    x64_to_mut!(df);
-    x64_to_mut!(of);
-    x64_to_mut!(iopl);
-    x64_to_mut!(nt);
-    x64_to_mut!(rf);
-    x64_to_mut!(vm);
-    x64_to_mut!(ac);
-    x64_to_mut!(vif);
-    x64_to_mut!(vip);
-    x64_to_mut!(id);
+    generate_register!(less);
+    generate_register!(less_or_equal);
+    generate_register!(below_or_equal);
 
-    x64_to_mut!(less);
-    x64_to_mut!(less_or_equal);
-    x64_to_mut!(below_or_equal);
+    generate_register!(fpu_status_word);
+    generate_register!(fpu_ie);
+    generate_register!(fpu_de);
+    generate_register!(fpu_ze);
+    generate_register!(fpu_oe);
+    generate_register!(fpu_ue);
+    generate_register!(fpu_pe);
+    generate_register!(fpu_sf);
+    generate_register!(fpu_es);
+    generate_register!(fpu_c0);
+    generate_register!(fpu_c1);
+    generate_register!(fpu_c2);
+    generate_register!(fpu_top);
+    generate_register!(fpu_c3);
+    generate_register!(fpu_b);
 
-    x64_to_mut!(fpu_status_word);
-    x64_to_mut!(fpu_ie);
-    x64_to_mut!(fpu_de);
-    x64_to_mut!(fpu_ze);
-    x64_to_mut!(fpu_oe);
-    x64_to_mut!(fpu_ue);
-    x64_to_mut!(fpu_pe);
-    x64_to_mut!(fpu_sf);
-    x64_to_mut!(fpu_es);
-    x64_to_mut!(fpu_c0);
-    x64_to_mut!(fpu_c1);
-    x64_to_mut!(fpu_c2);
-    x64_to_mut!(fpu_top);
-    x64_to_mut!(fpu_c3);
-    x64_to_mut!(fpu_b);
+    generate_register!(st0);
+    generate_register!(st1);
+    generate_register!(st2);
+    generate_register!(st3);
+    generate_register!(st4);
+    generate_register!(st5);
+    generate_register!(st6);
+    generate_register!(st7);
 
-    x64_to_mut!(st0);
-    x64_to_mut!(st1);
-    x64_to_mut!(st2);
-    x64_to_mut!(st3);
-    x64_to_mut!(st4);
-    x64_to_mut!(st5);
-    x64_to_mut!(st6);
-    x64_to_mut!(st7);
+    generate_register!(mm0);
+    generate_register!(mm1);
+    generate_register!(mm2);
+    generate_register!(mm3);
+    generate_register!(mm4);
+    generate_register!(mm5);
+    generate_register!(mm6);
+    generate_register!(mm7);
 
-    x64_to_mut!(mm0);
-    x64_to_mut!(mm1);
-    x64_to_mut!(mm2);
-    x64_to_mut!(mm3);
-    x64_to_mut!(mm4);
-    x64_to_mut!(mm5);
-    x64_to_mut!(mm6);
-    x64_to_mut!(mm7);
+    generate_register!(xmm0);
+    generate_register!(xmm1);
+    generate_register!(xmm2);
+    generate_register!(xmm3);
+    generate_register!(xmm4);
+    generate_register!(xmm5);
+    generate_register!(xmm6);
+    generate_register!(xmm7);
+    generate_register!(xmm8);
+    generate_register!(xmm9);
+    generate_register!(xmm10);
+    generate_register!(xmm11);
+    generate_register!(xmm12);
+    generate_register!(xmm13);
+    generate_register!(xmm14);
+    generate_register!(xmm15);
 
-    x64_to_mut!(xmm0);
-    x64_to_mut!(xmm1);
-    x64_to_mut!(xmm2);
-    x64_to_mut!(xmm3);
-    x64_to_mut!(xmm4);
-    x64_to_mut!(xmm5);
-    x64_to_mut!(xmm6);
-    x64_to_mut!(xmm7);
-    x64_to_mut!(xmm8);
-    x64_to_mut!(xmm9);
-    x64_to_mut!(xmm10);
-    x64_to_mut!(xmm11);
-    x64_to_mut!(xmm12);
-    x64_to_mut!(xmm13);
-    x64_to_mut!(xmm14);
-    x64_to_mut!(xmm15);
+    generate_register!(cr0);
+    generate_register!(cr1);
+    generate_register!(cr2);
+    generate_register!(cr3);
+    generate_register!(cr4);
+    generate_register!(cr5);
+    generate_register!(cr6);
+    generate_register!(cr7);
+    generate_register!(cr8);
+    generate_register!(cr9);
+    generate_register!(cr10);
+    generate_register!(cr11);
+    generate_register!(cr12);
+    generate_register!(cr13);
+    generate_register!(cr14);
+    generate_register!(cr15);
 
-    x64_to_mut!(cr0);
-    x64_to_mut!(cr1);
-    x64_to_mut!(cr2);
-    x64_to_mut!(cr3);
-    x64_to_mut!(cr4);
-    x64_to_mut!(cr5);
-    x64_to_mut!(cr6);
-    x64_to_mut!(cr7);
-    x64_to_mut!(cr8);
-    x64_to_mut!(cr9);
-    x64_to_mut!(cr10);
-    x64_to_mut!(cr11);
-    x64_to_mut!(cr12);
-    x64_to_mut!(cr13);
-    x64_to_mut!(cr14);
-    x64_to_mut!(cr15);
+    generate_register!(dr0);
+    generate_register!(dr1);
+    generate_register!(dr2);
+    generate_register!(dr3);
+    generate_register!(dr4);
+    generate_register!(dr5);
+    generate_register!(dr6);
+    generate_register!(dr7);
+    generate_register!(dr8);
+    generate_register!(dr9);
+    generate_register!(dr10);
+    generate_register!(dr11);
+    generate_register!(dr12);
+    generate_register!(dr13);
+    generate_register!(dr14);
+    generate_register!(dr15);
 
-    x64_to_mut!(dr0);
-    x64_to_mut!(dr1);
-    x64_to_mut!(dr2);
-    x64_to_mut!(dr3);
-    x64_to_mut!(dr4);
-    x64_to_mut!(dr5);
-    x64_to_mut!(dr6);
-    x64_to_mut!(dr7);
-    x64_to_mut!(dr8);
-    x64_to_mut!(dr9);
-    x64_to_mut!(dr10);
-    x64_to_mut!(dr11);
-    x64_to_mut!(dr12);
-    x64_to_mut!(dr13);
-    x64_to_mut!(dr14);
-    x64_to_mut!(dr15);
-
-    x64_to_mut!(tmp8);
-    x64_to_mut!(tmp16);
-    x64_to_mut!(tmp32);
-    x64_to_mut!(tmp64);
+    generate_register!(tmp8);
+    generate_register!(tmp16);
+    generate_register!(tmp32);
+    generate_register!(tmp64);
 }
