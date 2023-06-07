@@ -1,5 +1,9 @@
 //! 복사할 수 있는 인스트럭션을 정의하는 모듈
 
+use self::x86_64::X64Statement;
+
+pub(crate) mod x86_64;
+
 /// 어셈블리 인스트럭션 정보
 ///
 /// Capstone엔진의 Instruction은 Clone을 사용할 수 없어, 복사할 수 있는 Instruction을 만들어 사용한다.
@@ -10,7 +14,7 @@ pub(crate) struct Instruction {
     /// 인스트럭션의 길이
     pub(crate) len: u8,
     /// 인스트럭션의 명령어
-    pub(crate) op: String,
+    pub(crate) op: Statement,
     /// 인스트럭션의 추가 정보
     pub(crate) mnemonic: String,
 }
@@ -20,7 +24,7 @@ impl From<&capstone::Insn<'_>> for Instruction {
         Instruction {
             address: insn.address(),
             len: insn.len() as u8,
-            op: insn.op_str().unwrap().to_string(),
+            op: todo!(),
             mnemonic: insn.mnemonic().unwrap().to_string(),
         }
     }
@@ -31,8 +35,13 @@ impl From<&&capstone::Insn<'_>> for Instruction {
         Instruction {
             address: insn.address(),
             len: insn.len() as u8,
-            op: insn.op_str().unwrap().to_string(),
+            op: todo!(),
             mnemonic: insn.mnemonic().unwrap().to_string(),
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum Statement {
+    X64(X64Statement),
 }

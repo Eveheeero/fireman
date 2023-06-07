@@ -6,7 +6,7 @@ pub mod x86_64;
 
 use self::statements::IRStatement;
 use crate::{core::Address, prelude::BitBox};
-use std::cell::UnsafeCell;
+use std::{cell::UnsafeCell, rc::Rc};
 
 /// 컴퓨터가 동작하는 행동을 재현하기 위한 구조체
 ///
@@ -42,5 +42,5 @@ pub struct IrFlow {
     /// IR 변화가 일어난 주소
     pub address: Address,
     /// 실행된 명령
-    pub statements: &'static [IRStatement],
+    pub statements: Rc<[IRStatement]>,
 }
