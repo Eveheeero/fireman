@@ -1,4 +1,5 @@
 # https://docs.github.com/en/actions/using-workflows/about-workflows
+# 라이브러리 별 캐시 활성화를 위해선 cache key 뒤에 -${{ hashFiles('**/Cargo.toml') }} 를 붙여 사용합니다.
 name: Rust
 
 on:
@@ -30,15 +31,91 @@ jobs:
             - uses: actions/checkout@v3
             - uses: actions/cache@v3
               with:
-                  path: target
-                  key: ${{ matrix.os }}-fireman
+                  path: |
+                      target
+                      ~/.cargo
+                  key: ${{ matrix.os }}-fireman-${{ hashFiles('**/Cargo.toml') }}
+            - name: Print Target
+              run: rustup show
             - name: Build Debug
               run: cargo build --verbose
             - name: Build Release
               run: cargo build --release --verbose
 
-    test:
+    build-static-windows:
         needs: build
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/cache@v3
+              with:
+                  path: |
+                      target
+                      ~/.cargo
+                      ~/.rustup
+                  key: windows-static-build-${{ hashFiles('**/Cargo.toml') }}
+            - name: Build Debug
+              run: |
+                  set RUSTFLAGS='-C target-feature=+crt-static'
+                  cargo build --target x86_64-pc-windows-msvc --verbose
+            - name: Build Release
+              run: |
+                  set RUSTFLAGS='-C target-feature=+crt-static'
+                  cargo build --target x86_64-pc-windows-msvc --release --verbose
+
+    build-static-ubuntu:
+        needs: build
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/cache@v3
+              with:
+                  path: |
+                      target
+                      ~/.cargo
+                      ~/.rustup
+                  key: ubuntu-static-build-${{ hashFiles('**/Cargo.toml') }}
+            - name: Setup dependency
+              run: |
+                  sudo apt install -y musl-tools
+                  rustup target add x86_64-unknown-linux-musl
+            - name: Build Debug
+              run: |
+                  RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-unknown-linux-gnu --verbose
+                  cargo build --target x86_64-unknown-linux-musl --verbose
+            - name: Build Release
+              run: |
+                  RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-unknown-linux-gnu --release --verbose
+                  cargo build --target x86_64-unknown-linux-musl --release --verbose
+
+    build-static-macos:
+        needs: build
+        runs-on: macos-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/cache@v3
+              with:
+                  path: |
+                      target
+                      ~/.cargo
+                      ~/.rustup
+                  key: macos-static-build-${{ hashFiles('**/Cargo.toml') }}
+            - name: Setup dependency
+              run: rustup target add aarch64-apple-darwin
+            - name: Build Debug
+              run: |
+                  RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-apple-darwin --verbose
+                  RUSTFLAGS='-C target-feature=+crt-static' cargo build --target aarch64-apple-darwin --verbose
+            - name: Build Release
+              run: |
+                  RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-apple-darwin --release --verbose
+                  RUSTFLAGS='-C target-feature=+crt-static' cargo build --target aarch64-apple-darwin --release --verbose
+
+    test:
+        needs:
+            - build-static-windows
+            - build-static-ubuntu
+            - build-static-macos
         strategy:
             matrix:
                 os:
@@ -59,8 +136,10 @@ jobs:
             - uses: actions/checkout@v3
             - uses: actions/cache@v3
               with:
-                  path: target
-                  key: ${{ matrix.os }}-fireman
+                  path: |
+                      target
+                      ~/.cargo
+                  key: ${{ matrix.os }}-fireman-${{ hashFiles('**/Cargo.toml') }}
             - name: Test Debug
               run: cargo test --verbose
             - name: Test Release
