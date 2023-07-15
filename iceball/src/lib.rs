@@ -31,7 +31,7 @@ pub enum Arguments {
 pub enum X64Statement {
     /// # aaa
     ///
-    /// ASCII adjust AL after addition.
+    /// - aaa - ASCII adjust AL after addition.
     ///
     /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=129)
     ///
@@ -39,19 +39,21 @@ pub enum X64Statement {
     /// source and destination operand for this instruction. The AAA instruction is only useful when it follows an ADD
     /// instruction that adds (binary addition) two unpacked BCD values and stores a byte result in the AL register. The
     /// AAA instruction then adjusts the contents of the AL register to contain the correct 1-digit unpacked BCD result.
+    ///
     /// If the addition produces a decimal carry, the AH register increments by 1, and the CF and AF flags are set. If there
     /// was no decimal carry, the CF and AF flags are cleared and the AH register is unchanged. In either case, bits 4
     /// through 7 of the AL register are set to 0.
+    ///
     /// This instruction executes as described in compatibility mode and legacy mode. It is not valid in 64-bit mode.
     ///
+    /// ## Compatibility
+    ///
+    /// ### aaa
     /// - 64Bit mode: Invalid
     /// - Compat/Leg mode: Valid
     ///
-    /// ## Instruction
-    /// aaa
-    ///
     /// ## Opcode
-    /// 37
+    /// - aaa - 37
     ///
     /// ## Flags
     /// The AF and CF flags are set to 1 if the adjustment results in a decimal carry; otherwise they are set to 0. The OF,
@@ -72,27 +74,97 @@ pub enum X64Statement {
     /// - UD: If the LOCK prefix is used.
     ///
     /// ### 64-Bit Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
+    /// - UD: If in 64-bit mode.
     ///
     /// ## Operation
     /// ```ignore
     /// IF 64-Bit Mode
-    /// THEN
-    /// #UD;
-    /// ELSE
-    /// IF ((AL AND 0FH) > 9) or (AF = 1)
-    /// THEN
-    /// AX := AX + 106H;
-    /// AF := 1;
-    /// CF := 1;
-    /// ELSE
-    /// AF := 0;
-    /// CF := 0;
-    /// FI;
-    /// AL := AL AND 0FH;
+    ///     THEN
+    ///         #UD;
+    ///     ELSE
+    ///     IF ((AL AND 0FH) > 9) or (AF = 1)
+    ///         THEN
+    ///             AX := AX + 106H;
+    ///             AF := 1;
+    ///             CF := 1;
+    ///         ELSE
+    ///             AF := 0;
+    ///             CF := 0;
+    ///     FI;
+    ///     AL := AL AND 0FH;
     /// FI;
     /// ```
     Aaa,
+    /// # aad
+    ///
+    /// - aad - ASCII adjust AX before division.
+    /// - aad imm8 - Adjust AX before division to number base imm8.
+    ///
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=131)
+    ///
+    /// Adjusts two unpacked BCD digits (the least-significant digit in the AL register and the most-significant digit in the
+    /// AH register) so that a division operation performed on the result will yield a correct unpacked BCD value. The AAD
+    /// instruction is only useful when it precedes a DIV instruction that divides (binary division) the adjusted value in the
+    /// AX register by an unpacked BCD value.
+    ///
+    /// The AAD instruction sets the value in the AL register to (AL + (10 * AH)), and then clears the AH register to 00H.
+    /// The value in the AX register is then equal to the binary equivalent of the original unpacked two-digit (base 10)
+    /// number in registers AH and AL.
+    ///
+    /// The generalized version of this instruction allows adjustment of two unpacked digits of any number base (see the
+    /// “Operation” section below), by setting the imm8 byte to the selected number base (for example, 08H for octal, 0AH
+    /// for decimal, or 0CH for base 12 numbers). The AAD mnemonic is interpreted by all assemblers to mean adjust
+    /// ASCII (base 10) values. To adjust values in another number base, the instruction must be hand coded in machine
+    /// code (D5 imm8).
+    ///
+    /// This instruction executes as described in compatibility mode and legacy mode. It is not valid in 64-bit mode.
+    ///
+    /// ## Compatibility
+    ///
+    /// ### aaa
+    /// - 64Bit mode: Invalid
+    /// - Compat/Leg mode: Valid
+    ///
+    /// ## Opcode
+    /// - aad - d5 0a
+    /// - aad imm8 - d5 ib
+    ///
+    /// ## Flags
+    /// The SF, ZF, and PF flags are set according to the resulting binary value in the AL register; the OF, AF, and CF flags
+    /// are undefined.
+    ///
+    /// ## Exceptions
+    ///
+    /// ### Protection Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    ///
+    /// ### Real-Address Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    ///
+    /// ### Virtual-8086 Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    ///
+    /// ### Compatibility Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    ///
+    /// ### 64-Bit Mode Exceptions
+    /// - UD: If in 64-bit mode.
+    ///
+    /// ## Operation
+    /// ```ignore
+    /// IF 64-Bit Mode
+    ///     THEN
+    ///         #UD;
+    ///     ELSE
+    ///         tempAL := AL;
+    ///         tempAH := AH;
+    ///         AL := (tempAL + (tempAH ∗ imm8)) AND FFH;
+    ///         (* imm8 is set to 0AH for the AAD mnemonic.*)
+    ///         AH := 0;
+    /// FI;
+    /// The immediate value (imm8) is taken from the second byte of the instruction.
+    /// ```
+    Aad,
 }
 
 /* origin
