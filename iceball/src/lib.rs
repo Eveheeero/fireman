@@ -165,6 +165,141 @@ pub enum X64Statement {
     /// The immediate value (imm8) is taken from the second byte of the instruction.
     /// ```
     Aad,
+    /// # aam
+    ///
+    /// - aam - ASCII adjust AX after multiply.
+    /// - aam imm8 - Adjust AX after multiply to number base imm8.
+    ///
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=133)
+    ///
+    /// Adjusts the result of the multiplication of two unpacked BCD values to create a pair of unpacked (base 10) BCD 
+    /// values. The AX register is the implied source and destination operand for this instruction. The AAM instruction is 
+    /// only useful when it follows an MUL instruction that multiplies (binary multiplication) two unpacked BCD values and 
+    /// stores a word result in the AX register. The AAM instruction then adjusts the contents of the AX register to contain 
+    /// the correct 2-digit unpacked (base 10) BCD result. 
+    /// 
+    /// The generalized version of this instruction allows adjustment of the contents of the AX to create two unpacked 
+    /// digits of any number base (see the “Operation” section below). Here, the imm8 byte is set to the selected number 
+    /// base (for example, 08H for octal, 0AH for decimal, or 0CH for base 12 numbers). The AAM mnemonic is interpreted 
+    /// by all assemblers to mean adjust to ASCII (base 10) values. To adjust to values in another number base, the 
+    /// instruction must be hand coded in machine code (D4 imm8). 
+    /// 
+    /// This instruction executes as described in compatibility mode and legacy mode. It is not valid in 64-bit mode.
+    ///
+    /// ## Compatibility
+    ///
+    /// ### aam
+    /// - 64Bit mode: Invalid
+    /// - Compat/Leg mode: Valid
+    ///
+    /// ## Opcode
+    /// - aam - d4 0a
+    /// - aam imm8 - d4 ib
+    ///
+    /// ## Flags
+    /// The SF, ZF, and PF flags are set according to the resulting binary value in the AL register. The OF, AF, and CF flags 
+    /// are undefined.
+    ///
+    /// ## Exceptions
+    ///
+    /// ### Protection Mode Exceptions
+    /// - DE: If an immediate value of 0 is used.
+    /// - UD: If the LOCK prefix is used.
+    ///
+    /// ### Real-Address Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    ///
+    /// ### Virtual-8086 Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    ///
+    /// ### Compatibility Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    ///
+    /// ### 64-Bit Mode Exceptions
+    /// - UD: If in 64-bit mode.
+    ///
+    /// ## Operation
+    /// ```ignore
+    /// IF 64-Bit Mode 
+    /// THEN 
+    /// #UD; 
+    /// ELSE 
+    /// tempAL := AL; 
+    /// AH := tempAL / imm8; (* imm8 is set to 0AH for the AAM mnemonic *) 
+    /// AL := tempAL MOD imm8; 
+    /// FI; 
+    /// The immediate value (imm8) is taken from the second byte of the instruction. 
+    /// ```
+    Aam,
+    /// # aas
+    ///
+    /// - aas - ASCII adjust AL after subtraction.
+    ///
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=134)
+    ///
+    /// Adjusts the result of the subtraction of two unpacked BCD values to create a unpacked BCD result. The AL register 
+    /// is the implied source and destination operand for this instruction. The AAS instruction is only useful when it follows 
+    /// a SUB instruction that subtracts (binary subtraction) one unpacked BCD value from another and stores a byte 
+    /// result in the AL register. The AAA instruction then adjusts the contents of the AL register to contain the correct 1- 
+    /// digit unpacked BCD result. 
+    /// 
+    /// If the subtraction produced a decimal carry, the AH register decrements by 1, and the CF and AF flags are set. If no 
+    /// decimal carry occurred, the CF and AF flags are cleared, and the AH register is unchanged. In either case, the AL 
+    /// register is left with its top four bits set to 0. 
+    /// 
+    /// This instruction executes as described in compatibility mode and legacy mode. It is not valid in 64-bit mode. 
+    ///
+    /// ## Compatibility
+    ///
+    /// ### aas
+    /// - 64Bit mode: Invalid
+    /// - Compat/Leg mode: Valid
+    ///
+    /// ## Opcode
+    /// - aas - 3f
+    ///
+    /// ## Flags
+    /// The AF and CF flags are set to 1 if there is a decimal borrow; otherwise, they are cleared to 0. The OF, SF, ZF, and 
+    /// PF flags are undefined.
+    ///
+    /// ## Exceptions
+    ///
+    /// ### Protection Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    ///
+    /// ### Real-Address Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    ///
+    /// ### Virtual-8086 Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    ///
+    /// ### Compatibility Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    ///
+    /// ### 64-Bit Mode Exceptions
+    /// - UD: If in 64-bit mode.
+    ///
+    /// ## Operation
+    /// ```ignore
+    /// IF 64-bit mode 
+    /// THEN 
+    /// #UD; 
+    /// ELSE 
+    /// IF ((AL AND 0FH) > 9) or (AF = 1) 
+    /// THEN 
+    /// AX := AX – 6; 
+    /// AH := AH – 1; 
+    /// AF := 1; 
+    /// CF := 1; 
+    /// AL := AL AND 0FH; 
+    /// ELSE 
+    /// CF := 0; 
+    /// AF := 0; 
+    /// AL := AL AND 0FH; 
+    /// FI; 
+    /// FI;
+    /// ```
+    Aas,
 }
 
 /* origin
