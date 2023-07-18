@@ -121,7 +121,7 @@ pub enum X64Statement {
     ///
     /// ## Compatibility
     ///
-    /// ### aaa
+    /// ### aad, aad imm8
     /// - 64Bit mode: Invalid
     /// - Compat/Leg mode: Valid
     ///
