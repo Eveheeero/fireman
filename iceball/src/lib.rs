@@ -207,12 +207,15 @@ pub enum X64Statement {
     /// - UD: If the LOCK prefix is used.
     ///
     /// ### Real-Address Mode Exceptions
+    /// - DE: If an immediate value of 0 is used.
     /// - UD: If the LOCK prefix is used.
     ///
     /// ### Virtual-8086 Mode Exceptions
+    /// - DE: If an immediate value of 0 is used.
     /// - UD: If the LOCK prefix is used.
     ///
     /// ### Compatibility Mode Exceptions
+    /// - DE: If an immediate value of 0 is used.
     /// - UD: If the LOCK prefix is used.
     ///
     /// ### 64-Bit Mode Exceptions
@@ -235,7 +238,7 @@ pub enum X64Statement {
     ///
     /// - aas - ASCII adjust AL after subtraction.
     ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=134)
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=135)
     ///
     /// Adjusts the result of the subtraction of two unpacked BCD values to create a unpacked BCD result. The AL register 
     /// is the implied source and destination operand for this instruction. The AAS instruction is only useful when it follows 
