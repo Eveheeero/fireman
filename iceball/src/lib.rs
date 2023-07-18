@@ -191,6 +191,10 @@ pub enum X64Statement {
     /// ### aam
     /// - 64Bit mode: Invalid
     /// - Compat/Leg mode: Valid
+    /// 
+    /// ### aam imm8
+    /// - 64Bit mode: Invalid
+    /// - Compat/Leg mode: Valid
     ///
     /// ## Opcode
     /// - aam - d4 0a
@@ -303,6 +307,298 @@ pub enum X64Statement {
     /// FI;
     /// ```
     Aas,
+    /// # adc
+    ///
+    /// - adc - Add With Carry 
+    ///
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=137)
+    ///
+    /// Adds the destination operand (first operand), the source operand (second operand), and the carry (CF) flag and 
+    /// stores the result in the destination operand. The destination operand can be a register or a memory location; the 
+    /// source operand can be an immediate, a register, or a memory location. (However, two memory operands cannot be 
+    /// used in one instruction.) The state of the CF flag represents a carry from a previous addition. When an immediate 
+    /// value is used as an operand, it is sign-extended to the length of the destination operand format.
+    /// 
+    /// The ADC instruction does not distinguish between signed or unsigned operands. Instead, the processor evaluates 
+    /// the result for both data types and sets the OF and CF flags to indicate a carry in the signed or unsigned result, 
+    /// respectively. The SF flag indicates the sign of the signed result. 
+    /// 
+    /// The ADC instruction is usually executed as part of a multibyte or multiword addition in which an ADD instruction is 
+    /// followed by an ADC instruction. 
+    /// 
+    /// This instruction can be used with a LOCK prefix to allow the instruction to be executed atomically. 
+    /// In 64-bit mode, the instruction’s default operation size is 32 bits. Using a REX prefix in the form of REX.R permits 
+    /// access to additional registers (R8-R15). Using a REX prefix in the form of REX.W promotes operation to 64 bits. See 
+    /// the summary chart at the beginning of this section for encoding data and limits. 
+    ///
+    /// ## Compatibility
+    ///
+    /// ### adc al, imm8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc ax, imm16
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc eax, imm32
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc rax, imm32
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### adc r/m8, imm8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc r/m8* , imm8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### adc r/m16, imm16
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc r/m32, imm32
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc r/m64, imm32
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### adc r/m16, imm8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc r/m32, imm8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc r/m64, imm8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### adc r/m8, r8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc r/m8*, r8*
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### adc r/m16, r16
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc r/m32, r32
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc r/m64, r64
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### adc r8, r/m8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc r8*, r/m8*
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### adc r16, r/m16
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc r32, r/m32
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### adc r64, r/m64
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ## Notes
+    /// - In 64-bit mode, r/m8 can not be encoded to access the following byte registers if a REX prefix is used: AH, BH, CH, DH.
+    ///
+    /// ## Opcode
+    /// - adc al, imm8 - 14 ib
+    /// - adc ax, imm16 - 15 iw
+    /// - adc eax, imm32 - 15 id
+    /// - adc rax, imm32 - REX.W + 15 id
+    /// - adc r/m8, imm8 - 80 /2 ib
+    /// - adc r/m8*, imm8 - REX + 80 /2 ib
+    /// - adc r/m16, imm16 - 81 /2 iw
+    /// - adc r/m32, imm32 - 81 /2 id
+    /// - adc r/m64, imm32 - REX.W + 81 /2 id
+    /// - adc r/m16, imm8 - 83 /2 ib
+    /// - adc r/m32, imm8 - 83 /2 ib
+    /// - adc r/m64, imm8 - REX.W + 83 /2 ib
+    /// - adc r/m8, r8 - 10 /r
+    /// - adc r/m8*, r8* - REX + 10 /r
+    /// - adc r/m16, r16 - 11 /r
+    /// - adc r/m32, r32 - 11 /r
+    /// - adc r/m64, r64 - REX.W + 11 /r
+    /// - adc r8, r/m8 - 12 /r
+    /// - adc r8*, r/m8* - REX + 12 /r
+    /// - adc r16, r/m16 - 13 /r
+    /// - adc r32, r/m32 - 13 /r
+    /// - adc r64, r/m64 - REX.W + 13 /r
+    ///
+    /// ## Flags
+    /// The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
+    ///
+    /// ## Exceptions
+    ///
+    /// ### Protection Mode Exceptions
+    /// - GP(0) : If the destination is located in a non-writable segment. 
+    /// If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit. 
+    /// If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
+    /// - SS(0) : If a memory operand effective address is outside the SS segment limit.
+    /// - PF(fault-code) : If a page fault occurs.
+    /// - AC(0) : If alignment checking is enabled and an unaligned memory reference is made while the 
+    /// current privilege level is 3.
+    /// - UD : If the LOCK prefix is used but the destination is not a memory operand.
+    ///
+    /// ### Real-Address Mode Exceptions
+    /// - GP : If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
+    /// - SS : If a memory operand effective address is outside the SS segment limit.
+    /// - UD : If the LOCK prefix is used but the destination is not a memory operand.
+    ///
+    /// ### Virtual-8086 Mode Exceptions
+    /// - GP(0) : If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit. 
+    /// - SS(0) : If a memory operand effective address is outside the SS segment limit.
+    /// - PF(fault-code) : If a page fault occurs.
+    /// - AC(0) : If alignment checking is enabled and an unaligned memory reference is made.
+    /// - UD : If the LOCK prefix is used but the destination is not a memory operand.
+    ///
+    /// ### Compatibility Mode Exceptions
+    /// - GP(0) : If the destination is located in a non-writable segment. 
+    /// If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit. 
+    /// If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
+    /// - SS(0) : If a memory operand effective address is outside the SS segment limit.
+    /// - PF(fault-code) : If a page fault occurs.
+    /// - AC(0) : If alignment checking is enabled and an unaligned memory reference is made while the 
+    /// current privilege level is 3.
+    /// - UD : If the LOCK prefix is used but the destination is not a memory operand.
+    ///
+    /// ### 64-Bit Mode Exceptions
+    /// - SS(0) : If a memory address referencing the SS segment is in a non-canonical form. 
+    /// - GP(0) : If the memory address is in a non-canonical form. 
+    /// - PF(fault-code) : If a page fault occurs.
+    /// - AC(0) : If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
+    /// - UD : If the LOCK prefix is used but the destination is not a memory operand.
+    ///
+    /// ## Intel C/C++ Compiler Intrinsic Equivalent
+    /// - ADC extern unsigned char _addcarry_u8(unsigned char c_in, unsigned char src1, unsigned char src2, unsigned char *sum_out); 
+    /// - ADC extern unsigned char _addcarry_u16(unsigned char c_in, unsigned short src1, unsigned short src2, unsigned short *sum_out); 
+    /// - ADC extern unsigned char _addcarry_u32(unsigned char c_in, unsigned int src1, unsigned char int, unsigned int *sum_out); 
+    /// - ADC extern unsigned char _addcarry_u64(unsigned char c_in, unsigned __int64 src1, unsigned __int64 src2, unsigned __int64 *sum_out);
+    /// 
+    /// ## Operation
+    /// ```ignore
+    /// DEST := DEST + SRC + CF;
+    /// ```
+    Adc,
+    /// # adcx
+    ///
+    /// - adcx - Unsigned Integer Addition of Two Operands With Carry Flag
+    ///
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=140)
+    ///
+    /// Performs an unsigned addition of the destination operand (first operand), the source operand (second operand) 
+    /// and the carry-flag (CF) and stores the result in the destination operand. The destination operand is a general- 
+    /// purpose register, whereas the source operand can be a general-purpose register or memory location. The state of 
+    /// CF can represent a carry from a previous addition. The instruction sets the CF flag with the carry generated by the 
+    /// unsigned addition of the operands. 
+    /// The ADCX instruction is executed in the context of multi-precision addition, where we add a series of operands with 
+    /// a carry-chain. At the beginning of a chain of additions, we need to make sure the CF is in a desired initial state. 
+    /// Often, this initial state needs to be 0, which can be achieved with an instruction to zero the CF (e.g. XOR). 
+    /// This instruction is supported in real mode and virtual-8086 mode. The operand size is always 32 bits if not in 64-bit 
+    /// mode. 
+    /// In 64-bit mode, the default operation size is 32 bits. Using a REX Prefix in the form of REX.R permits access to addi- 
+    /// tional registers (R8-15). Using REX Prefix in the form of REX.W promotes operation to 64 bits. 
+    /// ADCX executes normally either inside or outside a transaction region. 
+    /// Note: ADCX defines the OF flag differently than the ADD/ADC instructions as defined in the Intel® 64 and IA-32 
+    /// Architectures Software Developer’s Manual, Volume 2A.
+    ///
+    /// ## Compatibility
+    ///
+    /// ### adcx r32, r/m32
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: ADX 
+    /// 
+    /// ### adcx r64, r/m64
+    /// - 64/32Bit mode support: V/NE
+    /// - CPUID Feature Flag: ADX 
+    ///
+    /// ## Opcode
+    /// - adcx r32, r/m32 - 66 0f 38 f6 /r
+    /// - adcx r64, r/m64 - 66 REX.w 0f 38 f6 /r
+    ///
+    /// ## Flags
+    /// CF is updated based on result. OF, SF, ZF, AF, and PF flags are unmodified.
+    ///
+    /// ## Exceptions
+    /// 
+    /// ### SIMD Floating-Point Exceptions
+    /// - None
+    ///
+    /// ### Protection Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    /// IF CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
+    /// - SS(0): For an illegal address in the SS segments.
+    /// - GP(0): For an illegal memory operand effective address in the CS, DS, ES, FS, or GS segments. 
+    /// if the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
+    /// - PF(fault-code): For a page fault.
+    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
+    ///
+    /// ### Real-Address Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    /// IF CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
+    /// - SS(0): For an illegal address in the SS segments.
+    /// - GP(0): If any part of the operand lies outside the effective address space from 0 to FFFFH.
+    ///
+    /// ### Virtual-8086 Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    /// IF CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
+    /// - SS(0): For an illegal address in the SS segments.
+    /// - GP(0): If any part of the operand lies outside the effective address space from 0 to FFFFH.
+    /// - PF(fault-code): For a page fault.
+    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made.
+    ///
+    /// ### Compatibility Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    /// IF CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
+    /// - SS(0): For an illegal address in the SS segments.
+    /// - GP(0): For an illegal memory operand effective address in the CS, DS, ES, FS, or GS segments. 
+    /// if the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
+    /// - PF(fault-code): For a page fault.
+    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
+    ///
+    /// ### 64-Bit Mode Exceptions
+    /// - UD: If the LOCK prefix is used.
+    /// IF CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
+    /// - SS(0): If a memory address referencing the SS segment is in a non-canonical form.
+    /// - GP(0): If a memory address is in a non-canonical form.
+    /// - PF(fault-code): For a page fault.
+    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
+    ///
+    /// ## Intel C/C++ Compiler Intrinsic Equivalent
+    /// unsigned char _addcarryx_u32 (unsigned char c_in, unsigned int src1, unsigned int src2, unsigned int *sum_out); 
+    /// unsigned char _addcarryx_u64 (unsigned char c_in, unsigned __int64 src1, unsigned __int64 src2, unsigned __int64 *sum_out);
+    /// 
+    /// ## Operation
+    /// ```ignore
+    /// IF OperandSize is 64-bit 
+    /// THEN CF:DEST[63:0] := DEST[63:0] + SRC[63:0] + CF; 
+    /// ELSE CF:DEST[31:0] := DEST[31:0] + SRC[31:0] + CF; 
+    /// FI; 
+    /// ```
+    Adcx,
 }
 
 /* origin
