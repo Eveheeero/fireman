@@ -641,6 +641,355 @@ pub enum X64Statement {
     /// FI;
     /// ```
     Adcx,
+    /// # add
+    ///
+    /// Add
+    ///
+    /// - add al, imm8  - Add imm8 to AL. 
+    /// - add ax, imm16 - Add imm16 to AX.
+    /// - add eax, imm32 - Add imm32 to EAX.
+    /// - add rax, imm32 - Add imm32 sign extended to 64-bits to RAX.
+    /// - add r/m8, imm8 - Add imm8 to r/m8.
+    /// - add r/m8*, imm8 - Add sign-extended imm8 to r/m8. 
+    /// - add r/m16, imm16 - Add imm16 to r/m16.
+    /// - add r/m32, imm32 - Add imm32 to r/m32.
+    /// - add r/m64, imm32 - Add imm32 sign extended to 64-bits to r/m64.
+    /// - add r/m16, imm8 - Add sign-extended imm8 to r/m16.
+    /// - add r/m32, imm8 - Add sign-extended imm8 to r/m32.
+    /// - add r/m64, imm8 - Add sign-extended imm8 to r/m64.
+    /// - add r/m8, r8 - Add r8 to r/m8.
+    /// - add r/m8*, r8* - Add r8 to r/m8.
+    /// - add r/m16, r16 - Add r16 to r/m16.
+    /// - add r/m32, r32 - Add r32 to r/m32.
+    /// - add r/m64, r64 - Add r64 to r/m64.
+    /// - add r8, r/m8 - Add r/m8 to r8.
+    /// - add r8*, r/m8* - Add r/m8 to r8.
+    /// - add r16, r/m16 - Add r/m16 to r16.
+    /// - add r32, r/m32 - Add r/m32 to r32.
+    /// - add r64, r/m64 - Add r/m64 to r64.
+    ///
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=142)
+    ///
+    /// Adds the destination operand (first operand) and the source operand (second operand) and then stores the result 
+    /// in the destination operand. The destination operand can be a register or a memory location; the source operand 
+    /// can be an immediate, a register, or a memory location. (However, two memory operands cannot be used in one 
+    /// instruction.) When an immediate value is used as an operand, it is sign-extended to the length of the destination 
+    /// operand format. 
+    /// 
+    /// The ADD instruction performs integer addition. It evaluates the result for both signed and unsigned integer oper- 
+    /// ands and sets the OF and CF flags to indicate a carry (overflow) in the signed or unsigned result, respectively. The 
+    /// SF flag indicates the sign of the signed result.
+    /// 
+    /// This instruction can be used with a LOCK prefix to allow the instruction to be executed atomically. 
+    /// 
+    /// In 64-bit mode, the instruction’s default operation size is 32 bits. Using a REX prefix in the form of REX.R permits 
+    /// access to additional registers (R8-R15). Using a REX prefix in the form of REX.W promotes operation to 64 bits. See 
+    /// the summary chart at the beginning of this section for encoding data and limits. 
+    ///
+    /// ## Compatibility
+    ///
+    /// ### add al, imm8 
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    ///
+    /// ### add ax, imm16
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### add eax, imm32
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### add rax, imm32
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### add r/m8, imm8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### add r/m8* , imm8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### add r/m16, imm16
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### add r/m32, imm32
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### add r/m64, imm32
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### add r/m16, imm8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### add r/m32, imm8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### add r/m64, imm8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### add r/m8, r8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### add r/m8*, r8*
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### add r/m16, r16
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### add r/m32, r32
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### add r/m64, r64
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### add r8, r/m8
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### add r8*, r/m8*
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    /// 
+    /// ### add r16, r/m16
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### add r32, r/m32
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: Valid
+    /// 
+    /// ### add r64, r/m64
+    /// - 64Bit mode: Valid
+    /// - Compat/Leg mode: N.E.
+    ///
+    /// ## Opcode
+    /// - add al, imm8 - 04 ib
+    /// - add ax, imm16 - 05 iw
+    /// - add eax, imm32 - 05 id
+    /// - add rax, imm32 - REX.W + 05 id
+    /// - add r/m8, imm8 - 80 /0 ib
+    /// - add r/m8*, imm8 - REX + 80 /0 ib
+    /// - add r/m16, imm16 - 81 /0 iw
+    /// - add r/m32, imm32 - 81 /0 id
+    /// - add r/m64, imm32 - REX.W + 81 /0 id
+    /// - add r/m16, imm8 - 83 /0 ib
+    /// - add r/m32, imm8 - 83 /0 ib
+    /// - add r/m64, imm8 - REX.W + 83 /0 ib
+    /// - add r/m8, r8 - 00 /r
+    /// - add r/m8*, r8* - REX + 00 /r
+    /// - add r/m16, r16 - 01 /r
+    /// - add r/m32, r32 - 01 /r
+    /// - add r/m64, r64 - REX.W + 01 /r
+    /// - add r8, r/m8 - 02 /r
+    /// - add r8*, r/m8* - REX + 02 /r
+    /// - add r16, r/m16 - 03 /r
+    /// - add r32, r/m32 - 03 /r
+    /// - add r64, r/m64 - REX.W + 03 /r
+    ///
+    /// ## Flags
+    /// The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
+    ///
+    /// ## Exceptions
+    ///
+    /// ### Protection Mode Exceptions
+    /// - GP(0): If the destination is located in a non-writable segment.
+    /// If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
+    /// If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
+    /// -SS(0): If a memory operand effective address is outside the SS segment limit.
+    /// -PF(fault-code): If a page fault occurs.
+    /// -AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
+    /// -UD: If the LOCK prefix is used but the destination is not a memory operand.
+    ///
+    /// ### Real-Address Mode Exceptions
+    /// - GP: If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
+    /// - SS: If a memory operand effective address is outside the SS segment limit.
+    /// - UD: If the LOCK prefix is used but the destination is not a memory operand.
+    ///
+    /// ### Virtual-8086 Mode Exceptions
+    /// - GP(0): If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
+    /// - SS(0): If a memory operand effective address is outside the SS segment limit.
+    /// - PF(fault-code): If a page fault occurs.
+    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made.
+    /// - UD: If the LOCK prefix is used but the destination is not a memory operand.
+    ///
+    /// ### Compatibility Mode Exceptions
+    /// - GP(0): If the destination is located in a non-writable segment.
+    /// If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
+    /// If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
+    /// -SS(0): If a memory operand effective address is outside the SS segment limit.
+    /// -PF(fault-code): If a page fault occurs.
+    /// -AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
+    /// -UD: If the LOCK prefix is used but the destination is not a memory operand.
+    ///
+    /// ### 64-Bit Mode Exceptions
+    /// - SS(0): If a memory address referencing the SS segment is in a non-canonical form.
+    /// - GP(0): If a memory address is in a non-canonical form.
+    /// - PF(fault-code): If a page fault occurs.
+    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
+    /// - UD: If the LOCK prefix is used but the destination is not a memory operand.
+    ///
+    /// ## Operation
+    /// ```ignore
+    /// DEST := DEST + SRC; 
+    /// ```
+    Add,
+    /// # addpd
+    ///
+    /// Add Packed Double Precision Floating-Point Values
+    ///
+    /// - addpd xmm1, xmm2/m128 - Add packed double precision floating-point values from xmm2/mem to xmm1 and store result in xmm1.
+    /// - vaddpd xmm1, xmm2, xmm3/m128 - Add packed double precision floating-point values from xmm3/mem to xmm2 and store result in xmm1.
+    /// - vaddpd ymm1, ymm2, ymm3/m256 - Add packed double precision floating-point values from ymm3/mem to ymm2 and store result in ymm1.
+    /// - vaddpd xmm1 {k1}{z}, xmm2, xmm3/m128/m64bcst - Add packed double precision floating-point values from xmm3/m128/m64bcst to xmm2 
+    /// and store result in xmm1 with writemask k1.
+    /// - vaddpd ymm1 {k1}{z}, ymm2, ymm3/m256/m64bcst - Add packed double precision floating-point values from ymm3/m256/m64bcst to ymm2 
+    /// and store result in ymm1 with writemask k1.
+    /// - vaddpd zmm1 {k1}{z}, zmm2, zmm3/m512/m64bcst{er} - Add packed double precision floating-point values from zmm3/m512/m64bcst to zmm2 
+    /// and store result in zmm1 with writemask k1.
+    ///
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=144)
+    ///
+    /// Adds two, four or eight packed double precision floating-point values from the first source operand to the second 
+    /// source operand, and stores the packed double precision floating-point result in the destination operand. 
+    /// 
+    /// EVEX encoded versions: The first source operand is a ZMM/YMM/XMM register. The second source operand can be 
+    /// a ZMM/YMM/XMM register, a 512/256/128-bit memory location or a 512/256/128-bit vector broadcasted from a 
+    /// 64-bit memory location. The destination operand is a ZMM/YMM/XMM register conditionally updated with 
+    /// writemask k1. 
+    /// 
+    /// VEX.256 encoded version: The first source operand is a YMM register. The second source operand can be a YMM 
+    /// register or a 256-bit memory location. The destination operand is a YMM register. The upper bits (MAXVL-1:256) of 
+    /// the corresponding ZMM register destination are zeroed. 
+    /// 
+    /// VEX.128 encoded version: the first source operand is a XMM register. The second source operand is an XMM 
+    /// register or 128-bit memory location. The destination operand is an XMM register. The upper bits (MAXVL-1:128) of 
+    /// the corresponding ZMM register destination are zeroed. 
+    /// 
+    /// 128-bit Legacy SSE version: The second source can be an XMM register or an 128-bit memory location. The desti- 
+    /// nation is not distinct from the first source XMM register and the upper Bits (MAXVL-1:128) of the corresponding 
+    /// ZMM register destination are unmodified.
+    ///
+    /// ## Compatibility
+    ///
+    /// ### addpd xmm1, xmm2/m128
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: SSE2
+    ///
+    /// ### vaddpd xmm1, xmm2, xmm3/m128
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: AVX
+    /// 
+    /// ### vaddpd ymm1, ymm2, ymm3/m256
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: AVX
+    /// 
+    /// ### vaddpd xmm1 {k1}{z}, xmm2, xmm3/m128/m64bcst
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: AVX512VL + AVX512F
+    /// 
+    /// ### vaddpd ymm1 {k1}{z}, ymm2, ymm3/m256/m64bcst
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: AVX512VL + AVX512F
+    /// 
+    /// ### vaddpd zmm1 {k1}{z}, zmm2, zmm3/m512/m64bcst{er}
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: AVX512F 
+    ///
+    /// ## Opcode
+    /// - addpd xmm1, xmm2/m128 - 66 0f 58 /r
+    /// - vddpd xmm1, xmm2, xmm3/m128 - VEX.128.66.0f.WIG 58 /r
+    /// - vaddpd ymm1, ymm2, ymm3/m256 - VEX.256.66.0f.WIG 58 /r
+    /// - vaddpd xmm1 {k1}{z}, xmm2, xmm3/m128/m64bcst - EVEX.128.66.0f.w1 58 /r
+    /// - vaddpd ymm1 {k1}{z}, ymm2, ymm3/m256/m64bcst - EVEX.256.66.0f.w1 58 /r
+    /// - vaddpd zmm1 {k1}{z}, zmm2, zmm3/m512/m64bcst{er} - EVEX.512.66.0f.w1 58 /r
+    ///
+    /// ## Exceptions
+    ///
+    /// ### SIMD Floating-Point Exceptions
+    /// - Overflow, Underflow, Invalid, Precision, Denormal.
+    /// 
+    /// ### Other Exceptions
+    /// - VEX-encoded instruction, see Table 2-19, “Type 2 Class Exception Conditions.” 
+    /// - EVEX-encoded instruction, see Table 2-46, “Type E2 Class Exception Conditions.” 
+    ///
+    /// ## Operation
+    /// ```ignore
+    /// VADDPD (EVEX Encoded Versions) When SRC2 Operand is a Vector Register 
+    /// (KL, VL) = (2, 128), (4, 256), (8, 512) 
+    /// IF (VL = 512) AND (EVEX.b = 1) 
+    /// THEN 
+    /// SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(EVEX.RC); 
+    /// ELSE 
+    /// SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(MXCSR.RC); 
+    /// FI; 
+    /// FOR j := 0 TO KL-1 
+    /// i := j * 64 
+    /// IF k1[j] OR *no writemask* 
+    /// THEN DEST[i+63:i] := SRC1[i+63:i] + SRC2[i+63:i] 
+    /// ELSE 
+    /// IF *merging-masking* ; merging-masking 
+    /// THEN *DEST[i+63:i] remains unchanged* 
+    /// ELSE ; zeroing-masking 
+    /// DEST[i+63:i] := 0 
+    /// FI 
+    /// FI; 
+    /// ENDFOR 
+    /// DEST[MAXVL-1:VL] := 0    
+    ///
+    /// VADDPD (EVEX Encoded Versions) When SRC2 Operand is a Memory Source 
+    /// (KL, VL) = (2, 128), (4, 256), (8, 512) 
+    /// FOR j := 0 TO KL-1 
+    /// i := j * 64 
+    /// IF k1[j] OR *no writemask* 
+    /// THEN 
+    /// IF (EVEX.b = 1) 
+    /// THEN 
+    /// DEST[i+63:i] := SRC1[i+63:i] + SRC2[63:0] 
+    /// ELSE 
+    /// DEST[i+63:i] := SRC1[i+63:i] + SRC2[i+63:i] 
+    /// FI; 
+    /// ELSE 
+    /// IF *merging-masking* ; merging-masking 
+    /// THEN *DEST[i+63:i] remains unchanged* 
+    /// ELSE ; zeroing-masking 
+    /// DEST[i+63:i] := 0 
+    /// FI 
+    /// FI; 
+    /// ENDFOR 
+    /// DEST[MAXVL-1:VL] := 0    
+    ///
+    /// VADDPD (VEX.256 Encoded Version) 
+    /// DEST[63:0] := SRC1[63:0] + SRC2[63:0] 
+    /// DEST[127:64] := SRC1[127:64] + SRC2[127:64] 
+    /// DEST[191:128] := SRC1[191:128] + SRC2[191:128] 
+    /// DEST[255:192] := SRC1[255:192] + SRC2[255:192] 
+    /// DEST[MAXVL-1:256] :=    0
+    ///
+    /// VADDPD (VEX.128 Encoded Version) 
+    /// DEST[63:0] := SRC1[63:0] + SRC2[63:0] 
+    /// DEST[127:64] := SRC1[127:64] + SRC2[127:64] 
+    /// DEST[MAXVL-1:128] := 0   
+    ///
+    /// ADDPD (128-bit Legacy SSE Version) 
+    /// DEST[63:0] := DEST[63:0] + SRC[63:0] 
+    /// DEST[127:64] := DEST[127:64] + SRC[127:64] 
+    /// DEST[MAXVL-1:128] (Unmodified)
+    /// ```
+    Addpd,
 }
 
 /* origin
