@@ -1260,7 +1260,7 @@ pub enum X64Statement {
     /// DEST[31:0] := DEST[31:0] + SRC[31:0] 
     /// DEST[MAXVL-1:32] (Unmodified)
     /// ```
-    Addsubpd,
+    Addss,
     /// # addsubpd
     ///
     /// Packed Double Precision Floating-Point Add/Subtract 
@@ -1341,7 +1341,7 @@ pub enum X64Statement {
     /// DEST[191:128] := SRC1[191:128] - SRC2[191:128] 
     /// DEST[255:192] := SRC1[255:192] + SRC2[255:192] 
     /// ```
-    Addss,
+    Addsubpd,
 }
 
 /* origin
