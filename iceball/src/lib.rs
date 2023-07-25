@@ -1104,52 +1104,57 @@ pub enum X64Statement {
     /// ADDPS __m128 _mm_add_ps (__m128 a, __m128 b);
     ///
     /// ## Operation
+    ///
+    /// ### VADDPS (EVEX Encoded Versions) When SRC2 Operand is a Register
     /// ```ignore
-    /// VADDPS (EVEX Encoded Versions) When SRC2 Operand is a Register
     /// (KL, VL) = (4, 128), (8, 256), (16, 512)
     /// IF (VL = 512) AND (EVEX.b = 1)
-    /// THEN
-    /// SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(EVEX.RC);
-    /// ELSE
-    /// SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(MXCSR.RC);
+    ///     THEN
+    ///         SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(EVEX.RC);
+    ///     ELSE
+    ///         SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(MXCSR.RC);
     /// FI;
     /// FOR j := 0 TO KL-1
-    /// i := j * 32
-    /// IF k1[j] OR *no writemask*
-    /// THEN DEST[i+31:i] := SRC1[i+31:i] + SRC2[i+31:i]
-    /// ELSE
-    /// IF *merging-masking* ; merging-masking
-    /// THEN *DEST[i+31:i] remains unchanged*
-    /// ELSE ; zeroing-masking
-    /// DEST[i+31:i] := 0
-    /// FI
-    /// FI;
+    ///     i := j * 32
+    ///     IF k1[j] OR *no writemask*
+    ///         THEN DEST[i+31:i] := SRC1[i+31:i] + SRC2[i+31:i]
+    ///         ELSE
+    ///             IF *merging-masking* ; merging-masking
+    ///                 THEN *DEST[i+31:i] remains unchanged*
+    ///                 ELSE ; zeroing-masking
+    ///                     DEST[i+31:i] := 0
+    ///             FI
+    ///     FI;
     /// ENDFOR;
     /// DEST[MAXVL-1:VL] := 0
+    /// ```
     ///
-    /// VADDPS (EVEX Encoded Versions) When SRC2 Operand is a Memory Source
+    /// ### VADDPS (EVEX Encoded Versions) When SRC2 Operand is a Memory Source
+    /// ```ignore
     /// (KL, VL) = (4, 128), (8, 256), (16, 512)
     /// FOR j := 0 TO KL-1
-    /// i := j * 32
-    /// IF k1[j] OR *no writemask*
-    /// THEN
-    /// IF (EVEX.b = 1)
-    /// THEN
-    /// DEST[i+31:i] := SRC1[i+31:i] + SRC2[31:0]
-    /// ELSE
-    /// DEST[i+31:i] := SRC1[i+31:i] + SRC2[i+31:i]
-    /// FI;
-    /// ELSE
-    /// IF *merging-masking* ; merging-masking
-    /// THEN *DEST[i+31:i] remains unchanged*
-    /// ELSE ; zeroing-masking
-    /// DEST[i+31:i] := 0
-    /// FI
-    /// FI;
+    ///     i := j * 32
+    ///     IF k1[j] OR *no writemask*
+    ///     THEN
+    ///         IF (EVEX.b = 1)
+    ///             THEN
+    ///                 DEST[i+31:i] := SRC1[i+31:i] + SRC2[31:0]
+    ///             ELSE
+    ///                 DEST[i+31:i] := SRC1[i+31:i] + SRC2[i+31:i]
+    ///         FI;
+    ///     ELSE
+    ///         IF *merging-masking* ; merging-masking
+    ///             THEN *DEST[i+31:i] remains unchanged*
+    ///             ELSE ; zeroing-masking
+    ///                 DEST[i+31:i] := 0
+    ///         FI
+    ///     FI;
     /// ENDFOR;
     /// DEST[MAXVL-1:VL] := 0
+    /// ```
     ///
-    /// VADDPS (VEX.256 Encoded Version)
+    /// ### VADDPS (VEX.256 Encoded Version)
+    /// ```ignore
     /// DEST[31:0] := SRC1[31:0] + SRC2[31:0]
     /// DEST[63:32] := SRC1[63:32] + SRC2[63:32]
     /// DEST[95:64] := SRC1[95:64] + SRC2[95:64]
@@ -1159,15 +1164,19 @@ pub enum X64Statement {
     /// DEST[223:192] := SRC1[223:192] + SRC2[223:192]
     /// DEST[255:224] := SRC1[255:224] + SRC2[255:224].
     /// DEST[MAXVL-1:256] := 0
+    /// ```
     ///
-    /// VADDPS (VEX.128 Encoded Version)
+    /// ### VADDPS (VEX.128 Encoded Version)
+    /// ```ignore
     /// DEST[31:0] := SRC1[31:0] + SRC2[31:0]
     /// DEST[63:32] := SRC1[63:32] + SRC2[63:32]
     /// DEST[95:64] := SRC1[95:64] + SRC2[95:64]
     /// DEST[127:96] := SRC1[127:96] + SRC2[127:96]
     /// DEST[MAXVL-1:128] := 0
+    /// ```
     ///
-    /// ADDPS (128-bit Legacy SSE Version)
+    /// ### ADDPS (128-bit Legacy SSE Version)
+    /// ```ignore
     /// DEST[31:0] := SRC1[31:0] + SRC2[31:0]
     /// DEST[63:32] := SRC1[63:32] + SRC2[63:32]
     /// DEST[95:64] := SRC1[95:64] + SRC2[95:64]
@@ -1185,7 +1194,6 @@ pub enum X64Statement {
     ///
     /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=152)
     ///
-    /// Adds four, eight or sixteen packed single precision floating-point values from the first source operand with the
     /// Adds the low single precision floating-point values from the second source operand and the first source operand,
     /// and stores the double precision floating-point result in the destination operand.
     ///
@@ -1200,6 +1208,7 @@ pub enum X64Statement {
     /// the destination register are zeroed.
     ///
     /// EVEX version: The low doubleword element of the destination is updated according to the writemask.
+    ///
     /// Software should ensure VADDSS is encoded with VEX.L=0. Encoding VADDSS with VEX.L=1 may encounter unpre-
     /// dictable behavior across different processor generations.
     ///
@@ -1240,32 +1249,37 @@ pub enum X64Statement {
     /// ADDSS __m128 _mm_add_ss (__m128 a, __m128 b);
     ///
     /// ## Operation
+    ///
+    /// ###VADDSS (EVEX Encoded Versions)
     /// ```ignore
-    /// VADDSS (EVEX Encoded Versions)
     /// IF (EVEX.b = 1) AND SRC2 *is a register*
-    /// THEN
-    /// SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(EVEX.RC);
-    /// ELSE
-    /// SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(MXCSR.RC);
+    ///     THEN
+    ///         SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(EVEX.RC);
+    ///     ELSE
+    ///         SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(MXCSR.RC);
     /// FI;
     /// IF k1[0] or *no writemask*
-    /// THEN DEST[31:0] := SRC1[31:0] + SRC2[31:0]
-    /// ELSE
-    /// IF *merging-masking* ; merging-masking
-    /// THEN *DEST[31:0] remains unchanged*
-    /// ELSE ; zeroing-masking
-    /// THEN DEST[31:0] := 0
-    /// FI;
+    ///     THEN DEST[31:0] := SRC1[31:0] + SRC2[31:0]
+    ///     ELSE
+    ///         IF *merging-masking* ; merging-masking
+    ///             THEN *DEST[31:0] remains unchanged*
+    ///             ELSE ; zeroing-masking
+    ///                 THEN DEST[31:0] := 0
+    ///     FI;
     /// FI;
     /// DEST[127:32] := SRC1[127:32]
     /// DEST[MAXVL-1:128] := 0
+    /// ```
     ///
-    /// VADDSS DEST, SRC1, SRC2 (VEX.128 Encoded Version)
+    /// ### VADDSS DEST, SRC1, SRC2 (VEX.128 Encoded Version)
+    /// ```ignore
     /// DEST[31:0] := SRC1[31:0] + SRC2[31:0]
     /// DEST[127:32] := SRC1[127:32]
     /// DEST[MAXVL-1:128] := 0
+    /// ```
     ///
-    /// ADDSS DEST, SRC (128-bit Legacy SSE Version)
+    /// ### ADDSS DEST, SRC (128-bit Legacy SSE Version)
+    /// ```ignore
     /// DEST[31:0] := DEST[31:0] + SRC[31:0]
     /// DEST[MAXVL-1:32] (Unmodified)
     /// ```
@@ -1333,18 +1347,23 @@ pub enum X64Statement {
     /// VADDSUBPD __m256d _mm256_addsub_pd (__m256d a, __m256d b)
     ///
     /// ## Operation
+    ///
+    /// ### ADDSUBPD (128-bit Legacy SSE Version)
     /// ```ignore
-    /// ADDSUBPD (128-bit Legacy SSE Version)
     /// DEST[63:0] := DEST[63:0] - SRC[63:0]
     /// DEST[127:64] := DEST[127:64] + SRC[127:64]
     /// DEST[MAXVL-1:128] (Unmodified)
+    /// ```
     ///
-    /// VADDSUBPD (VEX.128 Encoded Version)
+    /// ### VADDSUBPD (VEX.128 Encoded Version)
+    /// ```ignore
     /// DEST[63:0] := SRC1[63:0] - SRC2[63:0]
     /// DEST[127:64] := SRC1[127:64] + SRC2[127:64]
     /// DEST[MAXVL-1:128] := 0
+    /// ```
     ///
-    /// VADDSUBPD (VEX.256 Encoded Version)
+    /// ### VADDSUBPD (VEX.256 Encoded Version)
+    /// ```ignore
     /// DEST[63:0] := SRC1[63:0] - SRC2[63:0]
     /// DEST[127:64] := SRC1[127:64] + SRC2[127:64]
     /// DEST[191:128] := SRC1[191:128] - SRC2[191:128]
