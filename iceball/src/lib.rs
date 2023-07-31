@@ -1561,7 +1561,7 @@ pub enum X64Statement {
     /// DEST[223:192] := SRC1[223:192] - SRC2[223:192] 
     /// DEST[255:224] := SRC1[255:224] + SRC2[255:224]
     /// ```
-    ADDSUBPS,
+    Addsubps,
     /// # adox
     ///
     /// Unsigned Integer Addition of Two Operands With Overflow Flag
@@ -1662,6 +1662,189 @@ pub enum X64Statement {
     /// ELSE OF:DEST[31:0] := DEST[31:0] + SRC[31:0] + OF; 
     /// FI;
     /// ```
-    ADOX,
+    Adox,
+    /// # aesdec
+    ///
+    /// Perform One Round of an AES Decryption Flow
+    ///
+    /// - aesdec xmm1, xmm2/m128 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, 
+    /// using one 128-bit data (state) from xmm1 with one 128-bit round key from xmm2/m128. 
+    /// - vaesdec xmm1, xmm2, xmm3/m128 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, 
+    /// using one 128-bit data (state) from xmm2 with one 128-bit round key from xmm3/m128; store the result in xmm1.
+    /// - vaesdec ymm1, ymm2, ymm3/m256 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, 
+    /// using two 128-bit data (state) from ymm2 with two 128-bit round keys from ymm3/m256; store the result in ymm1.
+    /// - vaesdec xmm1, xmm2, xmm3/m128 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, 
+    /// using one 128-bit data (state) from xmm2 with one 128-bit round key from xmm3/m128; store the result in xmm1.
+    /// - vaesdec ymm1, ymm2, ymm3/m256 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, 
+    /// using two 128-bit data (state) from ymm2 with two 128-bit round keys from ymm3/m256; store the result in ymm1.
+    /// - vaesdec zmm1, zmm2, zmm3/m512 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, 
+    /// using four 128-bit data (state) from zmm2 with four 128-bit round keys from zmm3/m512; store the result in zmm1. 
+    ///
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=161)
+    ///
+    /// This instruction performs a single round of the AES decryption flow using the Equivalent Inverse Cipher, using 
+    /// one/two/four (depending on vector length) 128-bit data (state) from the first source operand with one/two/four 
+    /// (depending on vector length) round key(s) from the second source operand, and stores the result in the destina- 
+    /// tion operand. 
+    /// 
+    /// Use the AESDEC instruction for all but the last decryption round. For the last decryption round, use the AESDE- 
+    /// CLAST instruction. 
+    /// 
+    /// VEX and EVEX encoded versions of the instruction allow 3-operand (non-destructive) operation. The legacy 
+    /// encoded versions of the instruction require that the first source operand and the destination operand are the same 
+    /// and must be an XMM register. 
+    /// 
+    /// The EVEX encoded form of this instruction does not support memory fault suppression.
+    ///
+    /// ## Compatibility
+    ///
+    /// ### aesdec xmm1, xmm2/m128
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: AES
+    /// 
+    /// ### vaesdec xmm1, xmm2, xmm3/m128
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: AES + AVX
+    /// 
+    /// ### vaesdec ymm1, ymm2, ymm3/m256
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: VAES
+    /// 
+    /// ### vaesdec xmm1, xmm2, xmm3/m128
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: VAES + AVX512VL
+    /// 
+    /// ### vaesdec ymm1, ymm2, ymm3/m256
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: VAES + AVX512VL
+    /// 
+    /// ### vaesdec zmm1, zmm2, zmm3/m512
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: VAES + AVX512F
+    ///
+    /// ## Opcode
+    /// - aesdec xmm1, xmm2/m128 - 66 0f 38 de /r
+    /// - vaesdec xmm1, xmm2, xmm3/m128 - VEX.128.66.0f38.WIG de /r
+    /// - vaesdec ymm1, ymm2, ymm3/m256 - VEX.256.66.0f38.WIG de /r
+    /// - vaesdec xmm1, xmm2, xmm3/m128 - EVEX.128.66.0f38.WIG de /r
+    /// - vaesdec ymm1, ymm2, ymm3/m256 - EVEX.256.66.0f38.WIG de /r
+    /// - vaesdec zmm1, zmm2, zmm3/m512 - EVEX.512.66.0f38.WIG de /r
+    ///
+    /// ## Exceptions
+    ///
+    /// ### SIMD Floating-Point Exceptions
+    /// - None.
+    /// 
+    /// ### Other Exceptions
+    /// See Table 2-21, “Type 4 Class Exception Conditions.” 
+    /// EVEX-encoded: See Table 2-50, “Type E4NF Class Exception Conditions.”
+    /// 
+    /// ## Intel C/C++ Compiler Intrinsic Equivalent
+    /// (V)AESDEC __m128i _mm_aesdec (__m128i, __m128i) 
+    /// VAESDEC __m256i _mm256_aesdec_epi128(__m256i, __m256i); 
+    /// VAESDEC __m512i _mm512_aesdec_epi128(__m512i, __m512i); 
+    ///
+    /// ## Operation
+    /// ### AESDEC 
+    /// ```ignore
+    /// STATE := SRC1; 
+    /// RoundKey := SRC2; 
+    /// STATE := InvShiftRows( STATE ); 
+    /// STATE := InvSubBytes( STATE ); 
+    /// STATE := InvMixColumns( STATE ); 
+    /// DEST[127:0] := STATE XOR RoundKey; 
+    /// DEST[MAXVL-1:128] (Unmodified) 
+    /// ```
+    /// ### VAESDEC (128b and 256b VEX Encoded Versions) 
+    /// ```ignore
+    /// (KL,VL) = (1,128), (2,256) 
+    /// FOR i = 0 to KL-1: 
+    /// STATE := SRC1.xmm[i] 
+    /// RoundKey := SRC2.xmm[i] 
+    /// STATE := InvShiftRows( STATE ) 
+    /// STATE := InvSubBytes( STATE ) 
+    /// STATE := InvMixColumns( STATE ) 
+    /// DEST.xmm[i] := STATE XOR RoundKey 
+    /// DEST[MAXVL-1:VL] := 0 
+    /// ```
+    /// ### VAESDEC (EVEX Encoded Version) 
+    /// ```ignore
+    /// (KL,VL) = (1,128), (2,256), (4,512) 
+    /// FOR i = 0 to KL-1: 
+    /// STATE := SRC1.xmm[i] 
+    /// RoundKey := SRC2.xmm[i] 
+    /// STATE := InvShiftRows( STATE ) 
+    /// STATE := InvSubBytes( STATE ) 
+    /// STATE := InvMixColumns( STATE ) 
+    /// DEST.xmm[i] := STATE XOR RoundKey 
+    /// DEST[MAXVL-1:VL] :=0
+    /// ```
+    Aesdec,
+    /// # aesdec128kl
+    ///
+    /// Perform Ten Rounds of AES Decryption Flow With Key Locker Using 128-Bit Key
+    ///
+    /// - aesdec128kl xmm,m384 - Decrypt xmm using 128-bit AES key indicated by handle at m384 and store result in xmm.
+    ///
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=163)
+    ///
+    /// The AESDEC128KL instruction performs 10 rounds of AES to decrypt the first operand using the 128-bit key indi- 
+    /// cated by the handle from the second operand. It stores the result in the first operand if the operation succeeds 
+    // (e.g., does not run into a handle violation failure). 
+    ///
+    /// ## Compatibility
+    ///
+    /// ### aesdec128kl xmm,m384
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: AESKLE
+    ///
+    /// ## Opcode
+    /// - aesdec xmm, m384 - f3 of 38 dd !(11):rrr:bbb
+    ///
+    /// ## Flags Affected
+    /// - ZF is set to 0 if the operation succeeded and set to 1 if the operation failed due to a handle violation. The other 
+    /// arithmetic flags (OF, SF, AF, PF, CF) are cleared to 0.
+    /// 
+    /// ## Exceptions (All Operating Modes)
+    /// - UD: If LOCK prefix is used.
+    /// - UD: If CPUID.07H:ECX.KL [bit 23] = 0.
+    /// - UD: If CR4.KL = 0.
+    /// - UD: If CPUID.19H:EBX.AESKLE [bit 0] = 0.
+    /// - UD: If CR9.EM = 1.
+    /// - UD: If CR4.OSFXSR = 0.
+    /// - NM: If CR0.TS = 1.
+    /// - PF(0): If a page fault occurs.
+    /// - GP(0): If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit. 
+    /// If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment 
+    /// selector.
+    /// - GP(0): If the memory address is in a non-canonical form.
+    /// - SS(0): If a memory operand effective address is outside the SS segment limit.
+    /// - SS(0): If a memory address referencing the SS segment is in a non-canonical form.
+    /// 
+    /// ## Intel C/C++ Compiler Intrinsic Equivalent
+    /// AESDEC128KL unsigned char _mm_aesdec128kl_u8(__m128i* odata, __m128i idata, const void* h); 
+    ///
+    /// ## Operation
+    /// ### AESDEC128KL 
+    /// ```ignore
+    /// Handle := UnalignedLoad of 384 bit (SRC); // Load is not guaranteed to be atomic. 
+    /// Illegal Handle = (HandleReservedBitSet (Handle) || 
+    /// (Handle[0] AND (CPL > 0)) || 
+    /// Handle [2] || 
+    /// HandleKeyType (Handle) != HANDLE_KEY_TYPE_AES128); 
+    /// IF (Illegal Handle) { 
+    /// THEN RFLAGS.ZF := 1; 
+    /// ELSE 
+    /// (UnwrappedKey, Authentic) := UnwrapKeyAndAuthenticate384 (Handle[383:0], IWKey); 
+    /// IF (Authentic == 0) 
+    /// THEN RFLAGS.ZF := 1; 
+    /// ELSE 
+    /// DEST := AES128Decrypt (DEST, UnwrappedKey) ; 
+    /// RFLAGS.ZF := 0; 
+    /// FI; 
+    /// FI; 
+    /// RFLAGS.OF, SF, AF, PF, CF := 0; 
+    /// ```
+    Aesdec128kl,
 
 }
