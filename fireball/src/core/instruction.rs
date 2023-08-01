@@ -12,17 +12,15 @@ pub struct Instruction {
     /// 인스트럭션의 명령어
     pub(crate) op: iceball::Statement,
     /// 인스트럭션의 추가 정보
-    pub(crate) mnemonic: String,
+    pub(crate) mnemonic: Vec<iceball::Arguments>,
+    /// 인스트럭션의 원본 바이트
+    pub(crate) bytes: Box<[u8]>,
 }
 
 impl From<&capstone::Insn<'_>> for Instruction {
     fn from(insn: &capstone::Insn<'_>) -> Self {
-        Instruction {
-            address: insn.address(),
-            len: insn.len() as u8,
-            op: todo!(),
-            mnemonic: insn.mnemonic().unwrap().to_string(),
-        }
+        let insn: &&capstone::Insn<'_> = &insn;
+        insn.into()
     }
 }
 
@@ -32,7 +30,8 @@ impl From<&&capstone::Insn<'_>> for Instruction {
             address: insn.address(),
             len: insn.len() as u8,
             op: todo!(),
-            mnemonic: insn.mnemonic().unwrap().to_string(),
+            mnemonic: todo!(),
+            bytes: insn.bytes().to_vec().into_boxed_slice(),
         }
     }
 }
