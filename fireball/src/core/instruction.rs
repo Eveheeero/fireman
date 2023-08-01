@@ -4,7 +4,7 @@
 ///
 /// Capstone엔진의 Instruction은 Clone을 사용할 수 없어, 복사할 수 있는 Instruction을 만들어 사용한다.
 #[derive(Debug, Clone)]
-pub(crate) struct Instruction {
+pub struct Instruction {
     /// 인스트럭션의 주소
     pub(crate) address: u64,
     /// 인스트럭션의 길이
