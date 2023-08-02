@@ -792,10 +792,10 @@ pub enum X64Statement {
     /// - GP(0): If the destination is located in a non-writable segment.
     /// - GP(0): If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
     /// - GP(0): If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
-    /// -SS(0): If a memory operand effective address is outside the SS segment limit.
-    /// -PF(fault-code): If a page fault occurs.
-    /// -AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    /// -UD: If the LOCK prefix is used but the destination is not a memory operand.
+    /// - SS(0): If a memory operand effective address is outside the SS segment limit.
+    /// - PF(fault-code): If a page fault occurs.
+    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
+    /// - UD: If the LOCK prefix is used but the destination is not a memory operand.
     ///
     /// ### Real-Address Mode Exceptions
     /// - GP: If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
@@ -813,10 +813,10 @@ pub enum X64Statement {
     /// - GP(0): If the destination is located in a non-writable segment.
     /// - GP(0): If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
     /// - GP(0): If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
-    /// -SS(0): If a memory operand effective address is outside the SS segment limit.
-    /// -PF(fault-code): If a page fault occurs.
-    /// -AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    /// -UD: If the LOCK prefix is used but the destination is not a memory operand.
+    /// - SS(0): If a memory operand effective address is outside the SS segment limit.
+    /// - PF(fault-code): If a page fault occurs.
+    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
+    /// - UD: If the LOCK prefix is used but the destination is not a memory operand.
     ///
     /// ### 64-Bit Mode Exceptions
     /// - SS(0): If a memory address referencing the SS segment is in a non-canonical form.
@@ -1450,4 +1450,378 @@ pub enum X64Statement {
     /// DEST[255:192] := SRC1[255:192] + SRC2[255:192]
     /// ```
     Addsubpd,
+    /// # addsubps
+    ///
+    /// Packed Single Precision Floating-Point Add/Subtract
+    ///
+    /// - addsubps xmm1, xmm2/m128 - Add/subtract single precision floating-point values from xmm2/m128 to xmm1.
+    /// - vaddsubps xmm1, xmm2, xmm3/m128 - Add/subtract single precision floating-point values from xmm3/mem to xmm2 and stores result in xmm1.
+    /// - vaddsubps ymm1, ymm2, ymm3/m256 - Add / subtract single precision floating-point values from ymm3/mem to ymm2 and stores result in ymm1.
+    ///
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=156)
+    ///
+    /// Adds odd-numbered single precision floating-point values of the first source operand (second operand) with the
+    /// corresponding single precision floating-point values from the second source operand (third operand); stores the
+    /// result in the odd-numbered values of the destination operand (first operand). Subtracts the even-numbered single
+    /// precision floating-point values from the second source operand from the corresponding single precision floating
+    /// values in the first source operand; stores the result into the even-numbered values of the destination operand.
+    ///
+    /// In 64-bit mode, using a REX prefix in the form of REX.R permits this instruction to access additional registers
+    /// (XMM8-XMM15).
+    ///
+    /// 128-bit Legacy SSE version: The second source can be an XMM register or an 128-bit memory location. The desti-
+    /// nation is not distinct from the first source XMM register and the upper bits (MAXVL-1:128) of the corresponding
+    /// YMM register destination are unmodified. See Figure 3-4.
+    ///
+    /// VEX.128 encoded version: the first source operand is an XMM register or 128-bit memory location. The destination
+    /// operand is an XMM register. The upper bits (MAXVL-1:128) of the corresponding YMM register destination are
+    /// zeroed.
+    ///
+    /// VEX.256 encoded version: The first source operand is a YMM register. The second source operand can be a YMM
+    /// register or a 256-bit memory location. The destination operand is a YMM register.
+    ///
+    /// ## Compatibility
+    ///
+    /// ### addsubps xmm1, xmm2/m128
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: SSE3
+    ///
+    /// ### vaddsubps xmm1, xmm2, xmm3/m128
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: AVX
+    ///
+    /// ### vaddsubps ymm1, ymm2, ymm3/m256
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: AVX
+    ///
+    /// ## Opcode
+    /// - addsubps xmm1, xmm2/m128 - f2 0f d0 /r
+    /// - vaddsubps xmm1, xmm2, xmm3/m128 - VEX.128.f2.0f.WIG d0 /r
+    /// - vaddsubps ymm1, ymm2, ymm3/m256 - VEX.256.f2.0f.WIG d0 /r
+    ///
+    /// ## Exceptions
+    /// - When the source operand is a memory operand, it must be aligned on a 16-byte boundary or a general-protection exception (#GP) will be generated.
+    ///
+    /// ### SIMD Floating-Point Exceptions
+    /// - Overflow, Underflow, Invalid, Precision, Denormal.
+    ///
+    /// ### Other Exceptions
+    /// See Table 2-19, “Type 2 Class Exception Conditions.”
+    ///
+    /// ## Intel C/C++ Compiler Intrinsic Equivalent
+    /// ADDSUBPS __m128 _mm_addsub_ps(__m128 a, __m128 b)
+    /// VADDSUBPS __m256 _mm256_addsub_ps (__m256 a, __m256 b)
+    ///
+    /// ## Operation
+    ///
+    /// ### ADDSUBPD (128-bit Legacy SSE Version)
+    /// ```ignore
+    /// DEST[31:0] := DEST[31:0] - SRC[31:0]
+    /// DEST[63:32] := DEST[63:32] + SRC[63:32]
+    /// DEST[95:64] := DEST[95:64] - SRC[95:64]
+    /// DEST[127:96] := DEST[127:96] + SRC[127:96]
+    /// DEST[MAXVL-1:128] (Unmodified)
+    /// ```
+    ///
+    /// ### VADDSUBPS (VEX.128 Encoded Version)
+    /// ```ignore
+    /// DEST[31:0] := SRC1[31:0] - SRC2[31:0]
+    /// DEST[63:32] := SRC1[63:32] + SRC2[63:32]
+    /// DEST[95:64] := SRC1[95:64] - SRC2[95:64]
+    /// DEST[127:96] := SRC1[127:96] + SRC2[127:96]
+    /// DEST[MAXVL-1:128] := 0
+    /// ```
+    ///
+    /// ### VADDSUBPS (VEX.256 Encoded Version)
+    /// ```ignore
+    /// DEST[31:0] := SRC1[31:0] - SRC2[31:0]
+    /// DEST[63:32] := SRC1[63:32] + SRC2[63:32]
+    /// DEST[95:64] := SRC1[95:64] - SRC2[95:64]
+    /// DEST[127:96] := SRC1[127:96] + SRC2[127:96]
+    /// DEST[159:128] := SRC1[159:128] - SRC2[159:128]
+    /// DEST[191:160] := SRC1[191:160] + SRC2[191:160]
+    /// DEST[223:192] := SRC1[223:192] - SRC2[223:192]
+    /// DEST[255:224] := SRC1[255:224] + SRC2[255:224]
+    /// ```
+    Addsubps,
+    /// # adox
+    ///
+    /// Unsigned Integer Addition of Two Operands With Overflow Flag
+    ///
+    /// - adox r32, r/m32 - Unsigned addition of r32 with OF, r/m32 to r32, writes OF.
+    /// - adox r64, r/m64 - Unsigned addition of r64 with OF, r/m64 to r64, writes OF.
+    ///
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=159)
+    ///
+    /// Performs an unsigned addition of the destination operand (first operand), the source operand (second operand)
+    /// and the overflow-flag (OF) and stores the result in the destination operand. The destination operand is a general-
+    /// purpose register, whereas the source operand can be a general-purpose register or memory location. The state of
+    /// OF represents a carry from a previous addition. The instruction sets the OF flag with the carry generated by the
+    /// unsigned addition of the operands.
+    ///
+    /// The ADOX instruction is executed in the context of multi-precision addition, where we add a series of operands with
+    /// a carry-chain. At the beginning of a chain of additions, we execute an instruction to zero the OF (e.g. XOR).
+    ///
+    /// This instruction is supported in real mode and virtual-8086 mode. The operand size is always 32 bits if not in 64-
+    /// bit mode.
+    ///
+    /// In 64-bit mode, the default operation size is 32 bits. Using a REX Prefix in the form of REX.R permits access to addi-
+    /// tional registers (R8-15). Using REX Prefix in the form of REX.W promotes operation to 64-bits.
+    ///
+    /// ADOX executes normally either inside or outside a transaction region.
+    ///
+    /// Note: ADOX defines the CF and OF flags differently than the ADD/ADC instructions as defined in Intel® 64 and
+    /// IA-32 Architectures Software Developer’s Manual, Volume 2A.
+    ///
+    /// ## Compatibility
+    ///
+    /// ### adox r32, r/m32
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: ADX
+    ///
+    /// ### adox r64, r/m64
+    /// - 64/32Bit mode support: V/NE
+    /// - CPUID Feature Flag: ADX
+    ///
+    /// ## Opcode
+    /// - adox r32, r/m32 - f3 0f 38 f6 /r
+    /// - adox r64, r/m64 - f3 REX.W 0f 38 f6 /r
+    ///
+    /// ## Flags affected
+    /// - OF is updated based on result. CF, SF, ZF, AF, and PF flags are unmodified.
+    ///
+    /// ## Exceptions
+    ///
+    /// ### SIMD Floating-Point Exceptions
+    /// - None.
+    ///
+    /// ### Protected Mode Exceptions
+    /// - UD: If LOCK prefix is used.
+    /// - UD: If CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
+    /// - SS(0): For an illegal address in the SS segment.
+    /// - GP(0): For an illegal memory operand effective address in the CS, DS, ES, FS, or GS segments.
+    /// - GP(0): If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
+    /// - PF(fault-code): For a page fault.
+    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
+    ///
+    /// ### Real-Address Mode Exceptions
+    /// - UD: If LOCK prefix is used.
+    /// - UD: If CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
+    /// - SS(0): For an illegal address in the SS segment.
+    /// - GP(0): If any part of the operand lies outside the effective address space from 0 to FFFFH.
+    ///
+    /// ### Virtual-8086 Mode Exceptions
+    /// - UD: If LOCK prefix is used.
+    /// - UD: If CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
+    /// - SS(0): For an illegal address in the SS segment.
+    /// - GP(0): If any part of the operand lies outside the effective address space from 0 to FFFFH.
+    /// - PF(fault-code): For a page fault.
+    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
+    ///
+    /// ### Compatibility Mode Exceptions
+    /// - UD: If LOCK prefix is used.
+    /// - UD: If CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
+    /// - SS(0): For an illegal address in the SS segment.
+    /// - GP(0): For an illegal memory operand effective address in the CS, DS, ES, FS, or GS segments.
+    /// - GP(0): If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
+    /// - PF(fault-code): For a page fault.
+    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
+    ///
+    /// ### 64-Bit Mode Exceptions
+    /// - UD: If LOCK prefix is used.
+    /// - UD: If CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
+    /// - SS(0): If a memory address referencing the SS segment is in a non-canonical form.
+    /// - GP(0): If the memory address is in a non-canonical form.
+    /// - PF(fault-code): For a page fault.
+    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
+    ///
+    /// ## Intel C/C++ Compiler Intrinsic Equivalent
+    /// unsigned char _addcarryx_u32 (unsigned char c_in, unsigned int src1, unsigned int src2, unsigned int *sum_out);
+    /// unsigned char _addcarryx_u64 (unsigned char c_in, unsigned __int64 src1, unsigned __int64 src2, unsigned __int64 *sum_out);
+    ///
+    /// ## Operation
+    /// ```ignore
+    /// IF OperandSize is 64-bit
+    ///     THEN OF:DEST[63:0] := DEST[63:0] + SRC[63:0] + OF;
+    ///     ELSE OF:DEST[31:0] := DEST[31:0] + SRC[31:0] + OF;
+    /// FI;
+    /// ```
+    Adox,
+    /// # aesdec
+    ///
+    /// Perform One Round of an AES Decryption Flow
+    ///
+    /// - aesdec xmm1, xmm2/m128 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, using one 128-bit data (state) from xmm1 with one 128-bit round key from xmm2/m128.
+    /// - vaesdec xmm1, xmm2, xmm3/m128 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, using one 128-bit data (state) from xmm2 with one 128-bit round key from xmm3/m128; store the result in xmm1.
+    /// - vaesdec ymm1, ymm2, ymm3/m256 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, using two 128-bit data (state) from ymm2 with two 128-bit round keys from ymm3/m256; store the result in ymm1.
+    /// - vaesdec xmm1, xmm2, xmm3/m128 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, using one 128-bit data (state) from xmm2 with one 128-bit round key from xmm3/m128; store the result in xmm1.
+    /// - vaesdec ymm1, ymm2, ymm3/m256 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, using two 128-bit data (state) from ymm2 with two 128-bit round keys from ymm3/m256; store the result in ymm1.
+    /// - vaesdec zmm1, zmm2, zmm3/m512 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, using four 128-bit data (state) from zmm2 with four 128-bit round keys from zmm3/m512; store the result in zmm1.
+    ///
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=161)
+    ///
+    /// This instruction performs a single round of the AES decryption flow using the Equivalent Inverse Cipher, using
+    /// one/two/four (depending on vector length) 128-bit data (state) from the first source operand with one/two/four
+    /// (depending on vector length) round key(s) from the second source operand, and stores the result in the destina-
+    /// tion operand.
+    ///
+    /// Use the AESDEC instruction for all but the last decryption round. For the last decryption round, use the AESDE-
+    /// CLAST instruction.
+    ///
+    /// VEX and EVEX encoded versions of the instruction allow 3-operand (non-destructive) operation. The legacy
+    /// encoded versions of the instruction require that the first source operand and the destination operand are the same
+    /// and must be an XMM register.
+    ///
+    /// The EVEX encoded form of this instruction does not support memory fault suppression.
+    ///
+    /// ## Compatibility
+    ///
+    /// ### aesdec xmm1, xmm2/m128
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: AES
+    ///
+    /// ### vaesdec xmm1, xmm2, xmm3/m128
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: AES + AVX
+    ///
+    /// ### vaesdec ymm1, ymm2, ymm3/m256
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: VAES
+    ///
+    /// ### vaesdec xmm1, xmm2, xmm3/m128
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: VAES + AVX512VL
+    ///
+    /// ### vaesdec ymm1, ymm2, ymm3/m256
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: VAES + AVX512VL
+    ///
+    /// ### vaesdec zmm1, zmm2, zmm3/m512
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: VAES + AVX512F
+    ///
+    /// ## Opcode
+    /// - aesdec xmm1, xmm2/m128 - 66 0f 38 de /r
+    /// - vaesdec xmm1, xmm2, xmm3/m128 - VEX.128.66.0f38.WIG de /r
+    /// - vaesdec ymm1, ymm2, ymm3/m256 - VEX.256.66.0f38.WIG de /r
+    /// - vaesdec xmm1, xmm2, xmm3/m128 - EVEX.128.66.0f38.WIG de /r
+    /// - vaesdec ymm1, ymm2, ymm3/m256 - EVEX.256.66.0f38.WIG de /r
+    /// - vaesdec zmm1, zmm2, zmm3/m512 - EVEX.512.66.0f38.WIG de /r
+    ///
+    /// ## Exceptions
+    ///
+    /// ### SIMD Floating-Point Exceptions
+    /// - None.
+    ///
+    /// ### Other Exceptions
+    /// See Table 2-21, “Type 4 Class Exception Conditions.”
+    /// EVEX-encoded: See Table 2-50, “Type E4NF Class Exception Conditions.”
+    ///
+    /// ## Intel C/C++ Compiler Intrinsic Equivalent
+    /// (V)AESDEC __m128i _mm_aesdec (__m128i, __m128i)
+    /// VAESDEC __m256i _mm256_aesdec_epi128(__m256i, __m256i);
+    /// VAESDEC __m512i _mm512_aesdec_epi128(__m512i, __m512i);
+    ///
+    /// ## Operation
+    ///
+    /// ### AESDEC
+    /// ```ignore
+    /// STATE := SRC1;
+    /// RoundKey := SRC2;
+    /// STATE := InvShiftRows( STATE );
+    /// STATE := InvSubBytes( STATE );
+    /// STATE := InvMixColumns( STATE );
+    /// DEST[127:0] := STATE XOR RoundKey;
+    /// DEST[MAXVL-1:128] (Unmodified)
+    /// ```
+    ///
+    /// ### VAESDEC (128b and 256b VEX Encoded Versions)
+    /// ```ignore
+    /// (KL,VL) = (1,128), (2,256)
+    /// FOR i = 0 to KL-1:
+    ///     STATE := SRC1.xmm[i]
+    ///     RoundKey := SRC2.xmm[i]
+    ///     STATE := InvShiftRows( STATE )
+    ///     STATE := InvSubBytes( STATE )
+    ///     STATE := InvMixColumns( STATE )
+    ///     DEST.xmm[i] := STATE XOR RoundKey
+    /// DEST[MAXVL-1:VL] := 0
+    /// ```
+    ///
+    /// ### VAESDEC (EVEX Encoded Version)
+    /// ```ignore
+    /// (KL,VL) = (1,128), (2,256), (4,512)
+    /// FOR i = 0 to KL-1:
+    ///     STATE := SRC1.xmm[i]
+    ///     RoundKey := SRC2.xmm[i]
+    ///     STATE := InvShiftRows( STATE )
+    ///     STATE := InvSubBytes( STATE )
+    ///     STATE := InvMixColumns( STATE )
+    ///     DEST.xmm[i] := STATE XOR RoundKey
+    /// DEST[MAXVL-1:VL] :=0
+    /// ```
+    Aesdec,
+    /// # aesdec128kl
+    ///
+    /// Perform Ten Rounds of AES Decryption Flow With Key Locker Using 128-Bit Key
+    ///
+    /// - aesdec128kl xmm,m384 - Decrypt xmm using 128-bit AES key indicated by handle at m384 and store result in xmm.
+    ///
+    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=163)
+    ///
+    /// The AESDEC128KL instruction performs 10 rounds of AES to decrypt the first operand using the 128-bit key indi-
+    /// cated by the handle from the second operand. It stores the result in the first operand if the operation succeeds
+    /// (e.g., does not run into a handle violation failure).
+    ///
+    /// ## Compatibility
+    ///
+    /// ### aesdec128kl xmm,m384
+    /// - 64/32Bit mode support: V/V
+    /// - CPUID Feature Flag: AESKLE
+    ///
+    /// ## Opcode
+    /// - aesdec xmm, m384 - f3 of 38 dd !(11):rrr:bbb
+    ///
+    /// ## Flags Affected
+    /// - ZF is set to 0 if the operation succeeded and set to 1 if the operation failed due to a handle violation. The other
+    /// arithmetic flags (OF, SF, AF, PF, CF) are cleared to 0.
+    ///
+    /// ## Exceptions (All Operating Modes)
+    /// - UD: If LOCK prefix is used.
+    /// - UD: If CPUID.07H:ECX.KL [bit 23] = 0.
+    /// - UD: If CR4.KL = 0.
+    /// - UD: If CPUID.19H:EBX.AESKLE [bit 0] = 0.
+    /// - UD: If CR9.EM = 1.
+    /// - UD: If CR4.OSFXSR = 0.
+    /// - NM: If CR0.TS = 1.
+    /// - PF(0): If a page fault occurs.
+    /// - GP(0): If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
+    /// - GP(0): If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
+    /// - GP(0): If the memory address is in a non-canonical form.
+    /// - SS(0): If a memory operand effective address is outside the SS segment limit.
+    /// - SS(0): If a memory address referencing the SS segment is in a non-canonical form.
+    ///
+    /// ## Intel C/C++ Compiler Intrinsic Equivalent
+    /// AESDEC128KL unsigned char _mm_aesdec128kl_u8(__m128i* odata, __m128i idata, const void* h);
+    ///
+    /// ## Operation
+    ///
+    /// ### AESDEC128KL
+    /// ```ignore
+    /// Handle := UnalignedLoad of 384 bit (SRC); // Load is not guaranteed to be atomic.
+    /// Illegal Handle = (HandleReservedBitSet (Handle) || (Handle[0] AND (CPL > 0)) || Handle [2] || HandleKeyType (Handle) != HANDLE_KEY_TYPE_AES128);
+    /// IF (Illegal Handle) {
+    ///     THEN RFLAGS.ZF := 1;
+    ///     ELSE
+    ///         (UnwrappedKey, Authentic) := UnwrapKeyAndAuthenticate384 (Handle[383:0], IWKey);
+    ///         IF (Authentic == 0)
+    ///             THEN RFLAGS.ZF := 1;
+    ///             ELSE
+    ///                 DEST := AES128Decrypt (DEST, UnwrappedKey) ;
+    ///                 RFLAGS.ZF := 0;
+    ///         FI;
+    /// FI;
+    /// RFLAGS.OF, SF, AF, PF, CF := 0;
+    /// ```
+    Aesdec128kl,
 }
