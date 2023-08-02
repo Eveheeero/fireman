@@ -12,7 +12,7 @@ pub struct Instruction {
     /// 인스트럭션의 명령어
     pub(crate) op: iceball::Statement,
     /// 인스트럭션의 추가 정보
-    pub(crate) mnemonic: Vec<iceball::Arguments>,
+    pub(crate) mnemonic: Vec<iceball::Argument>,
     /// 인스트럭션의 원본 바이트
     pub(crate) bytes: Box<[u8]>,
 }
