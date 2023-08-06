@@ -1,7 +1,9 @@
 //! IR 분석 관련 모듈
 
 pub mod arm;
+pub mod operator;
 pub mod statements;
+pub mod term;
 pub mod x86_64;
 
 use self::statements::IRStatement;
@@ -27,6 +29,8 @@ pub trait IRRaw {
     fn get_register(&self) -> &BitBox;
 }
 
+/// IR statements per function
+///
 /// 한 함수 안에서 IR명령이 어떻게 동작하는지를 저장하는 구조체
 #[derive(Debug, Default, Clone)]
 pub struct IrFlowsInFunction(Vec<IrFlow>);
@@ -37,6 +41,9 @@ impl IrFlowsInFunction {
     }
 }
 
+/// IR statements per address, as known as `BasicBlock`
+///
+/// 특정 주소에 대한 IR 명령의 모음
 #[derive(Debug, Clone)]
 pub struct IrFlow {
     /// IR 변화가 일어난 주소
