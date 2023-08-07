@@ -365,31 +365,92 @@ mod static_register {
 /// - `instruction` : 어셈블리 인스트럭션
 ///
 /// ### Returns
-/// `Rc<[IRStatement]>` : IR 명령 배열
+/// `Rc<Vec<IRStatement>>` : IR 명령 배열
 #[allow(unused)]
-fn create_ir_statement(instruction: &Instruction) -> Rc<[IRStatement]> {
+fn create_ir_statement(instruction: &Instruction) -> Rc<Vec<IRStatement>> {
     let op = if let Ok(Statement::X64(op)) = instruction.inner.statement {
         op
     } else {
-        return Rc::new([IRStatement::Unknown(IRStatementUnknown::Instruction(
-            instruction.clone(),
-        ))]);
+        return Rc::new(
+            [IRStatement::Unknown(IRStatementUnknown::Instruction(
+                instruction.clone(),
+            ))]
+            .to_vec(),
+        );
     };
 
-    use crate::ir::{data::IRData, statements::IRStatement, x86_64::X64Range as X64, Ir};
+    use crate::ir::{data::*, operator::*, statements::*, x86_64::X64Range as X64, Ir};
     use iceball::X64Statement;
     use static_register::*;
 
     Rc::new(match op {
         X64Statement::Aaa => {
             // TODO 64모드일때에 대한 처리
+            let al_and_0fh = IRData::Operator(IRDataOperator::Binary(
+                BinaryOperator::And,
+                Box::new(IRData::Intrinsic(IntrinsicType::Undefined(Box::new(
+                    IRData::Register(al.clone()),
+                )))),
+                Box::new(IRData::Constant(0x0f)),
+            ));
+            let al_and_0fh_lt_9 = IRData::Operator(IRDataOperator::Binary(
+                BinaryOperator::UnsignedLess,
+                Box::new(IRData::Constant(9)),
+                Box::new(al_and_0fh),
+            ));
+            let then = [
+                IRStatement::Assignment {
+                    from: IRData::Operator(IRDataOperator::Binary(
+                        BinaryOperator::Add,
+                        Box::new(IRData::Intrinsic(IntrinsicType::Undefined(Box::new(
+                            IRData::Register(ax.clone()),
+                        )))),
+                        Box::new(IRData::Constant(0x106)),
+                    )),
+                    to: IRData::Register(ax.clone()),
+                },
+                IRStatement::Assignment {
+                    from: IRData::Constant(1),
+                    to: IRData::Register(af.clone()),
+                },
+                IRStatement::Assignment {
+                    from: IRData::Constant(1),
+                    to: IRData::Register(cf.clone()),
+                },
+            ];
+            let r#else = [
+                IRStatement::Assignment {
+                    from: IRData::Constant(0),
+                    to: IRData::Register(af.clone()),
+                },
+                IRStatement::Assignment {
+                    from: IRData::Constant(0),
+                    to: IRData::Register(cf.clone()),
+                },
+            ];
+            let after = IRStatement::Assignment {
+                from: IRData::Operator(IRDataOperator::Binary(
+                    BinaryOperator::And,
+                    Box::new(IRData::Register(al.clone())),
+                    Box::new(IRData::Constant(0)),
+                )),
+                to: IRData::Register(al.clone()),
+            };
 
-            // [IRStatement::Touch]
-            todo!()
+            [
+                IRStatement::Condition {
+                    condition: al_and_0fh_lt_9,
+                    true_branch: then.to_vec(),
+                    false_branch: r#else.to_vec(),
+                },
+                after,
+            ]
+            .to_vec()
         }
         // X64Statement::Aad => [IRStatement::Touch],
         _ => [IRStatement::Unknown(IRStatementUnknown::Instruction(
             instruction.clone(),
-        ))],
+        ))]
+        .to_vec(),
     })
 }

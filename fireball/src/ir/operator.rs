@@ -22,8 +22,12 @@ pub enum BinaryOperator {
     UnsignedDiv,
     UnsignedRem,
     Equal,
+    /// <
     SignedLess,
+    /// <=
     SignedLessOrEqual,
+    /// <
     UnsignedLess,
+    /// <=
     UnsignedLessOrEqual,
 }

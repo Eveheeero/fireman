@@ -1,5 +1,4 @@
 use crate::ir::operator::{BinaryOperator, UnaryOperator};
-use bitvec::vec::BitVec;
 
 /// IR 내부에 사용되는 데이터
 ///
@@ -8,7 +7,7 @@ use bitvec::vec::BitVec;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IRData {
     /// mov eax, 0x1234의 0x1234
-    Constant(BitVec<u8>),
+    Constant(usize),
     /// Special (undefined, data remained before, return address..)
     Intrinsic(IntrinsicType),
     // mov eax, ebx의 ebx
@@ -21,10 +20,9 @@ pub enum IRData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IntrinsicType {
-    Unknown,
-    Undefined,
-    ZeroStackOffset,
-    ReturnAddress,
+    Unknown(Box<IRData>),
+    Undefined(Box<IRData>),
+    ReturnAddress(Box<IRData>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,6 +33,6 @@ pub enum AccessType {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IRDataOperator {
-    Unary(UnaryOperator, Vec<IRData>),
-    Binary(BinaryOperator, Box<IRData>, Vec<IRData>),
+    Unary(UnaryOperator, Box<IRData>),
+    Binary(BinaryOperator, Box<IRData>, Box<IRData>),
 }
