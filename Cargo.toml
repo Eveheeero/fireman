@@ -4,4 +4,6 @@ members = [
     "fireman",
     "fireball",
     "firebat",
+    "iceball",
+    "dryice",
 ]
