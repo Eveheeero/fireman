@@ -25,14 +25,14 @@ pub enum IRStatement {
         access_type: AccessType,
     },
     /// 단순 값 연산
-    Operator(Box<IRStatementOperator>),
+    Operator(IRStatementOperator),
     /// 콜백
     Callback,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IRStatementUnknown {
-    Instruction(Box<Instruction>),
+    Instruction(Instruction),
     Bytecode(Box<[u8]>),
 }
 

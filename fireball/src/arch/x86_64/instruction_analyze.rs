@@ -17,7 +17,7 @@ fn create_ir_statement(instruction: &Instruction) -> Rc<[IRStatement]> {
         op
     } else {
         return Rc::new([IRStatement::Unknown(IRStatementUnknown::Instruction(
-            Box::new(instruction.clone()),
+            instruction.clone(),
         ))]);
     };
 
@@ -25,7 +25,7 @@ fn create_ir_statement(instruction: &Instruction) -> Rc<[IRStatement]> {
         // X64Statement::Aaa => [IRStatement::Touch],
         // X64Statement::Aad => [IRStatement::Touch],
         _ => [IRStatement::Unknown(IRStatementUnknown::Instruction(
-            Box::new(instruction.clone()),
+            instruction.clone(),
         ))],
     })
 }
