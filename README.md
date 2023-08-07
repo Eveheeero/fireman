@@ -1,38 +1,46 @@
 # Fireman
 
-해당 프로그램은 개발 진행중입니다.
+Working In Progress
 
-## 프로젝트 목적
+top is main goal, lower is subs
 
-Snowman의 동작 원리를 분석해, 디컴파일러를 작성한다.
+- [x] Generate IR Based Environment
+- [ ] Complete Instruction Parsing Routine
+  - [ ] X64
+    - [ ] Copy All Instruction Documents
+    - [ ] Complete Instruction Parsing Function
+  - [ ] ARM
+  - [ ] ...
+- [ ] IR to C like code
+  - [ ] ...
+- [ ] GUI based decompiler
+- [ ] TUI based decompiler
+- [ ] Command line decompiler
+- [ ] IR Pattern Matching Routine (to detect well-known library's function like msvc's memcpy)
+- [ ] Optimizer
+- [ ] Obfucasioner (possible?)
 
-## 코드 작성
 
-### 코드 서식
+## Code style
 
-#### 함수 주석
+### Comment Template (optional, to avoid typing Note, NOTE, NOTES, notes, ....)
 
 - \#\#\# Arguments
 - \#\#\# Returns
 - \#\#\# Note
 - \#\#\# Todo
 
-### 소스코드 내부 순서
+## Source file order
 
-#### 모듈 정의 파일 (mod.rs)
+### Module definition file
 
-- 서브모듈에 대한 주석
-- 서브모듈의 mod
-- 서브모듈의 use
-- 선언된 types
+- submod declares
+- submod use declares
+- use declares
 
-위를 반복한다.
+### Main source file order
 
-타입이나 함수의 선언이 필요할 경우, 서브모듈을 만들어 pub use를 사용한다.
-
-#### 소스코드 파일
-
-- use문 정의
-- 소스코드
-- 구현 (구현이 작을 경우)
-- 구현에 대한 서브모듈의 mod (구현이 많을 경우)
+- use declares
+- source code
+- impl block (when impl block is small)
+- impl block declared mod declares (when impl block is large)
