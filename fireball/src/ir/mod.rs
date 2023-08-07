@@ -1,13 +1,15 @@
 //! IR 분석 관련 모듈
 
 pub mod arm;
+pub mod data;
 pub mod operator;
+mod register;
 pub mod statements;
-pub mod term;
 pub mod x86_64;
 
-use self::statements::IRStatement;
 use crate::{core::Address, prelude::BitBox};
+pub use register::Register;
+use statements::IRStatement;
 use std::{cell::UnsafeCell, rc::Rc};
 
 /// 컴퓨터가 동작하는 행동을 재현하기 위한 구조체

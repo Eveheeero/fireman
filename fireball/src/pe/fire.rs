@@ -7,8 +7,8 @@ mod decom_from_virtual_address;
 
 use super::PE;
 use crate::{
-    core::{Address, Block, Fire, InstructionHistory, Sections},
-    prelude::{BlockParsingError, DecompileError, IoError},
+    core::{Fire, Sections},
+    prelude::{DecompileError, IoError},
 };
 use std::sync::Arc;
 

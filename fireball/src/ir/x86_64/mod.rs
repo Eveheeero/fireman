@@ -4,8 +4,8 @@ mod base;
 mod r#mut;
 mod range;
 
+use crate::ir::Register;
 use crate::prelude::BitSlice;
-use std::ops::Range;
 
 macro_rules! generate_register {
     ($name:ident) => {
@@ -21,7 +21,7 @@ macro_rules! generate_mutable_register {
 
 macro_rules! generate_range {
     ($name:ident) => {
-        fn $name() -> Range<usize>;
+        fn $name() -> Register;
     };
 }
 

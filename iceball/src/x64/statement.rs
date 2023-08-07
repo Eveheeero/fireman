@@ -7,7 +7,7 @@
 ///
 /// - [Opcode definition](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=112)
 /// - [Instruction definition](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=115)
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum X64Statement {
     /// # aaa
     ///

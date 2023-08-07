@@ -4,13 +4,6 @@ use bitvec::vec::BitVec;
 pub struct Constant(pub BitVec<u8>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Intrinsic {
-    Unknown,
-    Undefined,
-    ZeroStackOffset,
-    ReturnAddress,
-}
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOperator {
     Not,
     Negation,
@@ -52,14 +45,6 @@ pub mod traits {
         }
     }
 
-    pub trait Intrinsic {
-        fn intrinsic(&self) -> super::Intrinsic;
-    }
-    impl Intrinsic for super::Intrinsic {
-        fn intrinsic(&self) -> super::Intrinsic {
-            *self
-        }
-    }
     pub trait UnaryOperator {
         fn unary_operator(&self) -> super::UnaryOperator;
     }

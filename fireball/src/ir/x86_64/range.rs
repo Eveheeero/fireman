@@ -1,13 +1,10 @@
-use crate::ir::{
-    x86_64::{Range, X64Range},
-    Ir,
-};
+use crate::ir::{x86_64::X64Range, Ir, Register};
 
 macro_rules! generate_range {
     ($name:ident, $block:literal, $from:literal, $to:literal) => {
         #[inline(always)]
-        fn $name() -> Range<usize> {
-            ($block * 64 + $from)..($block * 64 + $to)
+        fn $name() -> Register {
+            (($block * 64 + $from)..($block * 64 + $to)).into()
         }
     };
 }

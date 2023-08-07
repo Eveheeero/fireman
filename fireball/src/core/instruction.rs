@@ -3,18 +3,18 @@
 /// 어셈블리 인스트럭션 정보
 ///
 /// Capstone엔진의 Instruction은 Clone을 사용할 수 없어, 복사할 수 있는 Instruction을 만들어 사용한다.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Instruction {
     /// 인스트럭션의 주소
     pub(crate) address: u64,
     /// 인스트럭션의 길이
-    pub(crate) len: u8,
-    /// 인스트럭션의 명령어
-    pub(crate) op: iceball::Statement,
-    /// 인스트럭션의 추가 정보
-    pub(crate) mnemonic: Vec<iceball::Argument>,
-    /// 인스트럭션의 원본 바이트
-    pub(crate) bytes: Box<[u8]>,
+    pub(crate) inner: iceball::Instruction,
+}
+
+impl Instruction {
+    pub fn inner(&self) -> &iceball::Instruction {
+        &self.inner
+    }
 }
 
 impl From<&capstone::Insn<'_>> for Instruction {
@@ -28,10 +28,7 @@ impl From<&&capstone::Insn<'_>> for Instruction {
     fn from(insn: &&capstone::Insn<'_>) -> Self {
         Instruction {
             address: insn.address(),
-            len: insn.len() as u8,
-            op: todo!(),
-            mnemonic: todo!(),
-            bytes: insn.bytes().to_vec().into_boxed_slice(),
+            inner: todo!(),
         }
     }
 }
