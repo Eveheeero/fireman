@@ -10,14 +10,6 @@ Snowman의 동작 원리를 분석해, 디컴파일러를 작성한다.
 
 ### 코드 서식
 
-#### 내부적으로 사용되는 Use 정렬 순서
-
-- std, core (built-in)
-- crate, super (inside crate)
-- others
-
-위와 같은 그룹으로 나눈 이후, rustfmt의 기본 포맷에 따른다.
-
 #### 함수 주석
 
 - \#\#\# Arguments
@@ -32,6 +24,7 @@ Snowman의 동작 원리를 분석해, 디컴파일러를 작성한다.
 - 서브모듈에 대한 주석
 - 서브모듈의 mod
 - 서브모듈의 use
+- 선언된 types
 
 위를 반복한다.
 

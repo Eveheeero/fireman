@@ -1,4 +1,8 @@
 #![allow(dead_code)]
+//! Module that contains structure that contains section's information
+//!
+//!
+//! 섹션에 대한 정보를 담은 구조체가 들어있는 모듈
 
 /// Section Information Struct.
 /// This struct contains section's data.

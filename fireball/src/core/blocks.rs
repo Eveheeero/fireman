@@ -1,6 +1,7 @@
-use std::sync::Arc;
+//! 프로그램을 분석한 결과로 나온 "Block"를 모아두는 구조체를 정의하는 모듈
 
 use super::{Address, Block, Section};
+use std::sync::Arc;
 
 /// 어셈블리 단위의 블럭들을 관리하는 구조체
 ///

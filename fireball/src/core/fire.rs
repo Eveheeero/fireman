@@ -1,7 +1,8 @@
-use std::sync::Arc;
+//! 디컴파일 공통 기능을 담당하는 "Fire"구조체에 대해 정의하는 모듈
 
-use super::{Address, Block, InstructionHistory, Sections};
-use crate::prelude::{BlockParsingError, DecompileError, IoError};
+use super::Sections;
+use crate::prelude::{DecompileError, IoError};
+use std::sync::Arc;
 
 /// ## Main Decompile Trait
 /// 해당 Trait는 디컴파일러를 작성할 때, 해당라이브러리에서 필요한 기능들을 정의해준다.
@@ -88,22 +89,4 @@ pub trait Fire {
     /// ### Note
     /// - 해당 함수는 아무런 추가적인 연산을 수행하지 않는다.
     fn get_sections(&self) -> Arc<Sections>;
-
-    /// 파일 오프셋과 이어진 블록 정보를 가져온다.
-    ///
-    /// ### Arguments
-    /// - `adress: Address` - 파싱할 블록의 시작 주소
-    /// - `history: &mut InstructionHistory` - 분석을 수행하면서 디스어셈블한 인스트럭션의 정보를 저장할 객체
-    ///
-    /// ### Returns
-    /// - `Result<Arc<Block>, BlockParsingError>` - 블럭 파싱에 성공 시 블럭 객체를 반환하며, 오류가 발생했을 시 에러를 반환한다.
-    ///
-    /// ### Note
-    /// - 해당 함수는 인자로 주어진 주소로부터 어떤 주소까지 점프 없이 수행되는지 파악 후 블록을 생성하여 반환한다.
-    /// - 해당 함수의 내부에서, 블록이 어느 주소와 연결되어있는지 설정되며, 대상 주소에 해당하는 블록의 connected_from이 설정된다.
-    fn parse_block(
-        &self,
-        address: Address,
-        history: &mut InstructionHistory,
-    ) -> Result<Arc<Block>, BlockParsingError>;
 }

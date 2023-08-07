@@ -1,6 +1,7 @@
-use std::sync::Arc;
+//! 분석중 나온 분기에 대한 연관관계를 정의하는 모듈
 
 use super::Address;
+use std::sync::Arc;
 
 /// 코드 블럭과 다른 블럭과의 연결을 나타낸다. (jmp, call 등)
 #[derive(Debug, Eq, Hash, PartialEq)]

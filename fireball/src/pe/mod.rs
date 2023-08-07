@@ -1,6 +1,12 @@
-use std::{pin::Pin, sync::Arc};
+//! PE파일에 대한 구조체가 담겨있는 모듈
+
+mod _pe;
+mod asm;
+mod fire;
+mod fmt;
 
 use crate::core::{Blocks, PreDefinedOffsets, Relations, Sections};
+use std::{pin::Pin, sync::Arc};
 
 /// PE파일 파서
 pub struct PE {
@@ -20,15 +26,3 @@ pub struct PE {
     /// 블럭에 대한 정보를 담고 있는 데이터
     blocks: Arc<Blocks>,
 }
-
-/// PE 구조체에 대한 구현이 담겨있는 모듈
-mod _pe;
-
-/// 코어 트레이트에 대한 구현이 담겨있는 모듈
-mod fire;
-
-/// 출력에 대한 구현이 담겨있는 모듈
-mod fmt;
-
-/// 어셈블리 파싱 모듈
-mod asm;

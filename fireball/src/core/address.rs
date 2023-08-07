@@ -1,6 +1,11 @@
-use std::sync::Arc;
+//! 프로그램 내부의 가상주소 혹은 파일 오프셋에 대한 정보를 담고있는 구조체인
+//! "Address"를 정의하는 모듈
+//!
+//! # Note
+//! - 주소에 대한 정보는 저장해 둘 필요가 없기 때문에 Addresses는 존재하지 않습니다.
 
 use crate::core::{Section, Sections};
+use std::sync::Arc;
 
 /// 타겟 프로그램 내부에서 사용되는 주소에 대한 정보를 담고있는 구조체
 ///
