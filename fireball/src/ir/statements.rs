@@ -1,31 +1,29 @@
 //! IR의 각 명령이 담겨져 있는 모듈
 
 use crate::core::Instruction;
-use crate::ir::{
-    data::{AccessType, IRData},
-    operator::{BinaryOperator, UnaryOperator},
-};
+use crate::ir::data::{AccessType, IRData};
 
 /// IR의 각 명령에 대한 Enum
+///
+/// ### Note
+/// snowman's expressions.h, StatementBase based classes, or snowman's ir::statement.h classes
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IRStatement {
     /// 해석할 수 없는 명령, 인라인 어셈블리로 처리됩니다.
     Unknown(IRStatementUnknown),
     /// 변수 할당
-    Assignment { from: IRData, to: IRData },
+    Assignment { from: Vec<IRData>, to: Vec<IRData> },
     /// 명령 라인 변경
     Jump(IRStatementJump),
     /// 함수 호출
-    Call { target: IRData },
+    Call { target: Vec<IRData> },
     /// 함수 호출 후 반환
     Halt,
     /// 값 접근
     Touch {
-        data: IRData,
+        data: Vec<IRData>,
         access_type: AccessType,
     },
-    /// 단순 값 연산
-    Operator(IRStatementOperator),
     /// 콜백
     Callback,
 }
@@ -40,10 +38,4 @@ pub enum IRStatementUnknown {
 pub enum IRStatementJump {
     Conditional { ok: IRData, fail: IRData },
     Unconditional(IRData),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IRStatementOperator {
-    Unary(UnaryOperator, IRData),
-    Binary(BinaryOperator, IRData, IRData),
 }
