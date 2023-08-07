@@ -1,7 +1,10 @@
 //! IR의 각 명령이 담겨져 있는 모듈
 
-use super::data::IRData;
 use crate::core::Instruction;
+use crate::ir::{
+    data::{AccessType, IRData},
+    operator::{BinaryOperator, UnaryOperator},
+};
 
 /// IR의 각 명령에 대한 Enum
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,7 +20,12 @@ pub enum IRStatement {
     /// 함수 호출 후 반환
     Halt,
     /// 값 접근
-    Touch,
+    Touch {
+        data: IRData,
+        access_type: AccessType,
+    },
+    /// 단순 값 연산
+    Operator(Box<IRStatementOperator>),
     /// 콜백
     Callback,
 }
@@ -32,4 +40,10 @@ pub enum IRStatementUnknown {
 pub enum IRStatementJump {
     Conditional { ok: IRData, fail: IRData },
     Unconditional(IRData),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IRStatementOperator {
+    Unary(UnaryOperator, IRData),
+    Binary(BinaryOperator, IRData, IRData),
 }

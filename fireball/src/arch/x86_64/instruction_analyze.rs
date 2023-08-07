@@ -13,7 +13,13 @@ use std::rc::Rc;
 /// `Rc<[IRStatement]>` : IR 명령 배열
 #[allow(unused)]
 fn create_ir_statement(instruction: &Instruction) -> Rc<[IRStatement]> {
-    let Statement::X64(op) = instruction.op;
+    let op = if let Ok(Statement::X64(op)) = instruction.inner.statement {
+        op
+    } else {
+        return Rc::new([IRStatement::Unknown(IRStatementUnknown::Instruction(
+            Box::new(instruction.clone()),
+        ))]);
+    };
 
     Rc::new(match op {
         // X64Statement::Aaa => [IRStatement::Touch],
