@@ -344,6 +344,33 @@ pub trait X64 {
     generate_register!(tmp16);
     generate_register!(tmp32);
     generate_register!(tmp64);
+    generate_register!(tmp128);
+    generate_register!(tmp256);
+    generate_register!(tmp512);
+
+    generate_register!(tmp2_8);
+    generate_register!(tmp2_16);
+    generate_register!(tmp2_32);
+    generate_register!(tmp2_64);
+    generate_register!(tmp2_128);
+    generate_register!(tmp2_256);
+    generate_register!(tmp2_512);
+
+    generate_register!(tmp3_8);
+    generate_register!(tmp3_16);
+    generate_register!(tmp3_32);
+    generate_register!(tmp3_64);
+    generate_register!(tmp3_128);
+    generate_register!(tmp3_256);
+    generate_register!(tmp3_512);
+
+    generate_register!(tmp4_8);
+    generate_register!(tmp4_16);
+    generate_register!(tmp4_32);
+    generate_register!(tmp4_64);
+    generate_register!(tmp4_128);
+    generate_register!(tmp4_256);
+    generate_register!(tmp4_512);
 }
 
 /// X64(32비트 포함) 수정할 수 있는 레지스터를 가져오는 인터페이스입니다.
@@ -663,6 +690,33 @@ pub trait X64Mut {
     generate_mutable_register!(tmp16);
     generate_mutable_register!(tmp32);
     generate_mutable_register!(tmp64);
+    generate_mutable_register!(tmp128);
+    generate_mutable_register!(tmp256);
+    generate_mutable_register!(tmp512);
+
+    generate_mutable_register!(tmp2_8);
+    generate_mutable_register!(tmp2_16);
+    generate_mutable_register!(tmp2_32);
+    generate_mutable_register!(tmp2_64);
+    generate_mutable_register!(tmp2_128);
+    generate_mutable_register!(tmp2_256);
+    generate_mutable_register!(tmp2_512);
+
+    generate_mutable_register!(tmp3_8);
+    generate_mutable_register!(tmp3_16);
+    generate_mutable_register!(tmp3_32);
+    generate_mutable_register!(tmp3_64);
+    generate_mutable_register!(tmp3_128);
+    generate_mutable_register!(tmp3_256);
+    generate_mutable_register!(tmp3_512);
+
+    generate_mutable_register!(tmp4_8);
+    generate_mutable_register!(tmp4_16);
+    generate_mutable_register!(tmp4_32);
+    generate_mutable_register!(tmp4_64);
+    generate_mutable_register!(tmp4_128);
+    generate_mutable_register!(tmp4_256);
+    generate_mutable_register!(tmp4_512);
 }
 
 pub(crate) trait X64Range {
@@ -981,4 +1035,31 @@ pub(crate) trait X64Range {
     generate_range!(tmp16);
     generate_range!(tmp32);
     generate_range!(tmp64);
+    generate_range!(tmp128);
+    generate_range!(tmp256);
+    generate_range!(tmp512);
+
+    generate_range!(tmp2_8);
+    generate_range!(tmp2_16);
+    generate_range!(tmp2_32);
+    generate_range!(tmp2_64);
+    generate_range!(tmp2_128);
+    generate_range!(tmp2_256);
+    generate_range!(tmp2_512);
+
+    generate_range!(tmp3_8);
+    generate_range!(tmp3_16);
+    generate_range!(tmp3_32);
+    generate_range!(tmp3_64);
+    generate_range!(tmp3_128);
+    generate_range!(tmp3_256);
+    generate_range!(tmp3_512);
+
+    generate_range!(tmp4_8);
+    generate_range!(tmp4_16);
+    generate_range!(tmp4_32);
+    generate_range!(tmp4_64);
+    generate_range!(tmp4_128);
+    generate_range!(tmp4_256);
+    generate_range!(tmp4_512);
 }

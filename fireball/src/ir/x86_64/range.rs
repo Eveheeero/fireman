@@ -325,4 +325,31 @@ impl X64Range for Ir {
     generate_range!(tmp16, 176, 0, 16);
     generate_range!(tmp32, 176, 0, 32);
     generate_range!(tmp64, 176, 0, 64);
+    generate_range!(tmp128, 176, 0, 128);
+    generate_range!(tmp256, 176, 0, 256);
+    generate_range!(tmp512, 176, 0, 512);
+
+    generate_range!(tmp2_8, 180, 0, 8);
+    generate_range!(tmp2_16, 180, 0, 16);
+    generate_range!(tmp2_32, 180, 0, 32);
+    generate_range!(tmp2_64, 180, 0, 64);
+    generate_range!(tmp2_128, 180, 0, 128);
+    generate_range!(tmp2_256, 180, 0, 256);
+    generate_range!(tmp2_512, 180, 0, 512);
+
+    generate_range!(tmp3_8, 184, 0, 8);
+    generate_range!(tmp3_16, 184, 0, 16);
+    generate_range!(tmp3_32, 184, 0, 32);
+    generate_range!(tmp3_64, 184, 0, 64);
+    generate_range!(tmp3_128, 184, 0, 128);
+    generate_range!(tmp3_256, 184, 0, 256);
+    generate_range!(tmp3_512, 184, 0, 512);
+
+    generate_range!(tmp4_8, 188, 0, 8);
+    generate_range!(tmp4_16, 188, 0, 16);
+    generate_range!(tmp4_32, 188, 0, 32);
+    generate_range!(tmp4_64, 188, 0, 64);
+    generate_range!(tmp4_128, 188, 0, 128);
+    generate_range!(tmp4_256, 188, 0, 256);
+    generate_range!(tmp4_512, 188, 0, 512);
 }

@@ -337,4 +337,31 @@ impl X64Mut for Ir {
     generate_register!(tmp16);
     generate_register!(tmp32);
     generate_register!(tmp64);
+    generate_register!(tmp128);
+    generate_register!(tmp256);
+    generate_register!(tmp512);
+
+    generate_register!(tmp2_8);
+    generate_register!(tmp2_16);
+    generate_register!(tmp2_32);
+    generate_register!(tmp2_64);
+    generate_register!(tmp2_128);
+    generate_register!(tmp2_256);
+    generate_register!(tmp2_512);
+
+    generate_register!(tmp3_8);
+    generate_register!(tmp3_16);
+    generate_register!(tmp3_32);
+    generate_register!(tmp3_64);
+    generate_register!(tmp3_128);
+    generate_register!(tmp3_256);
+    generate_register!(tmp3_512);
+
+    generate_register!(tmp4_8);
+    generate_register!(tmp4_16);
+    generate_register!(tmp4_32);
+    generate_register!(tmp4_64);
+    generate_register!(tmp4_128);
+    generate_register!(tmp4_256);
+    generate_register!(tmp4_512);
 }
