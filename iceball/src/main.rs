@@ -19,6 +19,9 @@ fn main() {
     let contents = Content::decode(&stream.decompressed_content().unwrap()).unwrap();
     contents.operations.iter().for_each(|op| {
         // println!("{:} -----", op.operator);
+        if !op.operator.eq_ignore_ascii_case("Tj") {
+            return;
+        }
         let w = op
             .operands
             .iter()
