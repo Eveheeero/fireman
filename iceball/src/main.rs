@@ -55,7 +55,7 @@ fn extract_string<'obj>(
         Object::Dictionary(o) => Box::new(
             o.iter()
                 .map(|(k, v)| {
-                    let k = k.iter().copied();
+                    let k = k.iter().copied().chain(std::iter::once(b'\t'));
                     let v = extract_string(doc, v);
                     k.chain(v)
                 })
@@ -65,7 +65,7 @@ fn extract_string<'obj>(
             o.dict
                 .iter()
                 .map(|(k, v)| {
-                    let k = k.iter().copied();
+                    let k = k.iter().copied().chain(std::iter::once(b'\t'));
                     let v = extract_string(doc, v);
                     k.chain(v)
                 })
