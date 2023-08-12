@@ -12,3 +12,4 @@ homepage = "https://crates.io/crates/iceball"
 crate-type = ["cdylib", "rlib", "staticlib"]
 
 [dependencies]
+lopdf = "*"
