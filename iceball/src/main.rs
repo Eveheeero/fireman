@@ -41,9 +41,7 @@ fn extract_string<'obj>(
     obj: &'obj Object,
 ) -> Box<dyn Iterator<Item = u8> + 'obj> {
     match obj {
-        Object::String(string, _) => {
-            Box::new(string.iter().copied().collect::<Vec<u8>>().into_iter())
-        }
+        Object::String(string, _) => Box::new(string.iter().copied()),
         Object::Null => Box::new(std::iter::empty()),
         // Object::Boolean(o) => Box::new(o.to_string().into_bytes().into_iter()),
         Object::Boolean(_) => Box::new(std::iter::empty()),
@@ -51,25 +49,17 @@ fn extract_string<'obj>(
         Object::Integer(_) => Box::new(std::iter::empty()),
         // Object::Real(o) => Box::new(o.to_string().into_bytes()),
         Object::Real(_) => Box::new(std::iter::empty()),
-        // Object::Name(i) => Box::new(i.iter().copied().collect::<Vec<u8>>().into_iter()),
+        // Object::Name(i) => Box::new(i.iter().copied()),
         Object::Name(_) => Box::new(std::iter::empty()),
-        Object::Array(o) => Box::new(
-            o.iter()
-                .map(|o| extract_string(doc, o))
-                .flatten()
-                .collect::<Vec<u8>>()
-                .into_iter(),
-        ),
+        Object::Array(o) => Box::new(o.iter().map(|o| extract_string(doc, o)).flatten()),
         Object::Dictionary(o) => Box::new(
             o.iter()
                 .map(|(k, v)| {
                     let k = k.iter().copied();
                     let v = extract_string(doc, v);
-                    k.chain(v).collect::<Vec<u8>>().into_iter()
+                    k.chain(v)
                 })
-                .flatten()
-                .collect::<Vec<u8>>()
-                .into_iter(),
+                .flatten(),
         ),
         Object::Stream(o) => Box::new(
             o.dict
@@ -77,11 +67,9 @@ fn extract_string<'obj>(
                 .map(|(k, v)| {
                     let k = k.iter().copied();
                     let v = extract_string(doc, v);
-                    k.chain(v).collect::<Vec<u8>>().into_iter()
+                    k.chain(v)
                 })
-                .flatten()
-                .collect::<Vec<u8>>()
-                .into_iter(),
+                .flatten(),
         ),
         Object::Reference(o) => extract_string(doc, doc.get_object(*o).unwrap()),
     }
