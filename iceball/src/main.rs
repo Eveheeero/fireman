@@ -2,8 +2,12 @@ use lopdf::{content::Content, Document, Object};
 
 fn main() {
     let doc = lopdf::Document::load("test.pdf").unwrap();
-    dbg!(print_pages(&doc, 289));
-    dbg!(print_pages(&doc, 290));
+    let mut texts = Vec::new();
+    for index in 129..=2266 {
+        texts.append(&mut print_pages(&doc, index));
+    }
+    let texts = texts.join("\n");
+    std::fs::write("extracted.txt", texts).unwrap();
 }
 
 fn print_pages(doc: &Document, page: u32) -> Vec<String> {
