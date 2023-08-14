@@ -46,6 +46,11 @@ fn print_pages(doc: &Document, page: u32) -> Vec<String> {
             .replace("\u{92}", "'")
             .replace("\\\u{93}", "\"")
             .replace("\\\u{94}", "\"")
+            .replace("\\\u{95}", " - ")
+            .replace("\u{93}", "\"")
+            .replace("\u{94}", "\"")
+            .replace("\u{95}", " - ")
+            .replace("\u{96}", "-")
             .replace("\u{97}", "-")
             .replace("\u{8a}", "-");
         result.push(line);
