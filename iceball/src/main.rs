@@ -39,10 +39,11 @@ fn print_pages(doc: &Document, page: u32) -> Vec<String> {
         let line = String::from_utf16_lossy(&line);
         // 특수문자 제거
         let line = line
-            .replace("\\u{92}", "'")
-            .replace("\\u{93}", "\"")
-            .replace("\\u{94}", "\"")
-            .replace("\\u{8a}", "-");
+            .replace("\u{92}", "'")
+            .replace("\\\u{93}", "\"")
+            .replace("\\\u{94}", "\"")
+            .replace("\u{97}", "-")
+            .replace("\u{8a}", "-");
         result.push(line);
     });
     // ignore header, footer, page number
