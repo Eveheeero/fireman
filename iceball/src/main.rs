@@ -2,27 +2,27 @@ use lopdf::{content::Content, Document, Object};
 
 fn main() {
     let doc = lopdf::Document::load("test.pdf").unwrap();
+    dbg!(print_pages(&doc, 289));
+    dbg!(print_pages(&doc, 290));
+}
+
+fn print_pages(doc: &Document, page: u32) -> Vec<String> {
     let binding = doc.get_pages();
-    let page = binding.get(&289).unwrap();
-    // let _ = dbg!(doc.get_and_decode_page_content(*page));
-    println!("{:?}", &page);
+    let page = binding.get(&page).unwrap();
     let page = doc.get_object(*page).unwrap();
-    let page_items = dbg!(page.as_dict().unwrap());
-    page_items.iter().for_each(|(k, v)| {
-        println!("{:?} {:?}", std::str::from_utf8(k).unwrap(), v);
-    });
-    let stream = doc
+    let page_items = page.as_dict().unwrap();
+    let page_items = doc
         .get_object(page_items.get(b"Contents").unwrap().as_reference().unwrap())
         .unwrap()
         .as_stream()
         .unwrap();
-    let contents = Content::decode(&stream.decompressed_content().unwrap()).unwrap();
-    contents.operations.iter().for_each(|op| {
-        // println!("{:} -----", op.operator);
+    let page_items = Content::decode(&page_items.decompressed_content().unwrap()).unwrap();
+    let mut result = Vec::new();
+    page_items.operations.iter().for_each(|op| {
         if !op.operator.eq_ignore_ascii_case("Tj") {
             return;
         }
-        let w = op
+        let line = op
             .operands
             .iter()
             .map(|operand| {
@@ -31,12 +31,22 @@ fn main() {
                         b'\n' => b' ',
                         c => c,
                     })
-                    .collect::<Vec<u8>>()
+                    .map(|x| x as u16)
+                    .collect::<Vec<u16>>()
             })
             .flatten()
-            .collect::<Vec<u8>>();
-        unsafe { println!("{}", std::str::from_utf8_unchecked(&w)) };
+            .collect::<Vec<u16>>();
+        let line = String::from_utf16_lossy(&line);
+        // 특수문자 제거
+        let line = line
+            .replace("\\u{92}", "'")
+            .replace("\\u{93}", "\"")
+            .replace("\\u{94}", "\"")
+            .replace("\\u{8a}", "-");
+        result.push(line);
     });
+    // ignore header, footer, page number
+    result[3..].to_vec()
 }
 
 fn extract_string<'obj>(
