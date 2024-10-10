@@ -29,6 +29,8 @@ jobs:
         runs-on: ${{ matrix.os }}
         steps:
             - uses: actions/checkout@v3
+              with:
+                  submodules: "true"
             - uses: actions/cache@v3
               with:
                   path: |
@@ -47,6 +49,8 @@ jobs:
         runs-on: windows-latest
         steps:
             - uses: actions/checkout@v3
+              with:
+                  submodules: "true"
             - uses: actions/cache@v3
               with:
                   path: |
@@ -68,6 +72,8 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v3
+              with:
+                  submodules: "true"
             - uses: actions/cache@v3
               with:
                   path: |
@@ -93,6 +99,8 @@ jobs:
         runs-on: macos-latest
         steps:
             - uses: actions/checkout@v3
+              with:
+                  submodules: "true"
             - uses: actions/cache@v3
               with:
                   path: |
@@ -134,6 +142,8 @@ jobs:
         runs-on: ${{ matrix.os }}
         steps:
             - uses: actions/checkout@v3
+              with:
+                  submodules: "true"
             - uses: actions/cache@v3
               with:
                   path: |
