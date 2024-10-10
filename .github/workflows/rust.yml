@@ -16,15 +16,9 @@ jobs:
                 os:
                     # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
                     [
-                        # windows-latest,
-                        windows-2022,
-                        windows-2019,
-                        # ubuntu-latest,
-                        ubuntu-24.04,
-                        ubuntu-20.04,
-                        # macos-latest,
-                        macos-14,
-                        macos-12,
+                        windows-latest,
+                        ubuntu-latest,
+                        macos-latest,
                     ]
         runs-on: ${{ matrix.os }}
         steps:
@@ -129,15 +123,9 @@ jobs:
                 os:
                     # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
                     [
-                        # windows-latest,
-                        windows-2022,
-                        windows-2019,
-                        # ubuntu-latest,
-                        ubuntu-24.04,
-                        ubuntu-20.04,
-                        # macos-latest,
-                        macos-14,
-                        macos-12,
+                        windows-latest,
+                        ubuntu-latest,
+                        macos-latest,
                     ]
         runs-on: ${{ matrix.os }}
         steps:
