@@ -1,0 +1,32 @@
+# VPSRLVW/VPSRLVD/VPSRLVQ
+
+Variable Bit Shift Right Logical
+
+Shifts the bits in the individual data elements (words, doublewords or quadword) in the first source operand to the right by the count value of respective data elements in the second source operand.
+As the bits in the data elements are shifted right, the empty high-order bits are cleared (set to 0).
+The count values are specified individually in each data element of the second source operand.
+If the unsigned integer value specified in the respective data element of the second source operand is greater than 15 (for word), 31 (for doublewords), or 63 (for a quadword), then the destination data element are written with 0.
+VEX.128 encoded version: The destination and first source operands are XMM registers.
+The count operand can be either an XMM register or a 128-bit memory location.
+Bits (MAXVL-1:128) of the corresponding destination register are zeroed.VEX.256 encoded version: The destination and first source operands are YMM registers.
+The count operand can be either an YMM register or a 256-bit memory.
+Bits (MAXVL-1:256) of the corresponding ZMM register are zeroed.EVEX encoded VPSRLVD/Q: The destination and first source operands are ZMM/YMM/XMM registers.
+The count operand can be either a ZMM/YMM/XMM register, a 512/256/128-bit memory location or a 512-bit vector broad-casted from a 32/64-bit memory location.
+The destination is conditionally updated with writemask k1.EVEX encoded VPSRLVW: The destination and first source operands are ZMM/YMM/XMM registers.
+The count operand can be either a ZMM/YMM/XMM register, a 512/256/128-bit memory location.
+The destination is condition-ally updated with writemask k1.
+
+## Exceptions
+
+- SIMD Floating-Point Exceptions
+  > None.
+- Other Exceptions
+  > VEX-encoded instructions, see Table2-21, "Type 4 Class Exception Conditions."
+  > EVEX-encoded VPSRLVD/Q, see Table2-49,
+  >  "Type E4 Class Exception Conditions."
+
+## Operation
+
+```C
+VPSRLVW (EVEX encoded version) (KL, VL) = (8, 128), (16, 256), (32, 512)FOR j := 0 TO KL-1i := j * 16IF k1[j] OR *no writemask*THEN DEST[i+15:i] := ZeroExtend(SRC1[i+15:i] >> SRC2[i+15:i])ELSE IF *merging-masking*; merging-maskingTHEN *DEST[i+15:i] remains unchanged*ELSE ; zeroing-maskingDEST[i+15:i] := 0FIFI;ENDFOR;DEST[MAXVL-1:VL] := 0;VPSRLVD (VEX.128 version)COUNT_0 := SRC2[31 : 0](* Repeat Each COUNT_i for the 2nd through 4th dwords of SRC2*)COUNT_3 := SRC2[127 : 96];IF COUNT_0 < 32 THENDEST[31:0] := ZeroExtend(SRC1[31:0] >> COUNT_0);ELSEDEST[31:0] := 0;(* Repeat shift operation for 2nd through 4th dwords *)IF COUNT_3 < 32 THENDEST[127:96] := ZeroExtend(SRC1[127:96] >> COUNT_3);ELSEVPSRLVD (VEX.256 version)COUNT_0 := SRC2[31 : 0];(* Repeat Each COUNT_i for the 2nd through 7th dwords of SRC2*)COUNT_7 := SRC2[255 : 224];IF COUNT_0 < 32 THENDEST[31:0] := ZeroExtend(SRC1[31:0] >> COUNT_0);ELSEDEST[31:0] := 0;(* Repeat shift operation for 2nd through 7th dwords *)IF COUNT_7 < 32 THENDEST[255:224] := ZeroExtend(SRC1[255:224] >> COUNT_7);ELSEDEST[255:224] := 0;DEST[MAXVL-1:256] := 0;VPSRLVD (EVEX encoded version) (KL, VL) = (4, 128), (8, 256), (16, 512)FOR j := 0 TO KL-1i := j * 32IF k1[j] OR *no writemask* THENIF (EVEX.b = 1) AND (SRC2 *is memory*)THEN DEST[i+31:i] := ZeroExtend(SRC1[i+31:i] >> SRC2[31:0])ELSE DEST[i+31:i] := ZeroExtend(SRC1[i+31:i] >> SRC2[i+31:i])FI;ELSE IF *merging-masking*; merging-maskingTHEN *DEST[i+31:i] remains unchanged*ELSE ; zeroing-maskingDEST[i+31:i] := 0FIFI;ENDFOR;DEST[MAXVL-1:VL] := 0;VPSRLVQ (VEX.128 version)COUNT_0 := SRC2[63 : 0];COUNT_1 := SRC2[127 : 64];IF COUNT_0 < 64 THENDEST[63:0] := ZeroExtend(SRC1[63:0] >> COUNT_0);ELSEDEST[63:0] := 0;IF COUNT_1 < 64 THENDEST[127:64] := ZeroExtend(SRC1[127:64] >> COUNT_1);ELSEVPSRLVQ (VEX.256 version)COUNT_0 := SRC2[63 : 0];(* Repeat Each COUNT_i for the 2nd through 4th dwords of SRC2*)COUNT_3 := SRC2[255 : 192];IF COUNT_0 < 64 THENDEST[63:0] := ZeroExtend(SRC1[63:0] >> COUNT_0);ELSEDEST[63:0] := 0;(* Repeat shift operation for 2nd through 4th dwords *)IF COUNT_3 < 64 THENDEST[255:192] := ZeroExtend(SRC1[255:192] >> COUNT_3);ELSEDEST[255:192] := 0;DEST[MAXVL-1:256] := 0;VPSRLVQ (EVEX encoded version) (KL, VL) = (2, 128), (4, 256), (8, 512)FOR j := 0 TO KL-1i := j * 64IF k1[j] OR *no writemask* THENIF (EVEX.b = 1) AND (SRC2 *is memory*)THEN DEST[i+63:i] := ZeroExtend(SRC1[i+63:i] >> SRC2[63:0])ELSE DEST[i+63:i] := ZeroExtend(SRC1[i+63:i] >> SRC2[i+63:i])FI;ELSE IF *merging-masking*; merging-maskingTHEN *DEST[i+63:i] remains unchanged*ELSE ; zeroing-maskingDEST[i+63:i] := 0FIFI;Intel C/C++ Compiler Intrinsic EquivalentVPSRLVW __m512i _mm512_srlv_epi16(__m512i a, __m512i cnt);VPSRLVW __m512i _mm512_mask_srlv_epi16(__m512i s, __mmask32 k, __m512i a, __m512i cnt);VPSRLVW __m512i _mm512_maskz_srlv_epi16( __mmask32 k, __m512i a, __m512i cnt);VPSRLVW __m256i _mm256_mask_srlv_epi16(__m256i s, __mmask16 k, __m256i a, __m256i cnt);VPSRLVW __m256i _mm256_maskz_srlv_epi16( __mmask16 k, __m256i a, __m256i cnt);VPSRLVW __m128i _mm_mask_srlv_epi16(__m128i s, __mmask8 k, __m128i a, __m128i cnt);VPSRLVW __m128i _mm_maskz_srlv_epi16( __mmask8 k, __m128i a, __m128i cnt);VPSRLVW __m256i _mm256_srlv_epi32 (__m256i m, __m256i count)VPSRLVD __m512i _mm512_srlv_epi32(__m512i a, __m512i cnt);VPSRLVD __m512i _mm512_mask_srlv_epi32(__m512i s, __mmask16 k, __m512i a, __m512i cnt);VPSRLVD __m512i _mm512_maskz_srlv_epi32( __mmask16 k, __m512i a, __m512i cnt);VPSRLVD __m256i _mm256_mask_srlv_epi32(__m256i s, __mmask8 k, __m256i a, __m256i cnt);VPSRLVD __m256i _mm256_maskz_srlv_epi32( __mmask8 k, __m256i a, __m256i cnt);VPSRLVD __m128i _mm_mask_srlv_epi32(__m128i s, __mmask8 k, __m128i a, __m128i cnt);VPSRLVD __m128i _mm_maskz_srlv_epi32( __mmask8 k, __m128i a, __m128i cnt);VPSRLVQ __m512i _mm512_srlv_epi64(__m512i a, __m512i cnt);VPSRLVQ __m512i _mm512_mask_srlv_epi64(__m512i s, __mmask8 k, __m512i a, __m512i cnt);VPSRLVQ __m512i _mm512_maskz_srlv_epi64( __mmask8 k, __m512i a, __m512i cnt);VPSRLVQ __m256i _mm256_mask_srlv_epi64(__m256i s, __mmask8 k, __m256i a, __m256i cnt);VPSRLVQ __m256i _mm256_maskz_srlv_epi64( __mmask8 k, __m256i a, __m256i cnt);VPSRLVQ __m128i _mm_mask_srlv_epi64(__m128i s, __mmask8 k, __m128i a, __m128i cnt);VPSRLVQ __m128i _mm_maskz_srlv_epi64( __mmask8 k, __m128i a, __m128i cnt);VPSRLVQ __m256i _mm256_srlv_epi64 (__m256i m, __m256i count)VPSRLVD __m128i _mm_srlv_epi32( __m128i a, __m128i cnt);VPSRLVQ __m128i _mm_srlv_epi64( __m128i a, __m128i cnt);
+```

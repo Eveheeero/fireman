@@ -9,1819 +9,2182 @@
 /// - [Instruction definition](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=115)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum X64Statement {
-    /// # aaa
-    ///
-    /// ASCII Adjust After Addition
-    ///
-    /// - aaa - ASCII adjust AL after addition.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=129)
-    ///
-    /// Adjusts the sum of two unpacked BCD values to create an unpacked BCD result. The AL register is the implied
-    /// source and destination operand for this instruction. The AAA instruction is only useful when it follows an ADD
-    /// instruction that adds (binary addition) two unpacked BCD values and stores a byte result in the AL register. The
-    /// AAA instruction then adjusts the contents of the AL register to contain the correct 1-digit unpacked BCD result.
-    ///
-    /// If the addition produces a decimal carry, the AH register increments by 1, and the CF and AF flags are set. If there
-    /// was no decimal carry, the CF and AF flags are cleared and the AH register is unchanged. In either case, bits 4
-    /// through 7 of the AL register are set to 0.
-    ///
-    /// This instruction executes as described in compatibility mode and legacy mode. It is not valid in 64-bit mode.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### aaa
-    /// - 64Bit mode: Invalid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ## Opcode
-    /// - aaa - 37
-    ///
-    /// ## Flags
-    /// The AF and CF flags are set to 1 if the adjustment results in a decimal carry; otherwise they are set to 0. The OF,
-    /// SF, ZF, and PF flags are undefined.
-    ///
-    /// ## Exceptions
-    ///
-    /// ### Protection Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### Real-Address Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### Virtual-8086 Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### Compatibility Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### 64-Bit Mode Exceptions
-    /// - UD: If in 64-bit mode.
-    ///
-    /// ## Operation
-    /// ```ignore
-    /// IF 64-Bit Mode
-    ///     THEN
-    ///         #UD;
-    ///     ELSE
-    ///     IF ((AL AND 0FH) > 9) or (AF = 1)
-    ///         THEN
-    ///             AX := AX + 106H;
-    ///             AF := 1;
-    ///             CF := 1;
-    ///         ELSE
-    ///             AF := 0;
-    ///             CF := 0;
-    ///     FI;
-    ///     AL := AL AND 0FH;
-    /// FI;
-    /// ```
+    #[doc = include_str!("../../doc/intel/AAA.md")]
     Aaa,
-    /// # aad
-    ///
-    /// ASCII Adjust AX Before Division
-    ///
-    /// - aad - ASCII adjust AX before division.
-    /// - aad imm8 - Adjust AX before division to number base imm8.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=131)
-    ///
-    /// Adjusts two unpacked BCD digits (the least-significant digit in the AL register and the most-significant digit in the
-    /// AH register) so that a division operation performed on the result will yield a correct unpacked BCD value. The AAD
-    /// instruction is only useful when it precedes a DIV instruction that divides (binary division) the adjusted value in the
-    /// AX register by an unpacked BCD value.
-    ///
-    /// The AAD instruction sets the value in the AL register to (AL + (10 * AH)), and then clears the AH register to 00H.
-    /// The value in the AX register is then equal to the binary equivalent of the original unpacked two-digit (base 10)
-    /// number in registers AH and AL.
-    ///
-    /// The generalized version of this instruction allows adjustment of two unpacked digits of any number base (see the
-    /// “Operation” section below), by setting the imm8 byte to the selected number base (for example, 08H for octal, 0AH
-    /// for decimal, or 0CH for base 12 numbers). The AAD mnemonic is interpreted by all assemblers to mean adjust
-    /// ASCII (base 10) values. To adjust values in another number base, the instruction must be hand coded in machine
-    /// code (D5 imm8).
-    ///
-    /// This instruction executes as described in compatibility mode and legacy mode. It is not valid in 64-bit mode.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### aad
-    /// - 64Bit mode: Invalid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### aad imm8
-    /// - 64Bit mode: Invalid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ## Opcode
-    /// - aad - d5 0a
-    /// - aad imm8 - d5 ib
-    ///
-    /// ## Flags
-    /// The SF, ZF, and PF flags are set according to the resulting binary value in the AL register; the OF, AF, and CF flags
-    /// are undefined.
-    ///
-    /// ## Exceptions
-    ///
-    /// ### Protection Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### Real-Address Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### Virtual-8086 Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### Compatibility Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### 64-Bit Mode Exceptions
-    /// - UD: If in 64-bit mode.
-    ///
-    /// ## Operation
-    /// ```ignore
-    /// IF 64-Bit Mode
-    ///     THEN
-    ///         #UD;
-    ///     ELSE
-    ///         tempAL := AL;
-    ///         tempAH := AH;
-    ///         AL := (tempAL + (tempAH ∗ imm8)) AND FFH;
-    ///         (* imm8 is set to 0AH for the AAD mnemonic.*)
-    ///         AH := 0;
-    /// FI;
-    /// The immediate value (imm8) is taken from the second byte of the instruction.
-    /// ```
+    #[doc = include_str!("../../doc/intel/AAD.md")]
     Aad,
-    /// # aam
-    ///
-    /// ASCII Adjust AX After Multiply
-    ///
-    /// - aam - ASCII adjust AX after multiply.
-    /// - aam imm8 - Adjust AX after multiply to number base imm8.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=133)
-    ///
-    /// Adjusts the result of the multiplication of two unpacked BCD values to create a pair of unpacked (base 10) BCD
-    /// values. The AX register is the implied source and destination operand for this instruction. The AAM instruction is
-    /// only useful when it follows an MUL instruction that multiplies (binary multiplication) two unpacked BCD values and
-    /// stores a word result in the AX register. The AAM instruction then adjusts the contents of the AX register to contain
-    /// the correct 2-digit unpacked (base 10) BCD result.
-    ///
-    /// The generalized version of this instruction allows adjustment of the contents of the AX to create two unpacked
-    /// digits of any number base (see the “Operation” section below). Here, the imm8 byte is set to the selected number
-    /// base (for example, 08H for octal, 0AH for decimal, or 0CH for base 12 numbers). The AAM mnemonic is interpreted
-    /// by all assemblers to mean adjust to ASCII (base 10) values. To adjust to values in another number base, the
-    /// instruction must be hand coded in machine code (D4 imm8).
-    ///
-    /// This instruction executes as described in compatibility mode and legacy mode. It is not valid in 64-bit mode.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### aam
-    /// - 64Bit mode: Invalid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### aam imm8
-    /// - 64Bit mode: Invalid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ## Opcode
-    /// - aam - d4 0a
-    /// - aam imm8 - d4 ib
-    ///
-    /// ## Flags
-    /// The SF, ZF, and PF flags are set according to the resulting binary value in the AL register. The OF, AF, and CF flags
-    /// are undefined.
-    ///
-    /// ## Exceptions
-    ///
-    /// ### Protection Mode Exceptions
-    /// - DE: If an immediate value of 0 is used.
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### Real-Address Mode Exceptions
-    /// - DE: If an immediate value of 0 is used.
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### Virtual-8086 Mode Exceptions
-    /// - DE: If an immediate value of 0 is used.
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### Compatibility Mode Exceptions
-    /// - DE: If an immediate value of 0 is used.
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### 64-Bit Mode Exceptions
-    /// - UD: If in 64-bit mode.
-    ///
-    /// ## Operation
-    /// ```ignore
-    /// IF 64-Bit Mode
-    ///     THEN
-    ///         #UD;
-    ///     ELSE
-    ///         tempAL := AL;
-    ///         AH := tempAL / imm8; (* imm8 is set to 0AH for the AAM mnemonic *)
-    ///         AL := tempAL MOD imm8;
-    /// FI;
-    /// The immediate value (imm8) is taken from the second byte of the instruction.
-    /// ```
+    #[doc = include_str!("../../doc/intel/AAM.md")]
     Aam,
-    /// # aas
-    ///
-    /// ASCII Adjust AL After Subtraction
-    ///
-    /// - aas - ASCII adjust AL after subtraction.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=135)
-    ///
-    /// Adjusts the result of the subtraction of two unpacked BCD values to create a unpacked BCD result. The AL register
-    /// is the implied source and destination operand for this instruction. The AAS instruction is only useful when it follows
-    /// a SUB instruction that subtracts (binary subtraction) one unpacked BCD value from another and stores a byte
-    /// result in the AL register. The AAA instruction then adjusts the contents of the AL register to contain the correct 1-
-    /// digit unpacked BCD result.
-    ///
-    /// If the subtraction produced a decimal carry, the AH register decrements by 1, and the CF and AF flags are set. If no
-    /// decimal carry occurred, the CF and AF flags are cleared, and the AH register is unchanged. In either case, the AL
-    /// register is left with its top four bits set to 0.
-    ///
-    /// This instruction executes as described in compatibility mode and legacy mode. It is not valid in 64-bit mode.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### aas
-    /// - 64Bit mode: Invalid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ## Opcode
-    /// - aas - 3f
-    ///
-    /// ## Flags
-    /// The AF and CF flags are set to 1 if there is a decimal borrow; otherwise, they are cleared to 0. The OF, SF, ZF, and
-    /// PF flags are undefined.
-    ///
-    /// ## Exceptions
-    ///
-    /// ### Protection Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### Real-Address Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### Virtual-8086 Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### Compatibility Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    ///
-    /// ### 64-Bit Mode Exceptions
-    /// - UD: If in 64-bit mode.
-    ///
-    /// ## Operation
-    /// ```ignore
-    /// IF 64-bit mode
-    ///     THEN
-    ///         #UD;
-    ///     ELSE
-    ///         IF ((AL AND 0FH) > 9) or (AF = 1)
-    ///             THEN
-    ///                 AX := AX – 6;
-    ///                 AH := AH – 1;
-    ///                 AF := 1;
-    ///                 CF := 1;
-    ///                 AL := AL AND 0FH;
-    ///             ELSE
-    ///                 CF := 0;
-    ///                 AF := 0;
-    ///                 AL := AL AND 0FH;
-    ///         FI;
-    /// FI;
-    /// ```
+    #[doc = include_str!("../../doc/intel/AAS.md")]
     Aas,
-    /// # adc
-    ///
-    /// Add With Carry
-    ///
-    /// - adc al, imm8 - Add with carry imm8 to AL.
-    /// - adc ax, imm16 - Add with carry imm16 to AX.
-    /// - adc eax, imm32 - Add with carry imm32 to EAX.
-    /// - adc rax, imm32 - Add with carry imm32 sign extended to 64-bits to RAX.
-    /// - adc r/m8, imm8 - Add with carry imm8 to r/m8.
-    /// - adc r/m8*, imm8 - Add with carry imm8 to r/m8.
-    /// - adc r/m16, imm16 - Add with carry imm16 to r/m16.
-    /// - adc r/m32, imm32 - Add with CF imm32 to r/m32.
-    /// - adc r/m64, imm32 - Add with CF imm32 sign extended to 64-bits to r/m64.
-    /// - adc r/m16, imm8 - Add with CF sign-extended imm8 to r/m16.
-    /// - adc r/m32, imm8 - Add with CF sign-extended imm8 into r/m32.
-    /// - adc r/m64, imm8 - Add with CF sign-extended imm8 into r/m64.
-    /// - adc r/m8, r8 - Add with carry byte register to r/m8.
-    /// - adc r/m8*, r8* - Add with carry byte register to r/m64.
-    /// - adc r/m16, r16 - Add with carry r16 to r/m16.
-    /// - adc r/m32, r32 - Add with CF r32 to r/m32.
-    /// - adc r/m64, r64 - Add with CF r64 to r/m64.
-    /// - adc r8, r/m8 - Add with carry r/m8 to byte register.
-    /// - adc r8*, r/m8* - Add with carry r/m64 to byte register.
-    /// - adc r16, r/m16 - Add with carry r/m16 to r16.
-    /// - adc r32, r/m32 - Add with CF r/m32 to r32.
-    /// - adc r64, r/m64 - Add with CF r/m64 to r64.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=137)
-    ///
-    /// Adds the destination operand (first operand), the source operand (second operand), and the carry (CF) flag and
-    /// stores the result in the destination operand. The destination operand can be a register or a memory location; the
-    /// source operand can be an immediate, a register, or a memory location. (However, two memory operands cannot be
-    /// used in one instruction.) The state of the CF flag represents a carry from a previous addition. When an immediate
-    /// value is used as an operand, it is sign-extended to the length of the destination operand format.
-    ///
-    /// The ADC instruction does not distinguish between signed or unsigned operands. Instead, the processor evaluates
-    /// the result for both data types and sets the OF and CF flags to indicate a carry in the signed or unsigned result,
-    /// respectively. The SF flag indicates the sign of the signed result.
-    ///
-    /// The ADC instruction is usually executed as part of a multibyte or multiword addition in which an ADD instruction is
-    /// followed by an ADC instruction.
-    ///
-    /// This instruction can be used with a LOCK prefix to allow the instruction to be executed atomically.
-    ///
-    /// In 64-bit mode, the instruction’s default operation size is 32 bits. Using a REX prefix in the form of REX.R permits
-    /// access to additional registers (R8-R15). Using a REX prefix in the form of REX.W promotes operation to 64 bits. See
-    /// the summary chart at the beginning of this section for encoding data and limits.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### adc al, imm8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc ax, imm16
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc eax, imm32
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc rax, imm32
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### adc r/m8, imm8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc r/m8* , imm8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### adc r/m16, imm16
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc r/m32, imm32
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc r/m64, imm32
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### adc r/m16, imm8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc r/m32, imm8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc r/m64, imm8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### adc r/m8, r8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc r/m8*, r8*
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### adc r/m16, r16
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc r/m32, r32
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc r/m64, r64
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### adc r8, r/m8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc r8*, r/m8*
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### adc r16, r/m16
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc r32, r/m32
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### adc r64, r/m64
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ## Notes
-    /// - In 64-bit mode, r/m8 can not be encoded to access the following byte registers if a REX prefix is used: AH, BH, CH, DH.
-    ///
-    /// ## Opcode
-    /// - adc al, imm8 - 14 ib
-    /// - adc ax, imm16 - 15 iw
-    /// - adc eax, imm32 - 15 id
-    /// - adc rax, imm32 - REX.W + 15 id
-    /// - adc r/m8, imm8 - 80 /2 ib
-    /// - adc r/m8*, imm8 - REX + 80 /2 ib
-    /// - adc r/m16, imm16 - 81 /2 iw
-    /// - adc r/m32, imm32 - 81 /2 id
-    /// - adc r/m64, imm32 - REX.W + 81 /2 id
-    /// - adc r/m16, imm8 - 83 /2 ib
-    /// - adc r/m32, imm8 - 83 /2 ib
-    /// - adc r/m64, imm8 - REX.W + 83 /2 ib
-    /// - adc r/m8, r8 - 10 /r
-    /// - adc r/m8*, r8* - REX + 10 /r
-    /// - adc r/m16, r16 - 11 /r
-    /// - adc r/m32, r32 - 11 /r
-    /// - adc r/m64, r64 - REX.W + 11 /r
-    /// - adc r8, r/m8 - 12 /r
-    /// - adc r8*, r/m8* - REX + 12 /r
-    /// - adc r16, r/m16 - 13 /r
-    /// - adc r32, r/m32 - 13 /r
-    /// - adc r64, r/m64 - REX.W + 13 /r
-    ///
-    /// ## Flags
-    /// The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
-    ///
-    /// ## Exceptions
-    ///
-    /// ### Protection Mode Exceptions
-    /// - GP(0) : If the destination is located in a non-writable segment.
-    /// - GP(0) : If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
-    /// - GP(0) : If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
-    /// - SS(0) : If a memory operand effective address is outside the SS segment limit.
-    /// - PF(fault-code) : If a page fault occurs.
-    /// - AC(0) : If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    /// - UD : If the LOCK prefix is used but the destination is not a memory operand.
-    ///
-    /// ### Real-Address Mode Exceptions
-    /// - GP : If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
-    /// - SS : If a memory operand effective address is outside the SS segment limit.
-    /// - UD : If the LOCK prefix is used but the destination is not a memory operand.
-    ///
-    /// ### Virtual-8086 Mode Exceptions
-    /// - GP(0) : If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
-    /// - SS(0) : If a memory operand effective address is outside the SS segment limit.
-    /// - PF(fault-code) : If a page fault occurs.
-    /// - AC(0) : If alignment checking is enabled and an unaligned memory reference is made.
-    /// - UD : If the LOCK prefix is used but the destination is not a memory operand.
-    ///
-    /// ### Compatibility Mode Exceptions
-    /// - GP(0) : If the destination is located in a non-writable segment.
-    /// - GP(0) : If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
-    /// - GP(0) : If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
-    /// - SS(0) : If a memory operand effective address is outside the SS segment limit.
-    /// - PF(fault-code) : If a page fault occurs.
-    /// - AC(0) : If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    /// - UD : If the LOCK prefix is used but the destination is not a memory operand.
-    ///
-    /// ### 64-Bit Mode Exceptions
-    /// - SS(0) : If a memory address referencing the SS segment is in a non-canonical form.
-    /// - GP(0) : If the memory address is in a non-canonical form.
-    /// - PF(fault-code) : If a page fault occurs.
-    /// - AC(0) : If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    /// - UD : If the LOCK prefix is used but the destination is not a memory operand.
-    ///
-    /// ## Intel C/C++ Compiler Intrinsic Equivalent
-    /// - ADC extern unsigned char _addcarry_u8(unsigned char c_in, unsigned char src1, unsigned char src2, unsigned char *sum_out);
-    /// - ADC extern unsigned char _addcarry_u16(unsigned char c_in, unsigned short src1, unsigned short src2, unsigned short *sum_out);
-    /// - ADC extern unsigned char _addcarry_u32(unsigned char c_in, unsigned int src1, unsigned char int, unsigned int *sum_out);
-    /// - ADC extern unsigned char _addcarry_u64(unsigned char c_in, unsigned __int64 src1, unsigned __int64 src2, unsigned __int64 *sum_out);
-    ///
-    /// ## Operation
-    /// ```ignore
-    /// DEST := DEST + SRC + CF;
-    /// ```
+    #[doc = include_str!("../../doc/intel/ADC.md")]
     Adc,
-    /// # adcx
-    ///
-    /// Unsigned Integer Addition of Two Operands With Carry Flag
-    ///
-    /// - adcx r32, r/m32 - Unsigned addition of r32 with CF, r/m32 to r32, writes CF.
-    /// - adcx r64, r/m64 - Unsigned addition of r64 with CF, r/m64 to r64, writes CF.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=140)
-    ///
-    /// Performs an unsigned addition of the destination operand (first operand), the source operand (second operand)
-    /// and the carry-flag (CF) and stores the result in the destination operand. The destination operand is a general-
-    /// purpose register, whereas the source operand can be a general-purpose register or memory location. The state of
-    /// CF can represent a carry from a previous addition. The instruction sets the CF flag with the carry generated by the
-    /// unsigned addition of the operands.
-    ///
-    /// The ADCX instruction is executed in the context of multi-precision addition, where we add a series of operands with
-    /// a carry-chain. At the beginning of a chain of additions, we need to make sure the CF is in a desired initial state.
-    /// Often, this initial state needs to be 0, which can be achieved with an instruction to zero the CF (e.g. XOR).
-    ///
-    /// This instruction is supported in real mode and virtual-8086 mode. The operand size is always 32 bits if not in 64-bit
-    /// mode.
-    ///
-    /// In 64-bit mode, the default operation size is 32 bits. Using a REX Prefix in the form of REX.R permits access to addi-
-    /// tional registers (R8-15). Using REX Prefix in the form of REX.W promotes operation to 64 bits.
-    ///
-    /// ADCX executes normally either inside or outside a transaction region.
-    ///
-    /// Note: ADCX defines the OF flag differently than the ADD/ADC instructions as defined in the Intel® 64 and IA-32
-    /// Architectures Software Developer’s Manual, Volume 2A.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### adcx r32, r/m32
-    /// - 64Bit mode support: V/V
-    /// - CPUID Feature Flag: ADX
-    ///
-    /// ### adcx r64, r/m64
-    /// - 64/32Bit mode support: V/NE
-    /// - CPUID Feature Flag: ADX
-    ///
-    /// ## Opcode
-    /// - adcx r32, r/m32 - 66 0f 38 f6 /r
-    /// - adcx r64, r/m64 - 66 REX.w 0f 38 f6 /r
-    ///
-    /// ## Flags
-    /// CF is updated based on result. OF, SF, ZF, AF, and PF flags are unmodified.
-    ///
-    /// ## Exceptions
-    ///
-    /// ### SIMD Floating-Point Exceptions
-    /// - None
-    ///
-    /// ### Protection Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    /// - UD: IF CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
-    /// - SS(0): For an illegal address in the SS segments.
-    /// - GP(0): For an illegal memory operand effective address in the CS, DS, ES, FS, or GS segments.
-    /// - GP(0): If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
-    /// - PF(fault-code): For a page fault.
-    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    ///
-    /// ### Real-Address Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    /// - UD: IF CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
-    /// - SS(0): For an illegal address in the SS segments.
-    /// - GP(0): If any part of the operand lies outside the effective address space from 0 to FFFFH.
-    ///
-    /// ### Virtual-8086 Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    /// - UD: IF CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
-    /// - SS(0): For an illegal address in the SS segments.
-    /// - GP(0): If any part of the operand lies outside the effective address space from 0 to FFFFH.
-    /// - PF(fault-code): For a page fault.
-    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made.
-    ///
-    /// ### Compatibility Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    /// - UD: IF CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
-    /// - SS(0): For an illegal address in the SS segments.
-    /// - GP(0): For an illegal memory operand effective address in the CS, DS, ES, FS, or GS segments.
-    /// - GP(0): If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
-    /// - PF(fault-code): For a page fault.
-    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    ///
-    /// ### 64-Bit Mode Exceptions
-    /// - UD: If the LOCK prefix is used.
-    /// - UD: IF CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
-    /// - SS(0): If a memory address referencing the SS segment is in a non-canonical form.
-    /// - GP(0): If a memory address is in a non-canonical form.
-    /// - PF(fault-code): For a page fault.
-    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    ///
-    /// ## Intel C/C++ Compiler Intrinsic Equivalent
-    /// unsigned char _addcarryx_u32 (unsigned char c_in, unsigned int src1, unsigned int src2, unsigned int *sum_out);
-    /// unsigned char _addcarryx_u64 (unsigned char c_in, unsigned __int64 src1, unsigned __int64 src2, unsigned __int64 *sum_out);
-    ///
-    /// ## Operation
-    /// ```ignore
-    /// IF OperandSize is 64-bit
-    ///     THEN CF:DEST[63:0] := DEST[63:0] + SRC[63:0] + CF;
-    ///     ELSE CF:DEST[31:0] := DEST[31:0] + SRC[31:0] + CF;
-    /// FI;
-    /// ```
+    #[doc = include_str!("../../doc/intel/ADCX.md")]
     Adcx,
-    /// # add
-    ///
-    /// Add
-    ///
-    /// - add al, imm8  - Add imm8 to AL.
-    /// - add ax, imm16 - Add imm16 to AX.
-    /// - add eax, imm32 - Add imm32 to EAX.
-    /// - add rax, imm32 - Add imm32 sign extended to 64-bits to RAX.
-    /// - add r/m8, imm8 - Add imm8 to r/m8.
-    /// - add r/m8*, imm8 - Add sign-extended imm8 to r/m8.
-    /// - add r/m16, imm16 - Add imm16 to r/m16.
-    /// - add r/m32, imm32 - Add imm32 to r/m32.
-    /// - add r/m64, imm32 - Add imm32 sign extended to 64-bits to r/m64.
-    /// - add r/m16, imm8 - Add sign-extended imm8 to r/m16.
-    /// - add r/m32, imm8 - Add sign-extended imm8 to r/m32.
-    /// - add r/m64, imm8 - Add sign-extended imm8 to r/m64.
-    /// - add r/m8, r8 - Add r8 to r/m8.
-    /// - add r/m8*, r8* - Add r8 to r/m8.
-    /// - add r/m16, r16 - Add r16 to r/m16.
-    /// - add r/m32, r32 - Add r32 to r/m32.
-    /// - add r/m64, r64 - Add r64 to r/m64.
-    /// - add r8, r/m8 - Add r/m8 to r8.
-    /// - add r8*, r/m8* - Add r/m8 to r8.
-    /// - add r16, r/m16 - Add r/m16 to r16.
-    /// - add r32, r/m32 - Add r/m32 to r32.
-    /// - add r64, r/m64 - Add r/m64 to r64.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=142)
-    ///
-    /// Adds the destination operand (first operand) and the source operand (second operand) and then stores the result
-    /// in the destination operand. The destination operand can be a register or a memory location; the source operand
-    /// can be an immediate, a register, or a memory location. (However, two memory operands cannot be used in one
-    /// instruction.) When an immediate value is used as an operand, it is sign-extended to the length of the destination
-    /// operand format.
-    ///
-    /// The ADD instruction performs integer addition. It evaluates the result for both signed and unsigned integer oper-
-    /// ands and sets the OF and CF flags to indicate a carry (overflow) in the signed or unsigned result, respectively. The
-    /// SF flag indicates the sign of the signed result.
-    ///
-    /// This instruction can be used with a LOCK prefix to allow the instruction to be executed atomically.
-    ///
-    /// In 64-bit mode, the instruction’s default operation size is 32 bits. Using a REX prefix in the form of REX.R permits
-    /// access to additional registers (R8-R15). Using a REX prefix in the form of REX.W promotes operation to 64 bits. See
-    /// the summary chart at the beginning of this section for encoding data and limits.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### add al, imm8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add ax, imm16
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add eax, imm32
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add rax, imm32
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### add r/m8, imm8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add r/m8* , imm8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### add r/m16, imm16
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add r/m32, imm32
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add r/m64, imm32
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### add r/m16, imm8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add r/m32, imm8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add r/m64, imm8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### add r/m8, r8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add r/m8*, r8*
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### add r/m16, r16
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add r/m32, r32
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add r/m64, r64
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### add r8, r/m8
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add r8*, r/m8*
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ### add r16, r/m16
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add r32, r/m32
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: Valid
-    ///
-    /// ### add r64, r/m64
-    /// - 64Bit mode: Valid
-    /// - Compat/Leg mode: N.E.
-    ///
-    /// ## Notes
-    /// - In 64-bit mode, r/m8 can not be encoded to access the following byte registers if a REX prefix is used: AH, BH, CH, DH.
-    ///
-    /// ## Opcode
-    /// - add al, imm8 - 04 ib
-    /// - add ax, imm16 - 05 iw
-    /// - add eax, imm32 - 05 id
-    /// - add rax, imm32 - REX.W + 05 id
-    /// - add r/m8, imm8 - 80 /0 ib
-    /// - add r/m8*, imm8 - REX + 80 /0 ib
-    /// - add r/m16, imm16 - 81 /0 iw
-    /// - add r/m32, imm32 - 81 /0 id
-    /// - add r/m64, imm32 - REX.W + 81 /0 id
-    /// - add r/m16, imm8 - 83 /0 ib
-    /// - add r/m32, imm8 - 83 /0 ib
-    /// - add r/m64, imm8 - REX.W + 83 /0 ib
-    /// - add r/m8, r8 - 00 /r
-    /// - add r/m8*, r8* - REX + 00 /r
-    /// - add r/m16, r16 - 01 /r
-    /// - add r/m32, r32 - 01 /r
-    /// - add r/m64, r64 - REX.W + 01 /r
-    /// - add r8, r/m8 - 02 /r
-    /// - add r8*, r/m8* - REX + 02 /r
-    /// - add r16, r/m16 - 03 /r
-    /// - add r32, r/m32 - 03 /r
-    /// - add r64, r/m64 - REX.W + 03 /r
-    ///
-    /// ## Flags
-    /// The OF, SF, ZF, AF, CF, and PF flags are set according to the result.
-    ///
-    /// ## Exceptions
-    ///
-    /// ### Protection Mode Exceptions
-    /// - GP(0): If the destination is located in a non-writable segment.
-    /// - GP(0): If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
-    /// - GP(0): If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
-    /// - SS(0): If a memory operand effective address is outside the SS segment limit.
-    /// - PF(fault-code): If a page fault occurs.
-    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    /// - UD: If the LOCK prefix is used but the destination is not a memory operand.
-    ///
-    /// ### Real-Address Mode Exceptions
-    /// - GP: If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
-    /// - SS: If a memory operand effective address is outside the SS segment limit.
-    /// - UD: If the LOCK prefix is used but the destination is not a memory operand.
-    ///
-    /// ### Virtual-8086 Mode Exceptions
-    /// - GP(0): If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
-    /// - SS(0): If a memory operand effective address is outside the SS segment limit.
-    /// - PF(fault-code): If a page fault occurs.
-    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made.
-    /// - UD: If the LOCK prefix is used but the destination is not a memory operand.
-    ///
-    /// ### Compatibility Mode Exceptions
-    /// - GP(0): If the destination is located in a non-writable segment.
-    /// - GP(0): If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
-    /// - GP(0): If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
-    /// - SS(0): If a memory operand effective address is outside the SS segment limit.
-    /// - PF(fault-code): If a page fault occurs.
-    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    /// - UD: If the LOCK prefix is used but the destination is not a memory operand.
-    ///
-    /// ### 64-Bit Mode Exceptions
-    /// - SS(0): If a memory address referencing the SS segment is in a non-canonical form.
-    /// - GP(0): If a memory address is in a non-canonical form.
-    /// - PF(fault-code): If a page fault occurs.
-    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    /// - UD: If the LOCK prefix is used but the destination is not a memory operand.
-    ///
-    /// ## Operation
-    /// ```ignore
-    /// DEST := DEST + SRC;
-    /// ```
+    #[doc = include_str!("../../doc/intel/ADD.md")]
     Add,
-    /// # addpd
-    ///
-    /// Add Packed Double Precision Floating-Point Values
-    ///
-    /// - addpd xmm1, xmm2/m128 - Add packed double precision floating-point values from xmm2/mem to xmm1 and store result in xmm1.
-    /// - vaddpd xmm1, xmm2, xmm3/m128 - Add packed double precision floating-point values from xmm3/mem to xmm2 and store result in xmm1.
-    /// - vaddpd ymm1, ymm2, ymm3/m256 - Add packed double precision floating-point values from ymm3/mem to ymm2 and store result in ymm1.
-    /// - vaddpd xmm1 {k1}{z}, xmm2, xmm3/m128/m64bcst - Add packed double precision floating-point values from xmm3/m128/m64bcst to xmm2 and store result in xmm1 with writemask k1.
-    /// - vaddpd ymm1 {k1}{z}, ymm2, ymm3/m256/m64bcst - Add packed double precision floating-point values from ymm3/m256/m64bcst to ymm2 and store result in ymm1 with writemask k1.
-    /// - vaddpd zmm1 {k1}{z}, zmm2, zmm3/m512/m64bcst{er} - Add packed double precision floating-point values from zmm3/m512/m64bcst to zmm2 and store result in zmm1 with writemask k1.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=144)
-    ///
-    /// Adds two, four or eight packed double precision floating-point values from the first source operand to the second
-    /// source operand, and stores the packed double precision floating-point result in the destination operand.
-    ///
-    /// EVEX encoded versions: The first source operand is a ZMM/YMM/XMM register. The second source operand can be
-    /// a ZMM/YMM/XMM register, a 512/256/128-bit memory location or a 512/256/128-bit vector broadcasted from a
-    /// 64-bit memory location. The destination operand is a ZMM/YMM/XMM register conditionally updated with
-    /// writemask k1.
-    ///
-    /// VEX.256 encoded version: The first source operand is a YMM register. The second source operand can be a YMM
-    /// register or a 256-bit memory location. The destination operand is a YMM register. The upper bits (MAXVL-1:256) of
-    /// the corresponding ZMM register destination are zeroed.
-    ///
-    /// VEX.128 encoded version: the first source operand is a XMM register. The second source operand is an XMM
-    /// register or 128-bit memory location. The destination operand is an XMM register. The upper bits (MAXVL-1:128) of
-    /// the corresponding ZMM register destination are zeroed.
-    ///
-    /// 128-bit Legacy SSE version: The second source can be an XMM register or an 128-bit memory location. The desti-
-    /// nation is not distinct from the first source XMM register and the upper Bits (MAXVL-1:128) of the corresponding
-    /// ZMM register destination are unmodified.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### addpd xmm1, xmm2/m128
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: SSE2
-    ///
-    /// ### vaddpd xmm1, xmm2, xmm3/m128
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX
-    ///
-    /// ### vaddpd ymm1, ymm2, ymm3/m256
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX
-    ///
-    /// ### vaddpd xmm1 {k1}{z}, xmm2, xmm3/m128/m64bcst
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX512VL + AVX512F
-    ///
-    /// ### vaddpd ymm1 {k1}{z}, ymm2, ymm3/m256/m64bcst
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX512VL + AVX512F
-    ///
-    /// ### vaddpd zmm1 {k1}{z}, zmm2, zmm3/m512/m64bcst{er}
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX512F
-    ///
-    /// ## Opcode
-    /// - addpd xmm1, xmm2/m128 - 66 0f 58 /r
-    /// - vddpd xmm1, xmm2, xmm3/m128 - VEX.128.66.0f.WIG 58 /r
-    /// - vaddpd ymm1, ymm2, ymm3/m256 - VEX.256.66.0f.WIG 58 /r
-    /// - vaddpd xmm1 {k1}{z}, xmm2, xmm3/m128/m64bcst - EVEX.128.66.0f.w1 58 /r
-    /// - vaddpd ymm1 {k1}{z}, ymm2, ymm3/m256/m64bcst - EVEX.256.66.0f.w1 58 /r
-    /// - vaddpd zmm1 {k1}{z}, zmm2, zmm3/m512/m64bcst{er} - EVEX.512.66.0f.w1 58 /r
-    ///
-    /// ## Exceptions
-    ///
-    /// ### SIMD Floating-Point Exceptions
-    /// - Overflow, Underflow, Invalid, Precision, Denormal.
-    ///
-    /// ### Other Exceptions
-    /// - VEX-encoded instruction, see Table 2-19, “Type 2 Class Exception Conditions.”
-    /// - EVEX-encoded instruction, see Table 2-46, “Type E2 Class Exception Conditions.”
-    ///
-    /// ## Intel C/C++ Compiler Intrinsic Equivalent
-    /// VADDPD __m512d _mm512_add_pd (__m512d a, __m512d b);
-    /// VADDPD __m512d _mm512_mask_add_pd (__m512d s, __mmask8 k, __m512d a, __m512d b);
-    /// VADDPD __m512d _mm512_maskz_add_pd (__mmask8 k, __m512d a, __m512d b);
-    /// VADDPD __m256d _mm256_mask_add_pd (__m256d s, __mmask8 k, __m256d a, __m256d b);
-    /// VADDPD __m256d _mm256_maskz_add_pd (__mmask8 k, __m256d a, __m256d b);
-    /// VADDPD __m128d _mm_mask_add_pd (__m128d s, __mmask8 k, __m128d a, __m128d b);
-    /// VADDPD __m128d _mm_maskz_add_pd (__mmask8 k, __m128d a, __m128d b);
-    /// VADDPD __m512d _mm512_add_round_pd (__m512d a, __m512d b, int);
-    /// VADDPD __m512d _mm512_mask_add_round_pd (__m512d s, __mmask8 k, __m512d a, __m512d b, int);
-    /// VADDPD __m512d _mm512_maskz_add_round_pd (__mmask8 k, __m512d a, __m512d b, int);
-    /// ADDPD __m256d _mm256_add_pd (__m256d a, __m256d b);
-    /// ADDPD __m128d _mm_add_pd (__m128d a, __m128d b);
-    ///
-    /// ## Operation
-    ///
-    /// ### VADDPD (EVEX Encoded Versions) When SRC2 Operand is a Vector Register
-    /// ```ignore
-    /// (KL, VL) = (2, 128), (4, 256), (8, 512)
-    /// IF (VL = 512) AND (EVEX.b = 1)
-    ///     THEN
-    ///         SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(EVEX.RC);
-    ///     ELSE
-    ///         SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(MXCSR.RC);
-    /// FI;
-    /// FOR j := 0 TO KL-1
-    ///     i := j * 64
-    ///     IF k1[j] OR *no writemask*
-    ///         THEN DEST[i+63:i] := SRC1[i+63:i] + SRC2[i+63:i]
-    ///         ELSE
-    ///             IF *merging-masking* ; merging-masking
-    ///                 THEN *DEST[i+63:i] remains unchanged*
-    ///                 ELSE ; zeroing-masking
-    ///                     DEST[i+63:i] := 0
-    ///             FI
-    ///     FI;
-    /// ENDFOR
-    /// DEST[MAXVL-1:VL] := 0
-    /// ```
-    ///
-    /// ### VADDPD (EVEX Encoded Versions) When SRC2 Operand is a Memory Source
-    /// ```ignore
-    /// (KL, VL) = (2, 128), (4, 256), (8, 512)
-    /// FOR j := 0 TO KL-1
-    ///     i := j * 64
-    ///     IF k1[j] OR *no writemask*
-    ///         THEN
-    ///             IF (EVEX.b = 1)
-    ///                 THEN
-    ///                     DEST[i+63:i] := SRC1[i+63:i] + SRC2[63:0]
-    ///                 ELSE
-    ///                     DEST[i+63:i] := SRC1[i+63:i] + SRC2[i+63:i]
-    ///             FI;
-    ///         ELSE
-    ///             IF *merging-masking* ; merging-masking
-    ///                 THEN *DEST[i+63:i] remains unchanged*
-    ///                 ELSE ; zeroing-masking
-    ///                     DEST[i+63:i] := 0
-    ///             FI
-    ///     FI;
-    /// ENDFOR
-    /// DEST[MAXVL-1:VL] := 0
-    /// ```
-    ///
-    /// ### VADDPD (VEX.256 Encoded Version)
-    /// ```ignore
-    /// DEST[63:0] := SRC1[63:0] + SRC2[63:0]
-    /// DEST[127:64] := SRC1[127:64] + SRC2[127:64]
-    /// DEST[191:128] := SRC1[191:128] + SRC2[191:128]
-    /// DEST[255:192] := SRC1[255:192] + SRC2[255:192]
-    /// DEST[MAXVL-1:256] := 0
-    /// ```
-    ///
-    /// ### VADDPD (VEX.128 Encoded Version)
-    /// ```ignore
-    /// DEST[63:0] := SRC1[63:0] + SRC2[63:0]
-    /// DEST[127:64] := SRC1[127:64] + SRC2[127:64]
-    /// DEST[MAXVL-1:128] := 0
-    /// ```
-    ///
-    /// ### ADDPD (128-bit Legacy SSE Version)
-    /// ```ignore
-    /// DEST[63:0] := DEST[63:0] + SRC[63:0]
-    /// DEST[127:64] := DEST[127:64] + SRC[127:64]
-    /// DEST[MAXVL-1:128] (Unmodified)
-    /// ```
+    #[doc = include_str!("../../doc/intel/ADDPD.md")]
     Addpd,
-    /// # addps
-    ///
-    /// Add Packed Single Precision Floating-Point Values
-    ///
-    /// - addps xmm1, xmm2/m128 - Add packed single precision floating-point values from xmm2/m128 to xmm1 and store result in xmm1.
-    /// - vaddps xmm1, xmm2, xmm3/m128 - Add packed single precision floating-point values from xmm3/m128 to xmm2 and store result in xmm1.
-    /// - vaddps ymm1, ymm2, ymm3/m256 - Add packed single precision floating-point values from ymm3/m256 to ymm2 and store result in ymm1.
-    /// - vaddps xmm1 {k1}{z}, xmm2, xmm3/m128/m32bcst - Add packed single precision floating-point values from xmm3/m128/m32bcst to xmm2 and store result in xmm1 with writemask k1.
-    /// - vaddps ymm1 {k1}{z}, ymm2, ymm3/m256/m32bcst - Add packed single precision floating-point values from ymm3/m256/m32bcst to ymm2 and store result in ymm1 with writemask k1.
-    /// - vaddps zmm1 {k1}{z}, zmm2, zmm3/m512/m32bcst{er} - Add packed single precision floating-point values from zmm3/m512/m32bcst to zmm2 and store result in zmm1 with writemask k1.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=147)
-    ///
-    /// Adds four, eight or sixteen packed single precision floating-point values from the first source operand with the
-    /// second source operand, and stores the packed single precision floating-point result in the destination operand.
-    ///
-    /// EVEX encoded versions: The first source operand is a ZMM/YMM/XMM register. The second source operand can be
-    /// a ZMM/YMM/XMM register, a 512/256/128-bit memory location or a 512/256/128-bit vector broadcasted from a
-    /// 32-bit memory location. The destination operand is a ZMM/YMM/XMM register conditionally updated with
-    /// writemask k1.
-    ///
-    /// VEX.256 encoded version: The first source operand is a YMM register. The second source operand can be a YMM
-    /// register or a 256-bit memory location. The destination operand is a YMM register. The upper bits (MAXVL-1:256) of
-    /// the corresponding ZMM register destination are zeroed.
-    ///
-    /// VEX.128 encoded version: the first source operand is a XMM register. The second source operand is an XMM
-    /// register or 128-bit memory location. The destination operand is an XMM register. The upper bits (MAXVL-1:128) of
-    /// the corresponding ZMM register destination are zeroed.
-    ///
-    /// 128-bit Legacy SSE version: The second source can be an XMM register or an 128-bit memory location. The desti-
-    /// nation is not distinct from the first source XMM register and the upper Bits (MAXVL-1:128) of the corresponding
-    /// ZMM register destination are unmodified.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### addps xmm1, xmm2/m128
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: SSE
-    ///
-    /// ### vaddps xmm1, xmm2, xmm3/m128
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX
-    ///
-    /// ### vaddps ymm1, ymm2, ymm3/m256
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX
-    ///
-    /// ### vaddps xmm1 {k1}{z}, xmm2, xmm3/m128/m32bcst
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX512VL + AVX512F
-    ///
-    /// ### vaddps ymm1 {k1}{z}, ymm2, ymm3/m256/m32bcst
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX512VL + AVX512F
-    ///
-    /// ### vaddps zmm1 {k1}{z}, zmm2, zmm3/m512/m32bcst{er}
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX512F
-    ///
-    /// ## Opcode
-    /// - addps xmm1, xmm2/m128 - np 0f 58 /r
-    /// - vaddps xmm1, xmm2, xmm3/m128 - VEX.128.0f.WIG 58 /r
-    /// - vaddps ymm1, ymm2, ymm3/m256 - VEX.256.0f.WIG 58 /r
-    /// - vaddps xmm1 {k1}{z}, xmm2, xmm3/m128/m32bcst - EVEX.128.0f.w0 58 /r
-    /// - vaddps ymm1 {k1}{z}, ymm2, ymm3/m256/m32bcst - EVEX.256.0f.w0 58 /r
-    /// - vaddps zmm1 {k1}{z}, zmm2, zmm3/m512/m32bcst{er} - EVEX.512.0f.w0 58 /r
-    ///
-    /// ## Exceptions
-    ///
-    /// ### SIMD Floating-Point Exceptions
-    /// - Overflow, Underflow, Invalid, Precision, Denormal.
-    ///
-    /// ### Other Exceptions
-    /// - VEX-encoded instruction, see Table 2-19, “Type 2 Class Exception Conditions.”
-    /// - EVEX-encoded instruction, see Table 2-46, “Type E2 Class Exception Conditions.”
-    ///
-    /// ## Intel C/C++ Compiler Intrinsic Equivalent
-    /// VADDPS __m512 _mm512_add_ps (__m512 a, __m512 b);
-    /// VADDPS __m512 _mm512_mask_add_ps (__m512 s, __mmask16 k, __m512 a, __m512 b);
-    /// VADDPS __m512 _mm512_maskz_add_ps (__mmask16 k, __m512 a, __m512 b);
-    /// VADDPS __m256 _mm256_mask_add_ps (__m256 s, __mmask8 k, __m256 a, __m256 b);
-    /// VADDPS __m256 _mm256_maskz_add_ps (__mmask8 k, __m256 a, __m256 b);
-    /// VADDPS __m128 _mm_mask_add_ps (__m128d s, __mmask8 k, __m128 a, __m128 b);
-    /// VADDPS __m128 _mm_maskz_add_ps (__mmask8 k, __m128 a, __m128 b);
-    /// VADDPS __m512 _mm512_add_round_ps (__m512 a, __m512 b, int);
-    /// VADDPS __m512 _mm512_mask_add_round_ps (__m512 s, __mmask16 k, __m512 a, __m512 b, int);
-    /// VADDPS __m512 _mm512_maskz_add_round_ps (__mmask16 k, __m512 a, __m512 b, int);
-    /// ADDPS __m256 _mm256_add_ps (__m256 a, __m256 b);
-    /// ADDPS __m128 _mm_add_ps (__m128 a, __m128 b);
-    ///
-    /// ## Operation
-    ///
-    /// ### VADDPS (EVEX Encoded Versions) When SRC2 Operand is a Register
-    /// ```ignore
-    /// (KL, VL) = (4, 128), (8, 256), (16, 512)
-    /// IF (VL = 512) AND (EVEX.b = 1)
-    ///     THEN
-    ///         SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(EVEX.RC);
-    ///     ELSE
-    ///         SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(MXCSR.RC);
-    /// FI;
-    /// FOR j := 0 TO KL-1
-    ///     i := j * 32
-    ///     IF k1[j] OR *no writemask*
-    ///         THEN DEST[i+31:i] := SRC1[i+31:i] + SRC2[i+31:i]
-    ///         ELSE
-    ///             IF *merging-masking* ; merging-masking
-    ///                 THEN *DEST[i+31:i] remains unchanged*
-    ///                 ELSE ; zeroing-masking
-    ///                     DEST[i+31:i] := 0
-    ///             FI
-    ///     FI;
-    /// ENDFOR;
-    /// DEST[MAXVL-1:VL] := 0
-    /// ```
-    ///
-    /// ### VADDPS (EVEX Encoded Versions) When SRC2 Operand is a Memory Source
-    /// ```ignore
-    /// (KL, VL) = (4, 128), (8, 256), (16, 512)
-    /// FOR j := 0 TO KL-1
-    ///     i := j * 32
-    ///     IF k1[j] OR *no writemask*
-    ///     THEN
-    ///         IF (EVEX.b = 1)
-    ///             THEN
-    ///                 DEST[i+31:i] := SRC1[i+31:i] + SRC2[31:0]
-    ///             ELSE
-    ///                 DEST[i+31:i] := SRC1[i+31:i] + SRC2[i+31:i]
-    ///         FI;
-    ///     ELSE
-    ///         IF *merging-masking* ; merging-masking
-    ///             THEN *DEST[i+31:i] remains unchanged*
-    ///             ELSE ; zeroing-masking
-    ///                 DEST[i+31:i] := 0
-    ///         FI
-    ///     FI;
-    /// ENDFOR;
-    /// DEST[MAXVL-1:VL] := 0
-    /// ```
-    ///
-    /// ### VADDPS (VEX.256 Encoded Version)
-    /// ```ignore
-    /// DEST[31:0] := SRC1[31:0] + SRC2[31:0]
-    /// DEST[63:32] := SRC1[63:32] + SRC2[63:32]
-    /// DEST[95:64] := SRC1[95:64] + SRC2[95:64]
-    /// DEST[127:96] := SRC1[127:96] + SRC2[127:96]
-    /// DEST[159:128] := SRC1[159:128] + SRC2[159:128]
-    /// DEST[191:160]:= SRC1[191:160] + SRC2[191:160]
-    /// DEST[223:192] := SRC1[223:192] + SRC2[223:192]
-    /// DEST[255:224] := SRC1[255:224] + SRC2[255:224].
-    /// DEST[MAXVL-1:256] := 0
-    /// ```
-    ///
-    /// ### VADDPS (VEX.128 Encoded Version)
-    /// ```ignore
-    /// DEST[31:0] := SRC1[31:0] + SRC2[31:0]
-    /// DEST[63:32] := SRC1[63:32] + SRC2[63:32]
-    /// DEST[95:64] := SRC1[95:64] + SRC2[95:64]
-    /// DEST[127:96] := SRC1[127:96] + SRC2[127:96]
-    /// DEST[MAXVL-1:128] := 0
-    /// ```
-    ///
-    /// ### ADDPS (128-bit Legacy SSE Version)
-    /// ```ignore
-    /// DEST[31:0] := SRC1[31:0] + SRC2[31:0]
-    /// DEST[63:32] := SRC1[63:32] + SRC2[63:32]
-    /// DEST[95:64] := SRC1[95:64] + SRC2[95:64]
-    /// DEST[127:96] := SRC1[127:96] + SRC2[127:96]
-    /// DEST[MAXVL-1:128] (Unmodified)
-    /// ```
+    #[doc = include_str!("../../doc/intel/ADDPS.md")]
     Addps,
-    /// # addsd
-    ///
-    /// Add Scalar Double Precision Floating-Point Values
-    ///
-    /// - addsd xmm1, xmm2/m64 - Add the low double precision floating-point value from xmm2/mem to xmm1 and store the result in xmm1.
-    /// - vaddsd xmm1, xmm2, xmm3/m64 - Add the low double precision floating-point value from xmm3/mem to xmm2 and store the result in xmm1.
-    /// - vaddsd xmm1 {k1}{z}, xmm2, xmm3/m64{er} - Add the low double precision floating-point value from xmm3/m64 to xmm2 and store the result in xmm1 with writemask k1.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=150)
-    ///
-    /// Adds the low double precision floating-point values from the second source operand and the first source operand
-    /// and stores the double precision floating-point result in the destination operand.
-    ///
-    /// The second source operand can be an XMM register or a 64-bit memory location. The first source and destination
-    /// operands are XMM registers.
-    ///
-    /// 128-bit Legacy SSE version: The first source and destination operands are the same. Bits (MAXVL-1:64) of the
-    /// corresponding destination register remain unchanged.
-    ///
-    /// EVEX and VEX.128 encoded version: The first source operand is encoded by EVEX.vvvv/VEX.vvvv. Bits (127:64) of
-    /// the XMM register destination are copied from corresponding bits in the first source operand. Bits (MAXVL-1:128) of
-    /// the destination register are zeroed.
-    ///
-    /// EVEX version: The low quadword element of the destination is updated according to the writemask.
-    ///
-    /// Software should ensure VADDSD is encoded with VEX.L=0. Encoding VADDSD with VEX.L=1 may encounter unpre-
-    /// dictable behavior across different processor generations.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### addsd xmm1, xmm2/m64
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: SSE2
-    ///
-    /// ### vaddsd xmm1, xmm2, xmm3/m64
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX
-    ///
-    /// ### vaddsd xmm1 {k1}{z}, xmm2, xmm3/m64{er}
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX512F
-    ///
-    /// ## Opcode
-    /// - addss xmm1, xmm2/m32 - F2 0f 58 /r
-    /// - vaddss xmm1, xmm2, xmm3/m32 - VEX.LIG.F2.0f.WIG 58 /r
-    /// - vaddss xmm1 {k1}{z}, xmm2, xmm3/m32{er} - EVEX.LIG.F2.0f.W1 58 /r
-    ///
-    /// ## Exceptions
-    ///
-    /// ### SIMD Floating-Point Exceptions
-    /// - Overflow, Underflow, Invalid, Precision, Denormal.
-    ///
-    /// ### Other Exceptions
-    /// VEX-encoded instruction, see Table 2-20, “Type 3 Class Exception Conditions.”
-    /// EVEX-encoded instruction, see Table 2-47, “Type E3 Class Exception Conditions.”
-    ///
-    /// ## Intel C/C++ Compiler Intrinsic Equivalent
-    /// VADDSD __m128d _mm_mask_add_sd (__m128d s, __mmask8 k, __m128d a, __m128d b);
-    /// VADDSD __m128d _mm_maskz_add_sd (__mmask8 k, __m128d a, __m128d b);
-    /// VADDSD __m128d _mm_add_round_sd (__m128d a, __m128d b, int);
-    /// VADDSD __m128d _mm_mask_add_round_sd (__m128d s, __mmask8 k, __m128d a, __m128d b, int);
-    /// VADDSD __m128d _mm_maskz_add_round_sd (__mmask8 k, __m128d a, __m128d b, int);
-    /// ADDSD __m128d _mm_add_sd (__m128d a, __m128d b);
-    ///
-    /// ## Operation
-    ///
-    /// ### VADDSD (EVEX Encoded Version)
-    /// ```ignore
-    /// IF (EVEX.b = 1) AND SRC2 *is a register*
-    ///     THEN
-    ///         SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(EVEX.RC);
-    ///     ELSE
-    ///         SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(MXCSR.RC);
-    /// FI;
-    /// IF k1[0] or *no writemask*
-    ///     THEN DEST[63:0] := SRC1[63:0] + SRC2[63:0]
-    ///     ELSE
-    ///         IF *merging-masking* ; merging-masking
-    ///             THEN *DEST[63:0] remains unchanged*
-    ///             ELSE ; zeroing-masking
-    ///                 THEN DEST[63:0] := 0
-    ///         FI;
-    /// FI;
-    /// DEST[127:64] := SRC1[127:64]
-    /// DEST[MAXVL-1:128] := 0
-    /// ```
-    ///
-    /// ### VADDSD (VEX.128 Encoded Version)
-    /// ```ignore
-    /// DEST[63:0] := SRC1[63:0] + SRC2[63:0]
-    /// DEST[127:64] := SRC1[127:64]
-    /// DEST[MAXVL-1:128] := 0
-    /// ```
-    ///
-    /// ### ADDSD (128-bit Legacy SSE Version)
-    /// ```ignore
-    /// DEST[63:0] := DEST[63:0] + SRC[63:0]
-    /// DEST[MAXVL-1:64] (Unmodified)
-    /// ```
+    #[doc = include_str!("../../doc/intel/ADDSD.md")]
     Addsd,
-    /// # addss
-    ///
-    /// Add Scalar Single Precision Floating-Point Values
-    ///
-    /// - addss xmm1, xmm2/m32 - Add the low single precision floating-point value from xmm2/mem to xmm1 and store the result in xmm1.
-    /// - vaddss xmm1, xmm2, xmm3/m32 - Add the low single precision floating-point value from xmm3/mem to xmm2 and store the result in xmm1.
-    /// - vaddss xmm1 {k1}{z}, xmm2, xmm3/m32{er} - Add the low single precision floating-point value from xmm3/m32 to xmm2 and store the result in xmm1 with writemask k1.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=152)
-    ///
-    /// Adds the low single precision floating-point values from the second source operand and the first source operand,
-    /// and stores the double precision floating-point result in the destination operand.
-    ///
-    /// The second source operand can be an XMM register or a 64-bit memory location. The first source and destination
-    /// operands are XMM registers.
-    ///
-    /// 128-bit Legacy SSE version: The first source and destination operands are the same. Bits (MAXVL-1:32) of the
-    /// corresponding the destination register remain unchanged.
-    ///
-    /// EVEX and VEX.128 encoded version: The first source operand is encoded by EVEX.vvvv/VEX.vvvv. Bits (127:32) of
-    /// the XMM register destination are copied from corresponding bits in the first source operand. Bits (MAXVL-1:128) of
-    /// the destination register are zeroed.
-    ///
-    /// EVEX version: The low doubleword element of the destination is updated according to the writemask.
-    ///
-    /// Software should ensure VADDSS is encoded with VEX.L=0. Encoding VADDSS with VEX.L=1 may encounter unpre-
-    /// dictable behavior across different processor generations.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### addss xmm1, xmm2/m32
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: SSE
-    ///
-    /// ### vaddss xmm1, xmm2, xmm3/m32
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX
-    ///
-    /// ### vaddss xmm1 {k1}{z}, xmm2, xmm3/m32{er}
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX512F
-    ///
-    /// ## Opcode
-    /// - addss xmm1, xmm2/m32 - F3 0f 58 /r
-    /// - vaddss xmm1, xmm2, xmm3/m32 - VEX.LIG.F3.0f.WIG 58 /r
-    /// - vaddss xmm1 {k1}{z}, xmm2, xmm3/m32{er} - EVEX.LIG.F3.0f.W0 58 /r
-    ///
-    /// ## Exceptions
-    ///
-    /// ### SIMD Floating-Point Exceptions
-    /// - Overflow, Underflow, Invalid, Precision, Denormal.
-    ///
-    /// ### Other Exceptions
-    /// VEX-encoded instruction, see Table 2-20, “Type 3 Class Exception Conditions.”
-    /// EVEX-encoded instruction, see Table 2-47, “Type E3 Class Exception Conditions.”
-    ///
-    /// ## Intel C/C++ Compiler Intrinsic Equivalent
-    /// VADDSS __m128 _mm_mask_add_ss (__m128 s, __mmask8 k, __m128 a, __m128 b);
-    /// VADDSS __m128 _mm_maskz_add_ss (__mmask8 k, __m128 a, __m128 b);
-    /// VADDSS __m128 _mm_add_round_ss (__m128 a, __m128 b, int);
-    /// VADDSS __m128 _mm_mask_add_round_ss (__m128 s, __mmask8 k, __m128 a, __m128 b, int);
-    /// VADDSS __m128 _mm_maskz_add_round_ss (__mmask8 k, __m128 a, __m128 b, int);
-    /// ADDSS __m128 _mm_add_ss (__m128 a, __m128 b);
-    ///
-    /// ## Operation
-    ///
-    /// ### VADDSS (EVEX Encoded Versions)
-    /// ```ignore
-    /// IF (EVEX.b = 1) AND SRC2 *is a register*
-    ///     THEN
-    ///         SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(EVEX.RC);
-    ///     ELSE
-    ///         SET_ROUNDING_MODE_FOR_THIS_INSTRUCTION(MXCSR.RC);
-    /// FI;
-    /// IF k1[0] or *no writemask*
-    ///     THEN DEST[31:0] := SRC1[31:0] + SRC2[31:0]
-    ///     ELSE
-    ///         IF *merging-masking* ; merging-masking
-    ///             THEN *DEST[31:0] remains unchanged*
-    ///             ELSE ; zeroing-masking
-    ///                 THEN DEST[31:0] := 0
-    ///     FI;
-    /// FI;
-    /// DEST[127:32] := SRC1[127:32]
-    /// DEST[MAXVL-1:128] := 0
-    /// ```
-    ///
-    /// ### VADDSS DEST, SRC1, SRC2 (VEX.128 Encoded Version)
-    /// ```ignore
-    /// DEST[31:0] := SRC1[31:0] + SRC2[31:0]
-    /// DEST[127:32] := SRC1[127:32]
-    /// DEST[MAXVL-1:128] := 0
-    /// ```
-    ///
-    /// ### ADDSS DEST, SRC (128-bit Legacy SSE Version)
-    /// ```ignore
-    /// DEST[31:0] := DEST[31:0] + SRC[31:0]
-    /// DEST[MAXVL-1:32] (Unmodified)
-    /// ```
+    #[doc = include_str!("../../doc/intel/ADDSS.md")]
     Addss,
-    /// # addsubpd
-    ///
-    /// Packed Double Precision Floating-Point Add/Subtract
-    ///
-    /// - addsubpd xmm1, xmm2/m128 - Add/subtract packed double precision floating-point values from xmm2/m128 to xmm1.
-    /// - vaddsubpd xmm1, xmm2, xmm3/m128 - Add/subtract packed double precision floating-point values from xmm3/m128 to xmm2 and store result in xmm1.
-    /// - vaddsubpd ymm1, ymm2, ymm3/m256 - Add/subtract packed double precision floating-point values from ymm3/m256 to ymm2 and store result in ymm1.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=154)
-    ///
-    /// Adds odd-numbered double precision floating-point values of the first source operand (second operand) with the
-    /// corresponding double precision floating-point values from the second source operand (third operand); stores the
-    /// result in the odd-numbered values of the destination operand (first operand). Subtracts the even-numbered double
-    /// precision floating-point values from the second source operand from the corresponding double precision floating
-    /// values in the first source operand; stores the result into the even-numbered values of the destination operand.
-    ///
-    /// In 64-bit mode, using a REX prefix in the form of REX.R permits this instruction to access additional registers
-    /// (XMM8-XMM15).
-    ///
-    /// 128-bit Legacy SSE version: The second source can be an XMM register or an 128-bit memory location. The desti-
-    /// nation is not distinct from the first source XMM register and the upper bits (MAXVL-1:128) of the corresponding
-    /// YMM register destination are unmodified. See Figure 3-3.
-    ///
-    /// VEX.128 encoded version: the first source operand is an XMM register or 128-bit memory location. The destination
-    /// operand is an XMM register. The upper bits (MAXVL-1:128) of the corresponding YMM register destination are
-    /// zeroed.
-    ///
-    /// VEX.256 encoded version: The first source operand is a YMM register. The second source operand can be a YMM
-    /// register or a 256-bit memory location. The destination operand is a YMM register.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### addsuppd xmm1, xmm2/m128
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: SSE3
-    ///
-    /// ### vaddsubpd xmm1, xmm2, xmm3/m128
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX
-    ///
-    /// ### vaddsubpd ymm1, ymm2, ymm3/m256
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX
-    ///
-    /// ## Opcode
-    /// - addsubpd xmm1, xmm2/m128 - 66 0f d0 /r
-    /// - vaddsubpd xmm1, xmm2, xmm3/m128 - VEX.128.66.0f.WIG d0 /r
-    /// - vaddsubpd ymm1, ymm2, ymm3/m256 - VEX.256.66.0f.WIG d0 /r
-    ///
-    /// ## Exceptions
-    /// - When the source operand is a memory operand, it must be aligned on a 16-byte boundary or a general-protection exception (#GP) will be generated.
-    ///
-    /// ### SIMD Floating-Point Exceptions
-    /// - Overflow, Underflow, Invalid, Precision, Denormal.
-    ///
-    /// ### Other Exceptions
-    /// See Table 2-19, “Type 2 Class Exception Conditions.”
-    ///
-    /// ## Intel C/C++ Compiler Intrinsic Equivalent
-    /// ADDSUBPD __m128d _mm_addsub_pd(__m128d a, __m128d b)
-    /// VADDSUBPD __m256d _mm256_addsub_pd (__m256d a, __m256d b)
-    ///
-    /// ## Operation
-    ///
-    /// ### ADDSUBPD (128-bit Legacy SSE Version)
-    /// ```ignore
-    /// DEST[63:0] := DEST[63:0] - SRC[63:0]
-    /// DEST[127:64] := DEST[127:64] + SRC[127:64]
-    /// DEST[MAXVL-1:128] (Unmodified)
-    /// ```
-    ///
-    /// ### VADDSUBPD (VEX.128 Encoded Version)
-    /// ```ignore
-    /// DEST[63:0] := SRC1[63:0] - SRC2[63:0]
-    /// DEST[127:64] := SRC1[127:64] + SRC2[127:64]
-    /// DEST[MAXVL-1:128] := 0
-    /// ```
-    ///
-    /// ### VADDSUBPD (VEX.256 Encoded Version)
-    /// ```ignore
-    /// DEST[63:0] := SRC1[63:0] - SRC2[63:0]
-    /// DEST[127:64] := SRC1[127:64] + SRC2[127:64]
-    /// DEST[191:128] := SRC1[191:128] - SRC2[191:128]
-    /// DEST[255:192] := SRC1[255:192] + SRC2[255:192]
-    /// ```
+    #[doc = include_str!("../../doc/intel/ADDSUBPD.md")]
     Addsubpd,
-    /// # addsubps
-    ///
-    /// Packed Single Precision Floating-Point Add/Subtract
-    ///
-    /// - addsubps xmm1, xmm2/m128 - Add/subtract single precision floating-point values from xmm2/m128 to xmm1.
-    /// - vaddsubps xmm1, xmm2, xmm3/m128 - Add/subtract single precision floating-point values from xmm3/mem to xmm2 and stores result in xmm1.
-    /// - vaddsubps ymm1, ymm2, ymm3/m256 - Add / subtract single precision floating-point values from ymm3/mem to ymm2 and stores result in ymm1.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=156)
-    ///
-    /// Adds odd-numbered single precision floating-point values of the first source operand (second operand) with the
-    /// corresponding single precision floating-point values from the second source operand (third operand); stores the
-    /// result in the odd-numbered values of the destination operand (first operand). Subtracts the even-numbered single
-    /// precision floating-point values from the second source operand from the corresponding single precision floating
-    /// values in the first source operand; stores the result into the even-numbered values of the destination operand.
-    ///
-    /// In 64-bit mode, using a REX prefix in the form of REX.R permits this instruction to access additional registers
-    /// (XMM8-XMM15).
-    ///
-    /// 128-bit Legacy SSE version: The second source can be an XMM register or an 128-bit memory location. The desti-
-    /// nation is not distinct from the first source XMM register and the upper bits (MAXVL-1:128) of the corresponding
-    /// YMM register destination are unmodified. See Figure 3-4.
-    ///
-    /// VEX.128 encoded version: the first source operand is an XMM register or 128-bit memory location. The destination
-    /// operand is an XMM register. The upper bits (MAXVL-1:128) of the corresponding YMM register destination are
-    /// zeroed.
-    ///
-    /// VEX.256 encoded version: The first source operand is a YMM register. The second source operand can be a YMM
-    /// register or a 256-bit memory location. The destination operand is a YMM register.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### addsubps xmm1, xmm2/m128
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: SSE3
-    ///
-    /// ### vaddsubps xmm1, xmm2, xmm3/m128
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX
-    ///
-    /// ### vaddsubps ymm1, ymm2, ymm3/m256
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AVX
-    ///
-    /// ## Opcode
-    /// - addsubps xmm1, xmm2/m128 - f2 0f d0 /r
-    /// - vaddsubps xmm1, xmm2, xmm3/m128 - VEX.128.f2.0f.WIG d0 /r
-    /// - vaddsubps ymm1, ymm2, ymm3/m256 - VEX.256.f2.0f.WIG d0 /r
-    ///
-    /// ## Exceptions
-    /// - When the source operand is a memory operand, it must be aligned on a 16-byte boundary or a general-protection exception (#GP) will be generated.
-    ///
-    /// ### SIMD Floating-Point Exceptions
-    /// - Overflow, Underflow, Invalid, Precision, Denormal.
-    ///
-    /// ### Other Exceptions
-    /// See Table 2-19, “Type 2 Class Exception Conditions.”
-    ///
-    /// ## Intel C/C++ Compiler Intrinsic Equivalent
-    /// ADDSUBPS __m128 _mm_addsub_ps(__m128 a, __m128 b)
-    /// VADDSUBPS __m256 _mm256_addsub_ps (__m256 a, __m256 b)
-    ///
-    /// ## Operation
-    ///
-    /// ### ADDSUBPD (128-bit Legacy SSE Version)
-    /// ```ignore
-    /// DEST[31:0] := DEST[31:0] - SRC[31:0]
-    /// DEST[63:32] := DEST[63:32] + SRC[63:32]
-    /// DEST[95:64] := DEST[95:64] - SRC[95:64]
-    /// DEST[127:96] := DEST[127:96] + SRC[127:96]
-    /// DEST[MAXVL-1:128] (Unmodified)
-    /// ```
-    ///
-    /// ### VADDSUBPS (VEX.128 Encoded Version)
-    /// ```ignore
-    /// DEST[31:0] := SRC1[31:0] - SRC2[31:0]
-    /// DEST[63:32] := SRC1[63:32] + SRC2[63:32]
-    /// DEST[95:64] := SRC1[95:64] - SRC2[95:64]
-    /// DEST[127:96] := SRC1[127:96] + SRC2[127:96]
-    /// DEST[MAXVL-1:128] := 0
-    /// ```
-    ///
-    /// ### VADDSUBPS (VEX.256 Encoded Version)
-    /// ```ignore
-    /// DEST[31:0] := SRC1[31:0] - SRC2[31:0]
-    /// DEST[63:32] := SRC1[63:32] + SRC2[63:32]
-    /// DEST[95:64] := SRC1[95:64] - SRC2[95:64]
-    /// DEST[127:96] := SRC1[127:96] + SRC2[127:96]
-    /// DEST[159:128] := SRC1[159:128] - SRC2[159:128]
-    /// DEST[191:160] := SRC1[191:160] + SRC2[191:160]
-    /// DEST[223:192] := SRC1[223:192] - SRC2[223:192]
-    /// DEST[255:224] := SRC1[255:224] + SRC2[255:224]
-    /// ```
+    #[doc = include_str!("../../doc/intel/ADDSUBPS.md")]
     Addsubps,
-    /// # adox
-    ///
-    /// Unsigned Integer Addition of Two Operands With Overflow Flag
-    ///
-    /// - adox r32, r/m32 - Unsigned addition of r32 with OF, r/m32 to r32, writes OF.
-    /// - adox r64, r/m64 - Unsigned addition of r64 with OF, r/m64 to r64, writes OF.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=159)
-    ///
-    /// Performs an unsigned addition of the destination operand (first operand), the source operand (second operand)
-    /// and the overflow-flag (OF) and stores the result in the destination operand. The destination operand is a general-
-    /// purpose register, whereas the source operand can be a general-purpose register or memory location. The state of
-    /// OF represents a carry from a previous addition. The instruction sets the OF flag with the carry generated by the
-    /// unsigned addition of the operands.
-    ///
-    /// The ADOX instruction is executed in the context of multi-precision addition, where we add a series of operands with
-    /// a carry-chain. At the beginning of a chain of additions, we execute an instruction to zero the OF (e.g. XOR).
-    ///
-    /// This instruction is supported in real mode and virtual-8086 mode. The operand size is always 32 bits if not in 64-
-    /// bit mode.
-    ///
-    /// In 64-bit mode, the default operation size is 32 bits. Using a REX Prefix in the form of REX.R permits access to addi-
-    /// tional registers (R8-15). Using REX Prefix in the form of REX.W promotes operation to 64-bits.
-    ///
-    /// ADOX executes normally either inside or outside a transaction region.
-    ///
-    /// Note: ADOX defines the CF and OF flags differently than the ADD/ADC instructions as defined in Intel® 64 and
-    /// IA-32 Architectures Software Developer’s Manual, Volume 2A.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### adox r32, r/m32
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: ADX
-    ///
-    /// ### adox r64, r/m64
-    /// - 64/32Bit mode support: V/NE
-    /// - CPUID Feature Flag: ADX
-    ///
-    /// ## Opcode
-    /// - adox r32, r/m32 - f3 0f 38 f6 /r
-    /// - adox r64, r/m64 - f3 REX.W 0f 38 f6 /r
-    ///
-    /// ## Flags affected
-    /// - OF is updated based on result. CF, SF, ZF, AF, and PF flags are unmodified.
-    ///
-    /// ## Exceptions
-    ///
-    /// ### SIMD Floating-Point Exceptions
-    /// - None.
-    ///
-    /// ### Protected Mode Exceptions
-    /// - UD: If LOCK prefix is used.
-    /// - UD: If CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
-    /// - SS(0): For an illegal address in the SS segment.
-    /// - GP(0): For an illegal memory operand effective address in the CS, DS, ES, FS, or GS segments.
-    /// - GP(0): If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
-    /// - PF(fault-code): For a page fault.
-    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    ///
-    /// ### Real-Address Mode Exceptions
-    /// - UD: If LOCK prefix is used.
-    /// - UD: If CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
-    /// - SS(0): For an illegal address in the SS segment.
-    /// - GP(0): If any part of the operand lies outside the effective address space from 0 to FFFFH.
-    ///
-    /// ### Virtual-8086 Mode Exceptions
-    /// - UD: If LOCK prefix is used.
-    /// - UD: If CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
-    /// - SS(0): For an illegal address in the SS segment.
-    /// - GP(0): If any part of the operand lies outside the effective address space from 0 to FFFFH.
-    /// - PF(fault-code): For a page fault.
-    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    ///
-    /// ### Compatibility Mode Exceptions
-    /// - UD: If LOCK prefix is used.
-    /// - UD: If CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
-    /// - SS(0): For an illegal address in the SS segment.
-    /// - GP(0): For an illegal memory operand effective address in the CS, DS, ES, FS, or GS segments.
-    /// - GP(0): If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
-    /// - PF(fault-code): For a page fault.
-    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    ///
-    /// ### 64-Bit Mode Exceptions
-    /// - UD: If LOCK prefix is used.
-    /// - UD: If CPUID.(EAX=07H, ECX=0H):EBX.ADX[bit 19] = 0.
-    /// - SS(0): If a memory address referencing the SS segment is in a non-canonical form.
-    /// - GP(0): If the memory address is in a non-canonical form.
-    /// - PF(fault-code): For a page fault.
-    /// - AC(0): If alignment checking is enabled and an unaligned memory reference is made while the current privilege level is 3.
-    ///
-    /// ## Intel C/C++ Compiler Intrinsic Equivalent
-    /// unsigned char _addcarryx_u32 (unsigned char c_in, unsigned int src1, unsigned int src2, unsigned int *sum_out);
-    /// unsigned char _addcarryx_u64 (unsigned char c_in, unsigned __int64 src1, unsigned __int64 src2, unsigned __int64 *sum_out);
-    ///
-    /// ## Operation
-    /// ```ignore
-    /// IF OperandSize is 64-bit
-    ///     THEN OF:DEST[63:0] := DEST[63:0] + SRC[63:0] + OF;
-    ///     ELSE OF:DEST[31:0] := DEST[31:0] + SRC[31:0] + OF;
-    /// FI;
-    /// ```
+    #[doc = include_str!("../../doc/intel/ADOX.md")]
     Adox,
-    /// # aesdec
-    ///
-    /// Perform One Round of an AES Decryption Flow
-    ///
-    /// - aesdec xmm1, xmm2/m128 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, using one 128-bit data (state) from xmm1 with one 128-bit round key from xmm2/m128.
-    /// - vaesdec xmm1, xmm2, xmm3/m128 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, using one 128-bit data (state) from xmm2 with one 128-bit round key from xmm3/m128; store the result in xmm1.
-    /// - vaesdec ymm1, ymm2, ymm3/m256 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, using two 128-bit data (state) from ymm2 with two 128-bit round keys from ymm3/m256; store the result in ymm1.
-    /// - vaesdec xmm1, xmm2, xmm3/m128 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, using one 128-bit data (state) from xmm2 with one 128-bit round key from xmm3/m128; store the result in xmm1.
-    /// - vaesdec ymm1, ymm2, ymm3/m256 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, using two 128-bit data (state) from ymm2 with two 128-bit round keys from ymm3/m256; store the result in ymm1.
-    /// - vaesdec zmm1, zmm2, zmm3/m512 - Perform one round of an AES decryption flow, using the Equivalent Inverse Cipher, using four 128-bit data (state) from zmm2 with four 128-bit round keys from zmm3/m512; store the result in zmm1.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=161)
-    ///
-    /// This instruction performs a single round of the AES decryption flow using the Equivalent Inverse Cipher, using
-    /// one/two/four (depending on vector length) 128-bit data (state) from the first source operand with one/two/four
-    /// (depending on vector length) round key(s) from the second source operand, and stores the result in the destina-
-    /// tion operand.
-    ///
-    /// Use the AESDEC instruction for all but the last decryption round. For the last decryption round, use the AESDE-
-    /// CLAST instruction.
-    ///
-    /// VEX and EVEX encoded versions of the instruction allow 3-operand (non-destructive) operation. The legacy
-    /// encoded versions of the instruction require that the first source operand and the destination operand are the same
-    /// and must be an XMM register.
-    ///
-    /// The EVEX encoded form of this instruction does not support memory fault suppression.
-    ///
-    /// ## Compatibility
-    ///
-    /// ### aesdec xmm1, xmm2/m128
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AES
-    ///
-    /// ### vaesdec xmm1, xmm2, xmm3/m128
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AES + AVX
-    ///
-    /// ### vaesdec ymm1, ymm2, ymm3/m256
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: VAES
-    ///
-    /// ### vaesdec xmm1, xmm2, xmm3/m128
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: VAES + AVX512VL
-    ///
-    /// ### vaesdec ymm1, ymm2, ymm3/m256
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: VAES + AVX512VL
-    ///
-    /// ### vaesdec zmm1, zmm2, zmm3/m512
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: VAES + AVX512F
-    ///
-    /// ## Opcode
-    /// - aesdec xmm1, xmm2/m128 - 66 0f 38 de /r
-    /// - vaesdec xmm1, xmm2, xmm3/m128 - VEX.128.66.0f38.WIG de /r
-    /// - vaesdec ymm1, ymm2, ymm3/m256 - VEX.256.66.0f38.WIG de /r
-    /// - vaesdec xmm1, xmm2, xmm3/m128 - EVEX.128.66.0f38.WIG de /r
-    /// - vaesdec ymm1, ymm2, ymm3/m256 - EVEX.256.66.0f38.WIG de /r
-    /// - vaesdec zmm1, zmm2, zmm3/m512 - EVEX.512.66.0f38.WIG de /r
-    ///
-    /// ## Exceptions
-    ///
-    /// ### SIMD Floating-Point Exceptions
-    /// - None.
-    ///
-    /// ### Other Exceptions
-    /// See Table 2-21, “Type 4 Class Exception Conditions.”
-    /// EVEX-encoded: See Table 2-50, “Type E4NF Class Exception Conditions.”
-    ///
-    /// ## Intel C/C++ Compiler Intrinsic Equivalent
-    /// (V)AESDEC __m128i _mm_aesdec (__m128i, __m128i)
-    /// VAESDEC __m256i _mm256_aesdec_epi128(__m256i, __m256i);
-    /// VAESDEC __m512i _mm512_aesdec_epi128(__m512i, __m512i);
-    ///
-    /// ## Operation
-    ///
-    /// ### AESDEC
-    /// ```ignore
-    /// STATE := SRC1;
-    /// RoundKey := SRC2;
-    /// STATE := InvShiftRows( STATE );
-    /// STATE := InvSubBytes( STATE );
-    /// STATE := InvMixColumns( STATE );
-    /// DEST[127:0] := STATE XOR RoundKey;
-    /// DEST[MAXVL-1:128] (Unmodified)
-    /// ```
-    ///
-    /// ### VAESDEC (128b and 256b VEX Encoded Versions)
-    /// ```ignore
-    /// (KL,VL) = (1,128), (2,256)
-    /// FOR i = 0 to KL-1:
-    ///     STATE := SRC1.xmm[i]
-    ///     RoundKey := SRC2.xmm[i]
-    ///     STATE := InvShiftRows( STATE )
-    ///     STATE := InvSubBytes( STATE )
-    ///     STATE := InvMixColumns( STATE )
-    ///     DEST.xmm[i] := STATE XOR RoundKey
-    /// DEST[MAXVL-1:VL] := 0
-    /// ```
-    ///
-    /// ### VAESDEC (EVEX Encoded Version)
-    /// ```ignore
-    /// (KL,VL) = (1,128), (2,256), (4,512)
-    /// FOR i = 0 to KL-1:
-    ///     STATE := SRC1.xmm[i]
-    ///     RoundKey := SRC2.xmm[i]
-    ///     STATE := InvShiftRows( STATE )
-    ///     STATE := InvSubBytes( STATE )
-    ///     STATE := InvMixColumns( STATE )
-    ///     DEST.xmm[i] := STATE XOR RoundKey
-    /// DEST[MAXVL-1:VL] :=0
-    /// ```
+    #[doc = include_str!("../../doc/intel/AESDEC.md")]
     Aesdec,
-    /// # aesdec128kl
-    ///
-    /// Perform Ten Rounds of AES Decryption Flow With Key Locker Using 128-Bit Key
-    ///
-    /// - aesdec128kl xmm,m384 - Decrypt xmm using 128-bit AES key indicated by handle at m384 and store result in xmm.
-    ///
-    /// [Document](https://eveheeero.github.io/book/Intel%C2%AE_64_and_IA-32_Architectures_Developer's_Manual-2/?page=163)
-    ///
-    /// The AESDEC128KL instruction performs 10 rounds of AES to decrypt the first operand using the 128-bit key indi-
-    /// cated by the handle from the second operand. It stores the result in the first operand if the operation succeeds
-    /// (e.g., does not run into a handle violation failure).
-    ///
-    /// ## Compatibility
-    ///
-    /// ### aesdec128kl xmm,m384
-    /// - 64/32Bit mode support: V/V
-    /// - CPUID Feature Flag: AESKLE
-    ///
-    /// ## Opcode
-    /// - aesdec xmm, m384 - f3 of 38 dd !(11):rrr:bbb
-    ///
-    /// ## Flags Affected
-    /// - ZF is set to 0 if the operation succeeded and set to 1 if the operation failed due to a handle violation. The other
-    /// arithmetic flags (OF, SF, AF, PF, CF) are cleared to 0.
-    ///
-    /// ## Exceptions (All Operating Modes)
-    /// - UD: If LOCK prefix is used.
-    /// - UD: If CPUID.07H:ECX.KL [bit 23] = 0.
-    /// - UD: If CR4.KL = 0.
-    /// - UD: If CPUID.19H:EBX.AESKLE [bit 0] = 0.
-    /// - UD: If CR9.EM = 1.
-    /// - UD: If CR4.OSFXSR = 0.
-    /// - NM: If CR0.TS = 1.
-    /// - PF(0): If a page fault occurs.
-    /// - GP(0): If a memory operand effective address is outside the CS, DS, ES, FS, or GS segment limit.
-    /// - GP(0): If the DS, ES, FS, or GS register is used to access memory and it contains a NULL segment selector.
-    /// - GP(0): If the memory address is in a non-canonical form.
-    /// - SS(0): If a memory operand effective address is outside the SS segment limit.
-    /// - SS(0): If a memory address referencing the SS segment is in a non-canonical form.
-    ///
-    /// ## Intel C/C++ Compiler Intrinsic Equivalent
-    /// AESDEC128KL unsigned char _mm_aesdec128kl_u8(__m128i* odata, __m128i idata, const void* h);
-    ///
-    /// ## Operation
-    ///
-    /// ### AESDEC128KL
-    /// ```ignore
-    /// Handle := UnalignedLoad of 384 bit (SRC); // Load is not guaranteed to be atomic.
-    /// Illegal Handle = (HandleReservedBitSet (Handle) || (Handle[0] AND (CPL > 0)) || Handle [2] || HandleKeyType (Handle) != HANDLE_KEY_TYPE_AES128);
-    /// IF (Illegal Handle) {
-    ///     THEN RFLAGS.ZF := 1;
-    ///     ELSE
-    ///         (UnwrappedKey, Authentic) := UnwrapKeyAndAuthenticate384 (Handle[383:0], IWKey);
-    ///         IF (Authentic == 0)
-    ///             THEN RFLAGS.ZF := 1;
-    ///             ELSE
-    ///                 DEST := AES128Decrypt (DEST, UnwrappedKey) ;
-    ///                 RFLAGS.ZF := 0;
-    ///         FI;
-    /// FI;
-    /// RFLAGS.OF, SF, AF, PF, CF := 0;
-    /// ```
+    #[doc = include_str!("../../doc/intel/AESDEC128KL.md")]
     Aesdec128kl,
+    #[doc = include_str!("../../doc/intel/AESDEC256KL.md")]
+    Aesdec256kl,
+    #[doc = include_str!("../../doc/intel/AESDECLAST.md")]
+    Aesdeclast,
+    #[doc = include_str!("../../doc/intel/AESDECWIDE128KL.md")]
+    Aesdecwide128kl,
+    #[doc = include_str!("../../doc/intel/AESDECWIDE256KL.md")]
+    Aesdecwide256kl,
+    #[doc = include_str!("../../doc/intel/AESENC.md")]
+    Aesenc,
+    #[doc = include_str!("../../doc/intel/AESENC128KL.md")]
+    Aesenc128kl,
+    #[doc = include_str!("../../doc/intel/AESENC256KL.md")]
+    Aesenc256kl,
+    #[doc = include_str!("../../doc/intel/AESENCLAST.md")]
+    Aesenclast,
+    #[doc = include_str!("../../doc/intel/AESENCWIDE128KL.md")]
+    Aesencwide128kl,
+    #[doc = include_str!("../../doc/intel/AESENCWIDE256KL.md")]
+    Aesencwide256kl,
+    #[doc = include_str!("../../doc/intel/AESIMC.md")]
+    Aesimc,
+    #[doc = include_str!("../../doc/intel/AESKEYGENASSIST.md")]
+    Aeskeygenassist,
+    #[doc = include_str!("../../doc/intel/AND.md")]
+    And,
+    #[doc = include_str!("../../doc/intel/ANDN.md")]
+    Andn,
+    #[doc = include_str!("../../doc/intel/ANDNPD.md")]
+    Andnpd,
+    #[doc = include_str!("../../doc/intel/ANDNPS.md")]
+    Andnps,
+    #[doc = include_str!("../../doc/intel/ANDPD.md")]
+    Andpd,
+    #[doc = include_str!("../../doc/intel/ANDPS.md")]
+    Andps,
+    #[doc = include_str!("../../doc/intel/ARPL.md")]
+    Arpl,
+    #[doc = include_str!("../../doc/intel/BEXTR.md")]
+    Bextr,
+    #[doc = include_str!("../../doc/intel/BLENDPD.md")]
+    Blendpd,
+    #[doc = include_str!("../../doc/intel/BLENDPS.md")]
+    Blendps,
+    #[doc = include_str!("../../doc/intel/BLENDVPD.md")]
+    Blendvpd,
+    #[doc = include_str!("../../doc/intel/BLENDVPS.md")]
+    Blendvps,
+    #[doc = include_str!("../../doc/intel/BLSI.md")]
+    Blsi,
+    #[doc = include_str!("../../doc/intel/BLSMSK.md")]
+    Blsmsk,
+    #[doc = include_str!("../../doc/intel/BLSR.md")]
+    Blsr,
+    #[doc = include_str!("../../doc/intel/BNDCL.md")]
+    Bndcl,
+    #[doc = include_str!("../../doc/intel/BNDCN.md")]
+    Bndcn,
+    #[doc = include_str!("../../doc/intel/BNDCU.md")]
+    Bndcu,
+    #[doc = include_str!("../../doc/intel/BNDLDX.md")]
+    Bndldx,
+    #[doc = include_str!("../../doc/intel/BNDMK.md")]
+    Bndmk,
+    #[doc = include_str!("../../doc/intel/BNDMOV.md")]
+    Bndmov,
+    #[doc = include_str!("../../doc/intel/BNDSTX.md")]
+    Bndstx,
+    #[doc = include_str!("../../doc/intel/BOUND.md")]
+    Bound,
+    #[doc = include_str!("../../doc/intel/BSF.md")]
+    Bsf,
+    #[doc = include_str!("../../doc/intel/BSR.md")]
+    Bsr,
+    #[doc = include_str!("../../doc/intel/BSWAP.md")]
+    Bswap,
+    #[doc = include_str!("../../doc/intel/BT.md")]
+    Bt,
+    #[doc = include_str!("../../doc/intel/BTC.md")]
+    Btc,
+    #[doc = include_str!("../../doc/intel/BTR.md")]
+    Btr,
+    #[doc = include_str!("../../doc/intel/BTS.md")]
+    Bts,
+    #[doc = include_str!("../../doc/intel/BZHI.md")]
+    Bzhi,
+    #[doc = include_str!("../../doc/intel/CALL.md")]
+    Call,
+    #[doc = include_str!("../../doc/intel/CBW.md")]
+    Cbw,
+    #[doc = include_str!("../../doc/intel/CDQ.md")]
+    Cdq,
+    #[doc = include_str!("../../doc/intel/CDQE.md")]
+    Cdqe,
+    #[doc = include_str!("../../doc/intel/CLAC.md")]
+    Clac,
+    #[doc = include_str!("../../doc/intel/CLC.md")]
+    Clc,
+    #[doc = include_str!("../../doc/intel/CLD.md")]
+    Cld,
+    #[doc = include_str!("../../doc/intel/CLDEMOTE.md")]
+    Cldemote,
+    #[doc = include_str!("../../doc/intel/CLFLUSH.md")]
+    Clflush,
+    #[doc = include_str!("../../doc/intel/CLFLUSHOPT.md")]
+    Clflushopt,
+    #[doc = include_str!("../../doc/intel/CLI.md")]
+    Cli,
+    #[doc = include_str!("../../doc/intel/CLRSSBSY.md")]
+    Clrssbsy,
+    #[doc = include_str!("../../doc/intel/CLTS.md")]
+    Clts,
+    #[doc = include_str!("../../doc/intel/CLUI.md")]
+    Clui,
+    #[doc = include_str!("../../doc/intel/CLWB.md")]
+    Clwb,
+    #[doc = include_str!("../../doc/intel/CMC.md")]
+    Cmc,
+    #[doc = include_str!("../../doc/intel/CMOVcc.md")]
+    Cmovcc,
+    #[doc = include_str!("../../doc/intel/CMP.md")]
+    Cmp,
+    #[doc = include_str!("../../doc/intel/CMPPD.md")]
+    Cmppd,
+    #[doc = include_str!("../../doc/intel/CMPPS.md")]
+    Cmpps,
+    #[doc = include_str!("../../doc/intel/CMPS.md")]
+    Cmps,
+    #[doc = include_str!("../../doc/intel/CMPSB.md")]
+    Cmpsb,
+    #[doc = include_str!("../../doc/intel/CMPSD.md")]
+    Cmpsd,
+    #[doc = include_str!("../../doc/intel/CMPSQ.md")]
+    Cmpsq,
+    #[doc = include_str!("../../doc/intel/CMPSS.md")]
+    Cmpss,
+    #[doc = include_str!("../../doc/intel/CMPSW.md")]
+    Cmpsw,
+    #[doc = include_str!("../../doc/intel/CMPXCHG.md")]
+    Cmpxchg,
+    #[doc = include_str!("../../doc/intel/CMPXCHG16B.md")]
+    Cmpxchg16b,
+    #[doc = include_str!("../../doc/intel/CMPXCHG8B.md")]
+    Cmpxchg8b,
+    #[doc = include_str!("../../doc/intel/COMISD.md")]
+    Comisd,
+    #[doc = include_str!("../../doc/intel/COMISS.md")]
+    Comiss,
+    #[doc = include_str!("../../doc/intel/CPUID.md")]
+    Cpuid,
+    #[doc = include_str!("../../doc/intel/CQO.md")]
+    Cqo,
+    #[doc = include_str!("../../doc/intel/CRC32.md")]
+    Crc32,
+    #[doc = include_str!("../../doc/intel/CVTDQ2PD.md")]
+    Cvtdq2pd,
+    #[doc = include_str!("../../doc/intel/CVTDQ2PS.md")]
+    Cvtdq2ps,
+    #[doc = include_str!("../../doc/intel/CVTPD2DQ.md")]
+    Cvtpd2dq,
+    #[doc = include_str!("../../doc/intel/CVTPD2PI.md")]
+    Cvtpd2pi,
+    #[doc = include_str!("../../doc/intel/CVTPD2PS.md")]
+    Cvtpd2ps,
+    #[doc = include_str!("../../doc/intel/CVTPI2PD.md")]
+    Cvtpi2pd,
+    #[doc = include_str!("../../doc/intel/CVTPI2PS.md")]
+    Cvtpi2ps,
+    #[doc = include_str!("../../doc/intel/CVTPS2DQ.md")]
+    Cvtps2dq,
+    #[doc = include_str!("../../doc/intel/CVTPS2PD.md")]
+    Cvtps2pd,
+    #[doc = include_str!("../../doc/intel/CVTPS2PI.md")]
+    Cvtps2pi,
+    #[doc = include_str!("../../doc/intel/CVTSD2SI.md")]
+    Cvtsd2si,
+    #[doc = include_str!("../../doc/intel/CVTSD2SS.md")]
+    Cvtsd2ss,
+    #[doc = include_str!("../../doc/intel/CVTSI2SD.md")]
+    Cvtsi2sd,
+    #[doc = include_str!("../../doc/intel/CVTSI2SS.md")]
+    Cvtsi2ss,
+    #[doc = include_str!("../../doc/intel/CVTSS2SD.md")]
+    Cvtss2sd,
+    #[doc = include_str!("../../doc/intel/CVTSS2SI.md")]
+    Cvtss2si,
+    #[doc = include_str!("../../doc/intel/CVTTPD2DQ.md")]
+    Cvttpd2dq,
+    #[doc = include_str!("../../doc/intel/CVTTPD2PI.md")]
+    Cvttpd2pi,
+    #[doc = include_str!("../../doc/intel/CVTTPS2DQ.md")]
+    Cvttps2dq,
+    #[doc = include_str!("../../doc/intel/CVTTPS2PI.md")]
+    Cvttps2pi,
+    #[doc = include_str!("../../doc/intel/CVTTSD2SI.md")]
+    Cvttsd2si,
+    #[doc = include_str!("../../doc/intel/CVTTSS2SI.md")]
+    Cvttss2si,
+    #[doc = include_str!("../../doc/intel/CWD.md")]
+    Cwd,
+    #[doc = include_str!("../../doc/intel/CWDE.md")]
+    Cwde,
+    #[doc = include_str!("../../doc/intel/DAA.md")]
+    Daa,
+    #[doc = include_str!("../../doc/intel/DAS.md")]
+    Das,
+    #[doc = include_str!("../../doc/intel/DEC.md")]
+    Dec,
+    #[doc = include_str!("../../doc/intel/DIV.md")]
+    Div,
+    #[doc = include_str!("../../doc/intel/DIVPD.md")]
+    Divpd,
+    #[doc = include_str!("../../doc/intel/DIVPS.md")]
+    Divps,
+    #[doc = include_str!("../../doc/intel/DIVSD.md")]
+    Divsd,
+    #[doc = include_str!("../../doc/intel/DIVSS.md")]
+    Divss,
+    #[doc = include_str!("../../doc/intel/DPPD.md")]
+    Dppd,
+    #[doc = include_str!("../../doc/intel/DPPS.md")]
+    Dpps,
+    #[doc = include_str!("../../doc/intel/EMMS.md")]
+    Emms,
+    #[doc = include_str!("../../doc/intel/ENCODEKEY128.md")]
+    Encodekey128,
+    #[doc = include_str!("../../doc/intel/ENCODEKEY256.md")]
+    Encodekey256,
+    #[doc = include_str!("../../doc/intel/ENDBR32.md")]
+    Endbr32,
+    #[doc = include_str!("../../doc/intel/ENDBR64.md")]
+    Endbr64,
+    #[doc = include_str!("../../doc/intel/ENQCMD.md")]
+    Enqcmd,
+    #[doc = include_str!("../../doc/intel/ENQCMDS.md")]
+    Enqcmds,
+    #[doc = include_str!("../../doc/intel/ENTER.md")]
+    Enter,
+    #[doc = include_str!("../../doc/intel/EXTRACTPS.md")]
+    Extractps,
+    #[doc = include_str!("../../doc/intel/F2XM1.md")]
+    F2xm1,
+    #[doc = include_str!("../../doc/intel/FABS.md")]
+    Fabs,
+    #[doc = include_str!("../../doc/intel/FADD.md")]
+    Fadd,
+    #[doc = include_str!("../../doc/intel/FADDP.md")]
+    Faddp,
+    #[doc = include_str!("../../doc/intel/FBLD.md")]
+    Fbld,
+    #[doc = include_str!("../../doc/intel/FBSTP.md")]
+    Fbstp,
+    #[doc = include_str!("../../doc/intel/FCHS.md")]
+    Fchs,
+    #[doc = include_str!("../../doc/intel/FCLEX.md")]
+    Fclex,
+    #[doc = include_str!("../../doc/intel/FCMOVcc.md")]
+    Fcmovcc,
+    #[doc = include_str!("../../doc/intel/FCOM.md")]
+    Fcom,
+    #[doc = include_str!("../../doc/intel/FCOMI.md")]
+    Fcomi,
+    #[doc = include_str!("../../doc/intel/FCOMIP.md")]
+    Fcomip,
+    #[doc = include_str!("../../doc/intel/FCOMP.md")]
+    Fcomp,
+    #[doc = include_str!("../../doc/intel/FCOMPP.md")]
+    Fcompp,
+    #[doc = include_str!("../../doc/intel/FCOS.md")]
+    Fcos,
+    #[doc = include_str!("../../doc/intel/FDECSTP.md")]
+    Fdecstp,
+    #[doc = include_str!("../../doc/intel/FDIV.md")]
+    Fdiv,
+    #[doc = include_str!("../../doc/intel/FDIVP.md")]
+    Fdivp,
+    #[doc = include_str!("../../doc/intel/FDIVR.md")]
+    Fdivr,
+    #[doc = include_str!("../../doc/intel/FDIVRP.md")]
+    Fdivrp,
+    #[doc = include_str!("../../doc/intel/FFREE.md")]
+    Ffree,
+    #[doc = include_str!("../../doc/intel/FIADD.md")]
+    Fiadd,
+    #[doc = include_str!("../../doc/intel/FICOM.md")]
+    Ficom,
+    #[doc = include_str!("../../doc/intel/FICOMP.md")]
+    Ficomp,
+    #[doc = include_str!("../../doc/intel/FIDIV.md")]
+    Fidiv,
+    #[doc = include_str!("../../doc/intel/FIDIVR.md")]
+    Fidivr,
+    #[doc = include_str!("../../doc/intel/FILD.md")]
+    Fild,
+    #[doc = include_str!("../../doc/intel/FIMUL.md")]
+    Fimul,
+    #[doc = include_str!("../../doc/intel/FINCSTP.md")]
+    Fincstp,
+    #[doc = include_str!("../../doc/intel/FINIT.md")]
+    Finit,
+    #[doc = include_str!("../../doc/intel/FIST.md")]
+    Fist,
+    #[doc = include_str!("../../doc/intel/FISTP.md")]
+    Fistp,
+    #[doc = include_str!("../../doc/intel/FISTTP.md")]
+    Fisttp,
+    #[doc = include_str!("../../doc/intel/FISUB.md")]
+    Fisub,
+    #[doc = include_str!("../../doc/intel/FISUBR.md")]
+    Fisubr,
+    #[doc = include_str!("../../doc/intel/FLD.md")]
+    Fld,
+    #[doc = include_str!("../../doc/intel/FLD1.md")]
+    Fld1,
+    #[doc = include_str!("../../doc/intel/FLDCW.md")]
+    Fldcw,
+    #[doc = include_str!("../../doc/intel/FLDENV.md")]
+    Fldenv,
+    #[doc = include_str!("../../doc/intel/FLDL2E.md")]
+    Fldl2e,
+    #[doc = include_str!("../../doc/intel/FLDL2T.md")]
+    Fldl2t,
+    #[doc = include_str!("../../doc/intel/FLDLG2.md")]
+    Fldlg2,
+    #[doc = include_str!("../../doc/intel/FLDLN2.md")]
+    Fldln2,
+    #[doc = include_str!("../../doc/intel/FLDPI.md")]
+    Fldpi,
+    #[doc = include_str!("../../doc/intel/FLDZ.md")]
+    Fldz,
+    #[doc = include_str!("../../doc/intel/FMUL.md")]
+    Fmul,
+    #[doc = include_str!("../../doc/intel/FMULP.md")]
+    Fmulp,
+    #[doc = include_str!("../../doc/intel/FNCLEX.md")]
+    Fnclex,
+    #[doc = include_str!("../../doc/intel/FNINIT.md")]
+    Fninit,
+    #[doc = include_str!("../../doc/intel/FNOP.md")]
+    Fnop,
+    #[doc = include_str!("../../doc/intel/FNSAVE.md")]
+    Fnsave,
+    #[doc = include_str!("../../doc/intel/FNSTCW.md")]
+    Fnstcw,
+    #[doc = include_str!("../../doc/intel/FNSTENV.md")]
+    Fnstenv,
+    #[doc = include_str!("../../doc/intel/FNSTSW.md")]
+    Fnstsw,
+    #[doc = include_str!("../../doc/intel/FPATAN.md")]
+    Fpatan,
+    #[doc = include_str!("../../doc/intel/FPREM.md")]
+    Fprem,
+    #[doc = include_str!("../../doc/intel/FPREM1.md")]
+    Fprem1,
+    #[doc = include_str!("../../doc/intel/FPTAN.md")]
+    Fptan,
+    #[doc = include_str!("../../doc/intel/FRNDINT.md")]
+    Frndint,
+    #[doc = include_str!("../../doc/intel/FRSTOR.md")]
+    Frstor,
+    #[doc = include_str!("../../doc/intel/FSAVE.md")]
+    Fsave,
+    #[doc = include_str!("../../doc/intel/FSCALE.md")]
+    Fscale,
+    #[doc = include_str!("../../doc/intel/FSIN.md")]
+    Fsin,
+    #[doc = include_str!("../../doc/intel/FSINCOS.md")]
+    Fsincos,
+    #[doc = include_str!("../../doc/intel/FSQRT.md")]
+    Fsqrt,
+    #[doc = include_str!("../../doc/intel/FST.md")]
+    Fst,
+    #[doc = include_str!("../../doc/intel/FSTCW.md")]
+    Fstcw,
+    #[doc = include_str!("../../doc/intel/FSTENV.md")]
+    Fstenv,
+    #[doc = include_str!("../../doc/intel/FSTP.md")]
+    Fstp,
+    #[doc = include_str!("../../doc/intel/FSTSW.md")]
+    Fstsw,
+    #[doc = include_str!("../../doc/intel/FSUB.md")]
+    Fsub,
+    #[doc = include_str!("../../doc/intel/FSUBP.md")]
+    Fsubp,
+    #[doc = include_str!("../../doc/intel/FSUBR.md")]
+    Fsubr,
+    #[doc = include_str!("../../doc/intel/FSUBRP.md")]
+    Fsubrp,
+    #[doc = include_str!("../../doc/intel/FTST.md")]
+    Ftst,
+    #[doc = include_str!("../../doc/intel/FUCOM.md")]
+    Fucom,
+    #[doc = include_str!("../../doc/intel/FUCOMI.md")]
+    Fucomi,
+    #[doc = include_str!("../../doc/intel/FUCOMIP.md")]
+    Fucomip,
+    #[doc = include_str!("../../doc/intel/FUCOMP.md")]
+    Fucomp,
+    #[doc = include_str!("../../doc/intel/FUCOMPP.md")]
+    Fucompp,
+    #[doc = include_str!("../../doc/intel/FWAIT.md")]
+    Fwait,
+    #[doc = include_str!("../../doc/intel/FXAM.md")]
+    Fxam,
+    #[doc = include_str!("../../doc/intel/FXCH.md")]
+    Fxch,
+    #[doc = include_str!("../../doc/intel/FXRSTOR.md")]
+    Fxrstor,
+    #[doc = include_str!("../../doc/intel/FXSAVE.md")]
+    Fxsave,
+    #[doc = include_str!("../../doc/intel/FXTRACT.md")]
+    Fxtract,
+    #[doc = include_str!("../../doc/intel/FYL2X.md")]
+    Fyl2x,
+    #[doc = include_str!("../../doc/intel/FYL2XP1.md")]
+    Fyl2xp1,
+    #[doc = include_str!("../../doc/intel/GF2P8AFFINEINVQB.md")]
+    Gf2p8affineinvqb,
+    #[doc = include_str!("../../doc/intel/GF2P8AFFINEQB.md")]
+    Gf2p8affineqb,
+    #[doc = include_str!("../../doc/intel/GF2P8MULB.md")]
+    Gf2p8mulb,
+    #[doc = include_str!("../../doc/intel/HADDPD.md")]
+    Haddpd,
+    #[doc = include_str!("../../doc/intel/HADDPS.md")]
+    Haddps,
+    #[doc = include_str!("../../doc/intel/HLT.md")]
+    Hlt,
+    #[doc = include_str!("../../doc/intel/HRESET.md")]
+    Hreset,
+    #[doc = include_str!("../../doc/intel/HSUBPD.md")]
+    Hsubpd,
+    #[doc = include_str!("../../doc/intel/HSUBPS.md")]
+    Hsubps,
+    #[doc = include_str!("../../doc/intel/IDIV.md")]
+    Idiv,
+    #[doc = include_str!("../../doc/intel/IMUL.md")]
+    Imul,
+    #[doc = include_str!("../../doc/intel/IN.md")]
+    In,
+    #[doc = include_str!("../../doc/intel/INC.md")]
+    Inc,
+    #[doc = include_str!("../../doc/intel/INCSSPD.md")]
+    Incsspd,
+    #[doc = include_str!("../../doc/intel/INCSSPQ.md")]
+    Incsspq,
+    #[doc = include_str!("../../doc/intel/INS.md")]
+    Ins,
+    #[doc = include_str!("../../doc/intel/INSB.md")]
+    Insb,
+    #[doc = include_str!("../../doc/intel/INSD.md")]
+    Insd,
+    #[doc = include_str!("../../doc/intel/INSERTPS.md")]
+    Insertps,
+    #[doc = include_str!("../../doc/intel/INSW.md")]
+    Insw,
+    #[doc = include_str!("../../doc/intel/INT.md")]
+    Int,
+    #[doc = include_str!("../../doc/intel/INT1.md")]
+    Int1,
+    #[doc = include_str!("../../doc/intel/INT3.md")]
+    Int3,
+    #[doc = include_str!("../../doc/intel/INTO.md")]
+    Into,
+    #[doc = include_str!("../../doc/intel/INVD.md")]
+    Invd,
+    #[doc = include_str!("../../doc/intel/INVLPG.md")]
+    Invlpg,
+    #[doc = include_str!("../../doc/intel/INVPCID.md")]
+    Invpcid,
+    #[doc = include_str!("../../doc/intel/IRET.md")]
+    Iret,
+    #[doc = include_str!("../../doc/intel/IRETD.md")]
+    Iretd,
+    #[doc = include_str!("../../doc/intel/IRETQ.md")]
+    Iretq,
+    #[doc = include_str!("../../doc/intel/JMP.md")]
+    Jmp,
+    #[doc = include_str!("../../doc/intel/Jcc.md")]
+    Jcc,
+    #[doc = include_str!("../../doc/intel/KADDB.md")]
+    Kaddb,
+    #[doc = include_str!("../../doc/intel/KADDD.md")]
+    Kaddd,
+    #[doc = include_str!("../../doc/intel/KADDQ.md")]
+    Kaddq,
+    #[doc = include_str!("../../doc/intel/KADDW.md")]
+    Kaddw,
+    #[doc = include_str!("../../doc/intel/KANDB.md")]
+    Kandb,
+    #[doc = include_str!("../../doc/intel/KANDD.md")]
+    Kandd,
+    #[doc = include_str!("../../doc/intel/KANDNB.md")]
+    Kandnb,
+    #[doc = include_str!("../../doc/intel/KANDND.md")]
+    Kandnd,
+    #[doc = include_str!("../../doc/intel/KANDNQ.md")]
+    Kandnq,
+    #[doc = include_str!("../../doc/intel/KANDNW.md")]
+    Kandnw,
+    #[doc = include_str!("../../doc/intel/KANDQ.md")]
+    Kandq,
+    #[doc = include_str!("../../doc/intel/KANDW.md")]
+    Kandw,
+    #[doc = include_str!("../../doc/intel/KMOVB.md")]
+    Kmovb,
+    #[doc = include_str!("../../doc/intel/KMOVD.md")]
+    Kmovd,
+    #[doc = include_str!("../../doc/intel/KMOVQ.md")]
+    Kmovq,
+    #[doc = include_str!("../../doc/intel/KMOVW.md")]
+    Kmovw,
+    #[doc = include_str!("../../doc/intel/KNOTB.md")]
+    Knotb,
+    #[doc = include_str!("../../doc/intel/KNOTD.md")]
+    Knotd,
+    #[doc = include_str!("../../doc/intel/KNOTQ.md")]
+    Knotq,
+    #[doc = include_str!("../../doc/intel/KNOTW.md")]
+    Knotw,
+    #[doc = include_str!("../../doc/intel/KORB.md")]
+    Korb,
+    #[doc = include_str!("../../doc/intel/KORD.md")]
+    Kord,
+    #[doc = include_str!("../../doc/intel/KORQ.md")]
+    Korq,
+    #[doc = include_str!("../../doc/intel/KORTESTB.md")]
+    Kortestb,
+    #[doc = include_str!("../../doc/intel/KORTESTD.md")]
+    Kortestd,
+    #[doc = include_str!("../../doc/intel/KORTESTQ.md")]
+    Kortestq,
+    #[doc = include_str!("../../doc/intel/KORTESTW.md")]
+    Kortestw,
+    #[doc = include_str!("../../doc/intel/KORW.md")]
+    Korw,
+    #[doc = include_str!("../../doc/intel/KSHIFTLB.md")]
+    Kshiftlb,
+    #[doc = include_str!("../../doc/intel/KSHIFTLD.md")]
+    Kshiftld,
+    #[doc = include_str!("../../doc/intel/KSHIFTLQ.md")]
+    Kshiftlq,
+    #[doc = include_str!("../../doc/intel/KSHIFTLW.md")]
+    Kshiftlw,
+    #[doc = include_str!("../../doc/intel/KSHIFTRB.md")]
+    Kshiftrb,
+    #[doc = include_str!("../../doc/intel/KSHIFTRD.md")]
+    Kshiftrd,
+    #[doc = include_str!("../../doc/intel/KSHIFTRQ.md")]
+    Kshiftrq,
+    #[doc = include_str!("../../doc/intel/KSHIFTRW.md")]
+    Kshiftrw,
+    #[doc = include_str!("../../doc/intel/KTESTB.md")]
+    Ktestb,
+    #[doc = include_str!("../../doc/intel/KTESTD.md")]
+    Ktestd,
+    #[doc = include_str!("../../doc/intel/KTESTQ.md")]
+    Ktestq,
+    #[doc = include_str!("../../doc/intel/KTESTW.md")]
+    Ktestw,
+    #[doc = include_str!("../../doc/intel/KUNPCKBW.md")]
+    Kunpckbw,
+    #[doc = include_str!("../../doc/intel/KUNPCKDQ.md")]
+    Kunpckdq,
+    #[doc = include_str!("../../doc/intel/KUNPCKWD.md")]
+    Kunpckwd,
+    #[doc = include_str!("../../doc/intel/KXNORB.md")]
+    Kxnorb,
+    #[doc = include_str!("../../doc/intel/KXNORD.md")]
+    Kxnord,
+    #[doc = include_str!("../../doc/intel/KXNORQ.md")]
+    Kxnorq,
+    #[doc = include_str!("../../doc/intel/KXNORW.md")]
+    Kxnorw,
+    #[doc = include_str!("../../doc/intel/KXORB.md")]
+    Kxorb,
+    #[doc = include_str!("../../doc/intel/KXORD.md")]
+    Kxord,
+    #[doc = include_str!("../../doc/intel/KXORQ.md")]
+    Kxorq,
+    #[doc = include_str!("../../doc/intel/KXORW.md")]
+    Kxorw,
+    #[doc = include_str!("../../doc/intel/LAHF.md")]
+    Lahf,
+    #[doc = include_str!("../../doc/intel/LAR.md")]
+    Lar,
+    #[doc = include_str!("../../doc/intel/LDDQU.md")]
+    Lddqu,
+    #[doc = include_str!("../../doc/intel/LDMXCSR.md")]
+    Ldmxcsr,
+    #[doc = include_str!("../../doc/intel/LDS.md")]
+    Lds,
+    #[doc = include_str!("../../doc/intel/LDTILECFG.md")]
+    Ldtilecfg,
+    #[doc = include_str!("../../doc/intel/LEA.md")]
+    Lea,
+    #[doc = include_str!("../../doc/intel/LEAVE.md")]
+    Leave,
+    #[doc = include_str!("../../doc/intel/LES.md")]
+    Les,
+    #[doc = include_str!("../../doc/intel/LFENCE.md")]
+    Lfence,
+    #[doc = include_str!("../../doc/intel/LFS.md")]
+    Lfs,
+    #[doc = include_str!("../../doc/intel/LGDT.md")]
+    Lgdt,
+    #[doc = include_str!("../../doc/intel/LGS.md")]
+    Lgs,
+    #[doc = include_str!("../../doc/intel/LIDT.md")]
+    Lidt,
+    #[doc = include_str!("../../doc/intel/LLDT.md")]
+    Lldt,
+    #[doc = include_str!("../../doc/intel/LMSW.md")]
+    Lmsw,
+    #[doc = include_str!("../../doc/intel/LOADIWKEY.md")]
+    Loadiwkey,
+    #[doc = include_str!("../../doc/intel/LOCK.md")]
+    Lock,
+    #[doc = include_str!("../../doc/intel/LODS.md")]
+    Lods,
+    #[doc = include_str!("../../doc/intel/LODSB.md")]
+    Lodsb,
+    #[doc = include_str!("../../doc/intel/LODSD.md")]
+    Lodsd,
+    #[doc = include_str!("../../doc/intel/LODSQ.md")]
+    Lodsq,
+    #[doc = include_str!("../../doc/intel/LODSW.md")]
+    Lodsw,
+    #[doc = include_str!("../../doc/intel/LOOP.md")]
+    Loop,
+    #[doc = include_str!("../../doc/intel/LOOPcc.md")]
+    Loopcc,
+    #[doc = include_str!("../../doc/intel/LSL.md")]
+    Lsl,
+    #[doc = include_str!("../../doc/intel/LSS.md")]
+    Lss,
+    #[doc = include_str!("../../doc/intel/LTR.md")]
+    Ltr,
+    #[doc = include_str!("../../doc/intel/MASKMOVDQU.md")]
+    Maskmovdqu,
+    #[doc = include_str!("../../doc/intel/MASKMOVQ.md")]
+    Maskmovq,
+    #[doc = include_str!("../../doc/intel/MAXPD.md")]
+    Maxpd,
+    #[doc = include_str!("../../doc/intel/MAXPS.md")]
+    Maxps,
+    #[doc = include_str!("../../doc/intel/MAXSD.md")]
+    Maxsd,
+    #[doc = include_str!("../../doc/intel/MAXSS.md")]
+    Maxss,
+    #[doc = include_str!("../../doc/intel/MFENCE.md")]
+    Mfence,
+    #[doc = include_str!("../../doc/intel/MINPD.md")]
+    Minpd,
+    #[doc = include_str!("../../doc/intel/MINPS.md")]
+    Minps,
+    #[doc = include_str!("../../doc/intel/MINSD.md")]
+    Minsd,
+    #[doc = include_str!("../../doc/intel/MINSS.md")]
+    Minss,
+    #[doc = include_str!("../../doc/intel/MONITOR.md")]
+    Monitor,
+    #[doc = include_str!("../../doc/intel/MOV.md")]
+    Mov,
+    #[doc = include_str!("../../doc/intel/MOVAPD.md")]
+    Movapd,
+    #[doc = include_str!("../../doc/intel/MOVAPS.md")]
+    Movaps,
+    #[doc = include_str!("../../doc/intel/MOVBE.md")]
+    Movbe,
+    #[doc = include_str!("../../doc/intel/MOVD.md")]
+    Movd,
+    #[doc = include_str!("../../doc/intel/MOVDDUP.md")]
+    Movddup,
+    #[doc = include_str!("../../doc/intel/MOVDIR64B.md")]
+    Movdir64b,
+    #[doc = include_str!("../../doc/intel/MOVDIRI.md")]
+    Movdiri,
+    #[doc = include_str!("../../doc/intel/MOVDQ16.md")]
+    Movdq16,
+    #[doc = include_str!("../../doc/intel/MOVDQ2Q.md")]
+    Movdq2q,
+    #[doc = include_str!("../../doc/intel/MOVDQ32.md")]
+    Movdq32,
+    #[doc = include_str!("../../doc/intel/MOVDQ64.md")]
+    Movdq64,
+    #[doc = include_str!("../../doc/intel/MOVDQA.md")]
+    Movdqa,
+    #[doc = include_str!("../../doc/intel/MOVDQU.md")]
+    Movdqu,
+    #[doc = include_str!("../../doc/intel/MOVHLPS.md")]
+    Movhlps,
+    #[doc = include_str!("../../doc/intel/MOVHPD.md")]
+    Movhpd,
+    #[doc = include_str!("../../doc/intel/MOVHPS.md")]
+    Movhps,
+    #[doc = include_str!("../../doc/intel/MOVLHPS.md")]
+    Movlhps,
+    #[doc = include_str!("../../doc/intel/MOVLPD.md")]
+    Movlpd,
+    #[doc = include_str!("../../doc/intel/MOVLPS.md")]
+    Movlps,
+    #[doc = include_str!("../../doc/intel/MOVMSKPD.md")]
+    Movmskpd,
+    #[doc = include_str!("../../doc/intel/MOVMSKPS.md")]
+    Movmskps,
+    #[doc = include_str!("../../doc/intel/MOVNTDQ.md")]
+    Movntdq,
+    #[doc = include_str!("../../doc/intel/MOVNTDQA.md")]
+    Movntdqa,
+    #[doc = include_str!("../../doc/intel/MOVNTI.md")]
+    Movnti,
+    #[doc = include_str!("../../doc/intel/MOVNTPD.md")]
+    Movntpd,
+    #[doc = include_str!("../../doc/intel/MOVNTPS.md")]
+    Movntps,
+    #[doc = include_str!("../../doc/intel/MOVNTQ.md")]
+    Movntq,
+    #[doc = include_str!("../../doc/intel/MOVQ.md")]
+    Movq,
+    #[doc = include_str!("../../doc/intel/MOVQ2DQ.md")]
+    Movq2dq,
+    #[doc = include_str!("../../doc/intel/MOVS.md")]
+    Movs,
+    #[doc = include_str!("../../doc/intel/MOVSB.md")]
+    Movsb,
+    #[doc = include_str!("../../doc/intel/MOVSD.md")]
+    Movsd,
+    #[doc = include_str!("../../doc/intel/MOVSHDUP.md")]
+    Movshdup,
+    #[doc = include_str!("../../doc/intel/MOVSLDUP.md")]
+    Movsldup,
+    #[doc = include_str!("../../doc/intel/MOVSQ.md")]
+    Movsq,
+    #[doc = include_str!("../../doc/intel/MOVSS.md")]
+    Movss,
+    #[doc = include_str!("../../doc/intel/MOVSW.md")]
+    Movsw,
+    #[doc = include_str!("../../doc/intel/MOVSX.md")]
+    Movsx,
+    #[doc = include_str!("../../doc/intel/MOVSXD.md")]
+    Movsxd,
+    #[doc = include_str!("../../doc/intel/MOVUPD.md")]
+    Movupd,
+    #[doc = include_str!("../../doc/intel/MOVUPS.md")]
+    Movups,
+    #[doc = include_str!("../../doc/intel/MOVZX.md")]
+    Movzx,
+    #[doc = include_str!("../../doc/intel/MPSADBW.md")]
+    Mpsadbw,
+    #[doc = include_str!("../../doc/intel/MUL.md")]
+    Mul,
+    #[doc = include_str!("../../doc/intel/MULPD.md")]
+    Mulpd,
+    #[doc = include_str!("../../doc/intel/MULPS.md")]
+    Mulps,
+    #[doc = include_str!("../../doc/intel/MULSD.md")]
+    Mulsd,
+    #[doc = include_str!("../../doc/intel/MULSS.md")]
+    Mulss,
+    #[doc = include_str!("../../doc/intel/MULX.md")]
+    Mulx,
+    #[doc = include_str!("../../doc/intel/MWAIT.md")]
+    Mwait,
+    #[doc = include_str!("../../doc/intel/NEG.md")]
+    Neg,
+    #[doc = include_str!("../../doc/intel/NOP.md")]
+    Nop,
+    #[doc = include_str!("../../doc/intel/NOT.md")]
+    Not,
+    #[doc = include_str!("../../doc/intel/OR.md")]
+    Or,
+    #[doc = include_str!("../../doc/intel/ORPD.md")]
+    Orpd,
+    #[doc = include_str!("../../doc/intel/ORPS.md")]
+    Orps,
+    #[doc = include_str!("../../doc/intel/OUT.md")]
+    Out,
+    #[doc = include_str!("../../doc/intel/OUTS.md")]
+    Outs,
+    #[doc = include_str!("../../doc/intel/OUTSB.md")]
+    Outsb,
+    #[doc = include_str!("../../doc/intel/OUTSD.md")]
+    Outsd,
+    #[doc = include_str!("../../doc/intel/OUTSW.md")]
+    Outsw,
+    #[doc = include_str!("../../doc/intel/PABSB.md")]
+    Pabsb,
+    #[doc = include_str!("../../doc/intel/PABSD.md")]
+    Pabsd,
+    #[doc = include_str!("../../doc/intel/PABSQ.md")]
+    Pabsq,
+    #[doc = include_str!("../../doc/intel/PABSW.md")]
+    Pabsw,
+    #[doc = include_str!("../../doc/intel/PACKSSDW.md")]
+    Packssdw,
+    #[doc = include_str!("../../doc/intel/PACKSSWB.md")]
+    Packsswb,
+    #[doc = include_str!("../../doc/intel/PACKUSDW.md")]
+    Packusdw,
+    #[doc = include_str!("../../doc/intel/PACKUSWB.md")]
+    Packuswb,
+    #[doc = include_str!("../../doc/intel/PADDB.md")]
+    Paddb,
+    #[doc = include_str!("../../doc/intel/PADDD.md")]
+    Paddd,
+    #[doc = include_str!("../../doc/intel/PADDQ.md")]
+    Paddq,
+    #[doc = include_str!("../../doc/intel/PADDSB.md")]
+    Paddsb,
+    #[doc = include_str!("../../doc/intel/PADDSW.md")]
+    Paddsw,
+    #[doc = include_str!("../../doc/intel/PADDUSB.md")]
+    Paddusb,
+    #[doc = include_str!("../../doc/intel/PADDUSW.md")]
+    Paddusw,
+    #[doc = include_str!("../../doc/intel/PADDW.md")]
+    Paddw,
+    #[doc = include_str!("../../doc/intel/PALIGNR.md")]
+    Palignr,
+    #[doc = include_str!("../../doc/intel/PAND.md")]
+    Pand,
+    #[doc = include_str!("../../doc/intel/PANDN.md")]
+    Pandn,
+    #[doc = include_str!("../../doc/intel/PAUSE.md")]
+    Pause,
+    #[doc = include_str!("../../doc/intel/PAVGB.md")]
+    Pavgb,
+    #[doc = include_str!("../../doc/intel/PAVGW.md")]
+    Pavgw,
+    #[doc = include_str!("../../doc/intel/PBLENDVB.md")]
+    Pblendvb,
+    #[doc = include_str!("../../doc/intel/PBLENDW.md")]
+    Pblendw,
+    #[doc = include_str!("../../doc/intel/PCLMULQDQ.md")]
+    Pclmulqdq,
+    #[doc = include_str!("../../doc/intel/PCMPEQB.md")]
+    Pcmpeqb,
+    #[doc = include_str!("../../doc/intel/PCMPEQD.md")]
+    Pcmpeqd,
+    #[doc = include_str!("../../doc/intel/PCMPEQQ.md")]
+    Pcmpeqq,
+    #[doc = include_str!("../../doc/intel/PCMPEQW.md")]
+    Pcmpeqw,
+    #[doc = include_str!("../../doc/intel/PCMPESTRI.md")]
+    Pcmpestri,
+    #[doc = include_str!("../../doc/intel/PCMPESTRM.md")]
+    Pcmpestrm,
+    #[doc = include_str!("../../doc/intel/PCMPGTB.md")]
+    Pcmpgtb,
+    #[doc = include_str!("../../doc/intel/PCMPGTD.md")]
+    Pcmpgtd,
+    #[doc = include_str!("../../doc/intel/PCMPGTQ.md")]
+    Pcmpgtq,
+    #[doc = include_str!("../../doc/intel/PCMPGTW.md")]
+    Pcmpgtw,
+    #[doc = include_str!("../../doc/intel/PCMPISTRI.md")]
+    Pcmpistri,
+    #[doc = include_str!("../../doc/intel/PCMPISTRM.md")]
+    Pcmpistrm,
+    #[doc = include_str!("../../doc/intel/PCONFIG.md")]
+    Pconfig,
+    #[doc = include_str!("../../doc/intel/PDEP.md")]
+    Pdep,
+    #[doc = include_str!("../../doc/intel/PEXT.md")]
+    Pext,
+    #[doc = include_str!("../../doc/intel/PEXTRB.md")]
+    Pextrb,
+    #[doc = include_str!("../../doc/intel/PEXTRD.md")]
+    Pextrd,
+    #[doc = include_str!("../../doc/intel/PEXTRQ.md")]
+    Pextrq,
+    #[doc = include_str!("../../doc/intel/PEXTRW.md")]
+    Pextrw,
+    #[doc = include_str!("../../doc/intel/PHADDD.md")]
+    Phaddd,
+    #[doc = include_str!("../../doc/intel/PHADDSW.md")]
+    Phaddsw,
+    #[doc = include_str!("../../doc/intel/PHADDW.md")]
+    Phaddw,
+    #[doc = include_str!("../../doc/intel/PHMINPOSUW.md")]
+    Phminposuw,
+    #[doc = include_str!("../../doc/intel/PHSUBD.md")]
+    Phsubd,
+    #[doc = include_str!("../../doc/intel/PHSUBSW.md")]
+    Phsubsw,
+    #[doc = include_str!("../../doc/intel/PHSUBW.md")]
+    Phsubw,
+    #[doc = include_str!("../../doc/intel/PINSRB.md")]
+    Pinsrb,
+    #[doc = include_str!("../../doc/intel/PINSRD.md")]
+    Pinsrd,
+    #[doc = include_str!("../../doc/intel/PINSRQ.md")]
+    Pinsrq,
+    #[doc = include_str!("../../doc/intel/PINSRW.md")]
+    Pinsrw,
+    #[doc = include_str!("../../doc/intel/PMADDUBSW.md")]
+    Pmaddubsw,
+    #[doc = include_str!("../../doc/intel/PMADDWD.md")]
+    Pmaddwd,
+    #[doc = include_str!("../../doc/intel/PMAXSB.md")]
+    Pmaxsb,
+    #[doc = include_str!("../../doc/intel/PMAXSD.md")]
+    Pmaxsd,
+    #[doc = include_str!("../../doc/intel/PMAXSQ.md")]
+    Pmaxsq,
+    #[doc = include_str!("../../doc/intel/PMAXSW.md")]
+    Pmaxsw,
+    #[doc = include_str!("../../doc/intel/PMAXUB.md")]
+    Pmaxub,
+    #[doc = include_str!("../../doc/intel/PMAXUD.md")]
+    Pmaxud,
+    #[doc = include_str!("../../doc/intel/PMAXUQ.md")]
+    Pmaxuq,
+    #[doc = include_str!("../../doc/intel/PMAXUW.md")]
+    Pmaxuw,
+    #[doc = include_str!("../../doc/intel/PMINSB.md")]
+    Pminsb,
+    #[doc = include_str!("../../doc/intel/PMINSD.md")]
+    Pminsd,
+    #[doc = include_str!("../../doc/intel/PMINSQ.md")]
+    Pminsq,
+    #[doc = include_str!("../../doc/intel/PMINSW.md")]
+    Pminsw,
+    #[doc = include_str!("../../doc/intel/PMINUB.md")]
+    Pminub,
+    #[doc = include_str!("../../doc/intel/PMINUD.md")]
+    Pminud,
+    #[doc = include_str!("../../doc/intel/PMINUQ.md")]
+    Pminuq,
+    #[doc = include_str!("../../doc/intel/PMINUW.md")]
+    Pminuw,
+    #[doc = include_str!("../../doc/intel/PMOVMSKB.md")]
+    Pmovmskb,
+    #[doc = include_str!("../../doc/intel/PMOVSX.md")]
+    Pmovsx,
+    #[doc = include_str!("../../doc/intel/PMOVZX.md")]
+    Pmovzx,
+    #[doc = include_str!("../../doc/intel/PMULDQ.md")]
+    Pmuldq,
+    #[doc = include_str!("../../doc/intel/PMULHRSW.md")]
+    Pmulhrsw,
+    #[doc = include_str!("../../doc/intel/PMULHUW.md")]
+    Pmulhuw,
+    #[doc = include_str!("../../doc/intel/PMULHW.md")]
+    Pmulhw,
+    #[doc = include_str!("../../doc/intel/PMULLD.md")]
+    Pmulld,
+    #[doc = include_str!("../../doc/intel/PMULLQ.md")]
+    Pmullq,
+    #[doc = include_str!("../../doc/intel/PMULLW.md")]
+    Pmullw,
+    #[doc = include_str!("../../doc/intel/PMULUDQ.md")]
+    Pmuludq,
+    #[doc = include_str!("../../doc/intel/POP.md")]
+    Pop,
+    #[doc = include_str!("../../doc/intel/POPA.md")]
+    Popa,
+    #[doc = include_str!("../../doc/intel/POPAD.md")]
+    Popad,
+    #[doc = include_str!("../../doc/intel/POPCNT.md")]
+    Popcnt,
+    #[doc = include_str!("../../doc/intel/POPF.md")]
+    Popf,
+    #[doc = include_str!("../../doc/intel/POPFD.md")]
+    Popfd,
+    #[doc = include_str!("../../doc/intel/POPFQ.md")]
+    Popfq,
+    #[doc = include_str!("../../doc/intel/POR.md")]
+    Por,
+    #[doc = include_str!("../../doc/intel/PREFETCHW.md")]
+    Prefetchw,
+    #[doc = include_str!("../../doc/intel/PREFETCHh.md")]
+    Prefetchh,
+    #[doc = include_str!("../../doc/intel/PSADBW.md")]
+    Psadbw,
+    #[doc = include_str!("../../doc/intel/PSHUFB.md")]
+    Pshufb,
+    #[doc = include_str!("../../doc/intel/PSHUFD.md")]
+    Pshufd,
+    #[doc = include_str!("../../doc/intel/PSHUFHW.md")]
+    Pshufhw,
+    #[doc = include_str!("../../doc/intel/PSHUFLW.md")]
+    Pshuflw,
+    #[doc = include_str!("../../doc/intel/PSHUFW.md")]
+    Pshufw,
+    #[doc = include_str!("../../doc/intel/PSIGNB.md")]
+    Psignb,
+    #[doc = include_str!("../../doc/intel/PSIGND.md")]
+    Psignd,
+    #[doc = include_str!("../../doc/intel/PSIGNW.md")]
+    Psignw,
+    #[doc = include_str!("../../doc/intel/PSLLD.md")]
+    Pslld,
+    #[doc = include_str!("../../doc/intel/PSLLDQ.md")]
+    Pslldq,
+    #[doc = include_str!("../../doc/intel/PSLLQ.md")]
+    Psllq,
+    #[doc = include_str!("../../doc/intel/PSLLW.md")]
+    Psllw,
+    #[doc = include_str!("../../doc/intel/PSRAD.md")]
+    Psrad,
+    #[doc = include_str!("../../doc/intel/PSRAQ.md")]
+    Psraq,
+    #[doc = include_str!("../../doc/intel/PSRAW.md")]
+    Psraw,
+    #[doc = include_str!("../../doc/intel/PSRLD.md")]
+    Psrld,
+    #[doc = include_str!("../../doc/intel/PSRLDQ.md")]
+    Psrldq,
+    #[doc = include_str!("../../doc/intel/PSRLQ.md")]
+    Psrlq,
+    #[doc = include_str!("../../doc/intel/PSRLW.md")]
+    Psrlw,
+    #[doc = include_str!("../../doc/intel/PSUBB.md")]
+    Psubb,
+    #[doc = include_str!("../../doc/intel/PSUBD.md")]
+    Psubd,
+    #[doc = include_str!("../../doc/intel/PSUBQ.md")]
+    Psubq,
+    #[doc = include_str!("../../doc/intel/PSUBSB.md")]
+    Psubsb,
+    #[doc = include_str!("../../doc/intel/PSUBSW.md")]
+    Psubsw,
+    #[doc = include_str!("../../doc/intel/PSUBUSB.md")]
+    Psubusb,
+    #[doc = include_str!("../../doc/intel/PSUBUSW.md")]
+    Psubusw,
+    #[doc = include_str!("../../doc/intel/PSUBW.md")]
+    Psubw,
+    #[doc = include_str!("../../doc/intel/PTEST.md")]
+    Ptest,
+    #[doc = include_str!("../../doc/intel/PTWRITE.md")]
+    Ptwrite,
+    #[doc = include_str!("../../doc/intel/PUNPCKHBW.md")]
+    Punpckhbw,
+    #[doc = include_str!("../../doc/intel/PUNPCKHDQ.md")]
+    Punpckhdq,
+    #[doc = include_str!("../../doc/intel/PUNPCKHQDQ.md")]
+    Punpckhqdq,
+    #[doc = include_str!("../../doc/intel/PUNPCKHWD.md")]
+    Punpckhwd,
+    #[doc = include_str!("../../doc/intel/PUNPCKLBW.md")]
+    Punpcklbw,
+    #[doc = include_str!("../../doc/intel/PUNPCKLDQ.md")]
+    Punpckldq,
+    #[doc = include_str!("../../doc/intel/PUNPCKLQDQ.md")]
+    Punpcklqdq,
+    #[doc = include_str!("../../doc/intel/PUNPCKLWD.md")]
+    Punpcklwd,
+    #[doc = include_str!("../../doc/intel/PUSH.md")]
+    Push,
+    #[doc = include_str!("../../doc/intel/PUSHA.md")]
+    Pusha,
+    #[doc = include_str!("../../doc/intel/PUSHAD.md")]
+    Pushad,
+    #[doc = include_str!("../../doc/intel/PUSHF.md")]
+    Pushf,
+    #[doc = include_str!("../../doc/intel/PUSHFD.md")]
+    Pushfd,
+    #[doc = include_str!("../../doc/intel/PUSHFQ.md")]
+    Pushfq,
+    #[doc = include_str!("../../doc/intel/PXOR.md")]
+    Pxor,
+    #[doc = include_str!("../../doc/intel/RCL.md")]
+    Rcl,
+    #[doc = include_str!("../../doc/intel/RCPPS.md")]
+    Rcpps,
+    #[doc = include_str!("../../doc/intel/RCPSS.md")]
+    Rcpss,
+    #[doc = include_str!("../../doc/intel/RCR.md")]
+    Rcr,
+    #[doc = include_str!("../../doc/intel/RDFSBASE.md")]
+    Rdfsbase,
+    #[doc = include_str!("../../doc/intel/RDGSBASE.md")]
+    Rdgsbase,
+    #[doc = include_str!("../../doc/intel/RDMSR.md")]
+    Rdmsr,
+    #[doc = include_str!("../../doc/intel/RDPID.md")]
+    Rdpid,
+    #[doc = include_str!("../../doc/intel/RDPKRU.md")]
+    Rdpkru,
+    #[doc = include_str!("../../doc/intel/RDPMC.md")]
+    Rdpmc,
+    #[doc = include_str!("../../doc/intel/RDRAND.md")]
+    Rdrand,
+    #[doc = include_str!("../../doc/intel/RDSEED.md")]
+    Rdseed,
+    #[doc = include_str!("../../doc/intel/RDSSPD.md")]
+    Rdsspd,
+    #[doc = include_str!("../../doc/intel/RDSSPQ.md")]
+    Rdsspq,
+    #[doc = include_str!("../../doc/intel/RDTSC.md")]
+    Rdtsc,
+    #[doc = include_str!("../../doc/intel/RDTSCP.md")]
+    Rdtscp,
+    #[doc = include_str!("../../doc/intel/REP.md")]
+    Rep,
+    #[doc = include_str!("../../doc/intel/REPE.md")]
+    Repe,
+    #[doc = include_str!("../../doc/intel/REPNE.md")]
+    Repne,
+    #[doc = include_str!("../../doc/intel/REPNZ.md")]
+    Repnz,
+    #[doc = include_str!("../../doc/intel/REPZ.md")]
+    Repz,
+    #[doc = include_str!("../../doc/intel/RET.md")]
+    Ret,
+    #[doc = include_str!("../../doc/intel/ROL.md")]
+    Rol,
+    #[doc = include_str!("../../doc/intel/ROR.md")]
+    Ror,
+    #[doc = include_str!("../../doc/intel/RORX.md")]
+    Rorx,
+    #[doc = include_str!("../../doc/intel/ROUNDPD.md")]
+    Roundpd,
+    #[doc = include_str!("../../doc/intel/ROUNDPS.md")]
+    Roundps,
+    #[doc = include_str!("../../doc/intel/ROUNDSD.md")]
+    Roundsd,
+    #[doc = include_str!("../../doc/intel/ROUNDSS.md")]
+    Roundss,
+    #[doc = include_str!("../../doc/intel/RSM.md")]
+    Rsm,
+    #[doc = include_str!("../../doc/intel/RSQRTPS.md")]
+    Rsqrtps,
+    #[doc = include_str!("../../doc/intel/RSQRTSS.md")]
+    Rsqrtss,
+    #[doc = include_str!("../../doc/intel/RSTORSSP.md")]
+    Rstorssp,
+    #[doc = include_str!("../../doc/intel/SAHF.md")]
+    Sahf,
+    #[doc = include_str!("../../doc/intel/SAL.md")]
+    Sal,
+    #[doc = include_str!("../../doc/intel/SAR.md")]
+    Sar,
+    #[doc = include_str!("../../doc/intel/SARX.md")]
+    Sarx,
+    #[doc = include_str!("../../doc/intel/SAVEPREVSSP.md")]
+    Saveprevssp,
+    #[doc = include_str!("../../doc/intel/SBB.md")]
+    Sbb,
+    #[doc = include_str!("../../doc/intel/SCAS.md")]
+    Scas,
+    #[doc = include_str!("../../doc/intel/SCASB.md")]
+    Scasb,
+    #[doc = include_str!("../../doc/intel/SCASD.md")]
+    Scasd,
+    #[doc = include_str!("../../doc/intel/SCASW.md")]
+    Scasw,
+    #[doc = include_str!("../../doc/intel/SENDUIPI.md")]
+    Senduipi,
+    #[doc = include_str!("../../doc/intel/SERIALIZE.md")]
+    Serialize,
+    #[doc = include_str!("../../doc/intel/SETSSBSY.md")]
+    Setssbsy,
+    #[doc = include_str!("../../doc/intel/SETcc.md")]
+    Setcc,
+    #[doc = include_str!("../../doc/intel/SFENCE.md")]
+    Sfence,
+    #[doc = include_str!("../../doc/intel/SGDT.md")]
+    Sgdt,
+    #[doc = include_str!("../../doc/intel/SHA1MSG1.md")]
+    Sha1msg1,
+    #[doc = include_str!("../../doc/intel/SHA1MSG2.md")]
+    Sha1msg2,
+    #[doc = include_str!("../../doc/intel/SHA1NEXTE.md")]
+    Sha1nexte,
+    #[doc = include_str!("../../doc/intel/SHA1RNDS4.md")]
+    Sha1rnds4,
+    #[doc = include_str!("../../doc/intel/SHA256MSG1.md")]
+    Sha256msg1,
+    #[doc = include_str!("../../doc/intel/SHA256MSG2.md")]
+    Sha256msg2,
+    #[doc = include_str!("../../doc/intel/SHA256RNDS2.md")]
+    Sha256rnds2,
+    #[doc = include_str!("../../doc/intel/SHL.md")]
+    Shl,
+    #[doc = include_str!("../../doc/intel/SHLD.md")]
+    Shld,
+    #[doc = include_str!("../../doc/intel/SHLX.md")]
+    Shlx,
+    #[doc = include_str!("../../doc/intel/SHR.md")]
+    Shr,
+    #[doc = include_str!("../../doc/intel/SHRD.md")]
+    Shrd,
+    #[doc = include_str!("../../doc/intel/SHRX.md")]
+    Shrx,
+    #[doc = include_str!("../../doc/intel/SHUFPD.md")]
+    Shufpd,
+    #[doc = include_str!("../../doc/intel/SHUFPS.md")]
+    Shufps,
+    #[doc = include_str!("../../doc/intel/SIDT.md")]
+    Sidt,
+    #[doc = include_str!("../../doc/intel/SLDT.md")]
+    Sldt,
+    #[doc = include_str!("../../doc/intel/SMSW.md")]
+    Smsw,
+    #[doc = include_str!("../../doc/intel/SQRTPD.md")]
+    Sqrtpd,
+    #[doc = include_str!("../../doc/intel/SQRTPS.md")]
+    Sqrtps,
+    #[doc = include_str!("../../doc/intel/SQRTSD.md")]
+    Sqrtsd,
+    #[doc = include_str!("../../doc/intel/SQRTSS.md")]
+    Sqrtss,
+    #[doc = include_str!("../../doc/intel/STAC.md")]
+    Stac,
+    #[doc = include_str!("../../doc/intel/STC.md")]
+    Stc,
+    #[doc = include_str!("../../doc/intel/STD.md")]
+    Std,
+    #[doc = include_str!("../../doc/intel/STI.md")]
+    Sti,
+    #[doc = include_str!("../../doc/intel/STMXCSR.md")]
+    Stmxcsr,
+    #[doc = include_str!("../../doc/intel/STOS.md")]
+    Stos,
+    #[doc = include_str!("../../doc/intel/STOSB.md")]
+    Stosb,
+    #[doc = include_str!("../../doc/intel/STOSD.md")]
+    Stosd,
+    #[doc = include_str!("../../doc/intel/STOSQ.md")]
+    Stosq,
+    #[doc = include_str!("../../doc/intel/STOSW.md")]
+    Stosw,
+    #[doc = include_str!("../../doc/intel/STR.md")]
+    Str,
+    #[doc = include_str!("../../doc/intel/STTILECFG.md")]
+    Sttilecfg,
+    #[doc = include_str!("../../doc/intel/STUI.md")]
+    Stui,
+    #[doc = include_str!("../../doc/intel/SUB.md")]
+    Sub,
+    #[doc = include_str!("../../doc/intel/SUBPD.md")]
+    Subpd,
+    #[doc = include_str!("../../doc/intel/SUBPS.md")]
+    Subps,
+    #[doc = include_str!("../../doc/intel/SUBSD.md")]
+    Subsd,
+    #[doc = include_str!("../../doc/intel/SUBSS.md")]
+    Subss,
+    #[doc = include_str!("../../doc/intel/SWAPGS.md")]
+    Swapgs,
+    #[doc = include_str!("../../doc/intel/SYSCALL.md")]
+    Syscall,
+    #[doc = include_str!("../../doc/intel/SYSENTER.md")]
+    Sysenter,
+    #[doc = include_str!("../../doc/intel/SYSEXIT.md")]
+    Sysexit,
+    #[doc = include_str!("../../doc/intel/SYSRET.md")]
+    Sysret,
+    #[doc = include_str!("../../doc/intel/TDPBF16PS.md")]
+    Tdpbf16ps,
+    #[doc = include_str!("../../doc/intel/TDPBSSD.md")]
+    Tdpbssd,
+    #[doc = include_str!("../../doc/intel/TDPBSUD.md")]
+    Tdpbsud,
+    #[doc = include_str!("../../doc/intel/TDPBUSD.md")]
+    Tdpbusd,
+    #[doc = include_str!("../../doc/intel/TDPBUUD.md")]
+    Tdpbuud,
+    #[doc = include_str!("../../doc/intel/TEST.md")]
+    Test,
+    #[doc = include_str!("../../doc/intel/TESTUI.md")]
+    Testui,
+    #[doc = include_str!("../../doc/intel/TILELOADD.md")]
+    Tileloadd,
+    #[doc = include_str!("../../doc/intel/TILELOADDT1.md")]
+    Tileloaddt1,
+    #[doc = include_str!("../../doc/intel/TILERELEASE.md")]
+    Tilerelease,
+    #[doc = include_str!("../../doc/intel/TILESTORED.md")]
+    Tilestored,
+    #[doc = include_str!("../../doc/intel/TILEZERO.md")]
+    Tilezero,
+    #[doc = include_str!("../../doc/intel/TPAUSE.md")]
+    Tpause,
+    #[doc = include_str!("../../doc/intel/TZCNT.md")]
+    Tzcnt,
+    #[doc = include_str!("../../doc/intel/UCOMISD.md")]
+    Ucomisd,
+    #[doc = include_str!("../../doc/intel/UCOMISS.md")]
+    Ucomiss,
+    #[doc = include_str!("../../doc/intel/UD.md")]
+    Ud,
+    #[doc = include_str!("../../doc/intel/UIRET.md")]
+    Uiret,
+    #[doc = include_str!("../../doc/intel/UMONITOR.md")]
+    Umonitor,
+    #[doc = include_str!("../../doc/intel/UMWAIT.md")]
+    Umwait,
+    #[doc = include_str!("../../doc/intel/UNPCKHPD.md")]
+    Unpckhpd,
+    #[doc = include_str!("../../doc/intel/UNPCKHPS.md")]
+    Unpckhps,
+    #[doc = include_str!("../../doc/intel/UNPCKLPD.md")]
+    Unpcklpd,
+    #[doc = include_str!("../../doc/intel/VADDPH.md")]
+    Vaddph,
+    #[doc = include_str!("../../doc/intel/VADDSH.md")]
+    Vaddsh,
+    #[doc = include_str!("../../doc/intel/VALIGND.md")]
+    Valignd,
+    #[doc = include_str!("../../doc/intel/VALIGNQ.md")]
+    Valignq,
+    #[doc = include_str!("../../doc/intel/VBLENDMPD.md")]
+    Vblendmpd,
+    #[doc = include_str!("../../doc/intel/VBLENDMPS.md")]
+    Vblendmps,
+    #[doc = include_str!("../../doc/intel/VBROADCAST.md")]
+    Vbroadcast,
+    #[doc = include_str!("../../doc/intel/VCMPPH.md")]
+    Vcmpph,
+    #[doc = include_str!("../../doc/intel/VCMPSH.md")]
+    Vcmpsh,
+    #[doc = include_str!("../../doc/intel/VCOMISH.md")]
+    Vcomish,
+    #[doc = include_str!("../../doc/intel/VCOMPRESSPD.md")]
+    Vcompresspd,
+    #[doc = include_str!("../../doc/intel/VCOMPRESSPS.md")]
+    Vcompressps,
+    #[doc = include_str!("../../doc/intel/VCOMPRESSW.md")]
+    Vcompressw,
+    #[doc = include_str!("../../doc/intel/VCVTDQ2PH.md")]
+    Vcvtdq2ph,
+    #[doc = include_str!("../../doc/intel/VCVTNE2PS2BF16.md")]
+    Vcvtne2ps2bf16,
+    #[doc = include_str!("../../doc/intel/VCVTNEPS2BF16.md")]
+    Vcvtneps2bf16,
+    #[doc = include_str!("../../doc/intel/VCVTPD2PH.md")]
+    Vcvtpd2ph,
+    #[doc = include_str!("../../doc/intel/VCVTPD2QQ.md")]
+    Vcvtpd2qq,
+    #[doc = include_str!("../../doc/intel/VCVTPD2UDQ.md")]
+    Vcvtpd2udq,
+    #[doc = include_str!("../../doc/intel/VCVTPD2UQQ.md")]
+    Vcvtpd2uqq,
+    #[doc = include_str!("../../doc/intel/VCVTPH2DQ.md")]
+    Vcvtph2dq,
+    #[doc = include_str!("../../doc/intel/VCVTPH2PD.md")]
+    Vcvtph2pd,
+    #[doc = include_str!("../../doc/intel/VCVTPH2PS.md")]
+    Vcvtph2ps,
+    #[doc = include_str!("../../doc/intel/VCVTPH2PSX.md")]
+    Vcvtph2psx,
+    #[doc = include_str!("../../doc/intel/VCVTPH2QQ.md")]
+    Vcvtph2qq,
+    #[doc = include_str!("../../doc/intel/VCVTPH2UDQ.md")]
+    Vcvtph2udq,
+    #[doc = include_str!("../../doc/intel/VCVTPH2UQQ.md")]
+    Vcvtph2uqq,
+    #[doc = include_str!("../../doc/intel/VCVTPH2UW.md")]
+    Vcvtph2uw,
+    #[doc = include_str!("../../doc/intel/VCVTPH2W.md")]
+    Vcvtph2w,
+    #[doc = include_str!("../../doc/intel/VCVTPS2PH.md")]
+    Vcvtps2ph,
+    #[doc = include_str!("../../doc/intel/VCVTPS2PHX.md")]
+    Vcvtps2phx,
+    #[doc = include_str!("../../doc/intel/VCVTPS2QQ.md")]
+    Vcvtps2qq,
+    #[doc = include_str!("../../doc/intel/VCVTPS2UDQ.md")]
+    Vcvtps2udq,
+    #[doc = include_str!("../../doc/intel/VCVTPS2UQQ.md")]
+    Vcvtps2uqq,
+    #[doc = include_str!("../../doc/intel/VCVTQQ2PD.md")]
+    Vcvtqq2pd,
+    #[doc = include_str!("../../doc/intel/VCVTQQ2PH.md")]
+    Vcvtqq2ph,
+    #[doc = include_str!("../../doc/intel/VCVTQQ2PS.md")]
+    Vcvtqq2ps,
+    #[doc = include_str!("../../doc/intel/VCVTSD2SH.md")]
+    Vcvtsd2sh,
+    #[doc = include_str!("../../doc/intel/VCVTSD2USI.md")]
+    Vcvtsd2usi,
+    #[doc = include_str!("../../doc/intel/VCVTSH2SD.md")]
+    Vcvtsh2sd,
+    #[doc = include_str!("../../doc/intel/VCVTSH2SI.md")]
+    Vcvtsh2si,
+    #[doc = include_str!("../../doc/intel/VCVTSH2SS.md")]
+    Vcvtsh2ss,
+    #[doc = include_str!("../../doc/intel/VCVTSH2USI.md")]
+    Vcvtsh2usi,
+    #[doc = include_str!("../../doc/intel/VCVTSI2SH.md")]
+    Vcvtsi2sh,
+    #[doc = include_str!("../../doc/intel/VCVTSS2SH.md")]
+    Vcvtss2sh,
+    #[doc = include_str!("../../doc/intel/VCVTSS2USI.md")]
+    Vcvtss2usi,
+    #[doc = include_str!("../../doc/intel/VCVTTPD2QQ.md")]
+    Vcvttpd2qq,
+    #[doc = include_str!("../../doc/intel/VCVTTPD2UDQ.md")]
+    Vcvttpd2udq,
+    #[doc = include_str!("../../doc/intel/VCVTTPD2UQQ.md")]
+    Vcvttpd2uqq,
+    #[doc = include_str!("../../doc/intel/VCVTTPH2DQ.md")]
+    Vcvttph2dq,
+    #[doc = include_str!("../../doc/intel/VCVTTPH2QQ.md")]
+    Vcvttph2qq,
+    #[doc = include_str!("../../doc/intel/VCVTTPH2UDQ.md")]
+    Vcvttph2udq,
+    #[doc = include_str!("../../doc/intel/VCVTTPH2UQQ.md")]
+    Vcvttph2uqq,
+    #[doc = include_str!("../../doc/intel/VCVTTPH2UW.md")]
+    Vcvttph2uw,
+    #[doc = include_str!("../../doc/intel/VCVTTPH2W.md")]
+    Vcvttph2w,
+    #[doc = include_str!("../../doc/intel/VCVTTPS2QQ.md")]
+    Vcvttps2qq,
+    #[doc = include_str!("../../doc/intel/VCVTTPS2UDQ.md")]
+    Vcvttps2udq,
+    #[doc = include_str!("../../doc/intel/VCVTTPS2UQQ.md")]
+    Vcvttps2uqq,
+    #[doc = include_str!("../../doc/intel/VCVTTSD2USI.md")]
+    Vcvttsd2usi,
+    #[doc = include_str!("../../doc/intel/VCVTTSH2SI.md")]
+    Vcvttsh2si,
+    #[doc = include_str!("../../doc/intel/VCVTTSH2USI.md")]
+    Vcvttsh2usi,
+    #[doc = include_str!("../../doc/intel/VCVTTSS2USI.md")]
+    Vcvttss2usi,
+    #[doc = include_str!("../../doc/intel/VCVTUDQ2PD.md")]
+    Vcvtudq2pd,
+    #[doc = include_str!("../../doc/intel/VCVTUDQ2PH.md")]
+    Vcvtudq2ph,
+    #[doc = include_str!("../../doc/intel/VCVTUDQ2PS.md")]
+    Vcvtudq2ps,
+    #[doc = include_str!("../../doc/intel/VCVTUQQ2PD.md")]
+    Vcvtuqq2pd,
+    #[doc = include_str!("../../doc/intel/VCVTUQQ2PH.md")]
+    Vcvtuqq2ph,
+    #[doc = include_str!("../../doc/intel/VCVTUQQ2PS.md")]
+    Vcvtuqq2ps,
+    #[doc = include_str!("../../doc/intel/VCVTUSI2SD.md")]
+    Vcvtusi2sd,
+    #[doc = include_str!("../../doc/intel/VCVTUSI2SH.md")]
+    Vcvtusi2sh,
+    #[doc = include_str!("../../doc/intel/VCVTUSI2SS.md")]
+    Vcvtusi2ss,
+    #[doc = include_str!("../../doc/intel/VCVTUW2PH.md")]
+    Vcvtuw2ph,
+    #[doc = include_str!("../../doc/intel/VCVTW2PH.md")]
+    Vcvtw2ph,
+    #[doc = include_str!("../../doc/intel/VDBPSADBW.md")]
+    Vdbpsadbw,
+    #[doc = include_str!("../../doc/intel/VDIVPH.md")]
+    Vdivph,
+    #[doc = include_str!("../../doc/intel/VDIVSH.md")]
+    Vdivsh,
+    #[doc = include_str!("../../doc/intel/VDPBF16PS.md")]
+    Vdpbf16ps,
+    #[doc = include_str!("../../doc/intel/VERR.md")]
+    Verr,
+    #[doc = include_str!("../../doc/intel/VERW.md")]
+    Verw,
+    #[doc = include_str!("../../doc/intel/VEXPANDPD.md")]
+    Vexpandpd,
+    #[doc = include_str!("../../doc/intel/VEXPANDPS.md")]
+    Vexpandps,
+    #[doc = include_str!("../../doc/intel/VEXTRACTF64x4.md")]
+    Vextractf64x4,
+    #[doc = include_str!("../../doc/intel/VEXTRACTI128.md")]
+    Vextracti128,
+    #[doc = include_str!("../../doc/intel/VEXTRACTI32x4.md")]
+    Vextracti32x4,
+    #[doc = include_str!("../../doc/intel/VEXTRACTI32x8.md")]
+    Vextracti32x8,
+    #[doc = include_str!("../../doc/intel/VEXTRACTI64x2.md")]
+    Vextracti64x2,
+    #[doc = include_str!("../../doc/intel/VEXTRACTI64x4.md")]
+    Vextracti64x4,
+    #[doc = include_str!("../../doc/intel/VFCMADDCPH.md")]
+    Vfcmaddcph,
+    #[doc = include_str!("../../doc/intel/VFCMADDCSH.md")]
+    Vfcmaddcsh,
+    #[doc = include_str!("../../doc/intel/VFCMULCPH.md")]
+    Vfcmulcph,
+    #[doc = include_str!("../../doc/intel/VFCMULCSH.md")]
+    Vfcmulcsh,
+    #[doc = include_str!("../../doc/intel/VFIXUPIMMPD.md")]
+    Vfixupimmpd,
+    #[doc = include_str!("../../doc/intel/VFIXUPIMMPS.md")]
+    Vfixupimmps,
+    #[doc = include_str!("../../doc/intel/VFIXUPIMMSD.md")]
+    Vfixupimmsd,
+    #[doc = include_str!("../../doc/intel/VFIXUPIMMSS.md")]
+    Vfixupimmss,
+    #[doc = include_str!("../../doc/intel/VFMADD.md")]
+    Vfmadd,
+    #[doc = include_str!("../../doc/intel/VFMADD132PD.md")]
+    Vfmadd132pd,
+    #[doc = include_str!("../../doc/intel/VFMADD132PS.md")]
+    Vfmadd132ps,
+    #[doc = include_str!("../../doc/intel/VFMADD132SD.md")]
+    Vfmadd132sd,
+    #[doc = include_str!("../../doc/intel/VFMADD132SS.md")]
+    Vfmadd132ss,
+    #[doc = include_str!("../../doc/intel/VFMADD213PD.md")]
+    Vfmadd213pd,
+    #[doc = include_str!("../../doc/intel/VFMADD213PS.md")]
+    Vfmadd213ps,
+    #[doc = include_str!("../../doc/intel/VFMADD213SD.md")]
+    Vfmadd213sd,
+    #[doc = include_str!("../../doc/intel/VFMADD213SS.md")]
+    Vfmadd213ss,
+    #[doc = include_str!("../../doc/intel/VFMADD231PD.md")]
+    Vfmadd231pd,
+    #[doc = include_str!("../../doc/intel/VFMADD231PS.md")]
+    Vfmadd231ps,
+    #[doc = include_str!("../../doc/intel/VFMADD231SD.md")]
+    Vfmadd231sd,
+    #[doc = include_str!("../../doc/intel/VFMADD231SS.md")]
+    Vfmadd231ss,
+    #[doc = include_str!("../../doc/intel/VFMADDCPH.md")]
+    Vfmaddcph,
+    #[doc = include_str!("../../doc/intel/VFMADDCSH.md")]
+    Vfmaddcsh,
+    #[doc = include_str!("../../doc/intel/VFMADDSUB132PD.md")]
+    Vfmaddsub132pd,
+    #[doc = include_str!("../../doc/intel/VFMADDSUB132PH.md")]
+    Vfmaddsub132ph,
+    #[doc = include_str!("../../doc/intel/VFMADDSUB132PS.md")]
+    Vfmaddsub132ps,
+    #[doc = include_str!("../../doc/intel/VFMADDSUB213PD.md")]
+    Vfmaddsub213pd,
+    #[doc = include_str!("../../doc/intel/VFMADDSUB213PH.md")]
+    Vfmaddsub213ph,
+    #[doc = include_str!("../../doc/intel/VFMADDSUB213PS.md")]
+    Vfmaddsub213ps,
+    #[doc = include_str!("../../doc/intel/VFMADDSUB231PD.md")]
+    Vfmaddsub231pd,
+    #[doc = include_str!("../../doc/intel/VFMADDSUB231PH.md")]
+    Vfmaddsub231ph,
+    #[doc = include_str!("../../doc/intel/VFMADDSUB231PS.md")]
+    Vfmaddsub231ps,
+    #[doc = include_str!("../../doc/intel/VFMSUB.md")]
+    Vfmsub,
+    #[doc = include_str!("../../doc/intel/VFMSUB132PD.md")]
+    Vfmsub132pd,
+    #[doc = include_str!("../../doc/intel/VFMSUB132PS.md")]
+    Vfmsub132ps,
+    #[doc = include_str!("../../doc/intel/VFMSUB132SD.md")]
+    Vfmsub132sd,
+    #[doc = include_str!("../../doc/intel/VFMSUB132SS.md")]
+    Vfmsub132ss,
+    #[doc = include_str!("../../doc/intel/VFMSUB213PD.md")]
+    Vfmsub213pd,
+    #[doc = include_str!("../../doc/intel/VFMSUB213PS.md")]
+    Vfmsub213ps,
+    #[doc = include_str!("../../doc/intel/VFMSUB213SD.md")]
+    Vfmsub213sd,
+    #[doc = include_str!("../../doc/intel/VFMSUB213SS.md")]
+    Vfmsub213ss,
+    #[doc = include_str!("../../doc/intel/VFMSUB231PD.md")]
+    Vfmsub231pd,
+    #[doc = include_str!("../../doc/intel/VFMSUB231PS.md")]
+    Vfmsub231ps,
+    #[doc = include_str!("../../doc/intel/VFMSUB231SD.md")]
+    Vfmsub231sd,
+    #[doc = include_str!("../../doc/intel/VFMSUB231SS.md")]
+    Vfmsub231ss,
+    #[doc = include_str!("../../doc/intel/VFMSUBADD132PD.md")]
+    Vfmsubadd132pd,
+    #[doc = include_str!("../../doc/intel/VFMSUBADD132PH.md")]
+    Vfmsubadd132ph,
+    #[doc = include_str!("../../doc/intel/VFMSUBADD132PS.md")]
+    Vfmsubadd132ps,
+    #[doc = include_str!("../../doc/intel/VFMSUBADD213PD.md")]
+    Vfmsubadd213pd,
+    #[doc = include_str!("../../doc/intel/VFMSUBADD213PH.md")]
+    Vfmsubadd213ph,
+    #[doc = include_str!("../../doc/intel/VFMSUBADD213PS.md")]
+    Vfmsubadd213ps,
+    #[doc = include_str!("../../doc/intel/VFMSUBADD231PD.md")]
+    Vfmsubadd231pd,
+    #[doc = include_str!("../../doc/intel/VFMSUBADD231PH.md")]
+    Vfmsubadd231ph,
+    #[doc = include_str!("../../doc/intel/VFMSUBADD231PS.md")]
+    Vfmsubadd231ps,
+    #[doc = include_str!("../../doc/intel/VFMULCPH.md")]
+    Vfmulcph,
+    #[doc = include_str!("../../doc/intel/VFMULCSH.md")]
+    Vfmulcsh,
+    #[doc = include_str!("../../doc/intel/VFNMADD.md")]
+    Vfnmadd,
+    #[doc = include_str!("../../doc/intel/VFNMADD132PD.md")]
+    Vfnmadd132pd,
+    #[doc = include_str!("../../doc/intel/VFNMADD132PS.md")]
+    Vfnmadd132ps,
+    #[doc = include_str!("../../doc/intel/VFNMADD132SD.md")]
+    Vfnmadd132sd,
+    #[doc = include_str!("../../doc/intel/VFNMADD132SS.md")]
+    Vfnmadd132ss,
+    #[doc = include_str!("../../doc/intel/VFNMADD213PD.md")]
+    Vfnmadd213pd,
+    #[doc = include_str!("../../doc/intel/VFNMADD213PS.md")]
+    Vfnmadd213ps,
+    #[doc = include_str!("../../doc/intel/VFNMADD213SD.md")]
+    Vfnmadd213sd,
+    #[doc = include_str!("../../doc/intel/VFNMADD213SS.md")]
+    Vfnmadd213ss,
+    #[doc = include_str!("../../doc/intel/VFNMADD231PD.md")]
+    Vfnmadd231pd,
+    #[doc = include_str!("../../doc/intel/VFNMADD231PS.md")]
+    Vfnmadd231ps,
+    #[doc = include_str!("../../doc/intel/VFNMADD231SD.md")]
+    Vfnmadd231sd,
+    #[doc = include_str!("../../doc/intel/VFNMADD231SS.md")]
+    Vfnmadd231ss,
+    #[doc = include_str!("../../doc/intel/VFNMSUB.md")]
+    Vfnmsub,
+    #[doc = include_str!("../../doc/intel/VFNMSUB132PD.md")]
+    Vfnmsub132pd,
+    #[doc = include_str!("../../doc/intel/VFNMSUB132PS.md")]
+    Vfnmsub132ps,
+    #[doc = include_str!("../../doc/intel/VFNMSUB132SD.md")]
+    Vfnmsub132sd,
+    #[doc = include_str!("../../doc/intel/VFNMSUB132SS.md")]
+    Vfnmsub132ss,
+    #[doc = include_str!("../../doc/intel/VFNMSUB213PD.md")]
+    Vfnmsub213pd,
+    #[doc = include_str!("../../doc/intel/VFNMSUB213PS.md")]
+    Vfnmsub213ps,
+    #[doc = include_str!("../../doc/intel/VFNMSUB213SD.md")]
+    Vfnmsub213sd,
+    #[doc = include_str!("../../doc/intel/VFNMSUB213SS.md")]
+    Vfnmsub213ss,
+    #[doc = include_str!("../../doc/intel/VFNMSUB231PD.md")]
+    Vfnmsub231pd,
+    #[doc = include_str!("../../doc/intel/VFNMSUB231PS.md")]
+    Vfnmsub231ps,
+    #[doc = include_str!("../../doc/intel/VFNMSUB231SD.md")]
+    Vfnmsub231sd,
+    #[doc = include_str!("../../doc/intel/VFNMSUB231SS.md")]
+    Vfnmsub231ss,
+    #[doc = include_str!("../../doc/intel/VFPCLASSPD.md")]
+    Vfpclasspd,
+    #[doc = include_str!("../../doc/intel/VFPCLASSPH.md")]
+    Vfpclassph,
+    #[doc = include_str!("../../doc/intel/VFPCLASSPS.md")]
+    Vfpclassps,
+    #[doc = include_str!("../../doc/intel/VFPCLASSSD.md")]
+    Vfpclasssd,
+    #[doc = include_str!("../../doc/intel/VFPCLASSSH.md")]
+    Vfpclasssh,
+    #[doc = include_str!("../../doc/intel/VFPCLASSSS.md")]
+    Vfpclassss,
+    #[doc = include_str!("../../doc/intel/VGATHERDPD.md")]
+    Vgatherdpd,
+    #[doc = include_str!("../../doc/intel/VGATHERDPS.md")]
+    Vgatherdps,
+    #[doc = include_str!("../../doc/intel/VGATHERQPD.md")]
+    Vgatherqpd,
+    #[doc = include_str!("../../doc/intel/VGATHERQPS.md")]
+    Vgatherqps,
+    #[doc = include_str!("../../doc/intel/VGETEXPPD.md")]
+    Vgetexppd,
+    #[doc = include_str!("../../doc/intel/VGETEXPPH.md")]
+    Vgetexpph,
+    #[doc = include_str!("../../doc/intel/VGETEXPPS.md")]
+    Vgetexpps,
+    #[doc = include_str!("../../doc/intel/VGETEXPSD.md")]
+    Vgetexpsd,
+    #[doc = include_str!("../../doc/intel/VGETEXPSH.md")]
+    Vgetexpsh,
+    #[doc = include_str!("../../doc/intel/VGETEXPSS.md")]
+    Vgetexpss,
+    #[doc = include_str!("../../doc/intel/VGETMANTPD.md")]
+    Vgetmantpd,
+    #[doc = include_str!("../../doc/intel/VGETMANTPH.md")]
+    Vgetmantph,
+    #[doc = include_str!("../../doc/intel/VGETMANTPS.md")]
+    Vgetmantps,
+    #[doc = include_str!("../../doc/intel/VGETMANTSD.md")]
+    Vgetmantsd,
+    #[doc = include_str!("../../doc/intel/VGETMANTSH.md")]
+    Vgetmantsh,
+    #[doc = include_str!("../../doc/intel/VGETMANTSS.md")]
+    Vgetmantss,
+    #[doc = include_str!("../../doc/intel/VINSERTF128.md")]
+    Vinsertf128,
+    #[doc = include_str!("../../doc/intel/VINSERTF32x4.md")]
+    Vinsertf32x4,
+    #[doc = include_str!("../../doc/intel/VINSERTF32x8.md")]
+    Vinsertf32x8,
+    #[doc = include_str!("../../doc/intel/VINSERTF64x2.md")]
+    Vinsertf64x2,
+    #[doc = include_str!("../../doc/intel/VINSERTF64x4.md")]
+    Vinsertf64x4,
+    #[doc = include_str!("../../doc/intel/VINSERTI128.md")]
+    Vinserti128,
+    #[doc = include_str!("../../doc/intel/VINSERTI32x4.md")]
+    Vinserti32x4,
+    #[doc = include_str!("../../doc/intel/VINSERTI32x8.md")]
+    Vinserti32x8,
+    #[doc = include_str!("../../doc/intel/VINSERTI64x2.md")]
+    Vinserti64x2,
+    #[doc = include_str!("../../doc/intel/VINSERTI64x4.md")]
+    Vinserti64x4,
+    #[doc = include_str!("../../doc/intel/VMASKMOV.md")]
+    Vmaskmov,
+    #[doc = include_str!("../../doc/intel/VMAXPH.md")]
+    Vmaxph,
+    #[doc = include_str!("../../doc/intel/VMAXSH.md")]
+    Vmaxsh,
+    #[doc = include_str!("../../doc/intel/VMINPH.md")]
+    Vminph,
+    #[doc = include_str!("../../doc/intel/VMINSH.md")]
+    Vminsh,
+    #[doc = include_str!("../../doc/intel/VMOVDQA32.md")]
+    Vmovdqa32,
+    #[doc = include_str!("../../doc/intel/VMOVDQU8.md")]
+    Vmovdqu8,
+    #[doc = include_str!("../../doc/intel/VMOVSH.md")]
+    Vmovsh,
+    #[doc = include_str!("../../doc/intel/VMOVW.md")]
+    Vmovw,
+    #[doc = include_str!("../../doc/intel/VMULPH.md")]
+    Vmulph,
+    #[doc = include_str!("../../doc/intel/VMULSH.md")]
+    Vmulsh,
+    #[doc = include_str!("../../doc/intel/VP2INTERSECTD.md")]
+    Vp2intersectd,
+    #[doc = include_str!("../../doc/intel/VP2INTERSECTQ.md")]
+    Vp2intersectq,
+    #[doc = include_str!("../../doc/intel/VPBLENDD.md")]
+    Vpblendd,
+    #[doc = include_str!("../../doc/intel/VPBLENDMB.md")]
+    Vpblendmb,
+    #[doc = include_str!("../../doc/intel/VPBLENDMD.md")]
+    Vpblendmd,
+    #[doc = include_str!("../../doc/intel/VPBLENDMQ.md")]
+    Vpblendmq,
+    #[doc = include_str!("../../doc/intel/VPBLENDMW.md")]
+    Vpblendmw,
+    #[doc = include_str!("../../doc/intel/VPBROADCAST.md")]
+    Vpbroadcast,
+    #[doc = include_str!("../../doc/intel/VPBROADCASTB.md")]
+    Vpbroadcastb,
+    #[doc = include_str!("../../doc/intel/VPBROADCASTD.md")]
+    Vpbroadcastd,
+    #[doc = include_str!("../../doc/intel/VPBROADCASTM.md")]
+    Vpbroadcastm,
+    #[doc = include_str!("../../doc/intel/VPBROADCASTQ.md")]
+    Vpbroadcastq,
+    #[doc = include_str!("../../doc/intel/VPBROADCASTW.md")]
+    Vpbroadcastw,
+    #[doc = include_str!("../../doc/intel/VPCMPB.md")]
+    Vpcmpb,
+    #[doc = include_str!("../../doc/intel/VPCMPD.md")]
+    Vpcmpd,
+    #[doc = include_str!("../../doc/intel/VPCMPQ.md")]
+    Vpcmpq,
+    #[doc = include_str!("../../doc/intel/VPCMPUB.md")]
+    Vpcmpub,
+    #[doc = include_str!("../../doc/intel/VPCMPUD.md")]
+    Vpcmpud,
+    #[doc = include_str!("../../doc/intel/VPCMPUQ.md")]
+    Vpcmpuq,
+    #[doc = include_str!("../../doc/intel/VPCMPUW.md")]
+    Vpcmpuw,
+    #[doc = include_str!("../../doc/intel/VPCMPW.md")]
+    Vpcmpw,
+    #[doc = include_str!("../../doc/intel/VPCOMPRESSB.md")]
+    Vpcompressb,
+    #[doc = include_str!("../../doc/intel/VPCOMPRESSD.md")]
+    Vpcompressd,
+    #[doc = include_str!("../../doc/intel/VPCOMPRESSQ.md")]
+    Vpcompressq,
+    #[doc = include_str!("../../doc/intel/VPCONFLICTD.md")]
+    Vpconflictd,
+    #[doc = include_str!("../../doc/intel/VPCONFLICTQ.md")]
+    Vpconflictq,
+    #[doc = include_str!("../../doc/intel/VPDPBUSD.md")]
+    Vpdpbusd,
+    #[doc = include_str!("../../doc/intel/VPDPBUSDS.md")]
+    Vpdpbusds,
+    #[doc = include_str!("../../doc/intel/VPDPWSSD.md")]
+    Vpdpwssd,
+    #[doc = include_str!("../../doc/intel/VPDPWSSDS.md")]
+    Vpdpwssds,
+    #[doc = include_str!("../../doc/intel/VPERM2F128.md")]
+    Vperm2f128,
+    #[doc = include_str!("../../doc/intel/VPERM2I128.md")]
+    Vperm2i128,
+    #[doc = include_str!("../../doc/intel/VPERMB.md")]
+    Vpermb,
+    #[doc = include_str!("../../doc/intel/VPERMD.md")]
+    Vpermd,
+    #[doc = include_str!("../../doc/intel/VPERMI2B.md")]
+    Vpermi2b,
+    #[doc = include_str!("../../doc/intel/VPERMI2D.md")]
+    Vpermi2d,
+    #[doc = include_str!("../../doc/intel/VPERMI2PD.md")]
+    Vpermi2pd,
+    #[doc = include_str!("../../doc/intel/VPERMI2PS.md")]
+    Vpermi2ps,
+    #[doc = include_str!("../../doc/intel/VPERMI2Q.md")]
+    Vpermi2q,
+    #[doc = include_str!("../../doc/intel/VPERMI2W.md")]
+    Vpermi2w,
+    #[doc = include_str!("../../doc/intel/VPERMILPD.md")]
+    Vpermilpd,
+    #[doc = include_str!("../../doc/intel/VPERMILPS.md")]
+    Vpermilps,
+    #[doc = include_str!("../../doc/intel/VPERMPD.md")]
+    Vpermpd,
+    #[doc = include_str!("../../doc/intel/VPERMPS.md")]
+    Vpermps,
+    #[doc = include_str!("../../doc/intel/VPERMQ.md")]
+    Vpermq,
+    #[doc = include_str!("../../doc/intel/VPERMT2B.md")]
+    Vpermt2b,
+    #[doc = include_str!("../../doc/intel/VPERMT2D.md")]
+    Vpermt2d,
+    #[doc = include_str!("../../doc/intel/VPERMT2PD.md")]
+    Vpermt2pd,
+    #[doc = include_str!("../../doc/intel/VPERMT2PS.md")]
+    Vpermt2ps,
+    #[doc = include_str!("../../doc/intel/VPERMT2Q.md")]
+    Vpermt2q,
+    #[doc = include_str!("../../doc/intel/VPERMT2W.md")]
+    Vpermt2w,
+    #[doc = include_str!("../../doc/intel/VPERMW.md")]
+    Vpermw,
+    #[doc = include_str!("../../doc/intel/VPEXPANDB.md")]
+    Vpexpandb,
+    #[doc = include_str!("../../doc/intel/VPEXPANDD.md")]
+    Vpexpandd,
+    #[doc = include_str!("../../doc/intel/VPEXPANDQ.md")]
+    Vpexpandq,
+    #[doc = include_str!("../../doc/intel/VPEXPANDW.md")]
+    Vpexpandw,
+    #[doc = include_str!("../../doc/intel/VPGATHERDD.md")]
+    Vpgatherdd,
+    #[doc = include_str!("../../doc/intel/VPGATHERDQ.md")]
+    Vpgatherdq,
+    #[doc = include_str!("../../doc/intel/VPGATHERQD.md")]
+    Vpgatherqd,
+    #[doc = include_str!("../../doc/intel/VPGATHERQQ.md")]
+    Vpgatherqq,
+    #[doc = include_str!("../../doc/intel/VPLZCNTD.md")]
+    Vplzcntd,
+    #[doc = include_str!("../../doc/intel/VPLZCNTQ.md")]
+    Vplzcntq,
+    #[doc = include_str!("../../doc/intel/VPMADD52HUQ.md")]
+    Vpmadd52huq,
+    #[doc = include_str!("../../doc/intel/VPMADD52LUQ.md")]
+    Vpmadd52luq,
+    #[doc = include_str!("../../doc/intel/VPMASKMOV.md")]
+    Vpmaskmov,
+    #[doc = include_str!("../../doc/intel/VPMOVB2M.md")]
+    Vpmovb2m,
+    #[doc = include_str!("../../doc/intel/VPMOVD2M.md")]
+    Vpmovd2m,
+    #[doc = include_str!("../../doc/intel/VPMOVDB.md")]
+    Vpmovdb,
+    #[doc = include_str!("../../doc/intel/VPMOVDW.md")]
+    Vpmovdw,
+    #[doc = include_str!("../../doc/intel/VPMOVM2B.md")]
+    Vpmovm2b,
+    #[doc = include_str!("../../doc/intel/VPMOVM2D.md")]
+    Vpmovm2d,
+    #[doc = include_str!("../../doc/intel/VPMOVM2Q.md")]
+    Vpmovm2q,
+    #[doc = include_str!("../../doc/intel/VPMOVM2W.md")]
+    Vpmovm2w,
+    #[doc = include_str!("../../doc/intel/VPMOVQ2M.md")]
+    Vpmovq2m,
+    #[doc = include_str!("../../doc/intel/VPMOVQB.md")]
+    Vpmovqb,
+    #[doc = include_str!("../../doc/intel/VPMOVQD.md")]
+    Vpmovqd,
+    #[doc = include_str!("../../doc/intel/VPMOVQW.md")]
+    Vpmovqw,
+    #[doc = include_str!("../../doc/intel/VPMOVSDB.md")]
+    Vpmovsdb,
+    #[doc = include_str!("../../doc/intel/VPMOVSDW.md")]
+    Vpmovsdw,
+    #[doc = include_str!("../../doc/intel/VPMOVSQB.md")]
+    Vpmovsqb,
+    #[doc = include_str!("../../doc/intel/VPMOVSQD.md")]
+    Vpmovsqd,
+    #[doc = include_str!("../../doc/intel/VPMOVSQW.md")]
+    Vpmovsqw,
+    #[doc = include_str!("../../doc/intel/VPMOVSWB.md")]
+    Vpmovswb,
+    #[doc = include_str!("../../doc/intel/VPMOVUSDB.md")]
+    Vpmovusdb,
+    #[doc = include_str!("../../doc/intel/VPMOVUSDW.md")]
+    Vpmovusdw,
+    #[doc = include_str!("../../doc/intel/VPMOVUSQB.md")]
+    Vpmovusqb,
+    #[doc = include_str!("../../doc/intel/VPMOVUSQD.md")]
+    Vpmovusqd,
+    #[doc = include_str!("../../doc/intel/VPMOVUSQW.md")]
+    Vpmovusqw,
+    #[doc = include_str!("../../doc/intel/VPMOVUSWB.md")]
+    Vpmovuswb,
+    #[doc = include_str!("../../doc/intel/VPMOVW2M.md")]
+    Vpmovw2m,
+    #[doc = include_str!("../../doc/intel/VPMOVWB.md")]
+    Vpmovwb,
+    #[doc = include_str!("../../doc/intel/VPMULTISHIFTQB.md")]
+    Vpmultishiftqb,
+    #[doc = include_str!("../../doc/intel/VPOPCNT.md")]
+    Vpopcnt,
+    #[doc = include_str!("../../doc/intel/VPROLD.md")]
+    Vprold,
+    #[doc = include_str!("../../doc/intel/VPROLQ.md")]
+    Vprolq,
+    #[doc = include_str!("../../doc/intel/VPROLVD.md")]
+    Vprolvd,
+    #[doc = include_str!("../../doc/intel/VPROLVQ.md")]
+    Vprolvq,
+    #[doc = include_str!("../../doc/intel/VPRORD.md")]
+    Vprord,
+    #[doc = include_str!("../../doc/intel/VPRORQ.md")]
+    Vprorq,
+    #[doc = include_str!("../../doc/intel/VPRORVD.md")]
+    Vprorvd,
+    #[doc = include_str!("../../doc/intel/VPRORVQ.md")]
+    Vprorvq,
+    #[doc = include_str!("../../doc/intel/VPSCATTERDD.md")]
+    Vpscatterdd,
+    #[doc = include_str!("../../doc/intel/VPSCATTERDQ.md")]
+    Vpscatterdq,
+    #[doc = include_str!("../../doc/intel/VPSCATTERQD.md")]
+    Vpscatterqd,
+    #[doc = include_str!("../../doc/intel/VPSCATTERQQ.md")]
+    Vpscatterqq,
+    #[doc = include_str!("../../doc/intel/VPSHLD.md")]
+    Vpshld,
+    #[doc = include_str!("../../doc/intel/VPSHLDV.md")]
+    Vpshldv,
+    #[doc = include_str!("../../doc/intel/VPSHRD.md")]
+    Vpshrd,
+    #[doc = include_str!("../../doc/intel/VPSHRDV.md")]
+    Vpshrdv,
+    #[doc = include_str!("../../doc/intel/VPSHUFBITQMB.md")]
+    Vpshufbitqmb,
+    #[doc = include_str!("../../doc/intel/VPSLLVD.md")]
+    Vpsllvd,
+    #[doc = include_str!("../../doc/intel/VPSLLVQ.md")]
+    Vpsllvq,
+    #[doc = include_str!("../../doc/intel/VPSLLVW.md")]
+    Vpsllvw,
+    #[doc = include_str!("../../doc/intel/VPSRAVD.md")]
+    Vpsravd,
+    #[doc = include_str!("../../doc/intel/VPSRAVQ.md")]
+    Vpsravq,
+    #[doc = include_str!("../../doc/intel/VPSRAVW.md")]
+    Vpsravw,
+    #[doc = include_str!("../../doc/intel/VPSRLVD.md")]
+    Vpsrlvd,
+    #[doc = include_str!("../../doc/intel/VPSRLVQ.md")]
+    Vpsrlvq,
+    #[doc = include_str!("../../doc/intel/VPSRLVW.md")]
+    Vpsrlvw,
+    #[doc = include_str!("../../doc/intel/VPTERNLOGD.md")]
+    Vpternlogd,
+    #[doc = include_str!("../../doc/intel/VPTERNLOGQ.md")]
+    Vpternlogq,
+    #[doc = include_str!("../../doc/intel/VPTESTMB.md")]
+    Vptestmb,
+    #[doc = include_str!("../../doc/intel/VPTESTMD.md")]
+    Vptestmd,
+    #[doc = include_str!("../../doc/intel/VPTESTMQ.md")]
+    Vptestmq,
+    #[doc = include_str!("../../doc/intel/VPTESTMW.md")]
+    Vptestmw,
+    #[doc = include_str!("../../doc/intel/VPTESTNMB.md")]
+    Vptestnmb,
+    #[doc = include_str!("../../doc/intel/VPTESTNMD.md")]
+    Vptestnmd,
+    #[doc = include_str!("../../doc/intel/VPTESTNMQ.md")]
+    Vptestnmq,
+    #[doc = include_str!("../../doc/intel/VPTESTNMW.md")]
+    Vptestnmw,
+    #[doc = include_str!("../../doc/intel/VRANGEPD.md")]
+    Vrangepd,
+    #[doc = include_str!("../../doc/intel/VRANGEPS.md")]
+    Vrangeps,
+    #[doc = include_str!("../../doc/intel/VRANGESD.md")]
+    Vrangesd,
+    #[doc = include_str!("../../doc/intel/VRANGESS.md")]
+    Vrangess,
+    #[doc = include_str!("../../doc/intel/VRCP14PD.md")]
+    Vrcp14pd,
+    #[doc = include_str!("../../doc/intel/VRCP14PS.md")]
+    Vrcp14ps,
+    #[doc = include_str!("../../doc/intel/VRCP14SD.md")]
+    Vrcp14sd,
+    #[doc = include_str!("../../doc/intel/VRCP14SS.md")]
+    Vrcp14ss,
+    #[doc = include_str!("../../doc/intel/VRCPPH.md")]
+    Vrcpph,
+    #[doc = include_str!("../../doc/intel/VRCPSH.md")]
+    Vrcpsh,
+    #[doc = include_str!("../../doc/intel/VREDUCEPD.md")]
+    Vreducepd,
+    #[doc = include_str!("../../doc/intel/VREDUCEPH.md")]
+    Vreduceph,
+    #[doc = include_str!("../../doc/intel/VREDUCEPS.md")]
+    Vreduceps,
+    #[doc = include_str!("../../doc/intel/VREDUCESD.md")]
+    Vreducesd,
+    #[doc = include_str!("../../doc/intel/VREDUCESH.md")]
+    Vreducesh,
+    #[doc = include_str!("../../doc/intel/VREDUCESS.md")]
+    Vreducess,
+    #[doc = include_str!("../../doc/intel/VRNDSCALEPD.md")]
+    Vrndscalepd,
+    #[doc = include_str!("../../doc/intel/VRNDSCALEPH.md")]
+    Vrndscaleph,
+    #[doc = include_str!("../../doc/intel/VRNDSCALEPS.md")]
+    Vrndscaleps,
+    #[doc = include_str!("../../doc/intel/VRNDSCALESD.md")]
+    Vrndscalesd,
+    #[doc = include_str!("../../doc/intel/VRNDSCALESH.md")]
+    Vrndscalesh,
+    #[doc = include_str!("../../doc/intel/VRNDSCALESS.md")]
+    Vrndscaless,
+    #[doc = include_str!("../../doc/intel/VRSQRT14PD.md")]
+    Vrsqrt14pd,
+    #[doc = include_str!("../../doc/intel/VRSQRT14PS.md")]
+    Vrsqrt14ps,
+    #[doc = include_str!("../../doc/intel/VRSQRT14SD.md")]
+    Vrsqrt14sd,
+    #[doc = include_str!("../../doc/intel/VRSQRT14SS.md")]
+    Vrsqrt14ss,
+    #[doc = include_str!("../../doc/intel/VRSQRTPH.md")]
+    Vrsqrtph,
+    #[doc = include_str!("../../doc/intel/VRSQRTSH.md")]
+    Vrsqrtsh,
+    #[doc = include_str!("../../doc/intel/VSCALEFPD.md")]
+    Vscalefpd,
+    #[doc = include_str!("../../doc/intel/VSCALEFPH.md")]
+    Vscalefph,
+    #[doc = include_str!("../../doc/intel/VSCALEFPS.md")]
+    Vscalefps,
+    #[doc = include_str!("../../doc/intel/VSCALEFSD.md")]
+    Vscalefsd,
+    #[doc = include_str!("../../doc/intel/VSCALEFSH.md")]
+    Vscalefsh,
+    #[doc = include_str!("../../doc/intel/VSCALEFSS.md")]
+    Vscalefss,
+    #[doc = include_str!("../../doc/intel/VSCATTERDPD.md")]
+    Vscatterdpd,
+    #[doc = include_str!("../../doc/intel/VSCATTERDPS.md")]
+    Vscatterdps,
+    #[doc = include_str!("../../doc/intel/VSCATTERQPD.md")]
+    Vscatterqpd,
+    #[doc = include_str!("../../doc/intel/VSCATTERQPS.md")]
+    Vscatterqps,
+    #[doc = include_str!("../../doc/intel/VSHUFF32x4.md")]
+    Vshuff32x4,
+    #[doc = include_str!("../../doc/intel/VSHUFF64x2.md")]
+    Vshuff64x2,
+    #[doc = include_str!("../../doc/intel/VSHUFI32x4.md")]
+    Vshufi32x4,
+    #[doc = include_str!("../../doc/intel/VSHUFI64x2.md")]
+    Vshufi64x2,
+    #[doc = include_str!("../../doc/intel/VSQRTPH.md")]
+    Vsqrtph,
+    #[doc = include_str!("../../doc/intel/VSQRTSH.md")]
+    Vsqrtsh,
+    #[doc = include_str!("../../doc/intel/VSUBPH.md")]
+    Vsubph,
+    #[doc = include_str!("../../doc/intel/VSUBSH.md")]
+    Vsubsh,
+    #[doc = include_str!("../../doc/intel/VTESTPD.md")]
+    Vtestpd,
+    #[doc = include_str!("../../doc/intel/VTESTPS.md")]
+    Vtestps,
+    #[doc = include_str!("../../doc/intel/VUCOMISH.md")]
+    Vucomish,
+    #[doc = include_str!("../../doc/intel/VZEROALL.md")]
+    Vzeroall,
+    #[doc = include_str!("../../doc/intel/WAIT.md")]
+    Wait,
+    #[doc = include_str!("../../doc/intel/WBINVD.md")]
+    Wbinvd,
+    #[doc = include_str!("../../doc/intel/WBNOINVD.md")]
+    Wbnoinvd,
+    #[doc = include_str!("../../doc/intel/WRFSBASE.md")]
+    Wrfsbase,
+    #[doc = include_str!("../../doc/intel/WRGSBASE.md")]
+    Wrgsbase,
+    #[doc = include_str!("../../doc/intel/WRMSR.md")]
+    Wrmsr,
+    #[doc = include_str!("../../doc/intel/WRPKRU.md")]
+    Wrpkru,
+    #[doc = include_str!("../../doc/intel/WRSSD.md")]
+    Wrssd,
+    #[doc = include_str!("../../doc/intel/WRSSQ.md")]
+    Wrssq,
+    #[doc = include_str!("../../doc/intel/WRUSSD.md")]
+    Wrussd,
+    #[doc = include_str!("../../doc/intel/WRUSSQ.md")]
+    Wrussq,
+    #[doc = include_str!("../../doc/intel/XABORT.md")]
+    Xabort,
+    #[doc = include_str!("../../doc/intel/XACQUIRE.md")]
+    Xacquire,
+    #[doc = include_str!("../../doc/intel/XADD.md")]
+    Xadd,
+    #[doc = include_str!("../../doc/intel/XBEGIN.md")]
+    Xbegin,
+    #[doc = include_str!("../../doc/intel/XCHG.md")]
+    Xchg,
+    #[doc = include_str!("../../doc/intel/XEND.md")]
+    Xend,
+    #[doc = include_str!("../../doc/intel/XGETBV.md")]
+    Xgetbv,
+    #[doc = include_str!("../../doc/intel/XLAT.md")]
+    Xlat,
+    #[doc = include_str!("../../doc/intel/XLATB.md")]
+    Xlatb,
+    #[doc = include_str!("../../doc/intel/XOR.md")]
+    Xor,
+    #[doc = include_str!("../../doc/intel/XORPD.md")]
+    Xorpd,
+    #[doc = include_str!("../../doc/intel/XORPS.md")]
+    Xorps,
+    #[doc = include_str!("../../doc/intel/XRELEASE.md")]
+    Xrelease,
+    #[doc = include_str!("../../doc/intel/XRESLDTRK.md")]
+    Xresldtrk,
+    #[doc = include_str!("../../doc/intel/XRSTOR.md")]
+    Xrstor,
+    #[doc = include_str!("../../doc/intel/XRSTORS.md")]
+    Xrstors,
+    #[doc = include_str!("../../doc/intel/XSAVE.md")]
+    Xsave,
+    #[doc = include_str!("../../doc/intel/XSAVEC.md")]
+    Xsavec,
+    #[doc = include_str!("../../doc/intel/XSAVEOPT.md")]
+    Xsaveopt,
+    #[doc = include_str!("../../doc/intel/XSAVES.md")]
+    Xsaves,
+    #[doc = include_str!("../../doc/intel/XSETBV.md")]
+    Xsetbv,
+    #[doc = include_str!("../../doc/intel/XSUSLDTRK.md")]
+    Xsusldtrk,
 }

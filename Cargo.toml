@@ -1,9 +1,10 @@
 [workspace]
-
+resolver = "2"
 members = [
     "fireman",
     "fireball",
     "firebat",
     "iceball",
     "dryice",
+    "iceball/architecture_doc_extractor",
 ]
