@@ -20,11 +20,11 @@ jobs:
                         windows-2022,
                         windows-2019,
                         # ubuntu-latest,
-                        ubuntu-22.04,
+                        ubuntu-24.04,
                         ubuntu-20.04,
                         # macos-latest,
+                        macos-14,
                         macos-12,
-                        macos-11,
                     ]
         runs-on: ${{ matrix.os }}
         steps:
@@ -133,11 +133,11 @@ jobs:
                         windows-2022,
                         windows-2019,
                         # ubuntu-latest,
-                        ubuntu-22.04,
+                        ubuntu-24.04,
                         ubuntu-20.04,
                         # macos-latest,
+                        macos-14,
                         macos-12,
-                        macos-11,
                     ]
         runs-on: ${{ matrix.os }}
         steps:
