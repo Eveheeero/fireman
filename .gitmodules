@@ -1,0 +1,3 @@
+[submodule "iceball/architecture_doc_extractor"]
+	path = iceball/architecture_doc_extractor
+	url = https://github.com/Eveheeero/architecture_doc_extractor

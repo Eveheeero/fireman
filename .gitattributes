@@ -1,1 +1,6 @@
-* text=auto eol=lf
+*.rs eol=lf
+.gitattributes eol=lf
+.gitignore eol=lf
+.gitmodules eol=lf
+.md eol=lf
+.toml eol=lf
