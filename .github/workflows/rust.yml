@@ -15,20 +15,12 @@ jobs:
             matrix:
                 os:
                     # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
-                    [
-                        # windows-latest,
-                        windows-2022,
-                        windows-2019,
-                        # ubuntu-latest,
-                        ubuntu-22.04,
-                        ubuntu-20.04,
-                        # macos-latest,
-                        macos-12,
-                        macos-11,
-                    ]
+                    [windows-latest, ubuntu-latest, macos-latest]
         runs-on: ${{ matrix.os }}
         steps:
             - uses: actions/checkout@v3
+              with:
+                  submodules: "true"
             - uses: actions/cache@v3
               with:
                   path: |
@@ -47,6 +39,8 @@ jobs:
         runs-on: windows-latest
         steps:
             - uses: actions/checkout@v3
+              with:
+                  submodules: "true"
             - uses: actions/cache@v3
               with:
                   path: |
@@ -68,6 +62,8 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v3
+              with:
+                  submodules: "true"
             - uses: actions/cache@v3
               with:
                   path: |
@@ -93,6 +89,8 @@ jobs:
         runs-on: macos-latest
         steps:
             - uses: actions/checkout@v3
+              with:
+                  submodules: "true"
             - uses: actions/cache@v3
               with:
                   path: |
@@ -101,7 +99,9 @@ jobs:
                       ~/.rustup
                   key: macos-static-build-${{ hashFiles('**/Cargo.toml') }}
             - name: Setup dependency
-              run: rustup target add aarch64-apple-darwin
+              run: |
+                  rustup target add aarch64-apple-darwin
+                  rustup target add x86_64-apple-darwin
             - name: Build Debug
               run: |
                   RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-apple-darwin --verbose
@@ -120,20 +120,12 @@ jobs:
             matrix:
                 os:
                     # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
-                    [
-                        # windows-latest,
-                        windows-2022,
-                        windows-2019,
-                        # ubuntu-latest,
-                        ubuntu-22.04,
-                        ubuntu-20.04,
-                        # macos-latest,
-                        macos-12,
-                        macos-11,
-                    ]
+                    [windows-latest, ubuntu-latest, macos-latest]
         runs-on: ${{ matrix.os }}
         steps:
             - uses: actions/checkout@v3
+              with:
+                  submodules: "true"
             - uses: actions/cache@v3
               with:
                   path: |
