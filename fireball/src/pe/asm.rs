@@ -77,10 +77,16 @@ impl PE {
     fn transform_instructions(&self, input: capstone::Instructions) -> Vec<Instruction> {
         let mut result = Vec::new();
         for item in input.into_iter() {
-            let op = item.op_str().unwrap();
-            let statement = iceball::parse_statement(iceball::Architecture::X64, op);
-            let arguments = Vec::new();
-            todo!("arguments작성");
+            let mnemonic = item.mnemonic().unwrap();
+            let statement = iceball::parse_statement(iceball::Architecture::X64, mnemonic);
+            let mut arguments = Vec::new();
+            let op = item.op_str();
+            if op.is_some() {
+                for op in op.unwrap().split(", ") {
+                    let argument = iceball::parse_argument(iceball::Architecture::X64, op).unwrap();
+                    arguments.push(argument);
+                }
+            }
             let bytes = Some(item.bytes().into());
             let data = Instruction {
                 address: item.address(),

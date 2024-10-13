@@ -78,6 +78,7 @@ impl Statement {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DisassembleError {
+    Unknown,
     UnknownStatement,
     UnknownRegister,
 }
@@ -87,9 +88,17 @@ unsafe impl Sync for Instruction {}
 
 pub fn parse_statement(
     arch: Architecture,
-    op: impl AsRef<str>,
+    mnemonic: impl AsRef<str>,
 ) -> Result<Statement, DisassembleError> {
     match arch {
-        Architecture::X64 => X64Statement::parse(op),
+        Architecture::X64 => X64Statement::parse(mnemonic),
+    }
+}
+pub fn parse_argument(
+    arch: Architecture,
+    op: impl AsRef<str>,
+) -> Result<Argument, DisassembleError> {
+    match arch {
+        Architecture::X64 => x64::parse_argument(op),
     }
 }
