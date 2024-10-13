@@ -22,8 +22,8 @@ impl X64Statement {
     pub(crate) fn parse(op: impl AsRef<str>) -> Result<Statement, DisassembleError> {
         let op = op.as_ref();
         let op = op.to_ascii_uppercase();
-        if let Ok(stmt) = op.parse() {
-            Ok(stmt)
+        if let Ok(stmt) = op.parse::<X64Statement>() {
+            Ok(Statement::X64(stmt))
         } else {
             Err(DisassembleError::UnknownStatement)
         }

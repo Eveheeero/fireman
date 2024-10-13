@@ -79,6 +79,7 @@ impl Statement {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DisassembleError {
     UnknownStatement,
+    UnknownRegister,
 }
 
 unsafe impl Send for Instruction {}

@@ -12,3 +12,4 @@ homepage = "https://crates.io/crates/iceball"
 crate-type = ["cdylib", "rlib", "staticlib"]
 
 [dependencies]
+fireman_macro = { path = "../fireman_macro", version = "0.0.1" }
