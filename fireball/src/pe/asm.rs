@@ -1,12 +1,18 @@
 //! 어셈블리 파싱 모듈
 
 use super::PE;
-use crate::{core::Address, prelude::trace};
-use capstone::Instructions;
+use crate::{
+    core::{Address, Instruction},
+    prelude::trace,
+};
 
 impl PE {
     /// 범위만큼의 어셈블리 코드를 파싱한다.
-    pub(crate) fn parse_assem_range(&self, offset: Address, size: u64) -> Result<Instructions, ()> {
+    pub(crate) fn parse_assem_range(
+        &self,
+        offset: &Address,
+        size: u64,
+    ) -> Result<Vec<Instruction>, ()> {
         let file_offset = if let Some(file_offset) = offset.get_file_offset() {
             file_offset
         } else {
@@ -31,15 +37,15 @@ impl PE {
                 return Err(());
             }
         };
-        Ok(insns)
+        Ok(insns).map(Self::transform_instructions)
     }
 
     /// 어셈블리 코드를 N개 파싱한다.
     pub(crate) fn parse_assem_count(
         &self,
-        offset: Address,
+        offset: &Address,
         count: usize,
-    ) -> Result<Instructions, ()> {
+    ) -> Result<Vec<Instruction>, ()> {
         let file_offset = if let Some(file_offset) = offset.get_file_offset() {
             file_offset
         } else {
@@ -65,6 +71,10 @@ impl PE {
                 return Err(());
             }
         };
-        Ok(insns)
+        Ok(insns).map(Self::transform_instructions)
+    }
+
+    fn transform_instructions(input: capstone::Instructions) -> Vec<Instruction> {
+        input.into_iter().map(Into::into).collect()
     }
 }

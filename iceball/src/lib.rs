@@ -11,9 +11,27 @@ pub struct Instruction {
     pub bytes: Option<Vec<u8>>,
 }
 
+impl Instruction {
+    pub fn is_jcc(&self) -> bool {
+        self.statement.is_ok() && self.statement.unwrap().is_jcc()
+    }
+    pub fn is_call(&self) -> bool {
+        self.statement.is_ok() && self.statement.unwrap().is_call()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Statement {
     X64(X64Statement),
+}
+
+impl Statement {
+    pub fn is_jcc(&self) -> bool {
+        todo!()
+    }
+    pub fn is_call(&self) -> bool {
+        todo!()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -15,14 +15,14 @@ pub struct Block {
     name: Option<String>,
     /// 블럭의 시작 주소
     start_address: Address,
-    /// 블럭의 끝 주소
+    /// 블럭의 마지막 인스트럭션의 주소
     end_address: Option<Address>,
     /// 현재 블럭과 연관되어있는 블럭들을 담은 벡터
     connected_from: RwLock<Vec<Arc<Relation>>>,
     /// 현재 블럭과 연관된 블럭들을 담은 벡터
     connected_to: RwLock<Vec<Arc<Relation>>>,
     /// 블럭의 섹션
-    section: Arc<Section>,
+    section: Option<Arc<Section>>,
 }
 
 impl Block {
@@ -33,8 +33,7 @@ impl Block {
     /// - `id: usize` - 블럭의 아이디
     /// - `name: Option<String>` - 블럭의 이름
     /// - `start_address: Address` - 블럭의 시작주소
-    /// - `end_address: Option<Address>` - 블럭의 끝주소
-    /// - `section: Arc<Section>` - 블럭의 섹션
+    /// - `end_address: Option<Address>` - 블럭의 마지막 인스트럭션의 주소
     ///
     /// ### Returns
     /// - `Arc<Self>` - 생성된 블럭
@@ -47,8 +46,8 @@ impl Block {
         name: Option<String>,
         start_address: Address,
         end_address: Option<Address>,
-        section: Arc<Section>,
     ) -> Arc<Self> {
+        let section = start_address.get_section();
         Arc::new(Self {
             id,
             name,
@@ -111,9 +110,9 @@ impl Block {
     /// 블럭이 어떤 섹션에 해당하는지를 반환한다.
     ///
     /// ### Returns
-    /// - `&Arc<Section>` - 블럭이 속한 섹션
-    pub fn get_section(&self) -> &Arc<Section> {
-        &self.section
+    /// - `&Option<Arc<Section>>` - 블럭이 속한 섹션
+    pub fn get_section(&self) -> Option<&Arc<Section>> {
+        self.section.as_ref()
     }
 
     /// 어떤 블럭이 해당 블럭에 연결되어 있는지를 추가한다.
