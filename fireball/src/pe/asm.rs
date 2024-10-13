@@ -37,7 +37,7 @@ impl PE {
                 return Err(());
             }
         };
-        Ok(insns).map(Self::transform_instructions)
+        Ok(self.transform_instructions(insns))
     }
 
     /// 어셈블리 코드를 N개 파싱한다.
@@ -71,10 +71,27 @@ impl PE {
                 return Err(());
             }
         };
-        Ok(insns).map(Self::transform_instructions)
+        Ok(self.transform_instructions(insns))
     }
 
-    fn transform_instructions(input: capstone::Instructions) -> Vec<Instruction> {
-        input.into_iter().map(Into::into).collect()
+    fn transform_instructions(&self, input: capstone::Instructions) -> Vec<Instruction> {
+        let mut result = Vec::new();
+        for item in input.into_iter() {
+            let op = item.op_str().unwrap();
+            let statement = iceball::parse_statement(iceball::Architecture::X64, op);
+            let arguments = Vec::new();
+            todo!("arguments작성");
+            let bytes = Some(item.bytes().into());
+            let data = Instruction {
+                address: item.address(),
+                inner: iceball::Instruction {
+                    statement,
+                    arguments,
+                    bytes,
+                },
+            };
+            result.push(data);
+        }
+        result
     }
 }

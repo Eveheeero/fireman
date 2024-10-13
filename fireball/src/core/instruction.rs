@@ -16,19 +16,3 @@ impl Instruction {
         &self.inner
     }
 }
-
-impl From<&capstone::Insn<'_>> for Instruction {
-    fn from(insn: &capstone::Insn<'_>) -> Self {
-        let insn: &&capstone::Insn<'_> = &insn;
-        insn.into()
-    }
-}
-
-impl From<&&capstone::Insn<'_>> for Instruction {
-    fn from(insn: &&capstone::Insn<'_>) -> Self {
-        Instruction {
-            address: insn.address(),
-            inner: todo!(),
-        }
-    }
-}

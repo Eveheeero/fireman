@@ -1,6 +1,11 @@
 pub mod x64;
 pub use x64::{register::X64Register, statement::X64Statement};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Architecture {
+    X64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Instruction {
     /// aka. opcode
@@ -11,27 +16,14 @@ pub struct Instruction {
     pub bytes: Option<Vec<u8>>,
 }
 
-impl Instruction {
-    pub fn is_jcc(&self) -> bool {
-        self.statement.is_ok() && self.statement.unwrap().is_jcc()
-    }
-    pub fn is_call(&self) -> bool {
-        self.statement.is_ok() && self.statement.unwrap().is_call()
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Statement {
     X64(X64Statement),
 }
-
-impl Statement {
-    pub fn is_jcc(&self) -> bool {
-        todo!()
-    }
-    pub fn is_call(&self) -> bool {
-        todo!()
-    }
+pub trait StatementInner {
+    fn is_jcc(&self) -> bool;
+    fn is_call(&self) -> bool;
+    fn is_ret(&self) -> bool;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,6 +37,7 @@ pub enum Argument {
 pub enum Register {
     X64(X64Register),
 }
+pub trait RegisterInner {}
 
 impl Instruction {
     /// From disassembled instruction, parse bytes (if bytes not exists)
@@ -53,6 +46,33 @@ impl Instruction {
     /// - `Result<Vec<u8>>`: bytes, err if unknown statement
     pub fn get_bytes(&self) -> Result<Vec<u8>, DisassembleError> {
         unimplemented!()
+    }
+    pub fn is_jcc(&self) -> bool {
+        self.statement.is_ok() && self.statement.unwrap().is_jcc()
+    }
+    pub fn is_call(&self) -> bool {
+        self.statement.is_ok() && self.statement.unwrap().is_call()
+    }
+    pub fn is_ret(&self) -> bool {
+        self.statement.is_ok() && self.statement.unwrap().is_ret()
+    }
+}
+
+impl Statement {
+    pub fn is_jcc(&self) -> bool {
+        match self {
+            Statement::X64(statement) => statement.is_jcc(),
+        }
+    }
+    pub fn is_call(&self) -> bool {
+        match self {
+            Statement::X64(statement) => statement.is_call(),
+        }
+    }
+    pub fn is_ret(&self) -> bool {
+        match self {
+            Statement::X64(statement) => statement.is_ret(),
+        }
     }
 }
 
@@ -63,3 +83,12 @@ pub enum DisassembleError {
 
 unsafe impl Send for Instruction {}
 unsafe impl Sync for Instruction {}
+
+pub fn parse_statement(
+    arch: Architecture,
+    op: impl AsRef<str>,
+) -> Result<Statement, DisassembleError> {
+    match arch {
+        Architecture::X64 => X64Statement::parse(op),
+    }
+}
