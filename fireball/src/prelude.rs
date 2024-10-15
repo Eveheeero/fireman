@@ -13,11 +13,24 @@ pub(crate) type BitSlice = bitvec::prelude::BitSlice<usize>;
 
 #[cfg(test)]
 pub(crate) fn test_init() {
+    use tracing_subscriber::{
+        prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
+    };
+
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| {
-        tracing_subscriber::fmt()
-            .with_max_level(tracing::level_filters::LevelFilter::TRACE)
-            .init();
+        let _ = tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_file(true)
+                    .with_line_number(true)
+                    .with_target(false),
+            )
+            .with(
+                tracing_subscriber::filter::Targets::new()
+                    .with_target("fireball", tracing::Level::TRACE),
+            )
+            .try_init();
     });
 }
 
