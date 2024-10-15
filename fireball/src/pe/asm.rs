@@ -84,6 +84,9 @@ impl PE {
             let mut arguments = Vec::new();
             if op.is_some() {
                 for op in op.unwrap().split(", ") {
+                    if op.is_empty() {
+                        continue;
+                    }
                     let argument = iceball::parse_argument(iceball::Architecture::X64, op)
                         .expect(&format!("{} 파싱 실패", op));
                     arguments.push(argument);

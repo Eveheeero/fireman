@@ -29,7 +29,7 @@ pub trait StatementInner {
     fn is_ret(&self) -> bool;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Argument {
     Register(Register),
@@ -37,9 +37,28 @@ pub enum Argument {
     Memory(Memory),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum Memory {
+    AbsoluteAddressing(u64),
+    RelativeAddressing(Vec<RelativeAddressingArgument>),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum Memory {}
+pub enum RelativeAddressingArgument {
+    Register(Register),
+    Constant(u64),
+    Operator(AddressingOperator),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum AddressingOperator {
+    Add,
+    Sub,
+    Mul,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
