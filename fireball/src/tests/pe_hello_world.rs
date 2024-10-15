@@ -4,10 +4,14 @@ use crate::{
     prelude::test_init,
 };
 
+fn get_binary() -> &'static [u8] {
+    include_bytes!("../../tests/resources/hello_world.exe")
+}
+
 #[test]
 fn pe_hello_world() {
     test_init();
-    let binary = include_bytes!("../../tests/resources/hello_world.exe");
+    let binary = get_binary();
     let pe = PE::from_binary(binary.to_vec()).unwrap();
     dbg!(pe);
 }
@@ -15,7 +19,7 @@ fn pe_hello_world() {
 #[test]
 fn pe_hello_world_entry_parse() {
     test_init();
-    let binary = include_bytes!("../../tests/resources/hello_world.exe");
+    let binary = get_binary();
     let pe = PE::from_binary(binary.to_vec()).unwrap();
     let gl = goblin::pe::PE::parse(binary).unwrap();
 
@@ -53,9 +57,18 @@ fn pe_hello_world_entry_parse() {
 }
 
 #[test]
-#[should_panic]
 fn pe_hello_world_detect_block_entry() {
-    todo!()
+    test_init();
+    let binary = get_binary();
+    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let gl = goblin::pe::PE::parse(binary).unwrap();
+    let sections = pe.get_sections();
+    let entry = Address::from_virtual_address(&sections, gl.entry as u64);
+    let block = pe.find_block_from_address(&entry);
+
+    assert_eq!(&block.get_section().unwrap().name, ".text");
+    assert_eq!(*block.get_start_address(), entry);
+    assert_ne!(*block.get_end_address().unwrap(), entry);
 }
 
 #[test]
