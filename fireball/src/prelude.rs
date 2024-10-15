@@ -1,14 +1,25 @@
 //! 기본적으로 사용되는 use문 등이 들어가는 모듈
 
+#![allow(unused_imports)]
+
 pub(crate) use crate::utils::error::block_parsing_error::BlockParsingError;
 pub(crate) use crate::utils::error::decompile_error::DecompileError;
 pub(crate) use crate::utils::error::io_error::IoError;
 pub(crate) use crate::utils::error::FireballError;
-#[allow(unused_imports)]
-pub(crate) use log::{debug, error, info, trace, warn};
+pub(crate) use tracing::{debug, error, info, trace, warn};
 
 pub(crate) type BitBox = bitvec::prelude::BitBox<usize>;
 pub(crate) type BitSlice = bitvec::prelude::BitSlice<usize>;
+
+#[cfg(test)]
+pub(crate) fn test_init() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        tracing_subscriber::fmt()
+            .with_max_level(tracing::level_filters::LevelFilter::TRACE)
+            .init();
+    });
+}
 
 #[cfg(test)]
 mod tests {

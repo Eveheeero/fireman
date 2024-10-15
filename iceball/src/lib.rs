@@ -2,11 +2,13 @@ pub mod x64;
 pub use x64::{register::X64Register, statement::X64Statement};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Architecture {
     X64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Instruction {
     /// aka. opcode
     pub statement: Result<Statement, DisassembleError>,
@@ -17,6 +19,7 @@ pub struct Instruction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Statement {
     X64(X64Statement),
 }
@@ -27,13 +30,19 @@ pub trait StatementInner {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Argument {
     Register(Register),
     Constant(u64),
-    Memory(u64),
+    Memory(Memory),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum Memory {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Register {
     X64(X64Register),
 }
@@ -77,6 +86,7 @@ impl Statement {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DisassembleError {
     Unknown,
     UnknownStatement,
