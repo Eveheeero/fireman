@@ -1,7 +1,7 @@
 use crate::{
     core::{Address, Fire},
     pe::PE,
-    prelude::test_init,
+    prelude::*,
 };
 
 fn get_binary() -> &'static [u8] {
@@ -72,7 +72,24 @@ fn pe_hello_world_detect_block_entry() {
 }
 
 #[test]
-#[should_panic]
 fn pe_hello_world_detect_block_etc() {
-    todo!()
+    test_init();
+    let binary = get_binary();
+    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let gl = goblin::pe::PE::parse(binary).unwrap();
+    let sections = pe.get_sections();
+    let entry = Address::from_virtual_address(&sections, gl.entry as u64);
+    for offset in std::iter::once(-6).chain(2..=7) {
+        info!("{} 오프셋에 대한 파싱 진행", offset);
+        let address;
+        if offset < 0 {
+            address = &entry - (-offset) as u64;
+        } else {
+            address = &entry + offset as u64;
+        }
+        let block = pe.find_block_from_address(&address);
+        assert_eq!(&block.get_section().unwrap().name, ".text");
+        assert_eq!(*block.get_start_address(), address);
+        assert_ne!(*block.get_end_address().unwrap(), address);
+    }
 }

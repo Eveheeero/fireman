@@ -28,7 +28,7 @@ impl PE {
             if inst.statement.is_err() {
                 break;
             }
-            if inst.is_jcc() || inst.is_call() {
+            if inst.is_jcc() || inst.is_call() || inst.is_ret() {
                 end_address = Some(address);
                 break;
             }
