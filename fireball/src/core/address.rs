@@ -140,3 +140,9 @@ impl std::ops::Sub<u64> for &Address {
         new_address
     }
 }
+impl PartialOrd for Address {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        debug_assert_eq!(self.section, other.section);
+        self.virtual_offset.partial_cmp(&other.virtual_offset)
+    }
+}

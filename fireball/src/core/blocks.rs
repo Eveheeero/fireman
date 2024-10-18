@@ -67,4 +67,30 @@ impl Blocks {
             .find(|block| block.get_start_address() == address)
             .map(Arc::clone)
     }
+
+    /// 주어진 주소를 포함하는 블럭을 반환한다.
+    ///
+    /// ### Arguments
+    /// - `address: &Address`: 대상 주소
+    ///
+    /// ### Returns
+    /// - `Vec<Arc<Block>>`: 검출된 블럭
+    pub(crate) fn find_from_containing_address(&self, address: &Address) -> Vec<Arc<Block>> {
+        /* 저장소의 락 해제 */
+        let blocks_reader = &self.data.read().unwrap();
+
+        /* 저장소의 데이터에서 검사 */
+        blocks_reader
+            .iter()
+            .filter(|block| {
+                block.get_start_address() <= address
+                    && if block.get_end_address().is_some() {
+                        block.get_end_address().unwrap() >= address
+                    } else {
+                        true
+                    }
+            })
+            .map(Arc::clone)
+            .collect()
+    }
 }

@@ -104,7 +104,7 @@ impl Block {
     /// ### Returns
     /// - `Option<Relation>` - 연결된 블럭
     pub fn get_connected_to(&self) -> Option<Relation> {
-        self.connected_to.read().unwrap().clone()
+        *self.connected_to.read().unwrap()
     }
 
     /// 블럭이 어떤 섹션에 해당하는지를 반환한다.
@@ -127,7 +127,7 @@ impl Block {
     ///
     /// ### Arguments
     /// - `relation: Relation` - 해당 블럭이 향하는 블럭
-    pub(crate) fn add_connected_to(&self, relation: Relation) {
+    pub(crate) fn set_connected_to(&self, relation: Relation) {
         *self.connected_to.write().unwrap() = Some(relation);
     }
 }
