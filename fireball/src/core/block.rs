@@ -18,9 +18,9 @@ pub struct Block {
     /// 블럭의 마지막 인스트럭션의 주소
     end_address: Option<Address>,
     /// 현재 블럭과 연관되어있는 블럭들을 담은 벡터
-    connected_from: RwLock<Vec<Arc<Relation>>>,
-    /// 현재 블럭과 연관된 블럭들을 담은 벡터
-    connected_to: RwLock<Vec<Arc<Relation>>>,
+    connected_from: RwLock<Vec<Relation>>,
+    /// 현재 블럭과 연관된 블럭
+    connected_to: RwLock<Option<Relation>>,
     /// 블럭의 섹션
     section: Option<Arc<Section>>,
 }
@@ -91,20 +91,20 @@ impl Block {
         self.end_address.as_ref()
     }
 
-    /// 어떤 블럭이 해당 블럭으로 연결되어있는지를 반환한다.
+    /// 어떤 블럭이 해당 블럭에서 연결되어있는지를 반환한다.
     ///
     /// ### Returns
-    /// - `RwLockReadGuard<Vec<Arc<Relation>>>` - 연결된 블럭들
-    pub fn get_connected_from(&self) -> RwLockReadGuard<Vec<Arc<Relation>>> {
+    /// - `RwLockReadGuard<Vec<Relation>>` - 연결된 블럭들
+    pub fn get_connected_from(&self) -> RwLockReadGuard<Vec<Relation>> {
         self.connected_from.read().unwrap()
     }
 
     /// 해당 블럭이 어떤 블럭으로 연결되어있는지를 반환한다.
     ///
     /// ### Returns
-    /// - `RwLockReadGuard<Vec<Arc<Relation>>>` - 연결된 블럭들
-    pub fn get_connected_to(&self) -> RwLockReadGuard<Vec<Arc<Relation>>> {
-        self.connected_to.read().unwrap()
+    /// - `Option<Relation>` - 연결된 블럭
+    pub fn get_connected_to(&self) -> Option<Relation> {
+        self.connected_to.read().unwrap().clone()
     }
 
     /// 블럭이 어떤 섹션에 해당하는지를 반환한다.
@@ -118,17 +118,17 @@ impl Block {
     /// 어떤 블럭이 해당 블럭에 연결되어 있는지를 추가한다.
     ///
     /// ### Arguments
-    /// - `relation: Arc<Relation>` - 해당 블럭으로 향하는 블럭
-    pub(crate) fn add_connected_from(&self, relation: Arc<Relation>) {
+    /// - `relation: Relation` - 해당 블럭으로 향하는 블럭
+    pub(crate) fn add_connected_from(&self, relation: Relation) {
         self.connected_from.write().unwrap().push(relation);
     }
 
-    /// 해당 블럭이 어떤 블럭에 연결되어 있는지를 추가한다.
+    /// 해당 블럭이 어떤 블럭에 연결되어 있는지를 지정한다.
     ///
     /// ### Arguments
-    /// - `relation: Arc<Relation>` - 해당 블럭이 향하는 블럭
-    pub(crate) fn add_connected_to(&self, relation: Arc<Relation>) {
-        self.connected_to.write().unwrap().push(relation);
+    /// - `relation: Relation` - 해당 블럭이 향하는 블럭
+    pub(crate) fn add_connected_to(&self, relation: Relation) {
+        *self.connected_to.write().unwrap() = Some(relation);
     }
 }
 
