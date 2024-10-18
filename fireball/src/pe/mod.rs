@@ -2,6 +2,7 @@
 
 mod _pe;
 mod asm;
+mod block;
 mod fire;
 mod fmt;
 

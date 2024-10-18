@@ -1,15 +1,12 @@
 //! 분석중 나온 분기에 대한 연관관계를 정의하는 모듈
 
-use super::Address;
-use std::sync::Arc;
-
 /// 코드 블럭과 다른 블럭과의 연결을 나타낸다. (jmp, call 등)
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub struct Relation {
-    /// 해당 연결의 출발점
-    from: Address,
-    /// 해당 연결의 도착점
-    to: Address,
+    /// 해당 연결의 출발 블럭 아이디
+    from: usize,
+    /// 해당 연결의 도착 블럭 아이디
+    to: Option<usize>,
     /// 해당 연결의 타입
     relation_type: RelationType,
 }
@@ -22,40 +19,44 @@ pub enum RelationType {
     /// 해당 연결이 jmp 연결임을 나타낸다.
     Jump,
     Jcc,
+    /// 한 블럭이 여러 블럭으로 나누어 진 경우
+    Continued,
+    /// 오프셋에 의해 연결 타겟이 달라지는 경우
+    Dynamic,
 }
 
 impl Relation {
     /// 새로운 연결을 생성한다.
     ///
     /// ### Arguments
-    /// - `from: Address`: 연결의 출발점
-    /// - `to: Address`: 연결의 도착점
+    /// - `from: usize`: 연결의 출발 블럭 아이디
+    /// - `to: Option<usize>`: 연결의 도착 블럭 아이디
     /// - `relation_type: RelationType`: 연결의 타입
     ///
     /// ### Returns
-    /// - `Arc<Self>`: 새로 생성된 연결
-    pub fn new(from: Address, to: Address, relation_type: RelationType) -> Arc<Self> {
-        Arc::new(Self {
+    /// - `Self`: 새로 생성된 연결
+    pub fn new(from: usize, to: Option<usize>, relation_type: RelationType) -> Self {
+        Self {
             from,
             to,
             relation_type,
-        })
+        }
     }
 
-    /// 연결의 시작 주소를 가져온다.
+    /// 연결의 시작 블럭을 가져온다.
     ///
     /// ### Returns
-    /// - `&Address`: 연결의 시작 주소
-    pub fn from(&self) -> &Address {
-        &self.from
+    /// - `usize`: 연결의 시작 블럭 아이디
+    pub fn from(&self) -> usize {
+        self.from
     }
 
-    /// 연결의 도착 주소를 가져온다.
+    /// 연결의 도착 블럭을 가져온다.
     ///
     /// ### Returns
-    /// - `&Address`: 연결의 도착 주소
-    pub fn to(&self) -> &Address {
-        &self.to
+    /// - `Option<usize>`: 연결의 도착 블럭 아이디
+    pub fn to(&self) -> Option<usize> {
+        self.to
     }
 
     pub fn relation_type(&self) -> &RelationType {
