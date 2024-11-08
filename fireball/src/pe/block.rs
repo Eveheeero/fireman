@@ -21,9 +21,10 @@ impl PE {
         let mut end_address = None;
         loop {
             let inst = self.parse_assem_count(&address, 1);
-            if inst.is_err() || inst.as_ref().unwrap().len() != 1 {
+            if inst.is_err() || inst.as_ref().unwrap().len() == 0 {
                 break;
             }
+            debug_assert_eq!(inst.as_ref().unwrap().len(), 1);
             let inst = &inst.unwrap()[0].inner;
             if inst.statement.is_err() {
                 break;
