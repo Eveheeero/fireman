@@ -7,4 +7,5 @@ members = [
     "iceball",
     "dryice",
     "iceball/architecture_doc_extractor",
+    "fireman_macro",
 ]

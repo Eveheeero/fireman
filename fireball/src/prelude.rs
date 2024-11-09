@@ -1,14 +1,38 @@
 //! 기본적으로 사용되는 use문 등이 들어가는 모듈
 
+#![allow(unused_imports)]
+
 pub(crate) use crate::utils::error::block_parsing_error::BlockParsingError;
 pub(crate) use crate::utils::error::decompile_error::DecompileError;
 pub(crate) use crate::utils::error::io_error::IoError;
 pub(crate) use crate::utils::error::FireballError;
-#[allow(unused_imports)]
-pub(crate) use log::{debug, error, info, trace, warn};
+pub(crate) use tracing::{debug, error, info, trace, warn};
 
 pub(crate) type BitBox = bitvec::prelude::BitBox<usize>;
 pub(crate) type BitSlice = bitvec::prelude::BitSlice<usize>;
+
+#[cfg(test)]
+pub(crate) fn test_init() {
+    use tracing_subscriber::{
+        prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
+    };
+
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        let _ = tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_file(true)
+                    .with_line_number(true)
+                    .with_target(false),
+            )
+            .with(
+                tracing_subscriber::filter::Targets::new()
+                    .with_target("fireball", tracing::Level::TRACE),
+            )
+            .try_init();
+    });
+}
 
 #[cfg(test)]
 mod tests {

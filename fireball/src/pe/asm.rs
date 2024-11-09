@@ -1,12 +1,18 @@
 //! 어셈블리 파싱 모듈
 
 use super::PE;
-use crate::{core::Address, prelude::trace};
-use capstone::Instructions;
+use crate::{
+    core::{Address, Instruction},
+    prelude::trace,
+};
 
 impl PE {
     /// 범위만큼의 어셈블리 코드를 파싱한다.
-    pub(crate) fn parse_assem_range(&self, offset: Address, size: u64) -> Result<Instructions, ()> {
+    pub(crate) fn parse_assem_range(
+        &self,
+        offset: &Address,
+        size: u64,
+    ) -> Result<Vec<Instruction>, ()> {
         let file_offset = if let Some(file_offset) = offset.get_file_offset() {
             file_offset
         } else {
@@ -31,15 +37,15 @@ impl PE {
                 return Err(());
             }
         };
-        Ok(insns)
+        Ok(self.transform_instructions(insns))
     }
 
     /// 어셈블리 코드를 N개 파싱한다.
     pub(crate) fn parse_assem_count(
         &self,
-        offset: Address,
+        offset: &Address,
         count: usize,
-    ) -> Result<Instructions, ()> {
+    ) -> Result<Vec<Instruction>, ()> {
         let file_offset = if let Some(file_offset) = offset.get_file_offset() {
             file_offset
         } else {
@@ -65,6 +71,38 @@ impl PE {
                 return Err(());
             }
         };
-        Ok(insns)
+        Ok(self.transform_instructions(insns))
+    }
+
+    fn transform_instructions(&self, input: capstone::Instructions) -> Vec<Instruction> {
+        let mut result = Vec::new();
+        for item in input.iter() {
+            let mnemonic = item.mnemonic().unwrap();
+            let op = item.op_str();
+            trace!("{} {:?} 인스트럭션 파싱", mnemonic, op);
+            let statement = iceball::parse_statement(iceball::Architecture::X64, mnemonic);
+            let mut arguments = Vec::new();
+            if op.is_some() {
+                for op in op.unwrap().split(", ") {
+                    if op.is_empty() {
+                        continue;
+                    }
+                    let argument = iceball::parse_argument(iceball::Architecture::X64, op)
+                        .unwrap_or_else(|_| panic!("{} 파싱 실패", op));
+                    arguments.push(argument);
+                }
+            }
+            let bytes = Some(item.bytes().into());
+            let data = Instruction {
+                address: item.address(),
+                inner: iceball::Instruction {
+                    statement,
+                    arguments,
+                    bytes,
+                },
+            };
+            result.push(data);
+        }
+        result
     }
 }

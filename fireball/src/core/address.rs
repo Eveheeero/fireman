@@ -105,9 +105,44 @@ impl std::ops::AddAssign<u64> for Address {
 
 impl std::ops::Add<u64> for Address {
     type Output = Self;
-
     fn add(mut self, rhs: u64) -> Self::Output {
         self += rhs;
         self
+    }
+}
+
+impl std::ops::Add<u64> for &Address {
+    type Output = Address;
+    fn add(self, rhs: u64) -> Self::Output {
+        let mut new_address = self.clone();
+        new_address += rhs;
+        new_address
+    }
+}
+
+impl std::ops::SubAssign<u64> for Address {
+    fn sub_assign(&mut self, rhs: u64) {
+        self.virtual_offset -= rhs;
+    }
+}
+impl std::ops::Sub<u64> for Address {
+    type Output = Self;
+    fn sub(mut self, rhs: u64) -> Self::Output {
+        self -= rhs;
+        self
+    }
+}
+impl std::ops::Sub<u64> for &Address {
+    type Output = Address;
+    fn sub(self, rhs: u64) -> Self::Output {
+        let mut new_address = self.clone();
+        new_address -= rhs;
+        new_address
+    }
+}
+impl PartialOrd for Address {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        debug_assert_eq!(self.section, other.section);
+        self.virtual_offset.partial_cmp(&other.virtual_offset)
     }
 }

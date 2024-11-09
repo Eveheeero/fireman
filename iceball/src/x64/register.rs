@@ -1,4 +1,7 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, fireman_macro::StrToEnum)]
+#[str_to_enum_type(crate::DisassembleError)]
+#[str_to_enum_item(crate::DisassembleError::UnknownRegister)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum X64Register {
     Rax,
     Eax,
