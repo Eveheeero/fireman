@@ -11,12 +11,11 @@ pub fn parse_argument(op: impl AsRef<str>) -> Result<crate::Argument, crate::Dis
 
     /* Constant */
     if op.as_bytes()[0] == b'0' {
-        let data;
-        if op.len() == 1 {
-            data = op.parse();
+        let data = if op.len() == 1 {
+            op.parse()
         } else {
-            data = u64::from_str_radix(&op[2..], 16);
-        }
+            u64::from_str_radix(&op[2..], 16)
+        };
         if data.is_err() {
             panic!("Cannot parse {}", op);
         }
@@ -25,13 +24,8 @@ pub fn parse_argument(op: impl AsRef<str>) -> Result<crate::Argument, crate::Dis
 
     /* Register */
     if !op.contains(' ') {
-        let data = op.parse();
-        if data.is_err() {
-            return Err(data.unwrap_err());
-        }
-        return Ok(crate::Argument::Register(crate::Register::X64(
-            data.unwrap(),
-        )));
+        let data = op.parse()?;
+        return Ok(crate::Argument::Register(crate::Register::X64(data)));
     }
 
     /* Memory */
@@ -44,16 +38,15 @@ fn parse_memory(op: &str) -> Result<crate::Argument, crate::DisassembleError> {
     let mut inner = op.split(['[', ']']);
     let inner = inner
         .nth(1)
-        .expect(&format!("{}는 파싱 가능한 형태가 아닙니다.", op));
+        .unwrap_or_else(|| panic!("{}는 파싱 가능한 형태가 아닙니다.", op));
     let items = inner.split(' ');
     for item in items {
-        if matches!(item.as_bytes()[0], b'0'..b'9') {
-            let num;
-            if item.contains('x') {
-                num = u64::from_str_radix(&item[2..], 16).unwrap();
+        if item.as_bytes()[0].is_ascii_digit() {
+            let num = if item.contains('x') {
+                u64::from_str_radix(&item[2..], 16).unwrap()
             } else {
-                num = u64::from_str_radix(item, 10).unwrap();
-            }
+                item.parse().unwrap()
+            };
             result.push(crate::RelativeAddressingArgument::Constant(num));
             continue;
         }

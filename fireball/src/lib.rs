@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub mod arch;
 pub mod core;
 pub mod ir;

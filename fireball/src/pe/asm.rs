@@ -76,7 +76,7 @@ impl PE {
 
     fn transform_instructions(&self, input: capstone::Instructions) -> Vec<Instruction> {
         let mut result = Vec::new();
-        for item in input.into_iter() {
+        for item in input.iter() {
             let mnemonic = item.mnemonic().unwrap();
             let op = item.op_str();
             trace!("{} {:?} 인스트럭션 파싱", mnemonic, op);
@@ -88,7 +88,7 @@ impl PE {
                         continue;
                     }
                     let argument = iceball::parse_argument(iceball::Architecture::X64, op)
-                        .expect(&format!("{} 파싱 실패", op));
+                        .unwrap_or_else(|_| panic!("{} 파싱 실패", op));
                     arguments.push(argument);
                 }
             }

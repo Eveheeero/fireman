@@ -19,16 +19,14 @@ pub fn str_to_enum(input: TokenStream) -> TokenStream {
     let str_to_enum_type: syn::Expr = input
         .attrs
         .iter()
-        .filter(|x| x.path().is_ident("str_to_enum_type"))
-        .next()
+        .find(|x| x.path().is_ident("str_to_enum_type"))
         .expect("str_to_enum_type attributes not served")
         .parse_args()
         .expect("str_to_enum error type not served. use #[str_to_enum_type(MyType)]");
-    let str_to_enum_item : syn::Expr=input
+    let str_to_enum_item: syn::Expr = input
         .attrs
         .iter()
-        .filter(|x| x.path().is_ident("str_to_enum_item"))
-        .next()
+        .find(|x| x.path().is_ident("str_to_enum_item"))
         .expect("str_to_enum_item attributes not served")
         .parse_args()
         .expect("str_to_enum error data not served. use #[str_to_enum_item(MyType::A)]");
