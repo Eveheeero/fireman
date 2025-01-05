@@ -39,6 +39,18 @@ impl Blocks {
         connected_to: &[(Option<Address>, DestinationType, RelationType)],
         name: Option<String>,
     ) -> Arc<Block> {
+        /* 락 해제 전 관계 생성 (관계 생성중 저장소 접근 필요하기 떄문) */
+        let connected_to: Vec<_> = connected_to
+            .into_iter()
+            .map(|connected_to| {
+                let connected_block = connected_to
+                    .0
+                    .as_ref()
+                    .and_then(|connected_to| self.find_from_start_address(connected_to));
+                (connected_block, connected_to.1, connected_to.2)
+            })
+            .collect();
+
         /* 저장소의 락 해제 */
         let blocks_writer = &mut self.data.write().unwrap();
 
@@ -46,10 +58,7 @@ impl Blocks {
         let new_block = Block::new(blocks_writer.len(), name, start_address, end_address);
 
         for connected_to in connected_to {
-            let connected_block = connected_to
-                .0
-                .as_ref()
-                .and_then(|connected_to| self.find_from_start_address(connected_to));
+            let connected_block = connected_to.0;
             let relation = Relation::new(
                 new_block.get_id(),
                 connected_block.as_ref().map(|x| x.get_id()),
