@@ -48,7 +48,7 @@ pub enum Memory {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum RelativeAddressingArgument {
     Register(Register),
-    Constant(u64),
+    Constant(i128),
     Operator(AddressingOperator),
 }
 

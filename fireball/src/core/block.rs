@@ -129,6 +129,10 @@ impl Block {
     /// - `relation: Relation` - 해당 블럭이 향하는 블럭
     pub(crate) fn add_connected_to(&self, relation: Relation) {
         self.connected_to.write().unwrap().push(relation);
+        debug_assert!(
+            self.connected_to.read().unwrap().len() <= 2,
+            "한 블럭에는 최대 두 개의 블럭이 연결될 수 있습니다."
+        );
     }
 }
 

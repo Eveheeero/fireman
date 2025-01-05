@@ -7,8 +7,18 @@ pub struct Relation {
     from: usize,
     /// 해당 연결의 도착 블럭 아이디
     to: Option<usize>,
+    /// 해당 연결의 도착 주소 타입
+    destination_type: DestinationType,
     /// 해당 연결의 타입
     relation_type: RelationType,
+}
+
+#[derive(Debug, Eq, Hash, PartialEq, Clone, Copy)]
+pub enum DestinationType {
+    /// 정적 주소
+    Static,
+    /// 동적 주소
+    Dynamic,
 }
 
 /// 코드 블럭의 연결 타입을 나타낸다.
@@ -21,8 +31,8 @@ pub enum RelationType {
     Jcc,
     /// 한 블럭이 여러 블럭으로 나누어 진 경우
     Continued,
-    /// 오프셋에 의해 연결 타겟이 달라지는 경우
-    Dynamic,
+    /// 해당 연결이 ret 연결임을 나타낸다.
+    Return,
 }
 
 impl Relation {
@@ -31,14 +41,21 @@ impl Relation {
     /// ### Arguments
     /// - `from: usize`: 연결의 출발 블럭 아이디
     /// - `to: Option<usize>`: 연결의 도착 블럭 아이디
+    /// - `destination_type: DestinationType`: 연결의 도착 주소 타입
     /// - `relation_type: RelationType`: 연결의 타입
     ///
     /// ### Returns
     /// - `Self`: 새로 생성된 연결
-    pub fn new(from: usize, to: Option<usize>, relation_type: RelationType) -> Self {
+    pub fn new(
+        from: usize,
+        to: Option<usize>,
+        destination_type: DestinationType,
+        relation_type: RelationType,
+    ) -> Self {
         Self {
             from,
             to,
+            destination_type,
             relation_type,
         }
     }
