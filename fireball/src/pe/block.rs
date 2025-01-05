@@ -103,7 +103,11 @@ impl PE {
                     (None, DestinationType::Dynamic, relation_type)
                 }
             }
-            iceball::Argument::Constant(_) => unreachable!("{:?}", arg),
+            iceball::Argument::Constant(arg) => (
+                Some(Address::from_virtual_address(&self.sections, *arg)),
+                DestinationType::Static,
+                relation_type,
+            ),
         };
     }
     fn calc_relative_address_with_ip(
