@@ -93,3 +93,21 @@ fn pe_hello_world_detect_block_etc() {
         assert_ne!(*block.get_end_address().unwrap(), address);
     }
 }
+
+#[test]
+fn pe_hello_world_block_relation() {
+    test_init();
+    let binary = get_binary();
+    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let gl = goblin::pe::PE::parse(binary).unwrap();
+    let sections = pe.get_sections();
+    let entry = Address::from_virtual_address(&sections, gl.entry as u64);
+    pe.generate_block_from_address(&entry);
+    let blocks = pe.inspect_blocks();
+
+    let entry_block = blocks.get_by_start_address(&entry);
+    assert!(entry_block.is_some());
+    let entry_block = entry_block.unwrap();
+    let entry_connected_to = entry_block.get_connected_to();
+    dbg!(entry_connected_to);
+}

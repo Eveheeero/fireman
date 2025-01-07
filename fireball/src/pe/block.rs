@@ -13,7 +13,7 @@ impl PE {
     /// ### Returns
     /// - `Arc<Block>` - 해당 주소로부터 계산된 블럭
     pub(crate) fn generate_block_from_address(&self, address: &Address) -> Arc<Block> {
-        if let Some(block) = self.blocks.find_from_start_address(address) {
+        if let Some(block) = self.blocks.get_by_start_address(address) {
             return block;
         }
         let mut address = address.clone();

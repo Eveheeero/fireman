@@ -80,4 +80,9 @@ impl PE {
             blocks: Blocks::new(),
         }
     }
+
+    #[cfg(test)]
+    pub(crate) fn inspect_blocks(&self) -> std::sync::Arc<Blocks> {
+        self.blocks.clone()
+    }
 }

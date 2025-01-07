@@ -46,8 +46,13 @@ impl Blocks {
                 let connected_block = connected_to
                     .0
                     .as_ref()
-                    .and_then(|connected_to| self.find_from_start_address(connected_to));
-                (connected_block, connected_to.1, connected_to.2)
+                    .and_then(|connected_to| self.get_by_start_address(connected_to));
+                (
+                    connected_to.0.clone(),
+                    connected_to.1,
+                    connected_to.2,
+                    connected_block,
+                )
             })
             .collect();
 
@@ -58,14 +63,15 @@ impl Blocks {
         let new_block = Block::new(blocks_writer.len(), name, start_address, end_address);
 
         for connected_to in connected_to {
-            let connected_block = connected_to.0;
+            let connected_address = connected_to.0;
+            let connected_block = connected_to.3;
             let relation = Relation::new(
                 new_block.get_id(),
-                connected_block.as_ref().map(|x| x.get_id()),
+                connected_address.clone(),
                 connected_to.1,
                 connected_to.2,
             );
-            new_block.add_connected_to(relation);
+            new_block.add_connected_to(relation.clone());
             if let Some(connected_block) = connected_block {
                 connected_block.add_connected_from(relation);
             }
@@ -85,7 +91,7 @@ impl Blocks {
     ///
     /// ### Returns
     /// - `Option<Arc<Block>>`: 검출된 블럭
-    pub(crate) fn find_from_start_address(&self, address: &Address) -> Option<Arc<Block>> {
+    pub(crate) fn get_by_start_address(&self, address: &Address) -> Option<Arc<Block>> {
         /* 저장소의 락 해제 */
         let blocks_reader = &self.data.read().unwrap();
 
@@ -103,7 +109,7 @@ impl Blocks {
     ///
     /// ### Returns
     /// - `Vec<Arc<Block>>`: 검출된 블럭
-    pub(crate) fn find_from_containing_address(&self, address: &Address) -> Vec<Arc<Block>> {
+    pub(crate) fn get_by_containing_address(&self, address: &Address) -> Vec<Arc<Block>> {
         /* 저장소의 락 해제 */
         let blocks_reader = &self.data.read().unwrap();
 
@@ -120,5 +126,22 @@ impl Blocks {
             })
             .map(Arc::clone)
             .collect()
+    }
+
+    /// 블럭 아이디를 기반으로 블럭을 가져온다.
+    ///
+    /// ### Arguments
+    /// - `id: usize`: 블럭 아이디
+    ///
+    /// ### Returns
+    /// - `Option<Arc<Block>>`: 아이디에 해당하는 블럭
+    pub(crate) fn get_by_block_id(&self, id: usize) -> Option<Arc<Block>> {
+        /* 저장소의 락 해제 */
+        let blocks_reader = &self.data.read().unwrap();
+
+        blocks_reader
+            .iter()
+            .find(|block| block.get_id() == id)
+            .map(Arc::clone)
     }
 }
