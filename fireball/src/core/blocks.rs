@@ -39,6 +39,18 @@ impl Blocks {
         connected_to: &[(Option<Address>, DestinationType, RelationType)],
         name: Option<String>,
     ) -> Arc<Block> {
+        /* 락 해제 전 해당 블럭을 향해 지정되어있는 관계 확인 */
+        let connected_from: Vec<_> = {
+            self.data
+                .read()
+                .unwrap()
+                .iter()
+                .map(|block| block.get_connected_to().clone())
+                .flatten()
+                .filter(|relation| relation.to().as_ref() == Some(&start_address))
+                .collect()
+        };
+
         /* 락 해제 전 관계 생성 (관계 생성중 저장소 접근 필요하기 떄문) */
         let connected_to: Vec<_> = connected_to
             .into_iter()
@@ -61,6 +73,10 @@ impl Blocks {
 
         /* 주어진 정보로 새 블록 생성 */
         let new_block = Block::new(blocks_writer.len(), name, start_address, end_address);
+
+        for connected_from in connected_from {
+            new_block.add_connected_from(connected_from);
+        }
 
         for connected_to in connected_to {
             let connected_address = connected_to.0;

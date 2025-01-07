@@ -109,6 +109,7 @@ fn pe_hello_world_block_relation() {
     let entry_block = blocks.get_by_start_address(&entry);
     assert!(entry_block.is_some());
     let entry_block = entry_block.unwrap();
+    let entry_block_id = entry_block.get_id();
     let entry_connected_to = entry_block.get_connected_to();
     assert_eq!(entry_connected_to.len(), 1);
     assert_eq!(entry_connected_to[0].relation_type(), &RelationType::Call);
@@ -120,6 +121,11 @@ fn pe_hello_world_block_relation() {
     let to_block = blocks.get_by_start_address(&to_address);
     assert!(to_block.is_some());
     let to_block = to_block.unwrap();
+    // check connected from
+    let to_connected_from = to_block.get_connected_from();
+    assert_eq!(to_connected_from.len(), 1);
+    assert_eq!(to_connected_from[0].from(), entry_block_id);
+    // check connected to
     let to_connected_to = to_block.get_connected_to();
     assert_eq!(to_connected_to.len(), 1);
     assert_eq!(
