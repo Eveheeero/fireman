@@ -1,5 +1,5 @@
 use crate::{
-    core::{Address, Fire},
+    core::{Address, Fire, RelationType},
     pe::PE,
     prelude::*,
 };
@@ -101,13 +101,29 @@ fn pe_hello_world_block_relation() {
     let pe = PE::from_binary(binary.to_vec()).unwrap();
     let gl = goblin::pe::PE::parse(binary).unwrap();
     let sections = pe.get_sections();
+
+    /* 엔트리에 대한 블럭 파싱 및 relation 생성 확인 */
     let entry = Address::from_virtual_address(&sections, gl.entry as u64);
     pe.generate_block_from_address(&entry);
     let blocks = pe.inspect_blocks();
-
     let entry_block = blocks.get_by_start_address(&entry);
     assert!(entry_block.is_some());
     let entry_block = entry_block.unwrap();
     let entry_connected_to = entry_block.get_connected_to();
-    dbg!(entry_connected_to);
+    assert_eq!(entry_connected_to.len(), 1);
+    assert_eq!(entry_connected_to[0].relation_type(), &RelationType::Call);
+
+    /* 엔트리의 to에 대한 블럭 생성 확인 */
+    let to_address = entry_connected_to[0].to().unwrap();
+    pe.generate_block_from_address(&to_address);
+    let blocks = pe.inspect_blocks();
+    let to_block = blocks.get_by_start_address(&to_address);
+    assert!(to_block.is_some());
+    let to_block = to_block.unwrap();
+    let to_connected_to = to_block.get_connected_to();
+    assert_eq!(to_connected_to.len(), 1);
+    assert_eq!(
+        to_connected_to[0].to().unwrap().get_virtual_address(),
+        37216
+    );
 }
