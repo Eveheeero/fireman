@@ -41,12 +41,14 @@ impl PE {
         // 끝 주소가 정해지지 않은 경우 연결된 블럭 없음
         if let Some(end_address) = &end_address {
             let inst = &self.parse_assem_count(end_address, 1).unwrap()[0].inner;
-            // 다음 주소
-            connected_to.push((
-                Some(end_address + inst.bytes.as_ref().unwrap().len() as u64),
-                DestinationType::Static,
-                RelationType::Continued,
-            ));
+            if inst.is_jcc() {
+                // 다음 주소
+                connected_to.push((
+                    Some(end_address + inst.bytes.as_ref().unwrap().len() as u64),
+                    DestinationType::Static,
+                    RelationType::Continued,
+                ));
+            }
             // jcc나 call등에 의해 이동하는 주소
             connected_to.push(self.get_connected_address_and_relation_type(end_address, inst));
         }
