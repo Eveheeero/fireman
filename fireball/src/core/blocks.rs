@@ -45,15 +45,14 @@ impl Blocks {
                 .read()
                 .unwrap()
                 .iter()
-                .map(|block| block.get_connected_to().clone())
-                .flatten()
+                .flat_map(|block| block.get_connected_to().clone())
                 .filter(|relation| relation.to().as_ref() == Some(&start_address))
                 .collect()
         };
 
         /* 락 해제 전 관계 생성 (관계 생성중 저장소 접근 필요하기 떄문) */
         let connected_to: Vec<_> = connected_to
-            .into_iter()
+            .iter()
             .map(|connected_to| {
                 let connected_block = connected_to
                     .0

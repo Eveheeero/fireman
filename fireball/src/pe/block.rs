@@ -73,7 +73,7 @@ impl PE {
             return (None, DestinationType::Dynamic, relation_type);
         }
         let arg = &inst.arguments[0];
-        return match arg {
+        match arg {
             // only rip is predictable target but we can't get it
             iceball::Argument::Register(_) => (None, DestinationType::Dynamic, relation_type),
             iceball::Argument::Memory(iceball::Memory::AbsoluteAddressing(offset)) => (
@@ -110,7 +110,7 @@ impl PE {
                 DestinationType::Static,
                 relation_type,
             ),
-        };
+        }
     }
     fn calc_relative_address_with_ip(
         &self,
