@@ -22,7 +22,7 @@ pub(crate) use instruction::Instruction;
 pub use instruction_history::InstructionHistory;
 pub use pre_defined_offset::PreDefinedOffset;
 pub use pre_defined_offsets::PreDefinedOffsets;
-pub use relation::{Relation, RelationType};
+pub use relation::{DestinationType, Relation, RelationType};
 pub use relations::Relations;
 pub use section::Section;
 pub use sections::Sections;

@@ -47,7 +47,7 @@ fn parse_memory(op: &str) -> Result<crate::Argument, crate::DisassembleError> {
             } else {
                 item.parse().unwrap()
             };
-            result.push(crate::RelativeAddressingArgument::Constant(num));
+            result.push(crate::RelativeAddressingArgument::Constant(num as i128));
             continue;
         }
 
