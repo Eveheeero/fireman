@@ -4,6 +4,7 @@ mod decom_all;
 mod decom_from_entry;
 mod decom_from_file_offset;
 mod decom_from_virtual_address;
+mod decom_function;
 
 use super::PE;
 use crate::{

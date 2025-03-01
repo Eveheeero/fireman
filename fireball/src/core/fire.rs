@@ -63,7 +63,7 @@ pub trait Fire {
     /// - `Result<(), DecompileError>` - 디컴파일에 실패할 시 에러를 반환한다.
     fn decom_from_entry(&self) -> Result<(), DecompileError>;
 
-    /// 주어진 파일 오프셋부터 디컴파일을 수행한다.
+    /// 주어진 파일 오프셋부터 함수가 끝날 때까지 디컴파일을 수행한다.
     ///
     /// ### Arguments
     /// - `address: u64` - 분석을 시작할 파일 오프셋
@@ -72,7 +72,7 @@ pub trait Fire {
     /// - `Result<(), DecompileError>` - 디컴파일에 실패할 시 에러를 반환한다.
     fn decom_from_file_offset(&self, address: u64) -> Result<(), DecompileError>;
 
-    /// 주어진 가상 주소부터 디컴파일을 수행한다.
+    /// 주어진 가상 주소부터 함수가 끝날 때까지 디컴파일을 수행한다.
     ///
     /// ### Arguments
     /// - `address: u64` - 분석을 시작할 파일 오프셋
