@@ -1,5 +1,5 @@
-pub mod block_parsing_error;
 pub mod decompile_error;
+pub mod disassemble_error;
 pub mod io_error;
 
 #[derive(Debug, Clone, Default)]

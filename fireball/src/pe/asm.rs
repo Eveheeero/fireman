@@ -3,7 +3,7 @@
 use super::PE;
 use crate::{
     core::{Address, Instruction},
-    prelude::trace,
+    prelude::*,
 };
 
 impl PE {
@@ -12,7 +12,7 @@ impl PE {
         &self,
         offset: &Address,
         size: u64,
-    ) -> Result<Vec<Instruction>, ()> {
+    ) -> Result<Vec<Instruction>, DisassembleError> {
         let file_offset = if let Some(file_offset) = offset.get_file_offset() {
             file_offset
         } else {
@@ -20,7 +20,7 @@ impl PE {
                 "파일 오프셋을 찾을 수 없음 : 가상주소 {:#x}",
                 offset.get_virtual_address()
             );
-            return Err(());
+            return Err(DisassembleError::TriedToParseOutsideOfSection);
         };
         let virtual_offset = offset.get_virtual_address();
         let insns = match self.capstone.disasm_all(
@@ -28,13 +28,14 @@ impl PE {
             virtual_offset as u64,
         ) {
             Ok(insts) => insts,
-            Err(_) => {
+            Err(e) => {
                 trace!(
                     "어셈블리 코드 파싱 실패 : 가상주소 {:#x}, 파일주소 {:#x}",
                     virtual_offset,
                     file_offset
                 );
-                return Err(());
+                error!(?e);
+                return Err(DisassembleError::CapstoneFailed(e.to_string()));
             }
         };
         Ok(self.transform_instructions(insns))
@@ -45,7 +46,7 @@ impl PE {
         &self,
         offset: &Address,
         count: usize,
-    ) -> Result<Vec<Instruction>, ()> {
+    ) -> Result<Vec<Instruction>, DisassembleError> {
         let file_offset = if let Some(file_offset) = offset.get_file_offset() {
             file_offset
         } else {
@@ -53,7 +54,7 @@ impl PE {
                 "파일 오프셋을 찾을 수 없음 : 가상주소 {:#x}",
                 offset.get_virtual_address()
             );
-            return Err(());
+            return Err(DisassembleError::TriedToParseOutsideOfSection);
         };
         let virtual_offset = offset.get_virtual_address();
         let insns = match self.capstone.disasm_count(
@@ -62,13 +63,14 @@ impl PE {
             count,
         ) {
             Ok(insts) => insts,
-            Err(_) => {
+            Err(e) => {
                 trace!(
                     "어셈블리 코드 파싱 실패 : 가상주소 {:#x}, 파일주소 {:#x}",
                     virtual_offset,
                     file_offset
                 );
-                return Err(());
+                error!(?e);
+                return Err(DisassembleError::CapstoneFailed(e.to_string()));
             }
         };
         Ok(self.transform_instructions(insns))

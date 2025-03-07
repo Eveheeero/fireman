@@ -3,7 +3,8 @@ pub enum DecompileError {
     #[default]
     Unknown,
     UnknwonWithMessage(String),
-    HeaderParsingError,
+    HeaderParsingFailed,
+    DisassembleFailed(super::disassemble_error::DisassembleError),
 }
 
 impl std::fmt::Display for DecompileError {
@@ -11,14 +12,15 @@ impl std::fmt::Display for DecompileError {
         match self {
             Self::Unknown => write!(f, "Unknown Error Occured!"),
             Self::UnknwonWithMessage(msg) => write!(f, "Unknown Error Occured! {}", msg),
-            Self::HeaderParsingError => write!(f, "Header Parsing Error Occured!"),
+            Self::HeaderParsingFailed => write!(f, "Header Parsing Failed!"),
+            Self::DisassembleFailed(err) => write!(f, "Fail to disassemble block! {}", err),
         }
     }
 }
 
 impl From<goblin::error::Error> for DecompileError {
     fn from(_: goblin::error::Error) -> Self {
-        Self::HeaderParsingError
+        Self::HeaderParsingFailed
     }
 }
 
@@ -37,5 +39,11 @@ impl From<&String> for DecompileError {
 impl From<&str> for DecompileError {
     fn from(msg: &str) -> Self {
         Self::UnknwonWithMessage(msg.to_string())
+    }
+}
+
+impl From<super::disassemble_error::DisassembleError> for DecompileError {
+    fn from(err: super::disassemble_error::DisassembleError) -> Self {
+        Self::DisassembleFailed(err)
     }
 }
