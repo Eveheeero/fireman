@@ -16,7 +16,7 @@ macro_rules! generate_register {
     ($reg:ident) => {
         #[inline(always)]
         fn $reg(&mut self) -> &mut BitSlice {
-            unsafe { &mut (*self.register.get())[<VirtualMachine as X64Range>::$reg().inner()] }
+            &mut self.get_raw_mut()[<VirtualMachine as X64Range>::$reg().inner()]
         }
     };
 }

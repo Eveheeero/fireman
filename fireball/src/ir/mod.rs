@@ -24,12 +24,15 @@ pub struct VirtualMachine {
 }
 
 /// IR 데이터의 기본적인 행동 인터페이스 (파일 변환 등..., 하지만 구현되지 않았습니다.)
-impl VirtualMachine {}
-
-/// IR의 레지스터 데이터를 원본 형태로 가져올 수 있는 인터페이스입니다.
-pub trait IRRaw {
+impl VirtualMachine {
     /// 가공되지 앟은 레지스터 데이터를 가져옵니다.
-    fn get_register(&self) -> &BitBox;
+    pub fn get_raw(&self) -> &BitBox {
+        unsafe { &*self.register.get() }
+    }
+    /// 가공되지 앟은 레지스터 데이터를 가져옵니다.
+    pub fn get_raw_mut(&mut self) -> &mut BitBox {
+        unsafe { &mut *self.register.get() }
+    }
 }
 
 /// IR statements per function
