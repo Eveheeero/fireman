@@ -1,5 +1,6 @@
 //! IR 분석 관련 모듈
 
+pub mod analyze;
 pub mod arm;
 pub mod data;
 pub mod operator;
@@ -34,16 +35,19 @@ pub trait IRRaw {
 /// IR statements per function
 ///
 /// 한 함수 안에서 IR명령이 어떻게 동작하는지를 저장하는 구조체
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct IrFlowsInFunction(Vec<IrFlow>);
 
 impl IrFlowsInFunction {
+    pub fn new(data: Vec<IrFlow>) -> Self {
+        Self(data)
+    }
     pub fn data(&self) -> &Vec<IrFlow> {
         &self.0
     }
 }
 
-/// IR statements per address, as known as `BasicBlock`
+/// IR statements per address
 ///
 /// 특정 주소에 대한 IR 명령의 모음
 #[derive(Debug, Clone)]

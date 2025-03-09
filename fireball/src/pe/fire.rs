@@ -1,10 +1,10 @@
 //! 코어 트레이트에 대한 구현이 담겨있는 모듈
 
 mod decom_all;
+mod decom_block;
 mod decom_from_entry;
 mod decom_from_file_offset;
 mod decom_from_virtual_address;
-mod decom_function;
 
 use super::PE;
 use crate::{
