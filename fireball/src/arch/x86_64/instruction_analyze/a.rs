@@ -1,7 +1,8 @@
 use super::super::static_register::*;
 use crate::ir::{data::*, operator::*, statements::*, x86_64::X64Range as X64, Ir};
+use std::rc::Rc;
 
-pub(super) fn aaa() -> Vec<IRStatement> {
+pub(super) fn aaa() -> Rc<[IRStatement]> {
     let al_and_0fh = IRData::Operator(IRDataOperator::Binary(
         BinaryOperator::And,
         Box::new(IRData::Intrinsic(IntrinsicType::Undefined(Box::new(
@@ -56,10 +57,10 @@ pub(super) fn aaa() -> Vec<IRStatement> {
     [
         IRStatement::Condition {
             condition: al_and_0fh_lt_9,
-            true_branch: then.to_vec(),
-            false_branch: r#else.to_vec(),
+            true_branch: then.into(),
+            false_branch: r#else.into(),
         },
         after,
     ]
-    .to_vec()
+    .into()
 }

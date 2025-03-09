@@ -12,27 +12,25 @@ use std::rc::Rc;
 /// - `instruction` : 어셈블리 인스트럭션
 ///
 /// ### Returns
-/// `Rc<Vec<IRStatement>>` : IR 명령 배열
-pub fn create_ir_statement(instruction: &Instruction) -> Rc<Vec<IRStatement>> {
+/// `Rc<[IRStatement]>` : IR 명령 배열
+pub fn create_ir_statement(instruction: &Instruction) -> Rc<[IRStatement]> {
     let op = if let Ok(Statement::X64(op)) = instruction.inner.statement {
         op
     } else {
-        return Rc::new(
-            [IRStatement::Unknown(IRStatementUnknown::Instruction(
-                instruction.clone(),
-            ))]
-            .to_vec(),
-        );
+        return [IRStatement::Unknown(IRStatementUnknown::Instruction(
+            instruction.clone(),
+        ))]
+        .into();
     };
 
     use iceball::X64Statement;
 
-    Rc::new(match op {
+    match op {
         X64Statement::Aaa => a::aaa(),
         // X64Statement::Aad => [IRStatement::Touch],
         _ => [IRStatement::Unknown(IRStatementUnknown::Instruction(
             instruction.clone(),
         ))]
-        .to_vec(),
-    })
+        .into(),
+    }
 }
