@@ -35,17 +35,17 @@ impl VirtualMachine {
     }
 }
 
-/// IR statements per function
+/// IR statements per block
 ///
-/// 한 함수 안에서 IR명령이 어떻게 동작하는지를 저장하는 구조체
+/// 한 블럭 안에서 IR명령이 어떻게 동작하는지를 저장하는 구조체
 #[derive(Debug, Clone)]
-pub struct IrFlowsInFunction(Vec<IrFlow>);
+pub struct IrBlock(Vec<Ir>);
 
-impl IrFlowsInFunction {
-    pub fn new(data: Vec<IrFlow>) -> Self {
+impl IrBlock {
+    pub fn new(data: Vec<Ir>) -> Self {
         Self(data)
     }
-    pub fn data(&self) -> &Vec<IrFlow> {
+    pub fn data(&self) -> &Vec<Ir> {
         &self.0
     }
 }
@@ -54,7 +54,7 @@ impl IrFlowsInFunction {
 ///
 /// 특정 주소에 대한 IR 명령의 모음
 #[derive(Debug, Clone)]
-pub struct IrFlow {
+pub struct Ir {
     /// IR 변화가 일어난 주소
     pub address: Address,
     /// 실행된 명령

@@ -1,7 +1,7 @@
 use super::PE;
 use crate::{
     core::Address,
-    ir::{IrFlow, IrFlowsInFunction},
+    ir::{Ir, IrBlock},
     prelude::*,
 };
 
@@ -20,16 +20,17 @@ impl PE {
 
         /* 인스트럭션 변환 */
         let instructions = self.parse_assem_range(&address, block_size)?;
-        let mut ir_flows_in_function = Vec::new();
+        let mut ir_block = Vec::new();
         let mut instruction_address = address;
         for instruction in instructions {
             // 인스트럭션으로 ir생성
-            let ir = crate::arch::x86_64::instruction_analyze::create_ir_statement(&instruction);
-            let ir_flows = IrFlow {
+            let statements =
+                crate::arch::x86_64::instruction_analyze::create_ir_statement(&instruction);
+            let ir = Ir {
                 address: instruction_address.clone(),
-                statements: ir,
+                statements,
             };
-            ir_flows_in_function.push(ir_flows);
+            ir_block.push(ir);
 
             /* 후처리 */
             // 인스트럭션 주소 이동
@@ -40,7 +41,7 @@ impl PE {
                 .len();
             instruction_address += instruction_size as u64;
         }
-        let ir_flows_in_function = IrFlowsInFunction::new(ir_flows_in_function);
+        let _ir_block = IrBlock::new(ir_block);
 
         /* 분석 */
         // 접근 메모리 영역 파악
