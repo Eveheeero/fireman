@@ -1,7 +1,7 @@
 use crate::{
     ir::{
         x86_64::{X64Mut, X64Range},
-        Ir,
+        VirtualMachine,
     },
     prelude::BitSlice,
 };
@@ -16,12 +16,12 @@ macro_rules! generate_register {
     ($reg:ident) => {
         #[inline(always)]
         fn $reg(&mut self) -> &mut BitSlice {
-            unsafe { &mut (*self.register.get())[<Ir as X64Range>::$reg().inner()] }
+            unsafe { &mut (*self.register.get())[<VirtualMachine as X64Range>::$reg().inner()] }
         }
     };
 }
 
-impl X64Mut for Ir {
+impl X64Mut for VirtualMachine {
     generate_register!(rax);
     generate_register!(eax);
     generate_register!(ax);

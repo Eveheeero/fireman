@@ -1,5 +1,5 @@
 use super::super::static_register::*;
-use crate::ir::{data::*, operator::*, statements::*, x86_64::X64Range as X64, Ir};
+use crate::ir::{data::*, operator::*, statements::*, x86_64::X64Range as X64, VirtualMachine};
 use std::rc::Rc;
 
 pub(super) fn aaa() -> Rc<[IRStatement]> {
