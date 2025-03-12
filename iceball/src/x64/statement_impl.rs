@@ -2,7 +2,29 @@ use crate::{DisassembleError, Statement, StatementInner, X64Statement};
 
 impl StatementInner for X64Statement {
     fn is_jcc(&self) -> bool {
-        matches!(*self, X64Statement::Jcc | X64Statement::Jmp)
+        matches!(
+            *self,
+            X64Statement::Ja
+                | X64Statement::Jae
+                | X64Statement::Jb
+                | X64Statement::Jbe
+                | X64Statement::Jcxz
+                | X64Statement::Jecxz
+                | X64Statement::Jrcxz
+                | X64Statement::Jz
+                | X64Statement::Jg
+                | X64Statement::Jge
+                | X64Statement::Jl
+                | X64Statement::Jle
+                | X64Statement::Jnz
+                | X64Statement::Jno
+                | X64Statement::Jnp
+                | X64Statement::Jns
+                | X64Statement::Jo
+                | X64Statement::Jp
+                | X64Statement::Js
+                | X64Statement::Jmp
+        )
     }
 
     fn is_call(&self) -> bool {
