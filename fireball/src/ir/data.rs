@@ -4,7 +4,7 @@ use crate::ir::operator::{BinaryOperator, UnaryOperator};
 ///
 /// ### Note
 /// snowman's Term + classes based ExpressionBase class
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IRData {
     /// mov eax, 0x1234의 0x1234
     Constant(usize),
@@ -18,20 +18,20 @@ pub enum IRData {
     Operator(IRDataOperator),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IntrinsicType {
     Unknown(Box<IRData>),
     Undefined(Box<IRData>),
     ReturnAddress(Box<IRData>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AccessType {
     Read,
     Write,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IRDataOperator {
     Unary(UnaryOperator, Box<IRData>),
     Binary(BinaryOperator, Box<IRData>, Box<IRData>),

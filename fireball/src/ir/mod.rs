@@ -11,7 +11,7 @@ pub mod x86_64;
 use crate::{core::Address, prelude::BitBox};
 pub use register::Register;
 use statements::IRStatement;
-use std::{cell::UnsafeCell, rc::Rc};
+use std::{cell::UnsafeCell, collections::HashSet, rc::Rc};
 
 /// 컴퓨터가 동작하는 행동을 재현하기 위한 구조체
 ///
@@ -39,14 +39,36 @@ impl VirtualMachine {
 ///
 /// 한 블럭 안에서 IR명령이 어떻게 동작하는지를 저장하는 구조체
 #[derive(Debug, Clone)]
-pub struct IrBlock(Vec<Ir>);
+pub struct IrBlock {
+    ir: Vec<Ir>,
+    known_datatypes: Option<HashSet<analyze::KnownDataType>>,
+}
 
 impl IrBlock {
     pub fn new(data: Vec<Ir>) -> Self {
-        Self(data)
+        Self {
+            ir: data,
+            known_datatypes: None,
+        }
     }
-    pub fn data(&self) -> &Vec<Ir> {
-        &self.0
+    pub fn ir(&self) -> &Vec<Ir> {
+        &self.ir
+    }
+    pub fn analyze_datatypes(&mut self) {
+        let mut known_datatypes: HashSet<analyze::KnownDataType> = HashSet::new();
+        for ir in self.ir.iter() {
+            let analyzed_datatype = analyze::analyze_datatype(ir);
+            for datatype in analyzed_datatype {
+                known_datatypes.insert(datatype);
+            }
+        }
+        self.set_datatypes(known_datatypes);
+    }
+    pub fn get_datatypes(&self) -> Option<&HashSet<analyze::KnownDataType>> {
+        self.known_datatypes.as_ref()
+    }
+    pub fn set_datatypes(&mut self, data: HashSet<analyze::KnownDataType>) {
+        self.known_datatypes = Some(data);
     }
 }
 

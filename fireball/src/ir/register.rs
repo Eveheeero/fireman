@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Register {
     inner: Range<usize>,
 }
