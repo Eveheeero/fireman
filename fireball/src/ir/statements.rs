@@ -25,8 +25,6 @@ pub enum IRStatement {
         data: IRData,
         access_type: AccessType,
     },
-    /// 콜백
-    Callback,
     /// 조건문
     Condition {
         condition: IRData,
