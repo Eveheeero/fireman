@@ -41,16 +41,17 @@ impl PE {
                 .len();
             instruction_address += instruction_size as u64;
         }
-        let _ir_block = IrBlock::new(ir_block);
+        let mut ir_block = IrBlock::new(ir_block);
 
         /* 분석 */
-        // 접근 메모리 영역 파악
-        // 접근 사이즈 및 사용 인스트럭션에 따른 타입 지정
+        // 접근 메모리 영역 파악 및 사용 인스트럭션에 따른 타입 지정
+        ir_block.analyze_datatypes();
         // native api 호출 인자에 따른 타입 재 지정
         // 함수 코드 생성
         // 해당 함수 관련 분석 내용 저장 -> 블럭에 저장
         // 해당 블록에 접근하고 있는 블록 디컴파일 재시도 -> 재귀는 1번까지 허용
 
+        block.set_ir(ir_block);
         todo!();
     }
 }
