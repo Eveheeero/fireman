@@ -1,4 +1,5 @@
 use crate::ir::operator::{BinaryOperator, UnaryOperator};
+use std::num::NonZeroU16;
 
 /// IR 내부에 사용되는 데이터
 ///
@@ -33,6 +34,17 @@ pub enum AccessType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IRDataOperator {
-    Unary(UnaryOperator, Box<IRData>),
-    Binary(BinaryOperator, Box<IRData>, Box<IRData>),
+    Unary {
+        operator: UnaryOperator,
+        arg: Box<IRData>,
+        /// arg size
+        size: NonZeroU16,
+    },
+    Binary {
+        operator: BinaryOperator,
+        arg1: Box<IRData>,
+        arg2: Box<IRData>,
+        /// arg size
+        size: NonZeroU16,
+    },
 }

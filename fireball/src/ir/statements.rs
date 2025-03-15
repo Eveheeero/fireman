@@ -2,6 +2,7 @@
 
 use crate::core::Instruction;
 use crate::ir::data::{AccessType, IRData};
+use std::num::NonZeroU16;
 use std::rc::Rc;
 
 /// IR의 각 명령에 대한 Enum
@@ -13,7 +14,11 @@ pub enum IRStatement {
     /// 해석할 수 없는 명령, 인라인 어셈블리로 처리됩니다.
     Unknown(IRStatementUnknown),
     /// 변수 할당
-    Assignment { from: IRData, to: IRData },
+    Assignment {
+        from: IRData,
+        to: IRData,
+        size: NonZeroU16,
+    },
     /// 명령 라인 변경
     Jump(IRStatementJump),
     /// 함수 호출
@@ -24,10 +29,12 @@ pub enum IRStatement {
     Touch {
         data: IRData,
         access_type: AccessType,
+        size: NonZeroU16,
     },
     /// 조건문
     Condition {
         condition: IRData,
+        size: NonZeroU16,
         true_branch: Rc<[IRStatement]>,
         false_branch: Rc<[IRStatement]>,
     },

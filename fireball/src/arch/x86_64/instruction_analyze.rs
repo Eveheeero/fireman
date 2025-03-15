@@ -4,7 +4,7 @@ mod a;
 
 use crate::{core::Instruction, ir::statements::*};
 use iceball::Statement;
-use std::rc::Rc;
+use std::{num::NonZeroU16, rc::Rc};
 
 /// 어셈블리 인스트럭션을 받아 IR 명령으로 변환한다.
 ///
@@ -33,4 +33,13 @@ pub fn create_ir_statement(instruction: &Instruction) -> Rc<[IRStatement]> {
         ))]
         .into(),
     }
+}
+
+/// return size of register (byte)
+fn size(data: &crate::ir::Register) -> NonZeroU16 {
+    let range = data.inner();
+    NonZeroU16::new(range.len() as u16).unwrap()
+}
+fn max() -> NonZeroU16 {
+    NonZeroU16::MAX
 }
