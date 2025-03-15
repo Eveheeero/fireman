@@ -1,6 +1,6 @@
 use super::super::static_register::*;
 use super::{max, size};
-use crate::ir::{data::*, operator::*, statements::*, x86_64::X64Range as X64, VirtualMachine};
+use crate::ir::{data::*, operator::*, statements::*};
 
 pub(super) fn aaa() -> Box<[IrStatement]> {
     let al_and_0fh = IrData::Operator(IrDataOperator::Binary {
