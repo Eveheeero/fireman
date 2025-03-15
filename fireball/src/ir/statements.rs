@@ -3,7 +3,6 @@
 use crate::core::Instruction;
 use crate::ir::data::{AccessType, IRData};
 use std::num::NonZeroU16;
-use std::rc::Rc;
 
 /// IR의 각 명령에 대한 Enum
 ///
@@ -35,8 +34,8 @@ pub enum IRStatement {
     Condition {
         condition: IRData,
         size: NonZeroU16,
-        true_branch: Rc<[IRStatement]>,
-        false_branch: Rc<[IRStatement]>,
+        true_branch: Box<[IRStatement]>,
+        false_branch: Box<[IRStatement]>,
     },
 }
 

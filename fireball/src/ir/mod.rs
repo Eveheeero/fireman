@@ -11,7 +11,7 @@ pub mod x86_64;
 use crate::{core::Address, prelude::BitBox};
 pub use register::Register;
 use statements::IRStatement;
-use std::{cell::UnsafeCell, collections::HashSet, rc::Rc};
+use std::{cell::UnsafeCell, collections::HashSet};
 
 /// 컴퓨터가 동작하는 행동을 재현하기 위한 구조체
 ///
@@ -80,5 +80,5 @@ pub struct Ir {
     /// IR 변화가 일어난 주소
     pub address: Address,
     /// 실행된 명령
-    pub statements: Rc<[IRStatement]>,
+    pub statements: Box<[IRStatement]>,
 }

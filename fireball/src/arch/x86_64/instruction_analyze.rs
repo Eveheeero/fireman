@@ -4,7 +4,7 @@ mod a;
 
 use crate::{core::Instruction, ir::statements::*};
 use iceball::Statement;
-use std::{num::NonZeroU16, rc::Rc};
+use std::num::NonZeroU16;
 
 /// 어셈블리 인스트럭션을 받아 IR 명령으로 변환한다.
 ///
@@ -12,8 +12,8 @@ use std::{num::NonZeroU16, rc::Rc};
 /// - `instruction` : 어셈블리 인스트럭션
 ///
 /// ### Returns
-/// `Rc<[IRStatement]>` : IR 명령 배열
-pub fn create_ir_statement(instruction: &Instruction) -> Rc<[IRStatement]> {
+/// `Box<[IRStatement]>` : IR 명령 배열
+pub fn create_ir_statement(instruction: &Instruction) -> Box<[IRStatement]> {
     let op = if let Ok(Statement::X64(op)) = instruction.inner.statement {
         op
     } else {

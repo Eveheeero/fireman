@@ -1,9 +1,8 @@
 use super::super::static_register::*;
 use super::{max, size};
 use crate::ir::{data::*, operator::*, statements::*, x86_64::X64Range as X64, VirtualMachine};
-use std::rc::Rc;
 
-pub(super) fn aaa() -> Rc<[IRStatement]> {
+pub(super) fn aaa() -> Box<[IRStatement]> {
     let al_and_0fh = IRData::Operator(IRDataOperator::Binary {
         operator: BinaryOperator::And,
         arg1: Box::new(IRData::Intrinsic(IntrinsicType::Undefined(Box::new(
