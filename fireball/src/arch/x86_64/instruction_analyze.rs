@@ -12,12 +12,12 @@ use std::num::NonZeroU16;
 /// - `instruction` : 어셈블리 인스트럭션
 ///
 /// ### Returns
-/// `Box<[IRStatement]>` : IR 명령 배열
-pub fn create_ir_statement(instruction: &Instruction) -> Box<[IRStatement]> {
+/// `Box<[IrStatement]>` : IR 명령 배열
+pub fn create_ir_statement(instruction: &Instruction) -> Box<[IrStatement]> {
     let op = if let Ok(Statement::X64(op)) = instruction.inner.statement {
         op
     } else {
-        return [IRStatement::Unknown(IRStatementUnknown::Instruction(
+        return [IrStatement::Unknown(IrStatementUnknown::Instruction(
             instruction.clone(),
         ))]
         .into();
@@ -28,7 +28,7 @@ pub fn create_ir_statement(instruction: &Instruction) -> Box<[IRStatement]> {
     match op {
         X64Statement::Aaa => a::aaa(),
         // X64Statement::Aad => [IRStatement::Touch],
-        _ => [IRStatement::Unknown(IRStatementUnknown::Instruction(
+        _ => [IrStatement::Unknown(IrStatementUnknown::Instruction(
             instruction.clone(),
         ))]
         .into(),

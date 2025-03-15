@@ -1,13 +1,13 @@
 use crate::{
     core::Address,
-    ir::{data::IRData, statements::IRStatement, Ir},
+    ir::{data::IrData, statements::IrStatement, Ir},
 };
 use std::num::NonZeroU16;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct KnownDataType {
     pub shown_in: Address,
-    pub location: IRData,
+    pub location: IrData,
     pub data_type: DataType,
     /// None if size depends on architecture
     pub data_size: Option<NonZeroU16>,
@@ -29,11 +29,11 @@ pub fn analyze_datatype(ir: &Ir) -> Vec<KnownDataType> {
 
 /// ### TODO
 /// 인스트럭션을 통한 데이터 타입 추가 유추 필요
-pub fn analyze_datatype_raw(address: &Address, statements: &[IRStatement]) -> Vec<KnownDataType> {
+pub fn analyze_datatype_raw(address: &Address, statements: &[IrStatement]) -> Vec<KnownDataType> {
     let mut known_datatypes: Vec<KnownDataType> = Vec::new();
     for statement in statements.iter() {
         match statement {
-            crate::ir::statements::IRStatement::Assignment { from, to, size } => {
+            crate::ir::statements::IrStatement::Assignment { from, to, size } => {
                 known_datatypes.push(KnownDataType {
                     shown_in: address.clone(),
                     location: from.clone(),
@@ -47,8 +47,8 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IRStatement]) -> Ve
                     data_size: Some(*size),
                 });
             }
-            crate::ir::statements::IRStatement::Jump(irstatement_jump) => match irstatement_jump {
-                crate::ir::statements::IRStatementJump::Conditional { ok, fail } => {
+            crate::ir::statements::IrStatement::Jump(irstatement_jump) => match irstatement_jump {
+                crate::ir::statements::IrStatementJump::Conditional { ok, fail } => {
                     known_datatypes.push(KnownDataType {
                         shown_in: address.clone(),
                         location: ok.clone(),
@@ -62,7 +62,7 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IRStatement]) -> Ve
                         data_size: None,
                     });
                 }
-                crate::ir::statements::IRStatementJump::Unconditional(irdata) => {
+                crate::ir::statements::IrStatementJump::Unconditional(irdata) => {
                     known_datatypes.push(KnownDataType {
                         shown_in: address.clone(),
                         location: irdata.clone(),
@@ -71,7 +71,7 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IRStatement]) -> Ve
                     });
                 }
             },
-            crate::ir::statements::IRStatement::Call { target } => {
+            crate::ir::statements::IrStatement::Call { target } => {
                 known_datatypes.push(KnownDataType {
                     shown_in: address.clone(),
                     location: target.clone(),
@@ -79,7 +79,7 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IRStatement]) -> Ve
                     data_size: None,
                 });
             }
-            crate::ir::statements::IRStatement::Touch { data, size, .. } => {
+            crate::ir::statements::IrStatement::Touch { data, size, .. } => {
                 known_datatypes.push(KnownDataType {
                     shown_in: address.clone(),
                     location: data.clone(),
@@ -87,7 +87,7 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IRStatement]) -> Ve
                     data_size: Some(*size),
                 });
             }
-            crate::ir::statements::IRStatement::Condition {
+            crate::ir::statements::IrStatement::Condition {
                 condition,
                 size,
                 true_branch,

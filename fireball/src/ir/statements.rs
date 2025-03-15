@@ -1,7 +1,7 @@
 //! IR의 각 명령이 담겨져 있는 모듈
 
 use crate::core::Instruction;
-use crate::ir::data::{AccessType, IRData};
+use crate::ir::data::{AccessType, IrData};
 use std::num::NonZeroU16;
 
 /// IR의 각 명령에 대한 Enum
@@ -9,44 +9,44 @@ use std::num::NonZeroU16;
 /// ### Note
 /// snowman's expressions.h, StatementBase based classes, or snowman's ir::statement.h classes
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IRStatement {
+pub enum IrStatement {
     /// 해석할 수 없는 명령, 인라인 어셈블리로 처리됩니다.
-    Unknown(IRStatementUnknown),
+    Unknown(IrStatementUnknown),
     /// 변수 할당
     Assignment {
-        from: IRData,
-        to: IRData,
+        from: IrData,
+        to: IrData,
         size: NonZeroU16,
     },
     /// 명령 라인 변경
-    Jump(IRStatementJump),
+    Jump(IrStatementJump),
     /// 함수 호출
-    Call { target: IRData },
+    Call { target: IrData },
     /// 함수 호출 후 반환
     Halt,
     /// 값 접근
     Touch {
-        data: IRData,
+        data: IrData,
         access_type: AccessType,
         size: NonZeroU16,
     },
     /// 조건문
     Condition {
-        condition: IRData,
+        condition: IrData,
         size: NonZeroU16,
-        true_branch: Box<[IRStatement]>,
-        false_branch: Box<[IRStatement]>,
+        true_branch: Box<[IrStatement]>,
+        false_branch: Box<[IrStatement]>,
     },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IRStatementUnknown {
+pub enum IrStatementUnknown {
     Instruction(Instruction),
     Bytecode(Box<[u8]>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IRStatementJump {
-    Conditional { ok: IRData, fail: IRData },
-    Unconditional(IRData),
+pub enum IrStatementJump {
+    Conditional { ok: IrData, fail: IrData },
+    Unconditional(IrData),
 }
