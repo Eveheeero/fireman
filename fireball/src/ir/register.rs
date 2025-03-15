@@ -9,6 +9,9 @@ impl Register {
     pub(crate) fn inner(&self) -> Range<usize> {
         self.inner.clone()
     }
+    pub fn bit_len(&self) -> usize {
+        self.inner.end - self.inner.start
+    }
 }
 
 impl From<Range<usize>> for Register {

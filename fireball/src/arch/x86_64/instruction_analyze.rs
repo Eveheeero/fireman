@@ -37,8 +37,16 @@ pub fn create_ir_statement(instruction: &Instruction) -> Rc<[IRStatement]> {
 
 /// return size of register (byte)
 fn size(data: &crate::ir::Register) -> NonZeroU16 {
-    let range = data.inner();
-    NonZeroU16::new(range.len() as u16).unwrap()
+    let bit_len = data.bit_len() as u16;
+    let byte_len = bit_len / 8;
+    NonZeroU16::new(byte_len).unwrap()
+}
+#[test]
+fn size_test() {
+    let eax_size = size(&super::static_register::eax);
+    let rax_size = size(&super::static_register::rax);
+    assert_eq!(eax_size, NonZeroU16::new(4).unwrap());
+    assert_eq!(rax_size, NonZeroU16::new(8).unwrap());
 }
 fn max() -> NonZeroU16 {
     NonZeroU16::MAX
