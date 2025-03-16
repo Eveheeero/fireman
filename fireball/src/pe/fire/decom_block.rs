@@ -6,22 +6,24 @@ use crate::{
 };
 
 impl PE {
-    pub(super) fn _decom_block(&self, address: Address) -> Result<(), DecompileError> {
+    pub(super) fn _decom_block(&self, address: &Address) -> Result<(), DecompileError> {
+        debug!(?address, "블럭 디컴파일 시작");
+
         // 블럭 생성
         let block = self.generate_block_from_address(&address);
         // 해당 블럭의 인스트럭션 파싱
         let end_address = block.get_end_address();
         let block_size = if let Some(end_address) = end_address {
-            end_address - &address
+            end_address - address
         } else {
             warn!(?address, "디컴파일 대상의 종료 위치를 찾을 수 없음");
             1
         };
 
         /* 인스트럭션 변환 */
-        let instructions = self.parse_assem_range(&address, block_size)?;
+        let instructions = self.parse_assem_range(address, block_size)?;
         let mut ir_block = Vec::new();
-        let mut instruction_address = address;
+        let mut instruction_address = address.clone();
         for instruction in instructions {
             // 인스트럭션으로 ir생성
             let statements =
@@ -41,17 +43,26 @@ impl PE {
                 .len();
             instruction_address += instruction_size as u64;
         }
+        debug!(
+            "블럭 내부 인스트럭션 IR 변환 완료, 총 {}개",
+            ir_block.iter().map(|x| x.statements.len()).sum::<usize>()
+        );
         let mut ir_block = IrBlock::new(ir_block);
 
         /* 분석 */
         // 접근 메모리 영역 파악 및 사용 인스트럭션에 따른 타입 지정
         ir_block.analyze_datatypes();
         // native api 호출 인자에 따른 타입 재 지정
+        // TODO
+        // 해당 블럭 내부 사용 인자 파악
+        // TODO 사용되는 인자가 많을 경우 다른 함수의 내부인것으로 판단
         // 함수 코드 생성
-        // 해당 함수 관련 분석 내용 저장 -> 블럭에 저장
-        // 해당 블록에 접근하고 있는 블록 디컴파일 재시도 -> 재귀는 1번까지 허용
-
+        // TODO 이후 생성된 코드 ir_block에 저장
+        // 분석 내용 블럭에 저장
         block.set_ir(ir_block);
-        todo!();
+        // 해당 블록에 접근하고 있는 블록 디컴파일 재시도 -> 재귀는 1번까지 허용
+        // TODO + 이미 분석된 블럭을 재분석하려고 시도할 시 일부만 분석되도록? 아니면 초기화?
+
+        Ok(())
     }
 }

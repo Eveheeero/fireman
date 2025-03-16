@@ -133,3 +133,16 @@ fn pe_hello_world_block_relation() {
         37216
     );
 }
+
+#[test]
+fn pe_hello_world_decom_block() {
+    test_init();
+    let binary = get_binary();
+    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let gl = goblin::pe::PE::parse(binary).unwrap();
+    let sections = pe.get_sections();
+
+    /* 엔트리부터 디컴파일 시작작 */
+    let entry = Address::from_virtual_address(&sections, gl.entry as u64);
+    assert!(pe.decom_block(&entry).is_ok());
+}

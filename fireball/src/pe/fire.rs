@@ -8,7 +8,7 @@ mod decom_from_virtual_address;
 
 use super::PE;
 use crate::{
-    core::{Fire, Sections},
+    core::{Address, Fire, Sections},
     prelude::{DecompileError, IoError},
 };
 use std::sync::Arc;
@@ -45,6 +45,10 @@ impl Fire for PE {
 
     fn decom_from_virtual_address(&self, address: u64) -> Result<(), DecompileError> {
         self._decom_from_virtual_address(address)
+    }
+
+    fn decom_block(&self, address: &Address) -> Result<(), DecompileError> {
+        self._decom_block(address)
     }
 
     fn get_sections(&self) -> Arc<Sections> {
