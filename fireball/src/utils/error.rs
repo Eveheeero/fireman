@@ -2,7 +2,7 @@ pub mod decompile_error;
 pub mod disassemble_error;
 pub mod io_error;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Eq, PartialEq)]
 pub enum FireballError {
     #[default]
     Unknown,
