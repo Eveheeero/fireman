@@ -21,7 +21,9 @@ pub enum IrStatement {
     /// 명령 라인 변경
     Jump(IrStatementJump),
     /// 함수 호출
-    Call { target: IrData },
+    Call {
+        target: IrData,
+    },
     /// 함수 호출 후 반환
     Halt,
     /// 값 접근
@@ -37,6 +39,7 @@ pub enum IrStatement {
         true_branch: Box<[IrStatement]>,
         false_branch: Box<[IrStatement]>,
     },
+    Special(IrStatementSpecial),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,4 +52,31 @@ pub enum IrStatementUnknown {
 pub enum IrStatementJump {
     Conditional { ok: IrData, fail: IrData },
     Unconditional(IrData),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IrStatementSpecial {
+    TypeSpecified {
+        location: IrData,
+        size: Option<NonZeroU16>,
+        data_type: crate::ir::analyze::DataType,
+    },
+    ArchitectureByteSizeCondition {
+        condition: NumCondition,
+        true_branch: Box<[IrStatement]>,
+        false_branch: Box<[IrStatement]>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
+pub enum NumCondition {
+    Higher(u16),
+    HigherOrEqual(u16),
+    Lower(u16),
+    LowerOrEqual(u16),
+    Equal(u16),
+    NotEqual(u16),
+    Between(u16, u16),
+
+    NotBetween(u16, u16),
 }

@@ -104,6 +104,20 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IrStatement]) -> Ve
                 known_datatypes.extend(true_branch);
                 known_datatypes.extend(false_branch);
             }
+            crate::ir::statements::IrStatement::Special(
+                crate::ir::statements::IrStatementSpecial::TypeSpecified {
+                    location,
+                    size,
+                    data_type,
+                },
+            ) => {
+                known_datatypes.push(KnownDataType {
+                    shown_in: address.clone(),
+                    location: location.clone(),
+                    data_type: data_type.clone(),
+                    data_size: *size,
+                });
+            }
             _ => continue,
         }
     }
