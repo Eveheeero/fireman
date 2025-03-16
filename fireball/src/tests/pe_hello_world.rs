@@ -144,5 +144,16 @@ fn pe_hello_world_decom_block() {
 
     /* 엔트리부터 디컴파일 시작작 */
     let entry = Address::from_virtual_address(&sections, gl.entry as u64);
-    assert!(pe.decom_block(&entry).is_ok());
+    assert_eq!(pe.decom_block(&entry), Ok(()), "디컴파일 진행 실패");
+    let blocks = pe.inspect_blocks();
+    let block = blocks.get_by_start_address(&entry);
+    assert!(block.is_some(), "디컴파일된 블럭의 데이터가 없음");
+    let block = block.unwrap();
+    let ir = block.get_ir();
+    assert!(ir.is_some(), "디컴파일 진행 중 IR데이터가 생성되지 않음");
+    let ir = ir.as_ref().unwrap();
+    assert!(
+        ir.get_datatypes().is_some(),
+        "디컴파일 진행 중 데이터타입이 분석되지 않음"
+    );
 }
