@@ -114,7 +114,7 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IrStatement]) -> Ve
                 known_datatypes.push(KnownDataType {
                     shown_in: address.clone(),
                     location: location.clone(),
-                    data_type: data_type.clone(),
+                    data_type: *data_type,
                     data_size: *size,
                 });
             }

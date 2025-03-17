@@ -10,7 +10,7 @@ impl PE {
         debug!(?address, "블럭 디컴파일 시작");
 
         // 블럭 생성
-        let block = self.generate_block_from_address(&address);
+        let block = self.generate_block_from_address(address);
         // 해당 블럭의 인스트럭션 파싱
         let end_address = block.get_end_address();
         let block_size = if let Some(end_address) = end_address {
