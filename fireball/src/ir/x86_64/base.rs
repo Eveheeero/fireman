@@ -1,7 +1,7 @@
 use crate::{
     ir::{
         x86_64::{X64Range, X64},
-        Ir,
+        VirtualMachine,
     },
     prelude::BitSlice,
 };
@@ -11,12 +11,12 @@ macro_rules! generate_register {
     ($name:ident) => {
         #[inline(always)]
         fn $name(&self) -> &BitSlice {
-            unsafe { &(*self.register.get())[<Ir as X64Range>::$name().inner()] }
+            &self.get_raw()[<VirtualMachine as X64Range>::$name().inner()]
         }
     };
 }
 
-impl X64 for Ir {
+impl X64 for VirtualMachine {
     #[inline(always)]
     fn new() -> Self {
         let mut register = bitvec::prelude::BitVec::new();

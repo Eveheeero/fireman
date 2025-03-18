@@ -1,7 +1,10 @@
 //! 디컴파일 공통 기능을 담당하는 "Fire"구조체에 대해 정의하는 모듈
 
 use super::Sections;
-use crate::prelude::{DecompileError, IoError};
+use crate::{
+    core::Address,
+    prelude::{DecompileError, IoError},
+};
 use std::sync::Arc;
 
 /// ## Main Decompile Trait
@@ -63,7 +66,7 @@ pub trait Fire {
     /// - `Result<(), DecompileError>` - 디컴파일에 실패할 시 에러를 반환한다.
     fn decom_from_entry(&self) -> Result<(), DecompileError>;
 
-    /// 주어진 파일 오프셋부터 디컴파일을 수행한다.
+    /// 주어진 파일 오프셋부터 블럭이 끝날 때까지 디컴파일을 수행한다.
     ///
     /// ### Arguments
     /// - `address: u64` - 분석을 시작할 파일 오프셋
@@ -72,7 +75,7 @@ pub trait Fire {
     /// - `Result<(), DecompileError>` - 디컴파일에 실패할 시 에러를 반환한다.
     fn decom_from_file_offset(&self, address: u64) -> Result<(), DecompileError>;
 
-    /// 주어진 가상 주소부터 디컴파일을 수행한다.
+    /// 주어진 가상 주소부터 블럭이 끝날 때까지 디컴파일을 수행한다.
     ///
     /// ### Arguments
     /// - `address: u64` - 분석을 시작할 파일 오프셋
@@ -80,6 +83,15 @@ pub trait Fire {
     /// ### Returns
     /// - `Result<(), DecompileError>` - 디컴파일에 실패할 시 에러를 반환한다.
     fn decom_from_virtual_address(&self, address: u64) -> Result<(), DecompileError>;
+
+    /// 주어진 주소부터 블럭이 끝날 때까지 디컴파일을 수행한다.
+    ///
+    /// ### Arguments
+    /// - `address: &Address` - 분석을 시작할 주소
+    ///
+    /// ### Returns
+    /// - `Result<(), DecompileError>` - 디컴파일에 실패할 시 에러를 반환한다.
+    fn decom_block(&self, address: &Address) -> Result<(), DecompileError>;
 
     /// 분석 후 나온 모든 섹션의 정보를 가져온다.
     ///

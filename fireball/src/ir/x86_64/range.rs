@@ -1,4 +1,4 @@
-use crate::ir::{x86_64::X64Range, Ir, Register};
+use crate::ir::{x86_64::X64Range, Register, VirtualMachine};
 
 macro_rules! generate_range {
     ($name:ident, $block:literal, $from:literal, $to:literal) => {
@@ -9,7 +9,7 @@ macro_rules! generate_range {
     };
 }
 
-impl X64Range for Ir {
+impl X64Range for VirtualMachine {
     generate_range!(rax, 0, 0, 64);
     generate_range!(eax, 0, 0, 32);
     generate_range!(ax, 0, 0, 16);

@@ -1,6 +1,7 @@
 //! 프로그램을 분석하여 각 섹션별로 나온 "Block"을 정의하는 모듈
 
 use super::{Address, Relation, Section};
+use crate::ir::IrBlock;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 /// 분석에 의해 생성된 어셈블리단위 블럭
@@ -23,6 +24,10 @@ pub struct Block {
     connected_to: RwLock<Vec<Relation>>,
     /// 블럭의 섹션
     section: Option<Arc<Section>>,
+
+    /* 분석에 의해 생성된 데이터 */
+    /// 블럭의 IR 데이터
+    ir: RwLock<Option<IrBlock>>,
 }
 
 impl Block {
@@ -56,6 +61,7 @@ impl Block {
             connected_from: Default::default(),
             connected_to: Default::default(),
             section,
+            ir: Default::default(),
         })
     }
 
@@ -133,6 +139,20 @@ impl Block {
             self.connected_to.read().unwrap().len() <= 2,
             "한 블럭에는 최대 두 개의 블럭이 연결될 수 있습니다."
         );
+    }
+    /// 블럭의 IR 데이터를 반환한다.
+    ///
+    /// ### Returns
+    /// - `RwLockReadGuard<Option<IrBlock>>` - 블럭의 IR 데이터
+    pub fn get_ir(&self) -> RwLockReadGuard<Option<IrBlock>> {
+        self.ir.read().unwrap()
+    }
+    /// 블럭의 IR 데이터를 설정한다.
+    ///
+    /// ### Arguments
+    /// - `ir: IrBlock` - 블럭의 IR 데이터
+    pub fn set_ir(&self, ir: IrBlock) {
+        *self.ir.write().unwrap() = Some(ir);
     }
 }
 
