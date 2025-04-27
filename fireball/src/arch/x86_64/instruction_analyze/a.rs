@@ -70,3 +70,103 @@ pub(super) fn aaa() -> Box<[IrStatement]> {
     ]
     .into()
 }
+
+pub(super) fn adc() -> Box<[IrStatement]> {
+    let add = IrData::Operation(IrDataOperation::Binary {
+        operator: BinaryOperator::Add,
+        arg1: IrData::operand(1).b(),
+        arg2: IrData::operand(2).b(),
+        size: None,
+    });
+    let add = IrData::Operation(IrDataOperation::Binary {
+        operator: BinaryOperator::Add,
+        arg1: add.b(),
+        arg2: IrData::Operation(IrDataOperation::Unary {
+            operator: UnaryOperator::ZeroExtend,
+            arg: IrData::register(&cf).b(),
+            size: size(&cf),
+        })
+        .b(),
+        size: None,
+    });
+    let set_cf = IrStatement::Assignment {
+        from: IrData::Operation(IrDataOperation::Binary {
+            operator: BinaryOperator::SignedLess,
+            arg1: add.clone().b(),
+            arg2: IrData::operand(1).b(),
+            size: None,
+        }),
+        to: IrData::register(&cf),
+        size: size(&cf),
+    };
+    let assignment = IrStatement::Assignment {
+        from: add,
+        to: IrData::operand(1),
+        size: None,
+    };
+    let set_sf = IrStatement::Assignment {
+        from: IrData::Operation(IrDataOperation::Binary {
+            operator: BinaryOperator::SignedLess,
+            arg1: IrData::operand(1).b(),
+            arg2: IrData::Constant(0).b(),
+            size: None,
+        }),
+        to: IrData::register(&sf),
+        size: size(&sf),
+    };
+    let set_zf = IrStatement::Assignment {
+        from: IrData::Operation(IrDataOperation::Binary {
+            operator: BinaryOperator::Equal,
+            arg1: IrData::operand(1).b(),
+            arg2: IrData::Constant(0).b(),
+            size: None,
+        }),
+        to: IrData::register(&zf),
+        size: size(&zf),
+    };
+    let set_less = IrStatement::Assignment {
+        from: IrData::Operation(IrDataOperation::Unary {
+            operator: UnaryOperator::Not,
+            arg: IrData::Operation(IrDataOperation::Binary {
+                operator: BinaryOperator::Equal,
+                arg1: IrData::register(&sf).b(),
+                arg2: IrData::register(&of).b(),
+                size: None,
+            })
+            .b(),
+            size: None,
+        }),
+        to: IrData::register(&less),
+        size: size(&less),
+    };
+    let set_less_or_equal = IrStatement::Assignment {
+        from: IrData::Operation(IrDataOperation::Binary {
+            operator: BinaryOperator::Or,
+            arg1: IrData::register(&less).b(),
+            arg2: IrData::register(&zf).b(),
+            size: None,
+        }),
+        to: IrData::register(&less_or_equal),
+        size: size(&less_or_equal),
+    };
+    let set_below_or_equal = IrStatement::Assignment {
+        from: IrData::Operation(IrDataOperation::Binary {
+            operator: BinaryOperator::Or,
+            arg1: IrData::register(&less).b(),
+            arg2: IrData::register(&zf).b(),
+            size: None,
+        }),
+        to: IrData::register(&below_or_equal),
+        size: size(&below_or_equal),
+    };
+    [
+        set_cf,
+        assignment,
+        set_sf,
+        set_zf,
+        set_less,
+        set_less_or_equal,
+        set_below_or_equal,
+    ]
+    .into()
+}
