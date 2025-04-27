@@ -1,5 +1,5 @@
 use crate::ir::operator::{BinaryOperator, UnaryOperator};
-use std::num::NonZeroU16;
+use std::num::{NonZeroU16, NonZeroU8};
 
 /// IR 내부에 사용되는 데이터
 ///
@@ -17,6 +17,8 @@ pub enum IrData {
     Dereference(Box<IrData>),
     /// Operator
     Operator(IrDataOperator),
+    /// Nth operand
+    Operand(NonZeroU8),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -38,13 +40,25 @@ pub enum IrDataOperator {
         operator: UnaryOperator,
         arg: Box<IrData>,
         /// arg size
-        size: NonZeroU16,
+        size: Option<NonZeroU16>,
     },
     Binary {
         operator: BinaryOperator,
         arg1: Box<IrData>,
         arg2: Box<IrData>,
         /// arg size
-        size: NonZeroU16,
+        size: Option<NonZeroU16>,
     },
+}
+
+impl IrData {
+    pub fn register(o: &crate::ir::Register) -> Self {
+        Self::Register(o.clone())
+    }
+    pub const fn operand(o: u8) -> Self {
+        Self::Operand(NonZeroU8::new(o).unwrap())
+    }
+    pub fn b(self) -> Box<Self> {
+        Box::new(self)
+    }
 }

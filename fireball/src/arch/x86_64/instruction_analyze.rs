@@ -27,7 +27,6 @@ pub fn create_ir_statement(instruction: &Instruction) -> Box<[IrStatement]> {
 
     match op {
         X64Statement::Aaa => a::aaa(),
-        // X64Statement::Aad => [IRStatement::Touch],
         _ => [IrStatement::Unknown(IrStatementUnknown::Instruction(
             instruction.clone(),
         ))]
@@ -36,18 +35,15 @@ pub fn create_ir_statement(instruction: &Instruction) -> Box<[IrStatement]> {
 }
 
 /// return size of register (byte)
-fn size(data: &crate::ir::Register) -> NonZeroU16 {
+fn size(data: &crate::ir::Register) -> Option<NonZeroU16> {
     let bit_len = data.bit_len() as u16;
     let byte_len = bit_len / 8;
-    NonZeroU16::new(byte_len).unwrap()
+    NonZeroU16::new(byte_len)
 }
 #[test]
 fn size_test() {
     let eax_size = size(&super::static_register::eax);
     let rax_size = size(&super::static_register::rax);
-    assert_eq!(eax_size, NonZeroU16::new(4).unwrap());
-    assert_eq!(rax_size, NonZeroU16::new(8).unwrap());
-}
-fn max() -> NonZeroU16 {
-    NonZeroU16::MAX
+    assert_eq!(eax_size, NonZeroU16::new(4));
+    assert_eq!(rax_size, NonZeroU16::new(8));
 }

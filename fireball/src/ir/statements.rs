@@ -16,7 +16,7 @@ pub enum IrStatement {
     Assignment {
         from: IrData,
         to: IrData,
-        size: NonZeroU16,
+        size: Option<NonZeroU16>,
     },
     /// 명령 라인 변경
     Jump(IrStatementJump),
@@ -30,12 +30,11 @@ pub enum IrStatement {
     Touch {
         data: IrData,
         access_type: AccessType,
-        size: NonZeroU16,
+        size: Option<NonZeroU16>,
     },
     /// 조건문
     Condition {
         condition: IrData,
-        size: NonZeroU16,
         true_branch: Box<[IrStatement]>,
         false_branch: Box<[IrStatement]>,
     },
