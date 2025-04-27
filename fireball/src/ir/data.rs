@@ -15,8 +15,8 @@ pub enum IrData {
     Register(crate::ir::Register),
     /// mov eax, dword ptr [eax]의 dword ptr [eax]
     Dereference(Box<IrData>),
-    /// Operator
-    Operator(IrDataOperator),
+    /// Operation
+    Operation(IrDataOperation),
     /// Nth operand
     Operand(NonZeroU8),
 }
@@ -35,7 +35,7 @@ pub enum AccessType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum IrDataOperator {
+pub enum IrDataOperation {
     Unary {
         operator: UnaryOperator,
         arg: Box<IrData>,

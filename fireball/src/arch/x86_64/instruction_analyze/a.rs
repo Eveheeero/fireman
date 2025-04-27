@@ -3,13 +3,13 @@ use super::size;
 use crate::ir::{data::*, operator::*, statements::*};
 
 pub(super) fn aaa() -> Box<[IrStatement]> {
-    let al_and_0fh = IrData::Operator(IrDataOperator::Binary {
+    let al_and_0fh = IrData::Operation(IrDataOperation::Binary {
         operator: BinaryOperator::And,
         arg1: IrData::Intrinsic(IntrinsicType::Undefined(IrData::register(&al).b())).b(),
         arg2: IrData::Constant(0x0f).b(),
         size: size(&al),
     });
-    let al_and_0fh_lt_9 = IrData::Operator(IrDataOperator::Binary {
+    let al_and_0fh_lt_9 = IrData::Operation(IrDataOperation::Binary {
         operator: BinaryOperator::UnsignedLess,
         arg1: IrData::Constant(9).b(),
         arg2: al_and_0fh.b(),
@@ -17,7 +17,7 @@ pub(super) fn aaa() -> Box<[IrStatement]> {
     });
     let then = [
         IrStatement::Assignment {
-            from: IrData::Operator(IrDataOperator::Binary {
+            from: IrData::Operation(IrDataOperation::Binary {
                 operator: BinaryOperator::Add,
                 arg1: IrData::Intrinsic(IntrinsicType::Undefined(IrData::register(&ax).b())).b(),
                 arg2: IrData::Constant(0x106).b(),
@@ -50,7 +50,7 @@ pub(super) fn aaa() -> Box<[IrStatement]> {
         },
     ];
     let after = IrStatement::Assignment {
-        from: IrData::Operator(IrDataOperator::Binary {
+        from: IrData::Operation(IrDataOperation::Binary {
             operator: BinaryOperator::And,
             arg1: IrData::register(&al).b(),
             arg2: IrData::Constant(0x0f).b(),
