@@ -4,7 +4,7 @@ macro_rules! generate_range {
     ($name:ident, $block:literal, $from:literal, $to:literal) => {
         #[inline(always)]
         fn $name() -> Register {
-            (($block * 64 + $from)..($block * 64 + $to)).into()
+            Register::new((($block * 64 + $from)..($block * 64 + $to)))
         }
     };
 }

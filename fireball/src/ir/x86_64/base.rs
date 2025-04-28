@@ -11,7 +11,7 @@ macro_rules! generate_register {
     ($name:ident) => {
         #[inline(always)]
         fn $name(&self) -> &BitSlice {
-            &self.get_raw()[<VirtualMachine as X64Range>::$name().inner()]
+            &self.get_raw()[<VirtualMachine as X64Range>::$name().bit_range()]
         }
     };
 }

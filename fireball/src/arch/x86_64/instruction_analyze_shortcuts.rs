@@ -90,7 +90,7 @@ pub(super) fn halt() -> IrStatement {
 #[inline]
 #[must_use]
 pub(super) fn r(r: &crate::ir::Register) -> IrData {
-    IrData::Register(r.clone())
+    IrData::Register(*r)
 }
 /// Operand
 #[inline]
