@@ -1,10 +1,11 @@
 //! x86_64 아키텍처 인스트럭션을 IR로 변환하는 함수가 담긴 모듈
 
 mod a;
+#[path = "instruction_analyze_shortcuts.rs"]
+mod shortcuts;
 
 use crate::{core::Instruction, ir::statements::*};
 use iceball::Statement;
-use std::num::NonZeroU16;
 
 /// 어셈블리 인스트럭션을 받아 IR 명령으로 변환한다.
 ///
@@ -126,18 +127,4 @@ pub fn create_ir_statement(instruction: &Instruction) -> Box<[IrStatement]> {
         ))]
         .into(),
     }
-}
-
-/// return size of register (byte)
-fn size(data: &crate::ir::Register) -> Option<NonZeroU16> {
-    let bit_len = data.bit_len() as u16;
-    let byte_len = bit_len / 8;
-    NonZeroU16::new(byte_len)
-}
-#[test]
-fn size_test() {
-    let eax_size = size(&super::static_register::eax);
-    let rax_size = size(&super::static_register::rax);
-    assert_eq!(eax_size, NonZeroU16::new(4));
-    assert_eq!(rax_size, NonZeroU16::new(8));
 }

@@ -38,13 +38,13 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IrStatement]) -> Ve
                     shown_in: address.clone(),
                     location: from.clone(),
                     data_type: DataType::Unknown,
-                    data_size: Some(*size),
+                    data_size: *size,
                 });
                 known_datatypes.push(KnownDataType {
                     shown_in: address.clone(),
                     location: to.clone(),
                     data_type: DataType::Unknown,
-                    data_size: Some(*size),
+                    data_size: *size,
                 });
             }
             crate::ir::statements::IrStatement::Jump(irstatement_jump) => match irstatement_jump {
@@ -84,12 +84,11 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IrStatement]) -> Ve
                     shown_in: address.clone(),
                     location: data.clone(),
                     data_type: DataType::Unknown,
-                    data_size: Some(*size),
+                    data_size: *size,
                 });
             }
             crate::ir::statements::IrStatement::Condition {
                 condition,
-                size,
                 true_branch,
                 false_branch,
             } => {
@@ -97,7 +96,7 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IrStatement]) -> Ve
                     shown_in: address.clone(),
                     location: condition.clone(),
                     data_type: DataType::Unknown,
-                    data_size: Some(*size),
+                    data_size: None,
                 });
                 let true_branch = analyze_datatype_raw(address, true_branch);
                 let false_branch = analyze_datatype_raw(address, false_branch);
