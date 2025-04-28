@@ -63,14 +63,6 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IrStatement]) -> Ve
                     data_size: None,
                 });
             }
-            crate::ir::statements::IrStatement::Touch { data, size, .. } => {
-                known_datatypes.push(KnownDataType {
-                    shown_in: address.clone(),
-                    location: data.clone(),
-                    data_type: DataType::Unknown,
-                    data_size: *size,
-                });
-            }
             crate::ir::statements::IrStatement::Condition {
                 condition,
                 true_branch,

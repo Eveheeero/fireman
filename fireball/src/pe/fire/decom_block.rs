@@ -31,6 +31,7 @@ impl PE {
             let ir = Ir {
                 address: instruction_address.clone(),
                 statements,
+                affected: Vec::new(),
             };
             ir_block.push(ir);
 
@@ -50,6 +51,8 @@ impl PE {
         let mut ir_block = IrBlock::new(ir_block);
 
         /* 분석 */
+        // TODO 데이터 엑세스 분석
+        // ir_block.analyze_data_access();
         // 접근 메모리 영역 파악 및 사용 인스트럭션에 따른 타입 지정
         ir_block.analyze_datatypes();
         // native api 호출 인자에 따른 타입 재 지정

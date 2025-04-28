@@ -29,7 +29,13 @@ pub enum IntrinsicType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AccessType {
+pub struct DataAccess {
+    data: IrData,
+    access_type: DataAccessType,
+    size: Option<NonZeroU16>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DataAccessType {
     Read,
     Write,
 }

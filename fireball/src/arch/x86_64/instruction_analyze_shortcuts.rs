@@ -56,23 +56,6 @@ pub(super) fn call(target: impl Into<IrData>) -> IrStatement {
 }
 #[inline]
 #[must_use]
-pub(super) fn touch_read(data: impl Into<IrData>, size: impl Into<IntoNonZeroU16>) -> IrStatement {
-    IrStatement::Touch {
-        data: data.into(),
-        access_type: AccessType::Read,
-        size: size.into().into(),
-    }
-}
-#[inline]
-#[must_use]
-pub(super) fn touch_write(data: impl Into<IrData>, size: impl Into<IntoNonZeroU16>) -> IrStatement {IrStatement::Touch {
-        data: data.into(),
-        access_type: AccessType::Write,
-        size: size.into().into(),
-    }
-}
-#[inline]
-#[must_use]
 pub(super) fn type_specified(
     location: impl Into<IrData>,
     size: impl Into<IntoNonZeroU16>,

@@ -1,7 +1,7 @@
 //! IR의 각 명령이 담겨져 있는 모듈
 
 use crate::core::Instruction;
-use crate::ir::data::{AccessType, IrData};
+use crate::ir::data::IrData;
 use std::num::NonZeroU16;
 
 /// IR의 각 명령에 대한 Enum
@@ -28,12 +28,6 @@ pub enum IrStatement {
     },
     /// 함수 호출 후 반환
     Halt,
-    /// 값 접근
-    Touch {
-        data: IrData,
-        access_type: AccessType,
-        size: Option<NonZeroU16>,
-    },
     /// 조건문
     Condition {
         condition: IrData,

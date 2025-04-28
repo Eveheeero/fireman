@@ -8,7 +8,7 @@ mod register;
 pub mod statements;
 pub mod x86_64;
 
-use crate::{core::Address, prelude::BitBox};
+use crate::{core::Address, ir::data::DataAccess, prelude::BitBox};
 pub use register::Register;
 use statements::IrStatement;
 use std::{cell::UnsafeCell, collections::HashSet};
@@ -40,18 +40,18 @@ impl VirtualMachine {
 /// 한 블럭 안에서 IR명령이 어떻게 동작하는지를 저장하는 구조체
 #[derive(Debug, Clone)]
 pub struct IrBlock {
-    ir: Vec<Ir>,
+    ir: Box<[Ir]>,
     known_datatypes: Option<HashSet<analyze::KnownDataType>>,
 }
 
 impl IrBlock {
     pub fn new(data: Vec<Ir>) -> Self {
         Self {
-            ir: data,
+            ir: data.into_boxed_slice(),
             known_datatypes: None,
         }
     }
-    pub fn ir(&self) -> &Vec<Ir> {
+    pub fn ir(&self) -> &[Ir] {
         &self.ir
     }
     pub fn analyze_datatypes(&mut self) {
@@ -67,7 +67,8 @@ impl IrBlock {
     pub fn get_datatypes(&self) -> Option<&HashSet<analyze::KnownDataType>> {
         self.known_datatypes.as_ref()
     }
-    pub fn set_datatypes(&mut self, data: HashSet<analyze::KnownDataType>) {
+    pub fn set_datatypes(&mut self, mut data: HashSet<analyze::KnownDataType>) {
+        data.shrink_to_fit();
         self.known_datatypes = Some(data);
     }
 }
@@ -81,4 +82,6 @@ pub struct Ir {
     pub address: Address,
     /// 실행된 명령
     pub statements: Box<[IrStatement]>,
+    /// 해당 IR이 어떤 영역에 영향을 받는지
+    pub affected: Vec<DataAccess>,
 }
