@@ -1,7 +1,6 @@
 //! IR의 각 명령이 담겨져 있는 모듈
 
-use crate::ir::data::IrData;
-use std::num::NonZeroU16;
+use crate::ir::data::{AccessSize, IrData};
 
 /// IR의 각 명령에 대한 Enum
 ///
@@ -17,7 +16,7 @@ pub enum IrStatement {
     Assignment {
         from: IrData,
         to: IrData,
-        size: Option<NonZeroU16>,
+        size: AccessSize,
     },
     /// 명령 라인 변경
     Jump {
@@ -42,7 +41,7 @@ pub enum IrStatement {
 pub enum IrStatementSpecial {
     TypeSpecified {
         location: IrData,
-        size: Option<NonZeroU16>,
+        size: AccessSize,
         data_type: crate::ir::analyze::DataType,
     },
     ArchitectureByteSizeCondition {

@@ -3,26 +3,30 @@ use std::ops::Deref;
 
 #[box_to_static_reference]
 pub(super) fn adc() -> &'static [IrStatement] {
-    let add = b::add(o(1), o(2), None);
-    let add = b::add(add, u::zero_extend(r(&cf), size(&cf)), None);
-    let set_cf = assign(b::signed_less(add.clone(), o(1), None), r(&cf), size(&cf));
-    let assignment = assign(add, o(1), None);
-    let set_sf = assign(b::signed_less(o(1), c(0), None), r(&sf), size(&sf));
-    let set_zf = assign(b::equal(o(1), c(0), None), r(&zf), size(&zf));
+    let add = b::add(o1, o2, o1_size());
+    let add = b::add(add, u::zero_extend(r(&cf), o1_size()), o1_size());
+    let set_cf = assign(
+        b::signed_less(add.clone(), o1, o1_size()),
+        r(&cf),
+        size_fix(&cf),
+    );
+    let assignment = assign(add, o1, o1_size());
+    let set_sf = assign(b::signed_less(o1, c(0), o1_size()), r(&sf), size_fix(&sf));
+    let set_zf = assign(b::equal(o1, c(0), o1_size()), r(&zf), size_fix(&zf));
     let set_less = assign(
-        u::not(b::equal(r(&sf), r(&of), None), None),
+        u::not(b::equal(r(&sf), r(&of), s_fix(&of)), s_fix(&of)),
         r(&less),
-        size(&less),
+        size_fix(&less),
     );
     let set_less_or_equal = assign(
-        b::or(r(&less), r(&zf), None),
+        b::or(r(&less), r(&zf), s_fix(&of)),
         r(&less_or_equal),
-        size(&less_or_equal),
+        size_fix(&less_or_equal),
     );
     let set_below_or_equal = assign(
-        b::or(r(&less), r(&zf), None),
+        b::or(r(&less), r(&zf), s_fix(&of)),
         r(&below_or_equal),
-        size(&below_or_equal),
+        size_fix(&below_or_equal),
     );
     [
         set_cf,

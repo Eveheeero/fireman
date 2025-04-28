@@ -31,7 +31,7 @@ pub enum IntrinsicType {
 pub struct DataAccess {
     data: IrData,
     access_type: DataAccessType,
-    size: Option<NonZeroU16>,
+    size: AccessSize,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DataAccessType {
@@ -45,13 +45,20 @@ pub enum IrDataOperation {
         operator: UnaryOperator,
         arg: Box<IrData>,
         /// arg size
-        size: Option<NonZeroU16>,
+        size: AccessSize,
     },
     Binary {
         operator: BinaryOperator,
         arg1: Box<IrData>,
         arg2: Box<IrData>,
         /// arg size
-        size: Option<NonZeroU16>,
+        size: AccessSize,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AccessSize {
+    Fixed { bit_len: NonZeroU16 },
+    Relative { with: Box<IrData> },
+    ArchitectureSize,
 }
