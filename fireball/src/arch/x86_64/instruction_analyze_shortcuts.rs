@@ -1,4 +1,5 @@
 pub(super) use crate::ir::{data::*, operator::*, statements::*};
+pub(super) use fireman_macro::box_to_static_reference;
 use std::num::{NonZeroU16, NonZeroU8};
 
 /// return size of register (byte)

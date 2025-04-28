@@ -1,5 +1,7 @@
 use super::{super::static_register::*, shortcuts::*};
+use std::ops::Deref;
 
+#[box_to_static_reference]
 pub(super) fn adc() -> &'static [IrStatement] {
     let add = b::add(o(1), o(2), None);
     let add = b::add(add, u::zero_extend(r(&cf), size(&cf)), None);
@@ -22,15 +24,14 @@ pub(super) fn adc() -> &'static [IrStatement] {
         r(&below_or_equal),
         size(&below_or_equal),
     );
-    todo!()
-    // [
-    //     set_cf,
-    //     assignment,
-    //     set_sf,
-    //     set_zf,
-    //     set_less,
-    //     set_less_or_equal,
-    //     set_below_or_equal,
-    // ]
-    // .into()
+    [
+        set_cf,
+        assignment,
+        set_sf,
+        set_zf,
+        set_less,
+        set_less_or_equal,
+        set_below_or_equal,
+    ]
+    .into()
 }
