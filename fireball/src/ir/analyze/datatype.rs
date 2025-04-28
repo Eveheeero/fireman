@@ -47,30 +47,14 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IrStatement]) -> Ve
                     data_size: *size,
                 });
             }
-            crate::ir::statements::IrStatement::Jump(irstatement_jump) => match irstatement_jump {
-                crate::ir::statements::IrStatementJump::Conditional { ok, fail } => {
-                    known_datatypes.push(KnownDataType {
-                        shown_in: address.clone(),
-                        location: ok.clone(),
-                        data_type: DataType::Address,
-                        data_size: None,
-                    });
-                    known_datatypes.push(KnownDataType {
-                        shown_in: address.clone(),
-                        location: fail.clone(),
-                        data_type: DataType::Address,
-                        data_size: None,
-                    });
-                }
-                crate::ir::statements::IrStatementJump::Unconditional(irdata) => {
-                    known_datatypes.push(KnownDataType {
-                        shown_in: address.clone(),
-                        location: irdata.clone(),
-                        data_type: DataType::Address,
-                        data_size: None,
-                    });
-                }
-            },
+            crate::ir::statements::IrStatement::Jump { target } => {
+                known_datatypes.push(KnownDataType {
+                    shown_in: address.clone(),
+                    location: target.clone(),
+                    data_type: DataType::Address,
+                    data_size: None,
+                });
+            }
             crate::ir::statements::IrStatement::Call { target } => {
                 known_datatypes.push(KnownDataType {
                     shown_in: address.clone(),

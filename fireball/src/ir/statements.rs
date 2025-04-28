@@ -19,7 +19,9 @@ pub enum IrStatement {
         size: Option<NonZeroU16>,
     },
     /// 명령 라인 변경
-    Jump(IrStatementJump),
+    Jump {
+        target: IrData,
+    },
     /// 함수 호출
     Call {
         target: IrData,
@@ -45,12 +47,6 @@ pub enum IrStatement {
 pub enum IrStatementUnknown {
     Instruction(Instruction),
     Bytecode(Box<[u8]>),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IrStatementJump {
-    Conditional { ok: IrData, fail: IrData },
-    Unconditional(IrData),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
