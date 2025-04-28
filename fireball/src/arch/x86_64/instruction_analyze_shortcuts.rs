@@ -85,6 +85,16 @@ pub(super) fn architecture_byte_size_condition(
 pub(super) fn halt() -> IrStatement {
     IrStatement::Halt
 }
+#[inline]
+#[must_use]
+pub(super) const fn undefined_behavior() -> IrStatement {
+    IrStatement::Undefined
+}
+#[inline]
+#[must_use]
+pub(super) const fn exception(msg: &'static str) -> IrStatement {
+    IrStatement::Exception(msg)
+}
 
 /// Register
 #[inline]
@@ -112,13 +122,13 @@ pub(super) fn d(d: impl Into<Box<IrData>>) -> IrData {
 }
 #[inline]
 #[must_use]
-pub(super) fn unknown_data(u: impl Into<Box<IrData>>) -> IrData {
-    IrData::Intrinsic(IntrinsicType::Unknown(u.into()))
+pub(super) const fn unknown_data() -> IrData {
+    IrData::Intrinsic(IntrinsicType::Unknown)
 }
 #[inline]
 #[must_use]
-pub(super) fn undefined_data(u: impl Into<Box<IrData>>) -> IrData {
-    IrData::Intrinsic(IntrinsicType::Undefined(u.into()))
+pub(super) const fn undefined_data() -> IrData {
+    IrData::Intrinsic(IntrinsicType::Undefined)
 }
 /// Unary Operation
 pub(super) mod u {

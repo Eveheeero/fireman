@@ -27,7 +27,6 @@ pub fn create_ir_statement(instruction: &Instruction) -> Box<[IrStatement]> {
     use iceball::X64Statement;
 
     match op {
-        X64Statement::Aaa => a::aaa(),
         X64Statement::Adc => a::adc(),
         X64Statement::Add
         | X64Statement::And

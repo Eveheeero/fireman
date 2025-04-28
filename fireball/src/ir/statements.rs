@@ -12,6 +12,10 @@ use std::num::NonZeroU16;
 pub enum IrStatement {
     /// 해석할 수 없는 명령, 인라인 어셈블리로 처리됩니다.
     Unknown(IrStatementUnknown),
+    /// 정의되지 않은 명령
+    Undefined,
+    /// 오류 발생
+    Exception(&'static str),
     /// 변수 할당
     Assignment {
         from: IrData,
