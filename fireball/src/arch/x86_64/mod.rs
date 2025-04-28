@@ -111,22 +111,39 @@ mod static_register {
     static_register!(rflags);
     static_register!(eflags);
     static_register!(flags);
+    /// Carry Flag, true if over/underflow during unsigned operation.
     static_register!(cf);
+    /// Parity Flag, true if number of 1 bits is even. (for error detection)
     static_register!(pf);
+    /// Adjust Flag, true if result of operation is adjusted.
     static_register!(af);
+    /// Zero Flag, true if result is zero.
     static_register!(zf);
+    /// Sign Flag, true if result is negative.
     static_register!(sf);
+    /// Trap Flag, if true, break(int1) every step
     static_register!(tf);
+    /// Interrupt Enable Flag, if true, interrupt is enabled.
     static_register!(r#if);
+    /// Direction Flag, true if string operation is backward.
     static_register!(df);
+    /// Overflow Flag, true if overflow/underflow during signed operation.
     static_register!(of);
+    /// I/O Privilege Level, 0 for kernel, 3 for user.
     static_register!(iopl);
+    /// Nested Task Flag, true if nested task.
     static_register!(nt);
+    /// Resume Flag, true if resume from exception.
     static_register!(rf);
+    /// Virtual 8086 Mode, true if in 8086 mode.
     static_register!(vm);
+    /// Alignment Check Flag.
     static_register!(ac);
+    /// Virtual Interrupt Flag, true if virtual interrupt.
     static_register!(vif);
+    /// Virtual Interrupt Pending Flag, true if virtual interrupt pending.
     static_register!(vip);
+    /// ID Flag, true if CPUID is supported.
     static_register!(id);
 
     static_register!(less);
