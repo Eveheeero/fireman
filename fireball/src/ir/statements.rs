@@ -1,6 +1,5 @@
 //! IR의 각 명령이 담겨져 있는 모듈
 
-use crate::core::Instruction;
 use crate::ir::data::IrData;
 use std::num::NonZeroU16;
 

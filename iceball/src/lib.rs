@@ -13,9 +13,9 @@ pub struct Instruction {
     /// aka. opcode
     pub statement: Result<Statement, DisassembleError>,
     /// aka. mnemnonic
-    pub arguments: Vec<Argument>,
+    pub arguments: Box<[Argument]>,
     /// original bytes
-    pub bytes: Option<Vec<u8>>,
+    pub bytes: Option<Box<[u8]>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,7 +41,7 @@ pub enum Argument {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Memory {
     AbsoluteAddressing(u64),
-    RelativeAddressing(Vec<RelativeAddressingArgument>),
+    RelativeAddressing(Box<[RelativeAddressingArgument]>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,9 +71,9 @@ impl Instruction {
     /// From disassembled instruction, parse bytes (if bytes not exists)
     ///
     /// ### Returns
-    /// - `Result<Vec<u8>>`: bytes, err if unknown statement
-    pub fn get_bytes(&self) -> Result<Vec<u8>, DisassembleError> {
-        unimplemented!()
+    /// - `Result<&[u8], DisassembleError>`: bytes, err if unknown statement
+    pub fn get_bytes(&self) -> Result<&[u8], DisassembleError> {
+        self.bytes.as_deref().ok_or(DisassembleError::Unknown) // TODO Instruction to bytes not implemented
     }
     pub fn is_jcc(&self) -> bool {
         self.statement.is_ok() && self.statement.unwrap().is_jcc()
