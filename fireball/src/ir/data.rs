@@ -25,7 +25,6 @@ pub enum IrData {
 pub enum IntrinsicType {
     Unknown(Box<IrData>),
     Undefined(Box<IrData>),
-    ReturnAddress(Box<IrData>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

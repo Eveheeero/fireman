@@ -120,11 +120,6 @@ pub(super) fn unknown_data(u: impl Into<Box<IrData>>) -> IrData {
 pub(super) fn undefined_data(u: impl Into<Box<IrData>>) -> IrData {
     IrData::Intrinsic(IntrinsicType::Undefined(u.into()))
 }
-#[inline]
-#[must_use]
-pub(super) fn ret(r: impl Into<Box<IrData>>) -> IrData {
-    IrData::Intrinsic(IntrinsicType::ReturnAddress(r.into()))
-}
 /// Unary Operation
 pub(super) mod u {
     use super::*;
