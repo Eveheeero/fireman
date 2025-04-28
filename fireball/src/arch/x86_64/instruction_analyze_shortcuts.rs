@@ -44,11 +44,6 @@ pub(super) fn uncondition_jump(target: impl Into<IrData>) -> IrStatement {
 }
 #[inline]
 #[must_use]
-pub(super) fn unknown_statement(u: IrStatementUnknown) -> IrStatement {
-    IrStatement::Unknown(u)
-}
-#[inline]
-#[must_use]
 pub(super) fn call(target: impl Into<IrData>) -> IrStatement {
     IrStatement::Call {
         target: target.into(),

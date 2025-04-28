@@ -13,20 +13,17 @@ use iceball::Statement;
 /// - `instruction` : 어셈블리 인스트럭션
 ///
 /// ### Returns
-/// `Box<[IrStatement]>` : IR 명령 배열
-pub fn create_ir_statement(instruction: &Instruction) -> Box<[IrStatement]> {
+/// `Option<&'static [IrStatement]>` : IR 명령 배열, 분석 실패시 None
+pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStatement]> {
     let op = if let Ok(Statement::X64(op)) = instruction.inner.statement {
         op
     } else {
-        return [IrStatement::Unknown(IrStatementUnknown::Instruction(
-            instruction.clone(),
-        ))]
-        .into();
+        return None;
     };
 
     use iceball::X64Statement;
 
-    match op {
+    Some(match op {
         X64Statement::Adc => a::adc(),
         X64Statement::Add
         | X64Statement::And
@@ -121,9 +118,6 @@ pub fn create_ir_statement(instruction: &Instruction) -> Box<[IrStatement]> {
         | X64Statement::Stosw
         | X64Statement::Stosd
         | X64Statement::Stosq
-        | _ => [IrStatement::Unknown(IrStatementUnknown::Instruction(
-            instruction.clone(),
-        ))]
-        .into(),
-    }
+        | _ => None?,
+    })
 }

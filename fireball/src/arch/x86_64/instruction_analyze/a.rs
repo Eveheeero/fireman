@@ -1,6 +1,6 @@
 use super::{super::static_register::*, shortcuts::*};
 
-pub(super) fn adc() -> Box<[IrStatement]> {
+pub(super) fn adc() -> &'static [IrStatement] {
     let add = b::add(o(1), o(2), None);
     let add = b::add(add, u::zero_extend(r(&cf), size(&cf)), None);
     let set_cf = assign(b::signed_less(add.clone(), o(1), None), r(&cf), size(&cf));
@@ -22,14 +22,15 @@ pub(super) fn adc() -> Box<[IrStatement]> {
         r(&below_or_equal),
         size(&below_or_equal),
     );
-    [
-        set_cf,
-        assignment,
-        set_sf,
-        set_zf,
-        set_less,
-        set_less_or_equal,
-        set_below_or_equal,
-    ]
-    .into()
+    todo!()
+    // [
+    //     set_cf,
+    //     assignment,
+    //     set_sf,
+    //     set_zf,
+    //     set_less,
+    //     set_less_or_equal,
+    //     set_below_or_equal,
+    // ]
+    // .into()
 }

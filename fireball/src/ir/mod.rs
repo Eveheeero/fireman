@@ -8,7 +8,12 @@ mod register;
 pub mod statements;
 pub mod x86_64;
 
-use crate::{core::Address, ir::data::DataAccess, prelude::BitBox};
+use crate::{
+    core::{Address, Instruction},
+    ir::data::DataAccess,
+    prelude::BitBox,
+};
+use either::Either;
 pub use register::Register;
 use statements::IrStatement;
 use std::{cell::UnsafeCell, collections::HashSet};
@@ -56,7 +61,7 @@ impl IrBlock {
     }
     pub fn analyze_datatypes(&mut self) {
         let mut known_datatypes: HashSet<analyze::KnownDataType> = HashSet::new();
-        for ir in self.ir.iter() {
+        for ir in self.ir.iter().filter(|ir| ir.statements.is_left()) {
             let analyzed_datatype = analyze::analyze_datatype(ir);
             for datatype in analyzed_datatype {
                 known_datatypes.insert(datatype);
@@ -80,8 +85,8 @@ impl IrBlock {
 pub struct Ir {
     /// IR 변화가 일어난 주소
     pub address: Address,
-    /// 실행된 명령
-    pub statements: Box<[IrStatement]>,
+    /// 실행된 명령. 파싱 실패시 Instruction
+    pub statements: Either<&'static [IrStatement], Instruction>,
     /// 해당 IR이 어떤 영역에 영향을 받는지
     pub affected: Vec<DataAccess>,
 }

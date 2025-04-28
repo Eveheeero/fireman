@@ -10,8 +10,6 @@ use std::num::NonZeroU16;
 /// snowman's expressions.h, StatementBase based classes, or snowman's ir::statement.h classes
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IrStatement {
-    /// 해석할 수 없는 명령, 인라인 어셈블리로 처리됩니다.
-    Unknown(IrStatementUnknown),
     /// 정의되지 않은 명령
     Undefined,
     /// 오류 발생
@@ -39,12 +37,6 @@ pub enum IrStatement {
         false_branch: Box<[IrStatement]>,
     },
     Special(IrStatementSpecial),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IrStatementUnknown {
-    Instruction(Instruction),
-    Bytecode(Box<[u8]>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

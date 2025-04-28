@@ -24,7 +24,12 @@ pub enum DataType {
 }
 
 pub fn analyze_datatype(ir: &Ir) -> Vec<KnownDataType> {
-    analyze_datatype_raw(&ir.address, &ir.statements)
+    analyze_datatype_raw(
+        &ir.address,
+        ir.statements
+            .as_ref()
+            .expect_left("분석에 실패한 IR데이터가 입력되었습니다."),
+    )
 }
 
 /// ### TODO
