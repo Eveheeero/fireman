@@ -62,3 +62,14 @@ pub enum AccessSize {
     Relative { with: Box<IrData> },
     ArchitectureSize,
 }
+
+impl Into<Box<IrData>> for &IrData {
+    fn into(self) -> Box<IrData> {
+        Box::new(self.clone())
+    }
+}
+impl Into<IrData> for &IrData {
+    fn into(self) -> IrData {
+        self.clone()
+    }
+}

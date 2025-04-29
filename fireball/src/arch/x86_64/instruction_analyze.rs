@@ -1,8 +1,21 @@
 //! x86_64 아키텍처 인스트럭션을 IR로 변환하는 함수가 담긴 모듈
 
 mod a;
-#[path = "instruction_analyze_shortcuts.rs"]
-mod shortcuts;
+#[path = "instruction_analyze_shortcuts"]
+mod shortcuts {
+    #![allow(non_upper_case_globals, unused_imports)]
+
+    mod data;
+    mod macros;
+    mod statements;
+
+    pub(in crate::arch) use crate::ir::{data::*, operator::*, statements::*};
+    pub(in crate::arch) use data::*;
+    pub(in crate::arch) use fireman_macro::box_to_static_reference;
+    pub(in crate::arch) use macros::*;
+    pub(in crate::arch) use statements::*;
+    use std::num::{NonZeroU16, NonZeroU8};
+}
 
 use crate::{core::Instruction, ir::statements::*};
 use iceball::Statement;
