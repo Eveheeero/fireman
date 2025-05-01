@@ -44,15 +44,11 @@ pub enum IrDataOperation {
     Unary {
         operator: UnaryOperator,
         arg: Box<IrData>,
-        /// arg size
-        size: AccessSize,
     },
     Binary {
         operator: BinaryOperator,
         arg1: Box<IrData>,
         arg2: Box<IrData>,
-        /// arg size
-        size: AccessSize,
     },
 }
 

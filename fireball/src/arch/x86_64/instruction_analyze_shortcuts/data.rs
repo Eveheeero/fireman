@@ -85,37 +85,36 @@ pub(in crate::arch) mod u {
 
     #[inline]
     #[must_use]
-    fn transform(operator: UnaryOperator, arg: impl Into<Box<IrData>>, size: AccessSize) -> IrData {
+    fn transform(operator: UnaryOperator, arg: impl Into<Box<IrData>>) -> IrData {
         IrData::Operation(IrDataOperation::Unary {
             operator,
             arg: arg.into(),
-            size,
         })
     }
     #[inline]
     #[must_use]
-    pub(in crate::arch) fn not(arg: impl Into<Box<IrData>>, size: AccessSize) -> IrData {
-        transform(UnaryOperator::Not, arg, size)
+    pub(in crate::arch) fn not(arg: impl Into<Box<IrData>>) -> IrData {
+        transform(UnaryOperator::Not, arg)
     }
     #[inline]
     #[must_use]
-    pub(in crate::arch) fn neg(arg: impl Into<Box<IrData>>, size: AccessSize) -> IrData {
-        transform(UnaryOperator::Negation, arg, size)
+    pub(in crate::arch) fn neg(arg: impl Into<Box<IrData>>) -> IrData {
+        transform(UnaryOperator::Negation, arg)
     }
     #[inline]
     #[must_use]
-    pub(in crate::arch) fn sign_extend(arg: impl Into<Box<IrData>>, size: AccessSize) -> IrData {
-        transform(UnaryOperator::SignExtend, arg, size)
+    pub(in crate::arch) fn sign_extend(arg: impl Into<Box<IrData>>) -> IrData {
+        transform(UnaryOperator::SignExtend, arg)
     }
     #[inline]
     #[must_use]
-    pub(in crate::arch) fn zero_extend(arg: impl Into<Box<IrData>>, size: AccessSize) -> IrData {
-        transform(UnaryOperator::ZeroExtend, arg, size)
+    pub(in crate::arch) fn zero_extend(arg: impl Into<Box<IrData>>) -> IrData {
+        transform(UnaryOperator::ZeroExtend, arg)
     }
     #[inline]
     #[must_use]
-    pub(in crate::arch) fn truncate(arg: impl Into<Box<IrData>>, size: AccessSize) -> IrData {
-        transform(UnaryOperator::Truncate, arg, size)
+    pub(in crate::arch) fn truncate(arg: impl Into<Box<IrData>>) -> IrData {
+        transform(UnaryOperator::Truncate, arg)
     }
 }
 /// Binary Operation
@@ -128,13 +127,11 @@ pub(in crate::arch) mod b {
         operator: BinaryOperator,
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
         IrData::Operation(IrDataOperation::Binary {
             operator,
             arg1: arg1.into(),
             arg2: arg2.into(),
-            size,
         })
     }
     #[inline]
@@ -142,162 +139,144 @@ pub(in crate::arch) mod b {
     pub(in crate::arch) fn and(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::And, arg1, arg2, size)
+        transform(BinaryOperator::And, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn or(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::Or, arg1, arg2, size)
+        transform(BinaryOperator::Or, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn xor(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::Xor, arg1, arg2, size)
+        transform(BinaryOperator::Xor, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn shl(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::Shl, arg1, arg2, size)
+        transform(BinaryOperator::Shl, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn shr(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::Shr, arg1, arg2, size)
+        transform(BinaryOperator::Shr, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn sar(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::Sar, arg1, arg2, size)
+        transform(BinaryOperator::Sar, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn add(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::Add, arg1, arg2, size)
+        transform(BinaryOperator::Add, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn sub(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::Sub, arg1, arg2, size)
+        transform(BinaryOperator::Sub, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn mul(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::Mul, arg1, arg2, size)
+        transform(BinaryOperator::Mul, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn signed_div(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::SignedDiv, arg1, arg2, size)
+        transform(BinaryOperator::SignedDiv, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn signed_rem(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::SignedRem, arg1, arg2, size)
+        transform(BinaryOperator::SignedRem, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn unsigned_div(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::UnsignedDiv, arg1, arg2, size)
+        transform(BinaryOperator::UnsignedDiv, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn unsigned_rem(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::UnsignedRem, arg1, arg2, size)
+        transform(BinaryOperator::UnsignedRem, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn equal(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::Equal, arg1, arg2, size)
+        transform(BinaryOperator::Equal, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn signed_less(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::SignedLess, arg1, arg2, size)
+        transform(BinaryOperator::SignedLess, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn signed_less_or_euqla(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::SignedLessOrEqual, arg1, arg2, size)
+        transform(BinaryOperator::SignedLessOrEqual, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn unsigned_less(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::UnsignedLess, arg1, arg2, size)
+        transform(BinaryOperator::UnsignedLess, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn unsigned_less_or_equal(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
-        size: AccessSize,
     ) -> IrData {
-        transform(BinaryOperator::UnsignedLessOrEqual, arg1, arg2, size)
+        transform(BinaryOperator::UnsignedLessOrEqual, arg1, arg2)
     }
 }
 
