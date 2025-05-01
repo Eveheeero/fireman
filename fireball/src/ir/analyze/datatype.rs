@@ -6,11 +6,12 @@ use crate::{
         Ir,
     },
 };
+use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct KnownDataType {
     pub shown_in: Address,
-    pub location: IrData,
+    pub location: Arc<IrData>,
     pub data_type: DataType,
     /// None if size depends on architecture
     pub data_size: AccessSize,

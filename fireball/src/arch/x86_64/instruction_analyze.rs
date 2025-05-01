@@ -12,7 +12,10 @@ mod shortcuts {
     pub(in crate::arch) use data::*;
     pub(in crate::arch) use fireman_macro::box_to_static_reference;
     pub(in crate::arch) use statements::*;
-    use std::num::{NonZeroU16, NonZeroU8};
+    use std::{
+        num::{NonZeroU16, NonZeroU8},
+        sync::Arc,
+    };
 }
 
 use crate::{core::Instruction, ir::statements::*};

@@ -1,6 +1,7 @@
 //! IR의 각 명령이 담겨져 있는 모듈
 
 use crate::ir::data::{AccessSize, IrData};
+use std::sync::Arc;
 
 /// IR의 각 명령에 대한 Enum
 ///
@@ -14,23 +15,23 @@ pub enum IrStatement {
     Exception(&'static str),
     /// 변수 할당
     Assignment {
-        from: IrData,
-        to: IrData,
+        from: Arc<IrData>,
+        to: Arc<IrData>,
         size: AccessSize,
     },
     /// 명령 라인 변경
     Jump {
-        target: IrData,
+        target: Arc<IrData>,
     },
     /// 함수 호출
     Call {
-        target: IrData,
+        target: Arc<IrData>,
     },
     /// 함수 호출 후 반환
     Halt,
     /// 조건문
     Condition {
-        condition: IrData,
+        condition: Arc<IrData>,
         true_branch: Box<[IrStatement]>,
         false_branch: Box<[IrStatement]>,
     },
@@ -40,7 +41,7 @@ pub enum IrStatement {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IrStatementSpecial {
     TypeSpecified {
-        location: IrData,
+        location: Arc<IrData>,
         size: AccessSize,
         data_type: crate::ir::analyze::DataType,
     },
@@ -50,7 +51,7 @@ pub enum IrStatementSpecial {
         false_branch: Box<[IrStatement]>,
     },
     CalcFlagsAutomatically {
-        operation: IrData,
+        operation: Arc<IrData>,
         size: AccessSize,
         of: bool,
         sf: bool,

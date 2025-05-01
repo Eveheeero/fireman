@@ -1,5 +1,8 @@
 use crate::ir::operator::{BinaryOperator, UnaryOperator};
-use std::num::{NonZeroU16, NonZeroU8};
+use std::{
+    num::{NonZeroU16, NonZeroU8},
+    sync::Arc,
+};
 
 /// IR 내부에 사용되는 데이터
 ///
@@ -14,7 +17,7 @@ pub enum IrData {
     // mov eax, ebx의 ebx
     Register(crate::ir::Register),
     /// mov eax, dword ptr [eax]의 dword ptr [eax]
-    Dereference(Box<IrData>),
+    Dereference(Arc<IrData>),
     /// Operation
     Operation(IrDataOperation),
     /// Nth operand
@@ -35,7 +38,7 @@ pub enum IntrinsicType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DataAccess {
-    data: IrData,
+    data: Arc<IrData>,
     access_type: DataAccessType,
     size: AccessSize,
 }
@@ -49,32 +52,21 @@ pub enum DataAccessType {
 pub enum IrDataOperation {
     Unary {
         operator: UnaryOperator,
-        arg: Box<IrData>,
+        arg: Arc<IrData>,
     },
     Binary {
         operator: BinaryOperator,
-        arg1: Box<IrData>,
-        arg2: Box<IrData>,
+        arg1: Arc<IrData>,
+        arg2: Arc<IrData>,
     },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AccessSize {
     Fixed { bit_len: NonZeroU16 },
-    Relative { with: Box<IrData> },
+    Relative { with: Arc<IrData> },
     ArchitectureSize,
     Unlimited,
-}
-
-impl Into<Box<IrData>> for &IrData {
-    fn into(self) -> Box<IrData> {
-        Box::new(self.clone())
-    }
-}
-impl Into<IrData> for &IrData {
-    fn into(self) -> IrData {
-        self.clone()
-    }
 }
 
 impl Into<AccessSize> for &AccessSize {
