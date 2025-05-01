@@ -5,12 +5,12 @@ use super::*;
 pub(in crate::arch) fn assign(
     from: impl Into<IrData>,
     to: impl Into<IrData>,
-    size: AccessSize,
+    size: impl Into<AccessSize>,
 ) -> IrStatement {
     IrStatement::Assignment {
         from: from.into(),
         to: to.into(),
-        size,
+        size: size.into(),
     }
 }
 #[inline]
@@ -44,12 +44,12 @@ pub(in crate::arch) fn call(target: impl Into<IrData>) -> IrStatement {
 #[must_use]
 pub(in crate::arch) fn type_specified(
     location: impl Into<IrData>,
-    size: AccessSize,
+    size: impl Into<AccessSize>,
     data_type: crate::ir::analyze::DataType,
 ) -> IrStatement {
     IrStatement::Special(IrStatementSpecial::TypeSpecified {
         location: location.into(),
-        size,
+        size: size.into(),
         data_type,
     })
 }

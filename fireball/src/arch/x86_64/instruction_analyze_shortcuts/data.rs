@@ -23,6 +23,11 @@ pub(in crate::arch) fn size_relative(data: impl Into<Box<IrData>>) -> AccessSize
     AccessSize::Relative { with: data.into() }
 }
 pub(in crate::arch) use size_relative as s_relative;
+#[inline]
+#[must_use]
+pub(in crate::arch) fn size_unlimited() -> AccessSize {
+    AccessSize::Unlimited
+}
 
 /// Register
 #[inline]
@@ -78,6 +83,36 @@ pub(in crate::arch) const fn unknown_data() -> IrData {
 #[must_use]
 pub(in crate::arch) const fn undefined_data() -> IrData {
     IrData::Intrinsic(IntrinsicType::Undefined)
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn signed_max(size: impl Into<AccessSize>) -> IrData {
+    IrData::Intrinsic(IntrinsicType::SignedMax(size.into()))
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn signed_min(size: impl Into<AccessSize>) -> IrData {
+    IrData::Intrinsic(IntrinsicType::SignedMin(size.into()))
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn unsigned_max(size: impl Into<AccessSize>) -> IrData {
+    IrData::Intrinsic(IntrinsicType::UnsignedMax(size.into()))
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn unsigned_min(size: impl Into<AccessSize>) -> IrData {
+    IrData::Intrinsic(IntrinsicType::UnsignedMin(size.into()))
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn bit_ones(size: impl Into<AccessSize>) -> IrData {
+    IrData::Intrinsic(IntrinsicType::BitOnes(size.into()))
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn bit_zeros(size: impl Into<AccessSize>) -> IrData {
+    IrData::Intrinsic(IntrinsicType::BitZeros(size.into()))
 }
 /// Unary Operation
 pub(in crate::arch) mod u {
@@ -243,40 +278,45 @@ pub(in crate::arch) mod b {
     pub(in crate::arch) fn equal(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
+        size: impl Into<AccessSize>,
     ) -> IrData {
-        transform(BinaryOperator::Equal, arg1, arg2)
+        transform(BinaryOperator::Equal(size.into()), arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn signed_less(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
+        size: impl Into<AccessSize>,
     ) -> IrData {
-        transform(BinaryOperator::SignedLess, arg1, arg2)
+        transform(BinaryOperator::SignedLess(size.into()), arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn signed_less_or_euqla(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
+        size: impl Into<AccessSize>,
     ) -> IrData {
-        transform(BinaryOperator::SignedLessOrEqual, arg1, arg2)
+        transform(BinaryOperator::SignedLessOrEqual(size.into()), arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn unsigned_less(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
+        size: impl Into<AccessSize>,
     ) -> IrData {
-        transform(BinaryOperator::UnsignedLess, arg1, arg2)
+        transform(BinaryOperator::UnsignedLess(size.into()), arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn unsigned_less_or_equal(
         arg1: impl Into<Box<IrData>>,
         arg2: impl Into<Box<IrData>>,
+        size: impl Into<AccessSize>,
     ) -> IrData {
-        transform(BinaryOperator::UnsignedLessOrEqual, arg1, arg2)
+        transform(BinaryOperator::UnsignedLessOrEqual(size.into()), arg1, arg2)
     }
 }
 

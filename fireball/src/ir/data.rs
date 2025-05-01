@@ -9,7 +9,7 @@ use std::num::{NonZeroU16, NonZeroU8};
 pub enum IrData {
     /// mov eax, 0x1234의 0x1234
     Constant(usize),
-    /// Special (undefined, data remained before, return address..)
+    /// Special (undefined, data remained before..)
     Intrinsic(IntrinsicType),
     // mov eax, ebx의 ebx
     Register(crate::ir::Register),
@@ -25,6 +25,12 @@ pub enum IrData {
 pub enum IntrinsicType {
     Unknown,
     Undefined,
+    SignedMax(AccessSize),
+    SignedMin(AccessSize),
+    UnsignedMax(AccessSize),
+    UnsignedMin(AccessSize),
+    BitOnes(AccessSize),
+    BitZeros(AccessSize),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -57,6 +63,7 @@ pub enum AccessSize {
     Fixed { bit_len: NonZeroU16 },
     Relative { with: Box<IrData> },
     ArchitectureSize,
+    Unlimited,
 }
 
 impl Into<Box<IrData>> for &IrData {
@@ -66,6 +73,12 @@ impl Into<Box<IrData>> for &IrData {
 }
 impl Into<IrData> for &IrData {
     fn into(self) -> IrData {
+        self.clone()
+    }
+}
+
+impl Into<AccessSize> for &AccessSize {
+    fn into(self) -> AccessSize {
         self.clone()
     }
 }

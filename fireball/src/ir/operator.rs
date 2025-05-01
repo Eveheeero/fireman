@@ -1,3 +1,5 @@
+use crate::ir::data::AccessSize;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UnaryOperator {
     Not,
@@ -6,7 +8,7 @@ pub enum UnaryOperator {
     ZeroExtend,
     Truncate,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BinaryOperator {
     And,
     Or,
@@ -21,13 +23,13 @@ pub enum BinaryOperator {
     SignedRem,
     UnsignedDiv,
     UnsignedRem,
-    Equal,
+    Equal(AccessSize),
     /// <
-    SignedLess,
+    SignedLess(AccessSize),
     /// <=
-    SignedLessOrEqual,
+    SignedLessOrEqual(AccessSize),
     /// <
-    UnsignedLess,
+    UnsignedLess(AccessSize),
     /// <=
-    UnsignedLessOrEqual,
+    UnsignedLessOrEqual(AccessSize),
 }
