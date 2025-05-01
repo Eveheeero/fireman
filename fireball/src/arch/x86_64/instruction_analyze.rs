@@ -39,9 +39,9 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
 
     Some(match op {
         X64Statement::Adc => a::adc(),
-        X64Statement::Add
-        | X64Statement::And
-        | X64Statement::Clc
+        X64Statement::Add => a::add(),
+        X64Statement::And => a::and(),
+        X64Statement::Clc
         | X64Statement::Cmc
         | X64Statement::Stc
         | X64Statement::Sahf
