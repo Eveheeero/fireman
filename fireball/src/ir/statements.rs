@@ -49,6 +49,16 @@ pub enum IrStatementSpecial {
         true_branch: Box<[IrStatement]>,
         false_branch: Box<[IrStatement]>,
     },
+    CalcFlagsAutomatically {
+        operation: IrData,
+        size: AccessSize,
+        of: bool,
+        sf: bool,
+        zf: bool,
+        af: bool,
+        cf: bool,
+        pf: bool,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]

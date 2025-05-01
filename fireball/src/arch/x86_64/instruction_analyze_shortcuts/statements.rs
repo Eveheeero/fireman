@@ -66,6 +66,29 @@ pub(in crate::arch) fn architecture_byte_size_condition(
         false_branch: false_branch.into(),
     })
 }
+/// Usage:
+/// ```rust,ignore
+/// let calc_flags = calc_flags_automatically(add, size, &[&of, &sf, &zf, &af, &cf, &pf]);
+/// ```
+#[inline]
+#[must_use]
+pub(in crate::arch) fn calc_flags_automatically(
+    operation: impl Into<IrData>,
+    size: impl Into<AccessSize>,
+    affected_registers: &[&crate::ir::Register],
+) -> IrStatement {
+    use crate::arch::x86_64::static_register::*;
+    IrStatement::Special(IrStatementSpecial::CalcFlagsAutomatically {
+        operation: operation.into(),
+        size: size.into(),
+        of: affected_registers.contains(&&*of),
+        sf: affected_registers.contains(&&*sf),
+        zf: affected_registers.contains(&&*zf),
+        af: affected_registers.contains(&&*af),
+        cf: affected_registers.contains(&&*cf),
+        pf: affected_registers.contains(&&*pf),
+    })
+}
 #[inline]
 #[must_use]
 pub(in crate::arch) fn halt() -> IrStatement {

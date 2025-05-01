@@ -6,13 +6,11 @@ mod shortcuts {
     #![allow(non_upper_case_globals, unused_imports)]
 
     mod data;
-    mod macros;
     mod statements;
 
     pub(in crate::arch) use crate::ir::{data::*, operator::*, statements::*};
     pub(in crate::arch) use data::*;
     pub(in crate::arch) use fireman_macro::box_to_static_reference;
-    pub(in crate::arch) use macros::*;
     pub(in crate::arch) use statements::*;
     use std::num::{NonZeroU16, NonZeroU8};
 }
