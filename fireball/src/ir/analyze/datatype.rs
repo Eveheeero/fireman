@@ -1,16 +1,20 @@
 use crate::{
     core::Address,
-    ir::{data::IrData, statements::IrStatement, Ir},
+    ir::{
+        data::{AccessSize, IrData},
+        statements::IrStatement,
+        Ir,
+    },
+    utils::Aos,
 };
-use std::num::NonZeroU16;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct KnownDataType {
     pub shown_in: Address,
-    pub location: IrData,
+    pub location: Aos<IrData>,
     pub data_type: DataType,
     /// None if size depends on architecture
-    pub data_size: Option<NonZeroU16>,
+    pub data_size: AccessSize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -24,7 +28,12 @@ pub enum DataType {
 }
 
 pub fn analyze_datatype(ir: &Ir) -> Vec<KnownDataType> {
-    analyze_datatype_raw(&ir.address, &ir.statements)
+    analyze_datatype_raw(
+        &ir.address,
+        ir.statements
+            .as_ref()
+            .expect_left("분석에 실패한 IR데이터가 입력되었습니다."),
+    )
 }
 
 /// ### TODO
@@ -38,67 +47,36 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IrStatement]) -> Ve
                     shown_in: address.clone(),
                     location: from.clone(),
                     data_type: DataType::Unknown,
-                    data_size: Some(*size),
+                    data_size: size.clone(),
                 });
                 known_datatypes.push(KnownDataType {
                     shown_in: address.clone(),
                     location: to.clone(),
                     data_type: DataType::Unknown,
-                    data_size: Some(*size),
+                    data_size: size.clone(),
                 });
             }
-            crate::ir::statements::IrStatement::Jump(irstatement_jump) => match irstatement_jump {
-                crate::ir::statements::IrStatementJump::Conditional { ok, fail } => {
-                    known_datatypes.push(KnownDataType {
-                        shown_in: address.clone(),
-                        location: ok.clone(),
-                        data_type: DataType::Address,
-                        data_size: None,
-                    });
-                    known_datatypes.push(KnownDataType {
-                        shown_in: address.clone(),
-                        location: fail.clone(),
-                        data_type: DataType::Address,
-                        data_size: None,
-                    });
-                }
-                crate::ir::statements::IrStatementJump::Unconditional(irdata) => {
-                    known_datatypes.push(KnownDataType {
-                        shown_in: address.clone(),
-                        location: irdata.clone(),
-                        data_type: DataType::Address,
-                        data_size: None,
-                    });
-                }
-            },
+            crate::ir::statements::IrStatement::Jump { target } => {
+                known_datatypes.push(KnownDataType {
+                    shown_in: address.clone(),
+                    location: target.clone(),
+                    data_type: DataType::Address,
+                    data_size: AccessSize::ArchitectureSize,
+                });
+            }
             crate::ir::statements::IrStatement::Call { target } => {
                 known_datatypes.push(KnownDataType {
                     shown_in: address.clone(),
                     location: target.clone(),
                     data_type: DataType::Address,
-                    data_size: None,
-                });
-            }
-            crate::ir::statements::IrStatement::Touch { data, size, .. } => {
-                known_datatypes.push(KnownDataType {
-                    shown_in: address.clone(),
-                    location: data.clone(),
-                    data_type: DataType::Unknown,
-                    data_size: Some(*size),
+                    data_size: AccessSize::ArchitectureSize,
                 });
             }
             crate::ir::statements::IrStatement::Condition {
-                condition,
-                size,
+                condition: _,
                 true_branch,
                 false_branch,
             } => {
-                known_datatypes.push(KnownDataType {
-                    shown_in: address.clone(),
-                    location: condition.clone(),
-                    data_type: DataType::Unknown,
-                    data_size: Some(*size),
-                });
                 let true_branch = analyze_datatype_raw(address, true_branch);
                 let false_branch = analyze_datatype_raw(address, false_branch);
                 known_datatypes.extend(true_branch);
@@ -115,7 +93,7 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IrStatement]) -> Ve
                     shown_in: address.clone(),
                     location: location.clone(),
                     data_type: *data_type,
-                    data_size: *size,
+                    data_size: size.clone(),
                 });
             }
             _ => continue,

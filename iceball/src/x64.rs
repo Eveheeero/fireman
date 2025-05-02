@@ -68,6 +68,6 @@ fn parse_memory(op: &str) -> Result<crate::Argument, crate::DisassembleError> {
     }
 
     Ok(crate::Argument::Memory(crate::Memory::RelativeAddressing(
-        result,
+        result.into_boxed_slice(),
     )))
 }

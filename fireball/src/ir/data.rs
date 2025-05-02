@@ -1,5 +1,8 @@
-use crate::ir::operator::{BinaryOperator, UnaryOperator};
-use std::num::NonZeroU16;
+use crate::{
+    ir::operator::{BinaryOperator, UnaryOperator},
+    utils::Aos,
+};
+use std::num::NonZeroU8;
 
 /// IR 내부에 사용되는 데이터
 ///
@@ -9,42 +12,79 @@ use std::num::NonZeroU16;
 pub enum IrData {
     /// mov eax, 0x1234의 0x1234
     Constant(usize),
-    /// Special (undefined, data remained before, return address..)
+    /// Special (undefined, data remained before..)
     Intrinsic(IntrinsicType),
     // mov eax, ebx의 ebx
     Register(crate::ir::Register),
     /// mov eax, dword ptr [eax]의 dword ptr [eax]
-    Dereference(Box<IrData>),
-    /// Operator
-    Operator(IrDataOperator),
+    Dereference(Aos<IrData>),
+    /// Operation
+    Operation(IrDataOperation),
+    /// Nth operand
+    Operand(NonZeroU8),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IntrinsicType {
-    Unknown(Box<IrData>),
-    Undefined(Box<IrData>),
-    ReturnAddress(Box<IrData>),
+    Unknown,
+    Undefined,
+    SignedMax(AccessSize),
+    SignedMin(AccessSize),
+    UnsignedMax(AccessSize),
+    UnsignedMin(AccessSize),
+    BitOnes(AccessSize),
+    BitZeros(AccessSize),
+    ArchitectureByteSize,
+    ArchitectureBitSize,
+    ArchitectureBitPerByte,
+    InstructionByteSize,
+    ByteSizeOf(Aos<IrData>),
+    BitSizeOf(Aos<IrData>),
+    Sized(Aos<IrData>, AccessSize),
+    OperandExists(NonZeroU8),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AccessType {
+pub struct DataAccess {
+    data: Aos<IrData>,
+    access_type: DataAccessType,
+    size: AccessSize,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DataAccessType {
     Read,
     Write,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum IrDataOperator {
+pub enum IrDataOperation {
     Unary {
         operator: UnaryOperator,
-        arg: Box<IrData>,
-        /// arg size
-        size: NonZeroU16,
+        arg: Aos<IrData>,
     },
     Binary {
         operator: BinaryOperator,
-        arg1: Box<IrData>,
-        arg2: Box<IrData>,
-        /// arg size
-        size: NonZeroU16,
+        arg1: Aos<IrData>,
+        arg2: Aos<IrData>,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AccessSize {
+    ResultOfBit(Aos<IrData>),
+    ResultOfByte(Aos<IrData>),
+    RelativeWith(Aos<IrData>),
+    ArchitectureSize,
+    Unlimited,
+}
+
+impl From<&AccessSize> for AccessSize {
+    fn from(value: &AccessSize) -> Self {
+        value.clone()
+    }
+}
+impl From<&crate::ir::Register> for Aos<IrData> {
+    fn from(value: &crate::ir::Register) -> Self {
+        IrData::Register(*value).into()
+    }
 }

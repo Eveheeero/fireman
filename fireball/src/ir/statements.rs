@@ -1,8 +1,9 @@
 //! IR의 각 명령이 담겨져 있는 모듈
 
-use crate::core::Instruction;
-use crate::ir::data::{AccessType, IrData};
-use std::num::NonZeroU16;
+use crate::{
+    ir::data::{AccessSize, IrData},
+    utils::Aos,
+};
 
 /// IR의 각 명령에 대한 Enum
 ///
@@ -10,32 +11,29 @@ use std::num::NonZeroU16;
 /// snowman's expressions.h, StatementBase based classes, or snowman's ir::statement.h classes
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IrStatement {
-    /// 해석할 수 없는 명령, 인라인 어셈블리로 처리됩니다.
-    Unknown(IrStatementUnknown),
+    /// 정의되지 않은 명령
+    Undefined,
+    /// 오류 발생
+    Exception(&'static str),
     /// 변수 할당
     Assignment {
-        from: IrData,
-        to: IrData,
-        size: NonZeroU16,
+        from: Aos<IrData>,
+        to: Aos<IrData>,
+        size: AccessSize,
     },
     /// 명령 라인 변경
-    Jump(IrStatementJump),
+    Jump {
+        target: Aos<IrData>,
+    },
     /// 함수 호출
     Call {
-        target: IrData,
+        target: Aos<IrData>,
     },
     /// 함수 호출 후 반환
     Halt,
-    /// 값 접근
-    Touch {
-        data: IrData,
-        access_type: AccessType,
-        size: NonZeroU16,
-    },
     /// 조건문
     Condition {
-        condition: IrData,
-        size: NonZeroU16,
+        condition: Aos<IrData>,
         true_branch: Box<[IrStatement]>,
         false_branch: Box<[IrStatement]>,
     },
@@ -43,28 +41,29 @@ pub enum IrStatement {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IrStatementUnknown {
-    Instruction(Instruction),
-    Bytecode(Box<[u8]>),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IrStatementJump {
-    Conditional { ok: IrData, fail: IrData },
-    Unconditional(IrData),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IrStatementSpecial {
     TypeSpecified {
-        location: IrData,
-        size: Option<NonZeroU16>,
+        location: Aos<IrData>,
+        size: AccessSize,
         data_type: crate::ir::analyze::DataType,
     },
     ArchitectureByteSizeCondition {
         condition: NumCondition,
         true_branch: Box<[IrStatement]>,
         false_branch: Box<[IrStatement]>,
+    },
+    CalcFlagsAutomatically {
+        operation: Aos<IrData>,
+        size: AccessSize,
+        of: bool,
+        sf: bool,
+        zf: bool,
+        af: bool,
+        cf: bool,
+        pf: bool,
+    },
+    Assertion {
+        condition: Aos<IrData>,
     },
 }
 

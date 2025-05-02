@@ -1,77 +1,33 @@
-use super::super::static_register::*;
-use super::{max, size};
-use crate::ir::{data::*, operator::*, statements::*};
+use super::{super::static_register::*, shortcuts::*};
+use std::ops::Deref;
 
-pub(super) fn aaa() -> Box<[IrStatement]> {
-    let al_and_0fh = IrData::Operator(IrDataOperator::Binary {
-        operator: BinaryOperator::And,
-        arg1: Box::new(IrData::Intrinsic(IntrinsicType::Undefined(Box::new(
-            IrData::Register(al.clone()),
-        )))),
-        arg2: Box::new(IrData::Constant(0x0f)),
-        size: size(&al),
-    });
-    let al_and_0fh_lt_9 = IrData::Operator(IrDataOperator::Binary {
-        operator: BinaryOperator::UnsignedLess,
-        arg1: Box::new(IrData::Constant(9)),
-        arg2: Box::new(al_and_0fh),
-        size: max(),
-    });
-    let then = [
-        IrStatement::Assignment {
-            from: IrData::Operator(IrDataOperator::Binary {
-                operator: BinaryOperator::Add,
-                arg1: Box::new(IrData::Intrinsic(IntrinsicType::Undefined(Box::new(
-                    IrData::Register(ax.clone()),
-                )))),
-                arg2: Box::new(IrData::Constant(0x106)),
-                size: size(&ax),
-            }),
-            to: IrData::Register(ax.clone()),
-            size: size(&ax),
-        },
-        IrStatement::Assignment {
-            from: IrData::Constant(1),
-            to: IrData::Register(af.clone()),
-            size: size(&af),
-        },
-        IrStatement::Assignment {
-            from: IrData::Constant(1),
-            to: IrData::Register(cf.clone()),
-            size: size(&cf),
-        },
-    ];
-    let r#else = [
-        IrStatement::Assignment {
-            from: IrData::Constant(0),
-            to: IrData::Register(af.clone()),
-            size: size(&af),
-        },
-        IrStatement::Assignment {
-            from: IrData::Constant(0),
-            to: IrData::Register(cf.clone()),
-            size: size(&cf),
-        },
-    ];
-    let after = IrStatement::Assignment {
-        from: IrData::Operator(IrDataOperator::Binary {
-            operator: BinaryOperator::And,
-            arg1: Box::new(IrData::Register(al.clone())),
-            arg2: Box::new(IrData::Constant(0x0f)),
-            size: size(&al),
-        }),
-        to: IrData::Register(al.clone()),
-        size: size(&al),
-    };
+#[box_to_static_reference]
+pub(super) fn adc() -> &'static [IrStatement] {
+    let size = o1_size();
+    let add = b::add(o1(), o2());
+    let add = b::add(add, u::zero_extend(cf.clone()));
+    let assignment = assign(add.clone(), o1(), &size);
+    let calc_flags = calc_flags_automatically(add, size, &[&of, &sf, &zf, &af, &cf, &pf]);
+    [calc_flags, assignment].into()
+}
 
-    [
-        IrStatement::Condition {
-            condition: al_and_0fh_lt_9,
-            size: max(),
-            true_branch: then.into(),
-            false_branch: r#else.into(),
-        },
-        after,
-    ]
-    .into()
+#[box_to_static_reference]
+pub(super) fn add() -> &'static [IrStatement] {
+    let size = o1_size();
+    let add = b::add(o1(), o2());
+    let assignment = assign(add.clone(), o1(), &size);
+    let calc_flags = calc_flags_automatically(add, size, &[&of, &sf, &zf, &af, &cf, &pf]);
+    [calc_flags, assignment].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn and() -> &'static [IrStatement] {
+    let size = o1_size();
+    let and = b::and(o1(), o2());
+    let assignment = assign(and.clone(), o1(), &size);
+    let calc_flags = calc_flags_automatically(and, size, &[&sf, &zf, &pf]);
+    let set_of = assign(c(0), of.clone(), size_relative(of.clone()));
+    let set_cf = assign(c(0), cf.clone(), size_relative(cf.clone()));
+    let set_af = assign(undefined_data(), af.clone(), size_relative(af.clone()));
+    [calc_flags, set_of, set_cf, set_af, assignment].into()
 }

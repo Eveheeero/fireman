@@ -99,7 +99,7 @@ impl PE {
                 address: item.address(),
                 inner: iceball::Instruction {
                     statement,
-                    arguments,
+                    arguments: arguments.into_boxed_slice(),
                     bytes,
                 },
             };

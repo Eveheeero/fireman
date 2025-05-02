@@ -4,6 +4,7 @@ use crate::{
     ir::{Ir, IrBlock},
     prelude::*,
 };
+use either::Either;
 
 impl PE {
     pub(super) fn _decom_block(&self, address: &Address) -> Result<(), DecompileError> {
@@ -28,9 +29,16 @@ impl PE {
             // 인스트럭션으로 ir생성
             let statements =
                 crate::arch::x86_64::instruction_analyze::create_ir_statement(&instruction);
+            let statements = if let Some(statements) = statements {
+                Either::Left(statements)
+            } else {
+                warn!(?address, "인스트럭션 변환 실패");
+                Either::Right(instruction.clone())
+            };
             let ir = Ir {
                 address: instruction_address.clone(),
                 statements,
+                affected: Vec::new(),
             };
             ir_block.push(ir);
 
@@ -45,11 +53,17 @@ impl PE {
         }
         debug!(
             "블럭 내부 인스트럭션 IR 변환 완료, 총 {}개",
-            ir_block.iter().map(|x| x.statements.len()).sum::<usize>()
+            ir_block
+                .iter()
+                .filter(|x| x.statements.is_left())
+                .map(|x| x.statements.as_ref().unwrap_left().len())
+                .sum::<usize>()
         );
         let mut ir_block = IrBlock::new(ir_block);
 
         /* 분석 */
+        // TODO 데이터 엑세스 분석
+        // ir_block.analyze_data_access();
         // 접근 메모리 영역 파악 및 사용 인스트럭션에 따른 타입 지정
         ir_block.analyze_datatypes();
         // native api 호출 인자에 따른 타입 재 지정

@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{parse_macro_input, DeriveInput};
 
 /// impl FromStr for enum, case will be ignored
@@ -45,4 +45,43 @@ pub fn str_to_enum(input: TokenStream) -> TokenStream {
         }
     };
     TokenStream::from(expanded)
+}
+
+/// Turn Box<T> into &'static T
+/// example:
+/// ```rust, ignore
+/// #[box_to_static_reference]
+/// fn example() -> &static T {
+///   Box::new(T) // or T.into()
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn box_to_static_reference(_attribute: TokenStream, item: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(item as syn::ItemFn);
+    let syn::ReturnType::Type(_, return_type) = item.sig.output.clone() else {
+        panic!("Return Type Did Not Set");
+    };
+    let syn::Type::Reference(syn::TypeReference {
+        elem: return_type, ..
+    }) = return_type.as_ref()
+    else {
+        panic!("Return Type Is Not Reference")
+    };
+    let syn::Type::Slice(return_type) = return_type.as_ref() else {
+        panic!("Return Type Is Not Slice Reference")
+    };
+    let attrs = item.attrs;
+    let vis = item.vis;
+    let sig = item.sig;
+    let block = item.block;
+
+    let return_type = return_type.to_token_stream();
+    let result = quote! {
+        #(#attrs)*
+        #vis #sig {
+            static ONCE: ::std::sync::LazyLock<::std::boxed::Box<#return_type>> = ::std::sync::LazyLock::new(|| #block);
+            ONCE.deref()
+        }
+    };
+    TokenStream::from(result)
 }
