@@ -26,6 +26,11 @@ pub(in crate::arch) fn size_relative(data: impl Into<Arc<IrData>>) -> AccessSize
 pub(in crate::arch) use size_relative as s_relative;
 #[inline]
 #[must_use]
+pub(in crate::arch) fn size_architecture() -> AccessSize {
+    AccessSize::ArchitectureSize
+}
+#[inline]
+#[must_use]
 pub(in crate::arch) fn size_unlimited() -> AccessSize {
     AccessSize::Unlimited
 }

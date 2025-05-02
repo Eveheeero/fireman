@@ -1,6 +1,8 @@
 //! x86_64 아키텍처 인스트럭션을 IR로 변환하는 함수가 담긴 모듈
 
 mod a;
+mod c;
+
 #[path = "instruction_analyze_shortcuts"]
 mod shortcuts {
     #![allow(non_upper_case_globals, unused_imports)]
@@ -41,6 +43,19 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Adc => a::adc(),
         X64Statement::Add => a::add(),
         X64Statement::And => a::and(),
+        X64Statement::Call => c::call(),
+        X64Statement::Cmp => c::cmp(),
+        X64Statement::Dec
+        | X64Statement::Div
+        | X64Statement::Mul
+        | X64Statement::Inc
+        | X64Statement::Jmp
+        | X64Statement::Lea
+        | X64Statement::Mov
+        | X64Statement::Ret
+        | X64Statement::Or
+        | X64Statement::Pop
+        | X64Statement::Push => todo!(),
         X64Statement::Clc
         | X64Statement::Cmc
         | X64Statement::Stc
@@ -48,23 +63,17 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         | X64Statement::Fnstsw
         | X64Statement::Bswap
         | X64Statement::Bt
-        | X64Statement::Call
         | X64Statement::Cbw
         | X64Statement::Cwde
         | X64Statement::Cdqe
         | X64Statement::Cqo
         | X64Statement::Cld
-        | X64Statement::Cmp
         | X64Statement::Cmpxchg
         | X64Statement::Cpuid
-        | X64Statement::Dec
-        | X64Statement::Div
         | X64Statement::Hlt
         | X64Statement::Idiv
         | X64Statement::Int
         | X64Statement::Imul
-        | X64Statement::Mul
-        | X64Statement::Inc
         | X64Statement::Ja
         | X64Statement::Jae
         | X64Statement::Jb
@@ -84,27 +93,20 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         | X64Statement::Jo
         | X64Statement::Jp
         | X64Statement::Js
-        | X64Statement::Jmp
-        | X64Statement::Lea
         | X64Statement::Leave
         | X64Statement::Loop
         | X64Statement::Loopcc
-        | X64Statement::Mov
         | X64Statement::Movsx
         | X64Statement::Movsxd
         | X64Statement::Movzx
         | X64Statement::Neg
         | X64Statement::Nop
         | X64Statement::Not
-        | X64Statement::Or
-        | X64Statement::Pop
-        | X64Statement::Push
         | X64Statement::Popf
         | X64Statement::Popfd
         | X64Statement::Popfq
         | X64Statement::Pushf
         | X64Statement::Pushfq
-        | X64Statement::Ret
         | X64Statement::Shl
         | X64Statement::Sar
         | X64Statement::Sbb
