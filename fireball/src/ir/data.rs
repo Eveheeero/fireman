@@ -13,7 +13,7 @@ pub enum IrData {
     /// mov eax, 0x1234의 0x1234
     Constant(usize),
     /// Special (undefined, data remained before..)
-    Intrinsic(IntrinsicType),
+    Intrinsic(IrIntrinsic),
     // mov eax, ebx의 ebx
     Register(crate::ir::Register),
     /// mov eax, dword ptr [eax]의 dword ptr [eax]
@@ -25,7 +25,7 @@ pub enum IrData {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum IntrinsicType {
+pub enum IrIntrinsic {
     Unknown,
     Undefined,
     SignedMax(AccessSize),
@@ -164,20 +164,20 @@ impl IrDataContainable for AccessSize {
     }
 }
 
-impl IrDataContainable for IntrinsicType {
+impl IrDataContainable for IrIntrinsic {
     fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
         match self {
-            IntrinsicType::SignedMax(access_size)
-            | IntrinsicType::SignedMin(access_size)
-            | IntrinsicType::UnsignedMax(access_size)
-            | IntrinsicType::UnsignedMin(access_size)
-            | IntrinsicType::BitOnes(access_size)
-            | IntrinsicType::BitZeros(access_size) => access_size.get_related_ir_data(v),
-            IntrinsicType::ByteSizeOf(aos) | IntrinsicType::BitSizeOf(aos) => {
+            IrIntrinsic::SignedMax(access_size)
+            | IrIntrinsic::SignedMin(access_size)
+            | IrIntrinsic::UnsignedMax(access_size)
+            | IrIntrinsic::UnsignedMin(access_size)
+            | IrIntrinsic::BitOnes(access_size)
+            | IrIntrinsic::BitZeros(access_size) => access_size.get_related_ir_data(v),
+            IrIntrinsic::ByteSizeOf(aos) | IrIntrinsic::BitSizeOf(aos) => {
                 aos.get_related_ir_data(v);
                 v.push(aos.clone());
             }
-            IntrinsicType::Sized(aos, access_size) => {
+            IrIntrinsic::Sized(aos, access_size) => {
                 aos.get_related_ir_data(v);
                 v.push(aos.clone());
                 access_size.get_related_ir_data(v);
