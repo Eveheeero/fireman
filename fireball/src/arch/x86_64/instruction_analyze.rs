@@ -2,6 +2,7 @@
 
 mod a;
 mod c;
+mod d;
 
 #[path = "instruction_analyze_shortcuts"]
 mod shortcuts {

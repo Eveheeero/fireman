@@ -66,7 +66,7 @@ pub(in crate::arch) fn architecture_byte_size_condition(
         false_branch: false_branch.into(),
     })
 }
-/// Usage:
+/// calc flags should be placed before the assignment
 /// ```rust,ignore
 /// let calc_flags = calc_flags_automatically(add, size, &[&of, &sf, &zf, &af, &cf, &pf]);
 /// ```
