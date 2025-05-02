@@ -67,7 +67,7 @@ impl IrBlock {
 
     pub fn analyze_data_access(&mut self) {
         let mut data_access_per_ir = Vec::new();
-        for ir in self.ir.iter().filter(|ir| ir.statements.is_left()) {
+        for ir in &self.ir {
             let mut data_access_per_instruction = analyze::analyze_data_access(ir);
             data_access_per_instruction.shrink_to_fit();
             data_access_per_ir.push(data_access_per_instruction);
@@ -77,11 +77,9 @@ impl IrBlock {
 
     pub fn analyze_datatypes(&mut self) {
         let mut known_datatypes: HashSet<analyze::KnownDataType> = HashSet::new();
-        for ir in self.ir.iter().filter(|ir| ir.statements.is_left()) {
+        for ir in &self.ir {
             let analyzed_datatype = analyze::analyze_datatype(ir);
-            for datatype in analyzed_datatype {
-                known_datatypes.insert(datatype);
-            }
+            known_datatypes.extend(analyzed_datatype);
         }
         known_datatypes.shrink_to_fit();
         self.known_datatypes = Some(known_datatypes);
