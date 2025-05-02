@@ -3,27 +3,14 @@ use std::sync::LazyLock;
 
 #[inline]
 #[must_use]
-pub(in crate::arch) fn size_fix(data: &crate::ir::Register) -> AccessSize {
-    let bit_len = data.bit_len() as u16;
-    AccessSize::Fixed {
-        bit_len: NonZeroU16::new(bit_len).unwrap(),
-    }
+pub(in crate::arch) fn size_result(data: impl Into<Arc<IrData>>) -> AccessSize {
+    AccessSize::ResultOf(data.into())
 }
-pub(in crate::arch) use size_fix as s_fix;
-#[inline]
-#[must_use]
-pub(in crate::arch) fn size_relative_register(data: &crate::ir::Register) -> AccessSize {
-    AccessSize::Relative {
-        with: IrData::Register(data.clone()).into(),
-    }
-}
-pub(in crate::arch) use size_relative_register as s_relative_register;
 #[inline]
 #[must_use]
 pub(in crate::arch) fn size_relative(data: impl Into<Arc<IrData>>) -> AccessSize {
-    AccessSize::Relative { with: data.into() }
+    AccessSize::RelativeWith(data.into())
 }
-pub(in crate::arch) use size_relative as s_relative;
 #[inline]
 #[must_use]
 pub(in crate::arch) fn size_architecture() -> AccessSize {
@@ -57,7 +44,7 @@ pub(in crate::arch) fn o1() -> Arc<IrData> {
 #[inline]
 #[must_use]
 pub(in crate::arch) fn o1_size() -> AccessSize {
-    s_relative(o1())
+    size_relative(o1())
 }
 #[inline]
 #[must_use]
@@ -69,7 +56,7 @@ pub(in crate::arch) fn o2() -> Arc<IrData> {
 #[inline]
 #[must_use]
 pub(in crate::arch) fn o2_size() -> AccessSize {
-    s_relative(o2())
+    size_relative(o2())
 }
 #[inline]
 #[must_use]
@@ -81,7 +68,7 @@ pub(in crate::arch) fn o3() -> Arc<IrData> {
 #[inline]
 #[must_use]
 pub(in crate::arch) fn o3_size() -> AccessSize {
-    s_relative(o3())
+    size_relative(o3())
 }
 #[inline]
 #[must_use]
@@ -93,7 +80,7 @@ pub(in crate::arch) fn o4() -> Arc<IrData> {
 #[inline]
 #[must_use]
 pub(in crate::arch) fn o4_size() -> AccessSize {
-    s_relative(o4())
+    size_relative(o4())
 }
 /// Constant
 #[inline]
@@ -303,7 +290,7 @@ pub(in crate::arch) fn bit_size_of_o4() -> Arc<IrData> {
 #[must_use]
 pub(in crate::arch) fn sized(
     data: impl Into<Arc<IrData>>,
-    size: impl Into<Arc<IrData>>,
+    size: impl Into<AccessSize>,
 ) -> Arc<IrData> {
     IrData::Intrinsic(IntrinsicType::Sized(data.into(), size.into())).into()
 }
@@ -508,22 +495,4 @@ pub(in crate::arch) mod b {
     ) -> Arc<IrData> {
         transform(BinaryOperator::UnsignedLessOrEqual(size.into()), arg1, arg2)
     }
-}
-
-#[test]
-fn size_test() {
-    let eax_size = size_fix(&crate::arch::x86_64::static_register::eax);
-    let rax_size = size_fix(&crate::arch::x86_64::static_register::rax);
-    assert_eq!(
-        eax_size,
-        AccessSize::Fixed {
-            bit_len: NonZeroU16::new(4 * 8).unwrap()
-        }
-    );
-    assert_eq!(
-        rax_size,
-        AccessSize::Fixed {
-            bit_len: NonZeroU16::new(8 * 8).unwrap()
-        }
-    );
 }

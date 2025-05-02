@@ -1,8 +1,5 @@
 use crate::ir::operator::{BinaryOperator, UnaryOperator};
-use std::{
-    num::{NonZeroU16, NonZeroU8},
-    sync::Arc,
-};
+use std::{num::NonZeroU8, sync::Arc};
 
 /// IR 내부에 사용되는 데이터
 ///
@@ -40,7 +37,7 @@ pub enum IntrinsicType {
     InstructionByteSize,
     ByteSizeOf(Arc<IrData>),
     BitSizeOf(Arc<IrData>),
-    Sized(Arc<IrData>, Arc<IrData>),
+    Sized(Arc<IrData>, AccessSize),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -70,8 +67,8 @@ pub enum IrDataOperation {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AccessSize {
-    Fixed { bit_len: NonZeroU16 },
-    Relative { with: Arc<IrData> },
+    ResultOf(Arc<IrData>),
+    RelativeWith(Arc<IrData>),
     ArchitectureSize,
     Unlimited,
 }
@@ -79,5 +76,10 @@ pub enum AccessSize {
 impl Into<AccessSize> for &AccessSize {
     fn into(self) -> AccessSize {
         self.clone()
+    }
+}
+impl Into<Arc<IrData>> for &crate::ir::Register {
+    fn into(self) -> Arc<IrData> {
+        IrData::Register(*self).into()
     }
 }
