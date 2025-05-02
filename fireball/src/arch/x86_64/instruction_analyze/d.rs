@@ -17,11 +17,8 @@ pub(super) fn div() -> &'static [IrStatement] {
         assign(b::unsigned_rem(ax.clone(), o1()), ah.clone(), o1_size()),
     ];
     let value = b::add(
-        b::shl(
-            sized(rdx.clone(), size_result_bit(operand_bit_size.clone())),
-            operand_bit_size.clone(),
-        ),
-        sized(rax.clone(), size_result_bit(operand_bit_size.clone())),
+        b::shl(sized(rdx.clone(), o1_size()), operand_bit_size.clone()),
+        sized(rax.clone(), o1_size()),
     );
     let div_etc = [
         assign(b::unsigned_div(value.clone(), o1()), rax.clone(), o1_size()),
