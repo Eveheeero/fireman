@@ -1,7 +1,7 @@
 use crate::{
     core::Address,
     ir::{
-        data::{AccessSize, IrData},
+        data::{AccessSize, IrData, IrDataContainable},
         statements::IrStatement,
         Ir,
     },
@@ -100,4 +100,12 @@ pub fn analyze_datatype_raw(address: &Address, statements: &[IrStatement]) -> Ve
         }
     }
     known_datatypes
+}
+
+impl IrDataContainable for KnownDataType {
+    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+        self.location.get_related_ir_data(v);
+        v.push(self.location.clone());
+        self.data_size.get_related_ir_data(v);
+    }
 }

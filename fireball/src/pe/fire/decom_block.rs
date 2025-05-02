@@ -71,6 +71,11 @@ impl PE {
         // TODO 사용되는 인자가 많을 경우 다른 함수의 내부인것으로 판단
         // 함수 코드 생성
         // TODO 이후 생성된 코드 ir_block에 저장
+        // 분석 결과 확인
+        let validate_result = ir_block.validate();
+        if let Err(e) = validate_result {
+            error!(?e, "블럭 분석 결과 오류");
+        }
         // 분석 내용 블럭에 저장
         block.set_ir(ir_block);
         // 해당 블록에 접근하고 있는 블록 디컴파일 재시도 -> 재귀는 1번까지 허용

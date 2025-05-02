@@ -10,14 +10,14 @@ pub mod x86_64;
 
 use crate::{
     core::{Address, Instruction},
-    ir::data::{DataAccess, IrDataContainable as _},
+    ir::data::{DataAccess, IrData, IrDataContainable as _},
     prelude::BitBox,
-    utils::error::ir_analyze_assertion_error::IrAnalyzeAssertionFailure,
+    utils::{error::ir_analyze_assertion_error::IrAnalyzeAssertionFailure, Aos},
 };
 use either::Either;
 pub use register::Register;
 use statements::IrStatement;
-use std::{cell::UnsafeCell, collections::HashSet};
+use std::{cell::UnsafeCell, collections::HashSet, sync::LazyLock};
 
 /// 컴퓨터가 동작하는 행동을 재현하기 위한 구조체
 ///
@@ -98,47 +98,80 @@ impl IrBlock {
     }
 
     /// Analyzed Data Must Not Contain Sp Based Data
-    pub fn assert(&self) -> Result<(), IrAnalyzeAssertionFailure> {
-        self.assert_data_access()?;
-        self.assert_datatypes()?;
+    pub fn validate(&self) -> Result<(), IrAnalyzeAssertionFailure> {
+        self.validate_data_access()?;
+        self.validate_datatypes()?;
         Ok(())
     }
-    pub fn assert_data_access(&self) -> Result<(), IrAnalyzeAssertionFailure> {
+    pub fn validate_data_access(&self) -> Result<(), IrAnalyzeAssertionFailure> {
         if self.data_access_per_ir.is_none() {
             return Err(IrAnalyzeAssertionFailure::AnalyzeNotPerformed(
                 "Data Access",
             ));
         }
         let data_access_per_ir = self.data_access_per_ir.as_ref().unwrap();
+
+        /* Validate Data Doesn't Contain Sp Based Data */
         for (ir_index, data_access) in data_access_per_ir.iter().enumerate() {
             for (sub_index, item) in data_access.iter().enumerate() {
-                let item = item.location().as_ref();
+                let item = item.location();
                 let mut related_data = Vec::new();
                 item.get_related_ir_data(&mut related_data);
-                if related_data.is_empty() {
-                    if let data::IrData::Register(register) = item {
-                        if register.bit_range().start
-                            == <VirtualMachine as crate::ir::x86_64::X64Range>::sp()
-                                .bit_range()
-                                .start
-                        {
-                            return Err(IrAnalyzeAssertionFailure::SpBasedLocationFound {
-                                ir_index,
-                                sub_index,
-                            });
-                        }
-                    }
-                } else {
-                    // TODO
-                    todo!()
+                related_data.push(item.clone());
+                if Self::is_sp_related(related_data) {
+                    return Err(IrAnalyzeAssertionFailure::SpBasedLocationFound {
+                        ir_index: Some(ir_index),
+                        sub_index: Some(sub_index),
+                    });
                 }
             }
         }
 
         Ok(())
     }
-    pub fn assert_datatypes(&self) -> Result<(), IrAnalyzeAssertionFailure> {
-        todo!()
+    pub fn validate_datatypes(&self) -> Result<(), IrAnalyzeAssertionFailure> {
+        if self.known_datatypes.is_none() {
+            return Err(IrAnalyzeAssertionFailure::AnalyzeNotPerformed("Datatype"));
+        }
+        let known_datatypes = self.known_datatypes.as_ref().unwrap();
+
+        /* Validate Data Doesn't Contain Sp Based Data */
+        static VM_INTEL_SP_BIT_START: LazyLock<usize> = LazyLock::new(|| {
+            <VirtualMachine as crate::ir::x86_64::X64Range>::sp()
+                .bit_range()
+                .start
+        });
+        for datatype in known_datatypes {
+            let mut related_data = Vec::new();
+            datatype.get_related_ir_data(&mut related_data);
+
+            if Self::is_sp_related(related_data) {
+                return Err(IrAnalyzeAssertionFailure::SpBasedLocationFound {
+                    ir_index: None,
+                    sub_index: None,
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Arg must contain self
+    fn is_sp_related(related_data: Vec<Aos<IrData>>) -> bool {
+        static VM_INTEL_SP_BIT_START: LazyLock<usize> = LazyLock::new(|| {
+            <VirtualMachine as crate::ir::x86_64::X64Range>::sp()
+                .bit_range()
+                .start
+        });
+
+        for item in related_data {
+            if let data::IrData::Register(register) = item.as_ref() {
+                if register.bit_range().start == *VM_INTEL_SP_BIT_START {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 
