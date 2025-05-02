@@ -48,9 +48,9 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::And => a::and(),
         X64Statement::Call => c::call(),
         X64Statement::Cmp => c::cmp(),
-        X64Statement::Dec
-        | X64Statement::Div
-        | X64Statement::Mul
+        X64Statement::Dec => d::dec(),
+        X64Statement::Div => d::div(),
+        X64Statement::Mul
         | X64Statement::Inc
         | X64Statement::Jmp
         | X64Statement::Lea
