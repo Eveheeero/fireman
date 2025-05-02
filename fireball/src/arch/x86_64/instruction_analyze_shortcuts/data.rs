@@ -3,8 +3,13 @@ use std::sync::LazyLock;
 
 #[inline]
 #[must_use]
-pub(in crate::arch) fn size_result(data: impl Into<Arc<IrData>>) -> AccessSize {
-    AccessSize::ResultOf(data.into())
+pub(in crate::arch) fn size_result_bit(data: impl Into<Arc<IrData>>) -> AccessSize {
+    AccessSize::ResultOfBit(data.into())
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn size_result_byte(data: impl Into<Arc<IrData>>) -> AccessSize {
+    AccessSize::ResultOfByte(data.into())
 }
 #[inline]
 #[must_use]

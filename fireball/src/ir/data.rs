@@ -67,7 +67,8 @@ pub enum IrDataOperation {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AccessSize {
-    ResultOf(Arc<IrData>),
+    ResultOfBit(Arc<IrData>),
+    ResultOfByte(Arc<IrData>),
     RelativeWith(Arc<IrData>),
     ArchitectureSize,
     Unlimited,
