@@ -37,6 +37,7 @@ pub enum IntrinsicType {
     ArchitectureByteSize,
     ArchitectureBitSize,
     ArchitectureBitPerByte,
+    InstructionByteSize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
