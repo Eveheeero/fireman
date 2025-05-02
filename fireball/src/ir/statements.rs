@@ -62,6 +62,9 @@ pub enum IrStatementSpecial {
         cf: bool,
         pf: bool,
     },
+    Assertion {
+        condition: Aos<IrData>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]

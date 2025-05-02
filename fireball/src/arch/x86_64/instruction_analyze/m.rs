@@ -9,6 +9,8 @@ pub(super) fn mov() -> &'static [IrStatement] {
 
 #[box_to_static_reference]
 pub(super) fn mul() -> &'static [IrStatement] {
+    let assertion = assertion(u::not(is_o2_exists()));
+
     let operand_bit_size = bit_size_of_o1();
 
     let value = b::mul(sized(al.clone(), size_relative(al.clone())), o1());
@@ -33,5 +35,5 @@ pub(super) fn mul() -> &'static [IrStatement] {
         mul_8,
         mul_etc,
     );
-    extend_undefined_flags(&[mul], &[&sf, &zf, &af, &pf])
+    extend_undefined_flags(&[assertion, mul], &[&sf, &zf, &af, &pf])
 }

@@ -91,7 +91,7 @@ pub(in crate::arch) fn calc_flags_automatically(
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn halt() -> IrStatement {
+pub(in crate::arch) const fn halt() -> IrStatement {
     IrStatement::Halt
 }
 #[inline]
@@ -103,4 +103,11 @@ pub(in crate::arch) const fn undefined_behavior() -> IrStatement {
 #[must_use]
 pub(in crate::arch) const fn exception(msg: &'static str) -> IrStatement {
     IrStatement::Exception(msg)
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn assertion(condition: impl Into<Aos<IrData>>) -> IrStatement {
+    IrStatement::Special(IrStatementSpecial::Assertion {
+        condition: condition.into(),
+    })
 }
