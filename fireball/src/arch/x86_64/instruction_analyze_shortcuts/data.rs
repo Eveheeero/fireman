@@ -151,6 +151,53 @@ pub(in crate::arch) fn o4_size() -> AccessSize {
 #[inline]
 #[must_use]
 pub(in crate::arch) fn c(c: usize) -> Aos<IrData> {
+    static C0: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(0)));
+    static C1: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(1)));
+    static C2: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(2)));
+    static C3: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(3)));
+    static C4: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(4)));
+    static C5: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(5)));
+    static C6: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(6)));
+    static C7: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(7)));
+    static C8: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(8)));
+    static C9: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(9)));
+    static C10: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(10)));
+    static C11: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(11)));
+    static C12: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(12)));
+    static C13: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(13)));
+    static C14: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(14)));
+    static C15: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(15)));
+    static C16: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(16)));
+    static C32: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(32)));
+    static C64: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(64)));
+    static C128: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(128)));
+    static C256: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(256)));
+    static C512: LazyLock<Aos<IrData>> = LazyLock::new(|| Aos::new_static(IrData::Constant(512)));
+    match () {
+        () if c == 0 => return C0.clone(),
+        () if c == 1 => return C1.clone(),
+        () if c == 2 => return C2.clone(),
+        () if c == 3 => return C3.clone(),
+        () if c == 4 => return C4.clone(),
+        () if c == 5 => return C5.clone(),
+        () if c == 6 => return C6.clone(),
+        () if c == 7 => return C7.clone(),
+        () if c == 8 => return C8.clone(),
+        () if c == 9 => return C9.clone(),
+        () if c == 10 => return C10.clone(),
+        () if c == 11 => return C11.clone(),
+        () if c == 12 => return C12.clone(),
+        () if c == 13 => return C13.clone(),
+        () if c == 14 => return C14.clone(),
+        () if c == 15 => return C15.clone(),
+        () if c == 16 => return C16.clone(),
+        () if c == 32 => return C32.clone(),
+        () if c == 64 => return C64.clone(),
+        () if c == 128 => return C128.clone(),
+        () if c == 256 => return C256.clone(),
+        () if c == 512 => return C512.clone(),
+        _ => {}
+    }
     IrData::Constant(c).into()
 }
 /// Dereference
