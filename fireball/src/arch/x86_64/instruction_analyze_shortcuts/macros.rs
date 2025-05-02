@@ -8,11 +8,11 @@ use super::*;
 #[must_use]
 pub(in crate::arch) fn extend_undefined_flags(
     ir: &[IrStatement],
-    affected_registers: &[&crate::ir::Register],
+    affected_registers: &[&Arc<IrData>],
 ) -> Box<[IrStatement]> {
     let mut result: Vec<_> = ir.into();
     for register in affected_registers {
-        let register = r(&register);
+        let register = (*register).clone();
         let assignment = assign(undefined_data(), register.clone(), size_relative(register));
         result.push(assignment);
     }

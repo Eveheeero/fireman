@@ -27,12 +27,6 @@ pub(in crate::arch) fn size_unlimited() -> AccessSize {
     AccessSize::Unlimited
 }
 
-/// Register
-#[inline]
-#[must_use]
-pub(in crate::arch) fn r(r: &crate::ir::Register) -> Arc<IrData> {
-    IrData::Register(*r).into()
-}
 /// Operand
 #[inline]
 #[must_use]

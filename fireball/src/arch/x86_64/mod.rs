@@ -4,12 +4,14 @@ pub mod instruction_analyze;
 
 mod static_register {
     #![allow(non_upper_case_globals, unused)]
-    use crate::ir::{x86_64::X64Range as X64, Register, VirtualMachine};
+    use crate::ir::{data::IrData, x86_64::X64Range as X64, Register, VirtualMachine};
     use once_cell::sync::Lazy;
+    use std::sync::Arc;
 
     macro_rules! static_register {
         ($name:ident) => {
-            pub static $name: Lazy<Register> = Lazy::new(|| <VirtualMachine as X64>::$name());
+            pub static $name: Lazy<Arc<IrData>> =
+                Lazy::new(|| IrData::Register(<VirtualMachine as X64>::$name()).into());
         };
     }
 

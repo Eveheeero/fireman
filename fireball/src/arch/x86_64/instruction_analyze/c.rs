@@ -4,12 +4,12 @@ use std::ops::Deref;
 #[box_to_static_reference]
 pub(super) fn call() -> &'static [IrStatement] {
     let set_sp = assign(
-        b::sub(r(&rsp), architecture_byte_size()),
-        r(&rsp),
+        b::sub(rsp.clone(), architecture_byte_size()),
+        rsp.clone(),
         size_architecture(),
     );
-    let ret_address = b::add(r(&rip), instruction_byte_size());
-    let save_ret = assign(ret_address, d(r(&rsp)), size_architecture());
+    let ret_address = b::add(rip.clone(), instruction_byte_size());
+    let save_ret = assign(ret_address, d(rsp.clone()), size_architecture());
     let call = super::shortcuts::call(o1());
     [set_sp, save_ret, call].into()
 }

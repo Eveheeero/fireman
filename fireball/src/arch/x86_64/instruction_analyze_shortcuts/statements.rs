@@ -75,7 +75,7 @@ pub(in crate::arch) fn architecture_byte_size_condition(
 pub(in crate::arch) fn calc_flags_automatically(
     operation: impl Into<Arc<IrData>>,
     size: impl Into<AccessSize>,
-    affected_registers: &[&crate::ir::Register],
+    affected_registers: &[&Arc<IrData>],
 ) -> IrStatement {
     use crate::arch::x86_64::static_register::*;
     IrStatement::Special(IrStatementSpecial::CalcFlagsAutomatically {

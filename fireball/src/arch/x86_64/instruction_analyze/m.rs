@@ -11,9 +11,9 @@ pub(super) fn mov() -> &'static [IrStatement] {
 pub(super) fn mul() -> &'static [IrStatement] {
     let operand_bit_size = bit_size_of_o1();
     let mul_8 = assign(
-        b::mul(sized(r(&al), size_relative(r(&al))), o1()),
-        r(&ax),
-        size_relative(r(&ax)),
+        b::mul(sized(al.clone(), size_relative(al.clone())), o1()),
+        ax.clone(),
+        size_relative(ax.clone()),
     );
     todo!()
 }
