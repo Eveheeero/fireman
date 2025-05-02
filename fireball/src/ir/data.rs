@@ -34,6 +34,9 @@ pub enum IntrinsicType {
     UnsignedMin(AccessSize),
     BitOnes(AccessSize),
     BitZeros(AccessSize),
+    ArchitectureByteSize,
+    ArchitectureBitSize,
+    ArchitectureBitPerByte,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

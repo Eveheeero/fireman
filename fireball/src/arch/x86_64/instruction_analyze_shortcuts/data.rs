@@ -137,6 +137,27 @@ pub(in crate::arch) fn bit_ones(size: impl Into<AccessSize>) -> Arc<IrData> {
 pub(in crate::arch) fn bit_zeros(size: impl Into<AccessSize>) -> Arc<IrData> {
     IrData::Intrinsic(IntrinsicType::BitZeros(size.into())).into()
 }
+#[inline]
+#[must_use]
+pub(in crate::arch) fn architecture_bit_size() -> Arc<IrData> {
+    static ONCE: LazyLock<Arc<IrData>> =
+        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ArchitectureBitSize)));
+    ONCE.clone()
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn architecture_byte_size() -> Arc<IrData> {
+    static ONCE: LazyLock<Arc<IrData>> =
+        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ArchitectureByteSize)));
+    ONCE.clone()
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn architecture_bit_per_byte() -> Arc<IrData> {
+    static ONCE: LazyLock<Arc<IrData>> =
+        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ArchitectureBitPerByte)));
+    ONCE.clone()
+}
 /// Unary Operation
 pub(in crate::arch) mod u {
     use super::*;
