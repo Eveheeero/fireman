@@ -44,14 +44,13 @@ pub(in crate::arch) fn r(r: &crate::ir::Register) -> Arc<IrData> {
 /// Operand
 #[inline]
 #[must_use]
-pub(in crate::arch) fn o(o: u8) -> Arc<IrData> {
+fn o(o: u8) -> Arc<IrData> {
     IrData::Operand(NonZeroU8::new(o).unwrap()).into()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn o1() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Operand(NonZeroU8::new(1).unwrap())));
+    static ONCE: LazyLock<Arc<IrData>> = LazyLock::new(|| o(1));
     ONCE.clone()
 }
 /// Relative size
@@ -63,8 +62,7 @@ pub(in crate::arch) fn o1_size() -> AccessSize {
 #[inline]
 #[must_use]
 pub(in crate::arch) fn o2() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Operand(NonZeroU8::new(2).unwrap())));
+    static ONCE: LazyLock<Arc<IrData>> = LazyLock::new(|| o(2));
     ONCE.clone()
 }
 /// Relative size
@@ -76,8 +74,7 @@ pub(in crate::arch) fn o2_size() -> AccessSize {
 #[inline]
 #[must_use]
 pub(in crate::arch) fn o3() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Operand(NonZeroU8::new(3).unwrap())));
+    static ONCE: LazyLock<Arc<IrData>> = LazyLock::new(|| o(3));
     ONCE.clone()
 }
 /// Relative size
@@ -85,6 +82,18 @@ pub(in crate::arch) fn o3() -> Arc<IrData> {
 #[must_use]
 pub(in crate::arch) fn o3_size() -> AccessSize {
     s_relative(o3())
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn o4() -> Arc<IrData> {
+    static ONCE: LazyLock<Arc<IrData>> = LazyLock::new(|| o(4));
+    ONCE.clone()
+}
+/// Relative size
+#[inline]
+#[must_use]
+pub(in crate::arch) fn o4_size() -> AccessSize {
+    s_relative(o4())
 }
 /// Constant
 #[inline]
@@ -170,10 +179,76 @@ pub(in crate::arch) fn instruction_byte_size() -> Arc<IrData> {
         LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::InstructionByteSize)));
     ONCE.clone()
 }
-#[inline]
 #[must_use]
 pub(in crate::arch) fn byte_size_of_data(data: impl Into<Arc<IrData>>) -> Arc<IrData> {
-    IrData::Intrinsic(IntrinsicType::ByteSizeOf(data.into())).into()
+    let data: Arc<_> = data.into();
+    let data_ptr = Arc::as_ptr(&data);
+    static O1: LazyLock<Arc<IrData>> = LazyLock::new(|| o1());
+    static O2: LazyLock<Arc<IrData>> = LazyLock::new(|| o2());
+    static O3: LazyLock<Arc<IrData>> = LazyLock::new(|| o3());
+    static O4: LazyLock<Arc<IrData>> = LazyLock::new(|| o4());
+    let o1_ptr = Arc::as_ptr(&O1);
+    let o2_ptr = Arc::as_ptr(&O2);
+    let o3_ptr = Arc::as_ptr(&O3);
+    let o4_ptr = Arc::as_ptr(&O4);
+    match () {
+        () if data_ptr == o1_ptr => return byte_size_of_o1(),
+        () if data_ptr == o2_ptr => return byte_size_of_o2(),
+        () if data_ptr == o3_ptr => return byte_size_of_o3(),
+        () if data_ptr == o4_ptr => return byte_size_of_o4(),
+        _ => {}
+    }
+    IrData::Intrinsic(IntrinsicType::ByteSizeOf(data)).into()
+}
+#[test]
+fn byte_size_of_data_test() {
+    let l = Arc::as_ptr(&byte_size_of_data(o1())).addr();
+    let r = Arc::as_ptr(&byte_size_of_o1()).addr();
+    dbg!(l, r);
+    assert_eq!(l, r);
+
+    let l = Arc::as_ptr(&byte_size_of_data(o1())).addr();
+    let r = Arc::as_ptr(&byte_size_of_o1()).addr();
+    dbg!(l, r);
+    assert_eq!(l, r);
+
+    let l = Arc::as_ptr(&byte_size_of_data(o2())).addr();
+    let r = Arc::as_ptr(&byte_size_of_o3()).addr();
+    dbg!(l, r);
+    assert_ne!(l, r);
+
+    let l = Arc::as_ptr(&byte_size_of_data(o3())).addr();
+    let r = Arc::as_ptr(&byte_size_of_o3()).addr();
+    dbg!(l, r);
+    assert_eq!(l, r);
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn byte_size_of_o1() -> Arc<IrData> {
+    static ONCE: LazyLock<Arc<IrData>> =
+        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o1()))));
+    ONCE.clone()
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn byte_size_of_o2() -> Arc<IrData> {
+    static ONCE: LazyLock<Arc<IrData>> =
+        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o2()))));
+    ONCE.clone()
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn byte_size_of_o3() -> Arc<IrData> {
+    static ONCE: LazyLock<Arc<IrData>> =
+        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o3()))));
+    ONCE.clone()
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn byte_size_of_o4() -> Arc<IrData> {
+    static ONCE: LazyLock<Arc<IrData>> =
+        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o4()))));
+    ONCE.clone()
 }
 /// Unary Operation
 pub(in crate::arch) mod u {
