@@ -15,7 +15,7 @@ pub(in crate::arch) fn assign(
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn condition_jump(
+pub(in crate::arch) fn condition(
     condition: impl Into<Arc<IrData>>,
     true_branch: impl Into<Box<[IrStatement]>>,
     false_branch: impl Into<Box<[IrStatement]>>,
@@ -28,7 +28,7 @@ pub(in crate::arch) fn condition_jump(
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn uncondition_jump(target: impl Into<Arc<IrData>>) -> IrStatement {
+pub(in crate::arch) fn jump(target: impl Into<Arc<IrData>>) -> IrStatement {
     IrStatement::Jump {
         target: target.into(),
     }
