@@ -3,6 +3,7 @@
 mod a;
 mod c;
 mod d;
+mod i;
 
 #[path = "instruction_analyze_shortcuts"]
 mod shortcuts {
@@ -50,10 +51,10 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Cmp => c::cmp(),
         X64Statement::Dec => d::dec(),
         X64Statement::Div => d::div(),
-        X64Statement::Mul
-        | X64Statement::Inc
+        X64Statement::Inc => i::inc(),
+        X64Statement::Lea
+        | X64Statement::Mul
         | X64Statement::Jmp
-        | X64Statement::Lea
         | X64Statement::Mov
         | X64Statement::Ret
         | X64Statement::Or
