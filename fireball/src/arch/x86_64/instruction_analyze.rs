@@ -4,6 +4,13 @@ mod a;
 mod c;
 mod d;
 mod i;
+mod j;
+mod l;
+mod m;
+mod o;
+mod p;
+mod r;
+mod s;
 
 #[path = "instruction_analyze_shortcuts"]
 mod shortcuts {
@@ -42,7 +49,6 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
     };
 
     use iceball::X64Statement;
-
     Some(match op {
         X64Statement::Adc => a::adc(),
         X64Statement::Add => a::add(),
@@ -52,14 +58,18 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Dec => d::dec(),
         X64Statement::Div => d::div(),
         X64Statement::Inc => i::inc(),
-        X64Statement::Lea
-        | X64Statement::Mul
-        | X64Statement::Jmp
-        | X64Statement::Mov
-        | X64Statement::Ret
-        | X64Statement::Or
-        | X64Statement::Pop
-        | X64Statement::Push => todo!(),
+        X64Statement::Jmp => j::jmp(),
+        X64Statement::Lea => l::lea(),
+        X64Statement::Mov => m::mov(),
+        X64Statement::Mul => m::mul(),
+        X64Statement::Or => o::or(),
+        X64Statement::Pop => p::pop(),
+        X64Statement::Push => p::push(),
+        X64Statement::Ret => r::ret(),
+        X64Statement::Shl => s::shl(),
+        X64Statement::Shr => s::shr(),
+        X64Statement::Sub => s::sub(),
+
         X64Statement::Clc
         | X64Statement::Cmc
         | X64Statement::Stc
@@ -111,13 +121,10 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         | X64Statement::Popfq
         | X64Statement::Pushf
         | X64Statement::Pushfq
-        | X64Statement::Shl
         | X64Statement::Sar
         | X64Statement::Sbb
         | X64Statement::Setcc
-        | X64Statement::Shr
         | X64Statement::Std
-        | X64Statement::Sub
         | X64Statement::Test
         | X64Statement::Xchg
         | X64Statement::Xor
