@@ -78,13 +78,13 @@ pub enum AccessSize {
     Unlimited,
 }
 
-impl Into<AccessSize> for &AccessSize {
-    fn into(self) -> AccessSize {
-        self.clone()
+impl From<&AccessSize> for AccessSize {
+    fn from(value: &AccessSize) -> Self {
+        value.clone()
     }
 }
-impl Into<Aos<IrData>> for &crate::ir::Register {
-    fn into(self) -> Aos<IrData> {
-        IrData::Register(*self).into()
+impl From<&crate::ir::Register> for Aos<IrData> {
+    fn from(value: &crate::ir::Register) -> Self {
+        IrData::Register(*value).into()
     }
 }

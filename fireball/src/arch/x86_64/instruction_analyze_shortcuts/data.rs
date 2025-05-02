@@ -6,10 +6,10 @@ use std::sync::LazyLock;
 pub(in crate::arch) fn size_result_bit(data: impl Into<Aos<IrData>>) -> AccessSize {
     let data: Aos<_> = data.into();
     let data_ptr = Aos::as_ptr(&data);
-    static O1: LazyLock<Aos<IrData>> = LazyLock::new(|| bit_size_of_o1());
-    static O2: LazyLock<Aos<IrData>> = LazyLock::new(|| bit_size_of_o2());
-    static O3: LazyLock<Aos<IrData>> = LazyLock::new(|| bit_size_of_o3());
-    static O4: LazyLock<Aos<IrData>> = LazyLock::new(|| bit_size_of_o4());
+    static O1: LazyLock<Aos<IrData>> = LazyLock::new(bit_size_of_o1);
+    static O2: LazyLock<Aos<IrData>> = LazyLock::new(bit_size_of_o2);
+    static O3: LazyLock<Aos<IrData>> = LazyLock::new(bit_size_of_o3);
+    static O4: LazyLock<Aos<IrData>> = LazyLock::new(bit_size_of_o4);
     let o1_ptr = Aos::as_ptr(&O1);
     let o2_ptr = Aos::as_ptr(&O2);
     let o3_ptr = Aos::as_ptr(&O3);
@@ -28,10 +28,10 @@ pub(in crate::arch) fn size_result_bit(data: impl Into<Aos<IrData>>) -> AccessSi
 pub(in crate::arch) fn size_result_byte(data: impl Into<Aos<IrData>>) -> AccessSize {
     let data: Aos<_> = data.into();
     let data_ptr = Aos::as_ptr(&data);
-    static O1: LazyLock<Aos<IrData>> = LazyLock::new(|| byte_size_of_o1());
-    static O2: LazyLock<Aos<IrData>> = LazyLock::new(|| byte_size_of_o2());
-    static O3: LazyLock<Aos<IrData>> = LazyLock::new(|| byte_size_of_o3());
-    static O4: LazyLock<Aos<IrData>> = LazyLock::new(|| byte_size_of_o4());
+    static O1: LazyLock<Aos<IrData>> = LazyLock::new(byte_size_of_o1);
+    static O2: LazyLock<Aos<IrData>> = LazyLock::new(byte_size_of_o2);
+    static O3: LazyLock<Aos<IrData>> = LazyLock::new(byte_size_of_o3);
+    static O4: LazyLock<Aos<IrData>> = LazyLock::new(byte_size_of_o4);
     let o1_ptr = Aos::as_ptr(&O1);
     let o2_ptr = Aos::as_ptr(&O2);
     let o3_ptr = Aos::as_ptr(&O3);
@@ -282,10 +282,10 @@ pub(in crate::arch) fn instruction_byte_size() -> Aos<IrData> {
 pub(in crate::arch) fn byte_size_of_data(data: impl Into<Aos<IrData>>) -> Aos<IrData> {
     let data: Aos<_> = data.into();
     let data_ptr = Aos::as_ptr(&data);
-    static O1: LazyLock<Aos<IrData>> = LazyLock::new(|| o1());
-    static O2: LazyLock<Aos<IrData>> = LazyLock::new(|| o2());
-    static O3: LazyLock<Aos<IrData>> = LazyLock::new(|| o3());
-    static O4: LazyLock<Aos<IrData>> = LazyLock::new(|| o4());
+    static O1: LazyLock<Aos<IrData>> = LazyLock::new(o1);
+    static O2: LazyLock<Aos<IrData>> = LazyLock::new(o2);
+    static O3: LazyLock<Aos<IrData>> = LazyLock::new(o3);
+    static O4: LazyLock<Aos<IrData>> = LazyLock::new(o4);
     let o1_ptr = Aos::as_ptr(&O1);
     let o2_ptr = Aos::as_ptr(&O2);
     let o3_ptr = Aos::as_ptr(&O3);
@@ -303,10 +303,10 @@ pub(in crate::arch) fn byte_size_of_data(data: impl Into<Aos<IrData>>) -> Aos<Ir
 pub(in crate::arch) fn bit_size_of_data(data: impl Into<Aos<IrData>>) -> Aos<IrData> {
     let data: Aos<_> = data.into();
     let data_ptr = Aos::as_ptr(&data);
-    static O1: LazyLock<Aos<IrData>> = LazyLock::new(|| o1());
-    static O2: LazyLock<Aos<IrData>> = LazyLock::new(|| o2());
-    static O3: LazyLock<Aos<IrData>> = LazyLock::new(|| o3());
-    static O4: LazyLock<Aos<IrData>> = LazyLock::new(|| o4());
+    static O1: LazyLock<Aos<IrData>> = LazyLock::new(o1);
+    static O2: LazyLock<Aos<IrData>> = LazyLock::new(o2);
+    static O3: LazyLock<Aos<IrData>> = LazyLock::new(o3);
+    static O4: LazyLock<Aos<IrData>> = LazyLock::new(o4);
     let o1_ptr = Aos::as_ptr(&O1);
     let o2_ptr = Aos::as_ptr(&O2);
     let o3_ptr = Aos::as_ptr(&O3);
