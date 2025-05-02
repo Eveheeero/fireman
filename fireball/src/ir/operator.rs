@@ -6,7 +6,6 @@ pub enum UnaryOperator {
     Negation,
     SignExtend,
     ZeroExtend,
-    Truncate,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BinaryOperator {
