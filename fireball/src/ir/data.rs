@@ -38,6 +38,7 @@ pub enum IntrinsicType {
     ArchitectureBitSize,
     ArchitectureBitPerByte,
     InstructionByteSize,
+    ByteSizeOf(Arc<IrData>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

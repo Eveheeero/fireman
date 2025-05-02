@@ -170,6 +170,11 @@ pub(in crate::arch) fn instruction_byte_size() -> Arc<IrData> {
         LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::InstructionByteSize)));
     ONCE.clone()
 }
+#[inline]
+#[must_use]
+pub(in crate::arch) fn byte_size_of_data(data: impl Into<Arc<IrData>>) -> Arc<IrData> {
+    IrData::Intrinsic(IntrinsicType::ByteSizeOf(data.into())).into()
+}
 /// Unary Operation
 pub(in crate::arch) mod u {
     use super::*;
