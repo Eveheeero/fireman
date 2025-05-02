@@ -41,6 +41,7 @@ pub enum IntrinsicType {
     ByteSizeOf(Aos<IrData>),
     BitSizeOf(Aos<IrData>),
     Sized(Aos<IrData>, AccessSize),
+    OperandExists(NonZeroU8),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

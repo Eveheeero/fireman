@@ -359,6 +359,46 @@ pub(in crate::arch) fn sized(
 ) -> Aos<IrData> {
     IrData::Intrinsic(IntrinsicType::Sized(data.into(), size.into())).into()
 }
+#[inline]
+#[must_use]
+pub(in crate::arch) fn is_o1_exists() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| {
+        Aos::new_static(IrData::Intrinsic(IntrinsicType::OperandExists(
+            1.try_into().unwrap(),
+        )))
+    });
+    ONCE.clone()
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn is_o2_exists() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| {
+        Aos::new_static(IrData::Intrinsic(IntrinsicType::OperandExists(
+            2.try_into().unwrap(),
+        )))
+    });
+    ONCE.clone()
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn is_o3_exists() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| {
+        Aos::new_static(IrData::Intrinsic(IntrinsicType::OperandExists(
+            3.try_into().unwrap(),
+        )))
+    });
+    ONCE.clone()
+}
+#[inline]
+#[must_use]
+pub(in crate::arch) fn is_o4_exists() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| {
+        Aos::new_static(IrData::Intrinsic(IntrinsicType::OperandExists(
+            4.try_into().unwrap(),
+        )))
+    });
+    ONCE.clone()
+}
 /// Unary Operation
 pub(in crate::arch) mod u {
     use super::*;
