@@ -1,4 +1,5 @@
 //! x86_64 아키텍처 인스트럭션을 IR로 변환하는 함수가 담긴 모듈
+#![allow(unused_imports)]
 
 mod a;
 mod c;
@@ -57,6 +58,7 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Cmp => c::cmp(),
         X64Statement::Dec => d::dec(),
         X64Statement::Div => d::div(),
+        X64Statement::Imul => i::imul(),
         X64Statement::Inc => i::inc(),
         X64Statement::Jmp => j::jmp(),
         X64Statement::Lea => l::lea(),
@@ -87,7 +89,6 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         | X64Statement::Hlt
         | X64Statement::Idiv
         | X64Statement::Int
-        | X64Statement::Imul
         | X64Statement::Ja
         | X64Statement::Jae
         | X64Statement::Jb

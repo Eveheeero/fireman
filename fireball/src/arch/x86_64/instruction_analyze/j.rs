@@ -3,5 +3,6 @@ use std::ops::Deref;
 
 #[box_to_static_reference]
 pub(super) fn jmp() -> &'static [IrStatement] {
-    todo!()
+    let jmp = jump(o1());
+    [jmp].into()
 }
