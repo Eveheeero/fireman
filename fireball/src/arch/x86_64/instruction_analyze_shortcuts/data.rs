@@ -4,12 +4,78 @@ use std::sync::LazyLock;
 #[inline]
 #[must_use]
 pub(in crate::arch) fn size_result_bit(data: impl Into<Arc<IrData>>) -> AccessSize {
-    AccessSize::ResultOfBit(data.into())
+    let data: Arc<_> = data.into();
+    let data_ptr = Arc::as_ptr(&data);
+    static O1: LazyLock<Arc<IrData>> = LazyLock::new(|| bit_size_of_o1());
+    static O2: LazyLock<Arc<IrData>> = LazyLock::new(|| bit_size_of_o2());
+    static O3: LazyLock<Arc<IrData>> = LazyLock::new(|| bit_size_of_o3());
+    static O4: LazyLock<Arc<IrData>> = LazyLock::new(|| bit_size_of_o4());
+    let o1_ptr = Arc::as_ptr(&O1);
+    let o2_ptr = Arc::as_ptr(&O2);
+    let o3_ptr = Arc::as_ptr(&O3);
+    let o4_ptr = Arc::as_ptr(&O4);
+    match () {
+        () if data_ptr == o1_ptr => return o1_size(),
+        () if data_ptr == o2_ptr => return o2_size(),
+        () if data_ptr == o3_ptr => return o3_size(),
+        () if data_ptr == o4_ptr => return o4_size(),
+        _ => {}
+    }
+    AccessSize::ResultOfBit(data)
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn size_result_byte(data: impl Into<Arc<IrData>>) -> AccessSize {
-    AccessSize::ResultOfByte(data.into())
+    let data: Arc<_> = data.into();
+    let data_ptr = Arc::as_ptr(&data);
+    static O1: LazyLock<Arc<IrData>> = LazyLock::new(|| byte_size_of_o1());
+    static O2: LazyLock<Arc<IrData>> = LazyLock::new(|| byte_size_of_o2());
+    static O3: LazyLock<Arc<IrData>> = LazyLock::new(|| byte_size_of_o3());
+    static O4: LazyLock<Arc<IrData>> = LazyLock::new(|| byte_size_of_o4());
+    let o1_ptr = Arc::as_ptr(&O1);
+    let o2_ptr = Arc::as_ptr(&O2);
+    let o3_ptr = Arc::as_ptr(&O3);
+    let o4_ptr = Arc::as_ptr(&O4);
+    match () {
+        () if data_ptr == o1_ptr => return o1_size(),
+        () if data_ptr == o2_ptr => return o2_size(),
+        () if data_ptr == o3_ptr => return o3_size(),
+        () if data_ptr == o4_ptr => return o4_size(),
+        _ => {}
+    }
+    AccessSize::ResultOfByte(data)
+}
+#[test]
+fn size_result_singleton_test() {
+    let extract_arc = |x: AccessSize| match x {
+        AccessSize::RelativeWith(ir_data) => return ir_data,
+        _ => unreachable!(),
+    };
+
+    let l = Arc::as_ptr(&extract_arc(size_result_bit(bit_size_of_o1()))).addr();
+    let r = Arc::as_ptr(&extract_arc(o1_size())).addr();
+    dbg!(l, r);
+    assert_eq!(l, r);
+
+    let l = Arc::as_ptr(&extract_arc(size_result_bit(bit_size_of_o1()))).addr();
+    let r = Arc::as_ptr(&extract_arc(o1_size())).addr();
+    dbg!(l, r);
+    assert_eq!(l, r);
+
+    let l = Arc::as_ptr(&extract_arc(size_result_bit(bit_size_of_o2()))).addr();
+    let r = Arc::as_ptr(&extract_arc(o3_size())).addr();
+    dbg!(l, r);
+    assert_ne!(l, r);
+
+    let l = Arc::as_ptr(&extract_arc(size_result_bit(bit_size_of_o3()))).addr();
+    let r = Arc::as_ptr(&extract_arc(o3_size())).addr();
+    dbg!(l, r);
+    assert_eq!(l, r);
+
+    let l = Arc::as_ptr(&extract_arc(size_result_byte(byte_size_of_o1()))).addr();
+    let r = Arc::as_ptr(&extract_arc(o1_size())).addr();
+    dbg!(l, r);
+    assert_eq!(l, r);
 }
 #[inline]
 #[must_use]
@@ -208,7 +274,7 @@ pub(in crate::arch) fn bit_size_of_data(data: impl Into<Arc<IrData>>) -> Arc<IrD
     IrData::Intrinsic(IntrinsicType::BitSizeOf(data)).into()
 }
 #[test]
-fn byte_size_of_data_test() {
+fn byte_size_of_data_singleton_test() {
     let l = Arc::as_ptr(&byte_size_of_data(o1())).addr();
     let r = Arc::as_ptr(&byte_size_of_o1()).addr();
     dbg!(l, r);
