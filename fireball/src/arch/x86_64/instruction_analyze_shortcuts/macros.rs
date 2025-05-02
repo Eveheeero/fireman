@@ -8,7 +8,7 @@ use super::*;
 #[must_use]
 pub(in crate::arch) fn extend_undefined_flags(
     ir: &[IrStatement],
-    affected_registers: &[&Arc<IrData>],
+    affected_registers: &[&Aos<IrData>],
 ) -> Box<[IrStatement]> {
     let mut result: Vec<_> = ir.into();
     for register in affected_registers {

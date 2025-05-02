@@ -1,5 +1,8 @@
-use crate::ir::operator::{BinaryOperator, UnaryOperator};
-use std::{num::NonZeroU8, sync::Arc};
+use crate::{
+    ir::operator::{BinaryOperator, UnaryOperator},
+    utils::Aos,
+};
+use std::num::NonZeroU8;
 
 /// IR 내부에 사용되는 데이터
 ///
@@ -14,7 +17,7 @@ pub enum IrData {
     // mov eax, ebx의 ebx
     Register(crate::ir::Register),
     /// mov eax, dword ptr [eax]의 dword ptr [eax]
-    Dereference(Arc<IrData>),
+    Dereference(Aos<IrData>),
     /// Operation
     Operation(IrDataOperation),
     /// Nth operand
@@ -35,14 +38,14 @@ pub enum IntrinsicType {
     ArchitectureBitSize,
     ArchitectureBitPerByte,
     InstructionByteSize,
-    ByteSizeOf(Arc<IrData>),
-    BitSizeOf(Arc<IrData>),
-    Sized(Arc<IrData>, AccessSize),
+    ByteSizeOf(Aos<IrData>),
+    BitSizeOf(Aos<IrData>),
+    Sized(Aos<IrData>, AccessSize),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DataAccess {
-    data: Arc<IrData>,
+    data: Aos<IrData>,
     access_type: DataAccessType,
     size: AccessSize,
 }
@@ -56,20 +59,20 @@ pub enum DataAccessType {
 pub enum IrDataOperation {
     Unary {
         operator: UnaryOperator,
-        arg: Arc<IrData>,
+        arg: Aos<IrData>,
     },
     Binary {
         operator: BinaryOperator,
-        arg1: Arc<IrData>,
-        arg2: Arc<IrData>,
+        arg1: Aos<IrData>,
+        arg2: Aos<IrData>,
     },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AccessSize {
-    ResultOfBit(Arc<IrData>),
-    ResultOfByte(Arc<IrData>),
-    RelativeWith(Arc<IrData>),
+    ResultOfBit(Aos<IrData>),
+    ResultOfByte(Aos<IrData>),
+    RelativeWith(Aos<IrData>),
     ArchitectureSize,
     Unlimited,
 }
@@ -79,8 +82,8 @@ impl Into<AccessSize> for &AccessSize {
         self.clone()
     }
 }
-impl Into<Arc<IrData>> for &crate::ir::Register {
-    fn into(self) -> Arc<IrData> {
+impl Into<Aos<IrData>> for &crate::ir::Register {
+    fn into(self) -> Aos<IrData> {
         IrData::Register(*self).into()
     }
 }

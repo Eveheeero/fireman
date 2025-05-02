@@ -3,17 +3,17 @@ use std::sync::LazyLock;
 
 #[inline]
 #[must_use]
-pub(in crate::arch) fn size_result_bit(data: impl Into<Arc<IrData>>) -> AccessSize {
-    let data: Arc<_> = data.into();
-    let data_ptr = Arc::as_ptr(&data);
-    static O1: LazyLock<Arc<IrData>> = LazyLock::new(|| bit_size_of_o1());
-    static O2: LazyLock<Arc<IrData>> = LazyLock::new(|| bit_size_of_o2());
-    static O3: LazyLock<Arc<IrData>> = LazyLock::new(|| bit_size_of_o3());
-    static O4: LazyLock<Arc<IrData>> = LazyLock::new(|| bit_size_of_o4());
-    let o1_ptr = Arc::as_ptr(&O1);
-    let o2_ptr = Arc::as_ptr(&O2);
-    let o3_ptr = Arc::as_ptr(&O3);
-    let o4_ptr = Arc::as_ptr(&O4);
+pub(in crate::arch) fn size_result_bit(data: impl Into<Aos<IrData>>) -> AccessSize {
+    let data: Aos<_> = data.into();
+    let data_ptr = Aos::as_ptr(&data);
+    static O1: LazyLock<Aos<IrData>> = LazyLock::new(|| bit_size_of_o1());
+    static O2: LazyLock<Aos<IrData>> = LazyLock::new(|| bit_size_of_o2());
+    static O3: LazyLock<Aos<IrData>> = LazyLock::new(|| bit_size_of_o3());
+    static O4: LazyLock<Aos<IrData>> = LazyLock::new(|| bit_size_of_o4());
+    let o1_ptr = Aos::as_ptr(&O1);
+    let o2_ptr = Aos::as_ptr(&O2);
+    let o3_ptr = Aos::as_ptr(&O3);
+    let o4_ptr = Aos::as_ptr(&O4);
     match () {
         () if data_ptr == o1_ptr => return o1_size(),
         () if data_ptr == o2_ptr => return o2_size(),
@@ -25,17 +25,17 @@ pub(in crate::arch) fn size_result_bit(data: impl Into<Arc<IrData>>) -> AccessSi
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn size_result_byte(data: impl Into<Arc<IrData>>) -> AccessSize {
-    let data: Arc<_> = data.into();
-    let data_ptr = Arc::as_ptr(&data);
-    static O1: LazyLock<Arc<IrData>> = LazyLock::new(|| byte_size_of_o1());
-    static O2: LazyLock<Arc<IrData>> = LazyLock::new(|| byte_size_of_o2());
-    static O3: LazyLock<Arc<IrData>> = LazyLock::new(|| byte_size_of_o3());
-    static O4: LazyLock<Arc<IrData>> = LazyLock::new(|| byte_size_of_o4());
-    let o1_ptr = Arc::as_ptr(&O1);
-    let o2_ptr = Arc::as_ptr(&O2);
-    let o3_ptr = Arc::as_ptr(&O3);
-    let o4_ptr = Arc::as_ptr(&O4);
+pub(in crate::arch) fn size_result_byte(data: impl Into<Aos<IrData>>) -> AccessSize {
+    let data: Aos<_> = data.into();
+    let data_ptr = Aos::as_ptr(&data);
+    static O1: LazyLock<Aos<IrData>> = LazyLock::new(|| byte_size_of_o1());
+    static O2: LazyLock<Aos<IrData>> = LazyLock::new(|| byte_size_of_o2());
+    static O3: LazyLock<Aos<IrData>> = LazyLock::new(|| byte_size_of_o3());
+    static O4: LazyLock<Aos<IrData>> = LazyLock::new(|| byte_size_of_o4());
+    let o1_ptr = Aos::as_ptr(&O1);
+    let o2_ptr = Aos::as_ptr(&O2);
+    let o3_ptr = Aos::as_ptr(&O3);
+    let o4_ptr = Aos::as_ptr(&O4);
     match () {
         () if data_ptr == o1_ptr => return o1_size(),
         () if data_ptr == o2_ptr => return o2_size(),
@@ -52,34 +52,34 @@ fn size_result_singleton_test() {
         _ => unreachable!(),
     };
 
-    let l = Arc::as_ptr(&extract_arc(size_result_bit(bit_size_of_o1()))).addr();
-    let r = Arc::as_ptr(&extract_arc(o1_size())).addr();
+    let l = Aos::as_ptr(&extract_arc(size_result_bit(bit_size_of_o1()))).addr();
+    let r = Aos::as_ptr(&extract_arc(o1_size())).addr();
     dbg!(l, r);
     assert_eq!(l, r);
 
-    let l = Arc::as_ptr(&extract_arc(size_result_bit(bit_size_of_o1()))).addr();
-    let r = Arc::as_ptr(&extract_arc(o1_size())).addr();
+    let l = Aos::as_ptr(&extract_arc(size_result_bit(bit_size_of_o1()))).addr();
+    let r = Aos::as_ptr(&extract_arc(o1_size())).addr();
     dbg!(l, r);
     assert_eq!(l, r);
 
-    let l = Arc::as_ptr(&extract_arc(size_result_bit(bit_size_of_o2()))).addr();
-    let r = Arc::as_ptr(&extract_arc(o3_size())).addr();
+    let l = Aos::as_ptr(&extract_arc(size_result_bit(bit_size_of_o2()))).addr();
+    let r = Aos::as_ptr(&extract_arc(o3_size())).addr();
     dbg!(l, r);
     assert_ne!(l, r);
 
-    let l = Arc::as_ptr(&extract_arc(size_result_bit(bit_size_of_o3()))).addr();
-    let r = Arc::as_ptr(&extract_arc(o3_size())).addr();
+    let l = Aos::as_ptr(&extract_arc(size_result_bit(bit_size_of_o3()))).addr();
+    let r = Aos::as_ptr(&extract_arc(o3_size())).addr();
     dbg!(l, r);
     assert_eq!(l, r);
 
-    let l = Arc::as_ptr(&extract_arc(size_result_byte(byte_size_of_o1()))).addr();
-    let r = Arc::as_ptr(&extract_arc(o1_size())).addr();
+    let l = Aos::as_ptr(&extract_arc(size_result_byte(byte_size_of_o1()))).addr();
+    let r = Aos::as_ptr(&extract_arc(o1_size())).addr();
     dbg!(l, r);
     assert_eq!(l, r);
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn size_relative(data: impl Into<Arc<IrData>>) -> AccessSize {
+pub(in crate::arch) fn size_relative(data: impl Into<Aos<IrData>>) -> AccessSize {
     AccessSize::RelativeWith(data.into())
 }
 #[inline]
@@ -96,13 +96,13 @@ pub(in crate::arch) fn size_unlimited() -> AccessSize {
 /// Operand
 #[inline]
 #[must_use]
-fn o(o: u8) -> Arc<IrData> {
+fn o(o: u8) -> Aos<IrData> {
     IrData::Operand(NonZeroU8::new(o).unwrap()).into()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn o1() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> = LazyLock::new(|| o(1));
+pub(in crate::arch) fn o1() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| o(1));
     ONCE.clone()
 }
 /// Relative size
@@ -113,8 +113,8 @@ pub(in crate::arch) fn o1_size() -> AccessSize {
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn o2() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> = LazyLock::new(|| o(2));
+pub(in crate::arch) fn o2() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| o(2));
     ONCE.clone()
 }
 /// Relative size
@@ -125,8 +125,8 @@ pub(in crate::arch) fn o2_size() -> AccessSize {
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn o3() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> = LazyLock::new(|| o(3));
+pub(in crate::arch) fn o3() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| o(3));
     ONCE.clone()
 }
 /// Relative size
@@ -137,8 +137,8 @@ pub(in crate::arch) fn o3_size() -> AccessSize {
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn o4() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> = LazyLock::new(|| o(4));
+pub(in crate::arch) fn o4() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| o(4));
     ONCE.clone()
 }
 /// Relative size
@@ -150,99 +150,99 @@ pub(in crate::arch) fn o4_size() -> AccessSize {
 /// Constant
 #[inline]
 #[must_use]
-pub(in crate::arch) fn c(c: usize) -> Arc<IrData> {
+pub(in crate::arch) fn c(c: usize) -> Aos<IrData> {
     IrData::Constant(c).into()
 }
 /// Dereference
 #[inline]
 #[must_use]
-pub(in crate::arch) fn d(d: impl Into<Arc<IrData>>) -> Arc<IrData> {
+pub(in crate::arch) fn d(d: impl Into<Aos<IrData>>) -> Aos<IrData> {
     IrData::Dereference(d.into()).into()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn unknown_data() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::Unknown)));
+pub(in crate::arch) fn unknown_data() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::Unknown)));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn undefined_data() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::Undefined)));
+pub(in crate::arch) fn undefined_data() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::Undefined)));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn signed_max(size: impl Into<AccessSize>) -> Arc<IrData> {
+pub(in crate::arch) fn signed_max(size: impl Into<AccessSize>) -> Aos<IrData> {
     IrData::Intrinsic(IntrinsicType::SignedMax(size.into())).into()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn signed_min(size: impl Into<AccessSize>) -> Arc<IrData> {
+pub(in crate::arch) fn signed_min(size: impl Into<AccessSize>) -> Aos<IrData> {
     IrData::Intrinsic(IntrinsicType::SignedMin(size.into())).into()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn unsigned_max(size: impl Into<AccessSize>) -> Arc<IrData> {
+pub(in crate::arch) fn unsigned_max(size: impl Into<AccessSize>) -> Aos<IrData> {
     IrData::Intrinsic(IntrinsicType::UnsignedMax(size.into())).into()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn unsigned_min(size: impl Into<AccessSize>) -> Arc<IrData> {
+pub(in crate::arch) fn unsigned_min(size: impl Into<AccessSize>) -> Aos<IrData> {
     IrData::Intrinsic(IntrinsicType::UnsignedMin(size.into())).into()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn bit_ones(size: impl Into<AccessSize>) -> Arc<IrData> {
+pub(in crate::arch) fn bit_ones(size: impl Into<AccessSize>) -> Aos<IrData> {
     IrData::Intrinsic(IntrinsicType::BitOnes(size.into())).into()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn bit_zeros(size: impl Into<AccessSize>) -> Arc<IrData> {
+pub(in crate::arch) fn bit_zeros(size: impl Into<AccessSize>) -> Aos<IrData> {
     IrData::Intrinsic(IntrinsicType::BitZeros(size.into())).into()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn architecture_bit_size() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ArchitectureBitSize)));
+pub(in crate::arch) fn architecture_bit_size() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ArchitectureBitSize)));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn architecture_byte_size() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ArchitectureByteSize)));
+pub(in crate::arch) fn architecture_byte_size() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ArchitectureByteSize)));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn architecture_bit_per_byte() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ArchitectureBitPerByte)));
+pub(in crate::arch) fn architecture_bit_per_byte() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ArchitectureBitPerByte)));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn instruction_byte_size() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::InstructionByteSize)));
+pub(in crate::arch) fn instruction_byte_size() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::InstructionByteSize)));
     ONCE.clone()
 }
 #[must_use]
-pub(in crate::arch) fn byte_size_of_data(data: impl Into<Arc<IrData>>) -> Arc<IrData> {
-    let data: Arc<_> = data.into();
-    let data_ptr = Arc::as_ptr(&data);
-    static O1: LazyLock<Arc<IrData>> = LazyLock::new(|| o1());
-    static O2: LazyLock<Arc<IrData>> = LazyLock::new(|| o2());
-    static O3: LazyLock<Arc<IrData>> = LazyLock::new(|| o3());
-    static O4: LazyLock<Arc<IrData>> = LazyLock::new(|| o4());
-    let o1_ptr = Arc::as_ptr(&O1);
-    let o2_ptr = Arc::as_ptr(&O2);
-    let o3_ptr = Arc::as_ptr(&O3);
-    let o4_ptr = Arc::as_ptr(&O4);
+pub(in crate::arch) fn byte_size_of_data(data: impl Into<Aos<IrData>>) -> Aos<IrData> {
+    let data: Aos<_> = data.into();
+    let data_ptr = Aos::as_ptr(&data);
+    static O1: LazyLock<Aos<IrData>> = LazyLock::new(|| o1());
+    static O2: LazyLock<Aos<IrData>> = LazyLock::new(|| o2());
+    static O3: LazyLock<Aos<IrData>> = LazyLock::new(|| o3());
+    static O4: LazyLock<Aos<IrData>> = LazyLock::new(|| o4());
+    let o1_ptr = Aos::as_ptr(&O1);
+    let o2_ptr = Aos::as_ptr(&O2);
+    let o3_ptr = Aos::as_ptr(&O3);
+    let o4_ptr = Aos::as_ptr(&O4);
     match () {
         () if data_ptr == o1_ptr => return byte_size_of_o1(),
         () if data_ptr == o2_ptr => return byte_size_of_o2(),
@@ -253,17 +253,17 @@ pub(in crate::arch) fn byte_size_of_data(data: impl Into<Arc<IrData>>) -> Arc<Ir
     IrData::Intrinsic(IntrinsicType::ByteSizeOf(data)).into()
 }
 #[must_use]
-pub(in crate::arch) fn bit_size_of_data(data: impl Into<Arc<IrData>>) -> Arc<IrData> {
-    let data: Arc<_> = data.into();
-    let data_ptr = Arc::as_ptr(&data);
-    static O1: LazyLock<Arc<IrData>> = LazyLock::new(|| o1());
-    static O2: LazyLock<Arc<IrData>> = LazyLock::new(|| o2());
-    static O3: LazyLock<Arc<IrData>> = LazyLock::new(|| o3());
-    static O4: LazyLock<Arc<IrData>> = LazyLock::new(|| o4());
-    let o1_ptr = Arc::as_ptr(&O1);
-    let o2_ptr = Arc::as_ptr(&O2);
-    let o3_ptr = Arc::as_ptr(&O3);
-    let o4_ptr = Arc::as_ptr(&O4);
+pub(in crate::arch) fn bit_size_of_data(data: impl Into<Aos<IrData>>) -> Aos<IrData> {
+    let data: Aos<_> = data.into();
+    let data_ptr = Aos::as_ptr(&data);
+    static O1: LazyLock<Aos<IrData>> = LazyLock::new(|| o1());
+    static O2: LazyLock<Aos<IrData>> = LazyLock::new(|| o2());
+    static O3: LazyLock<Aos<IrData>> = LazyLock::new(|| o3());
+    static O4: LazyLock<Aos<IrData>> = LazyLock::new(|| o4());
+    let o1_ptr = Aos::as_ptr(&O1);
+    let o2_ptr = Aos::as_ptr(&O2);
+    let o3_ptr = Aos::as_ptr(&O3);
+    let o4_ptr = Aos::as_ptr(&O4);
     match () {
         () if data_ptr == o1_ptr => return bit_size_of_o1(),
         () if data_ptr == o2_ptr => return bit_size_of_o2(),
@@ -275,88 +275,88 @@ pub(in crate::arch) fn bit_size_of_data(data: impl Into<Arc<IrData>>) -> Arc<IrD
 }
 #[test]
 fn byte_size_of_data_singleton_test() {
-    let l = Arc::as_ptr(&byte_size_of_data(o1())).addr();
-    let r = Arc::as_ptr(&byte_size_of_o1()).addr();
+    let l = Aos::as_ptr(&byte_size_of_data(o1())).addr();
+    let r = Aos::as_ptr(&byte_size_of_o1()).addr();
     dbg!(l, r);
     assert_eq!(l, r);
 
-    let l = Arc::as_ptr(&byte_size_of_data(o1())).addr();
-    let r = Arc::as_ptr(&byte_size_of_o1()).addr();
+    let l = Aos::as_ptr(&byte_size_of_data(o1())).addr();
+    let r = Aos::as_ptr(&byte_size_of_o1()).addr();
     dbg!(l, r);
     assert_eq!(l, r);
 
-    let l = Arc::as_ptr(&byte_size_of_data(o2())).addr();
-    let r = Arc::as_ptr(&byte_size_of_o3()).addr();
+    let l = Aos::as_ptr(&byte_size_of_data(o2())).addr();
+    let r = Aos::as_ptr(&byte_size_of_o3()).addr();
     dbg!(l, r);
     assert_ne!(l, r);
 
-    let l = Arc::as_ptr(&byte_size_of_data(o3())).addr();
-    let r = Arc::as_ptr(&byte_size_of_o3()).addr();
+    let l = Aos::as_ptr(&byte_size_of_data(o3())).addr();
+    let r = Aos::as_ptr(&byte_size_of_o3()).addr();
     dbg!(l, r);
     assert_eq!(l, r);
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn byte_size_of_o1() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o1()))));
+pub(in crate::arch) fn byte_size_of_o1() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o1()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn byte_size_of_o2() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o2()))));
+pub(in crate::arch) fn byte_size_of_o2() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o2()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn byte_size_of_o3() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o3()))));
+pub(in crate::arch) fn byte_size_of_o3() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o3()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn byte_size_of_o4() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o4()))));
+pub(in crate::arch) fn byte_size_of_o4() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o4()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn bit_size_of_o1() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::BitSizeOf(o1()))));
+pub(in crate::arch) fn bit_size_of_o1() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::BitSizeOf(o1()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn bit_size_of_o2() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::BitSizeOf(o2()))));
+pub(in crate::arch) fn bit_size_of_o2() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::BitSizeOf(o2()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn bit_size_of_o3() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::BitSizeOf(o3()))));
+pub(in crate::arch) fn bit_size_of_o3() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::BitSizeOf(o3()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn bit_size_of_o4() -> Arc<IrData> {
-    static ONCE: LazyLock<Arc<IrData>> =
-        LazyLock::new(|| Arc::new(IrData::Intrinsic(IntrinsicType::BitSizeOf(o4()))));
+pub(in crate::arch) fn bit_size_of_o4() -> Aos<IrData> {
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::BitSizeOf(o4()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn sized(
-    data: impl Into<Arc<IrData>>,
+    data: impl Into<Aos<IrData>>,
     size: impl Into<AccessSize>,
-) -> Arc<IrData> {
+) -> Aos<IrData> {
     IrData::Intrinsic(IntrinsicType::Sized(data.into(), size.into())).into()
 }
 /// Unary Operation
@@ -365,7 +365,7 @@ pub(in crate::arch) mod u {
 
     #[inline]
     #[must_use]
-    fn transform(operator: UnaryOperator, arg: impl Into<Arc<IrData>>) -> Arc<IrData> {
+    fn transform(operator: UnaryOperator, arg: impl Into<Aos<IrData>>) -> Aos<IrData> {
         IrData::Operation(IrDataOperation::Unary {
             operator,
             arg: arg.into(),
@@ -374,22 +374,22 @@ pub(in crate::arch) mod u {
     }
     #[inline]
     #[must_use]
-    pub(in crate::arch) fn not(arg: impl Into<Arc<IrData>>) -> Arc<IrData> {
+    pub(in crate::arch) fn not(arg: impl Into<Aos<IrData>>) -> Aos<IrData> {
         transform(UnaryOperator::Not, arg)
     }
     #[inline]
     #[must_use]
-    pub(in crate::arch) fn neg(arg: impl Into<Arc<IrData>>) -> Arc<IrData> {
+    pub(in crate::arch) fn neg(arg: impl Into<Aos<IrData>>) -> Aos<IrData> {
         transform(UnaryOperator::Negation, arg)
     }
     #[inline]
     #[must_use]
-    pub(in crate::arch) fn sign_extend(arg: impl Into<Arc<IrData>>) -> Arc<IrData> {
+    pub(in crate::arch) fn sign_extend(arg: impl Into<Aos<IrData>>) -> Aos<IrData> {
         transform(UnaryOperator::SignExtend, arg)
     }
     #[inline]
     #[must_use]
-    pub(in crate::arch) fn zero_extend(arg: impl Into<Arc<IrData>>) -> Arc<IrData> {
+    pub(in crate::arch) fn zero_extend(arg: impl Into<Aos<IrData>>) -> Aos<IrData> {
         transform(UnaryOperator::ZeroExtend, arg)
     }
 }
@@ -401,9 +401,9 @@ pub(in crate::arch) mod b {
     #[must_use]
     fn transform(
         operator: BinaryOperator,
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         IrData::Operation(IrDataOperation::Binary {
             operator,
             arg1: arg1.into(),
@@ -414,150 +414,150 @@ pub(in crate::arch) mod b {
     #[inline]
     #[must_use]
     pub(in crate::arch) fn and(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         transform(BinaryOperator::And, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn or(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         transform(BinaryOperator::Or, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn xor(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         transform(BinaryOperator::Xor, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn shl(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         transform(BinaryOperator::Shl, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn shr(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         transform(BinaryOperator::Shr, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn sar(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         transform(BinaryOperator::Sar, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn add(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         transform(BinaryOperator::Add, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn sub(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         transform(BinaryOperator::Sub, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn mul(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         transform(BinaryOperator::Mul, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn signed_div(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         transform(BinaryOperator::SignedDiv, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn signed_rem(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         transform(BinaryOperator::SignedRem, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn unsigned_div(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         transform(BinaryOperator::UnsignedDiv, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn unsigned_rem(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
-    ) -> Arc<IrData> {
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
+    ) -> Aos<IrData> {
         transform(BinaryOperator::UnsignedRem, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn equal(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
         size: impl Into<AccessSize>,
-    ) -> Arc<IrData> {
+    ) -> Aos<IrData> {
         transform(BinaryOperator::Equal(size.into()), arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn signed_less(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
         size: impl Into<AccessSize>,
-    ) -> Arc<IrData> {
+    ) -> Aos<IrData> {
         transform(BinaryOperator::SignedLess(size.into()), arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn signed_less_or_euqla(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
         size: impl Into<AccessSize>,
-    ) -> Arc<IrData> {
+    ) -> Aos<IrData> {
         transform(BinaryOperator::SignedLessOrEqual(size.into()), arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn unsigned_less(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
         size: impl Into<AccessSize>,
-    ) -> Arc<IrData> {
+    ) -> Aos<IrData> {
         transform(BinaryOperator::UnsignedLess(size.into()), arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn unsigned_less_or_equal(
-        arg1: impl Into<Arc<IrData>>,
-        arg2: impl Into<Arc<IrData>>,
+        arg1: impl Into<Aos<IrData>>,
+        arg2: impl Into<Aos<IrData>>,
         size: impl Into<AccessSize>,
-    ) -> Arc<IrData> {
+    ) -> Aos<IrData> {
         transform(BinaryOperator::UnsignedLessOrEqual(size.into()), arg1, arg2)
     }
 }

@@ -22,14 +22,12 @@ mod shortcuts {
     mod statements;
 
     pub(in crate::arch) use crate::ir::{data::*, operator::*, statements::*};
+    use crate::utils::Aos;
     pub(in crate::arch) use data::*;
     pub(in crate::arch) use fireman_macro::box_to_static_reference;
     pub(in crate::arch) use macros::*;
     pub(in crate::arch) use statements::*;
-    use std::{
-        num::{NonZeroU16, NonZeroU8},
-        sync::Arc,
-    };
+    use std::num::{NonZeroU16, NonZeroU8};
 }
 
 use crate::{core::Instruction, ir::statements::*};

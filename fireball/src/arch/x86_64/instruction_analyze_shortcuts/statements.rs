@@ -3,8 +3,8 @@ use super::*;
 #[inline]
 #[must_use]
 pub(in crate::arch) fn assign(
-    from: impl Into<Arc<IrData>>,
-    to: impl Into<Arc<IrData>>,
+    from: impl Into<Aos<IrData>>,
+    to: impl Into<Aos<IrData>>,
     size: impl Into<AccessSize>,
 ) -> IrStatement {
     IrStatement::Assignment {
@@ -16,7 +16,7 @@ pub(in crate::arch) fn assign(
 #[inline]
 #[must_use]
 pub(in crate::arch) fn condition(
-    condition: impl Into<Arc<IrData>>,
+    condition: impl Into<Aos<IrData>>,
     true_branch: impl Into<Box<[IrStatement]>>,
     false_branch: impl Into<Box<[IrStatement]>>,
 ) -> IrStatement {
@@ -28,14 +28,14 @@ pub(in crate::arch) fn condition(
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn jump(target: impl Into<Arc<IrData>>) -> IrStatement {
+pub(in crate::arch) fn jump(target: impl Into<Aos<IrData>>) -> IrStatement {
     IrStatement::Jump {
         target: target.into(),
     }
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn call(target: impl Into<Arc<IrData>>) -> IrStatement {
+pub(in crate::arch) fn call(target: impl Into<Aos<IrData>>) -> IrStatement {
     IrStatement::Call {
         target: target.into(),
     }
@@ -43,7 +43,7 @@ pub(in crate::arch) fn call(target: impl Into<Arc<IrData>>) -> IrStatement {
 #[inline]
 #[must_use]
 pub(in crate::arch) fn type_specified(
-    location: impl Into<Arc<IrData>>,
+    location: impl Into<Aos<IrData>>,
     size: impl Into<AccessSize>,
     data_type: crate::ir::analyze::DataType,
 ) -> IrStatement {
@@ -73,9 +73,9 @@ pub(in crate::arch) fn architecture_byte_size_condition(
 #[inline]
 #[must_use]
 pub(in crate::arch) fn calc_flags_automatically(
-    operation: impl Into<Arc<IrData>>,
+    operation: impl Into<Aos<IrData>>,
     size: impl Into<AccessSize>,
-    affected_registers: &[&Arc<IrData>],
+    affected_registers: &[&Aos<IrData>],
 ) -> IrStatement {
     use crate::arch::x86_64::static_register::*;
     IrStatement::Special(IrStatementSpecial::CalcFlagsAutomatically {
