@@ -153,7 +153,7 @@ fn pe_hello_world_decom_block() {
     assert!(ir.is_some(), "디컴파일 진행 중 IR데이터가 생성되지 않음");
     let ir = ir.as_ref().unwrap();
     assert!(
-        ir.get_datatypes().is_some(),
+        ir.known_datatypes.is_some(),
         "디컴파일 진행 중 데이터타입이 분석되지 않음"
     );
 }

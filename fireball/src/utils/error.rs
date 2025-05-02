@@ -1,6 +1,7 @@
 pub mod decompile_error;
 pub mod disassemble_error;
 pub mod io_error;
+pub mod ir_analyze_assertion_error;
 
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
 pub enum FireballError {

@@ -38,7 +38,6 @@ impl PE {
             let ir = Ir {
                 address: instruction_address.clone(),
                 statements,
-                affected: Vec::new(),
             };
             ir_block.push(ir);
 

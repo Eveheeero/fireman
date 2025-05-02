@@ -22,6 +22,11 @@ impl<T> Deref for Aos<T> {
         }
     }
 }
+impl<T> AsRef<T> for Aos<T> {
+    fn as_ref(&self) -> &T {
+        self.deref()
+    }
+}
 
 impl<T> Clone for Aos<T> {
     fn clone(&self) -> Self {

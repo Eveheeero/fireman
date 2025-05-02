@@ -10,8 +10,9 @@ pub mod x86_64;
 
 use crate::{
     core::{Address, Instruction},
-    ir::data::DataAccess,
+    ir::data::{DataAccess, IrDataContainable as _},
     prelude::BitBox,
+    utils::error::ir_analyze_assertion_error::IrAnalyzeAssertionFailure,
 };
 use either::Either;
 pub use register::Register;
@@ -46,19 +47,34 @@ impl VirtualMachine {
 #[derive(Debug, Clone)]
 pub struct IrBlock {
     ir: Box<[Ir]>,
-    known_datatypes: Option<HashSet<analyze::KnownDataType>>,
+    /// Data Access Per Instruction
+    pub data_access_per_ir: Option<Box<[Vec<DataAccess>]>>,
+    /// Analyzed Datatypes
+    pub known_datatypes: Option<HashSet<analyze::KnownDataType>>,
 }
 
 impl IrBlock {
     pub fn new(data: Vec<Ir>) -> Self {
         Self {
             ir: data.into_boxed_slice(),
+            data_access_per_ir: None,
             known_datatypes: None,
         }
     }
     pub fn ir(&self) -> &[Ir] {
         &self.ir
     }
+
+    pub fn analyze_data_access(&mut self) {
+        let mut data_access_per_ir = Vec::new();
+        for ir in self.ir.iter().filter(|ir| ir.statements.is_left()) {
+            let mut data_access_per_instruction = analyze::analyze_data_access(ir);
+            data_access_per_instruction.shrink_to_fit();
+            data_access_per_ir.push(data_access_per_instruction);
+        }
+        self.data_access_per_ir = Some(data_access_per_ir.into_boxed_slice());
+    }
+
     pub fn analyze_datatypes(&mut self) {
         let mut known_datatypes: HashSet<analyze::KnownDataType> = HashSet::new();
         for ir in self.ir.iter().filter(|ir| ir.statements.is_left()) {
@@ -67,14 +83,62 @@ impl IrBlock {
                 known_datatypes.insert(datatype);
             }
         }
-        self.set_datatypes(known_datatypes);
+        known_datatypes.shrink_to_fit();
+        self.known_datatypes = Some(known_datatypes);
     }
-    pub fn get_datatypes(&self) -> Option<&HashSet<analyze::KnownDataType>> {
-        self.known_datatypes.as_ref()
+
+    pub fn shrink_to_fit(&mut self) {
+        self.data_access_per_ir
+            .iter_mut()
+            .flat_map(|x| x.iter_mut())
+            .for_each(Vec::shrink_to_fit);
+        self.known_datatypes
+            .iter_mut()
+            .for_each(HashSet::shrink_to_fit);
     }
-    pub fn set_datatypes(&mut self, mut data: HashSet<analyze::KnownDataType>) {
-        data.shrink_to_fit();
-        self.known_datatypes = Some(data);
+
+    /// Analyzed Data Must Not Contain Sp Based Data
+    pub fn assert(&self) -> Result<(), IrAnalyzeAssertionFailure> {
+        self.assert_data_access()?;
+        self.assert_datatypes()?;
+        Ok(())
+    }
+    pub fn assert_data_access(&self) -> Result<(), IrAnalyzeAssertionFailure> {
+        if self.data_access_per_ir.is_none() {
+            return Err(IrAnalyzeAssertionFailure::AnalyzeNotPerformed(
+                "Data Access",
+            ));
+        }
+        let data_access_per_ir = self.data_access_per_ir.as_ref().unwrap();
+        for (ir_index, data_access) in data_access_per_ir.iter().enumerate() {
+            for (sub_index, item) in data_access.iter().enumerate() {
+                let item = item.location().as_ref();
+                let mut related_data = Vec::new();
+                item.get_related_ir_data(&mut related_data);
+                if related_data.is_empty() {
+                    if let data::IrData::Register(register) = item {
+                        if register.bit_range().start
+                            == <VirtualMachine as crate::ir::x86_64::X64Range>::sp()
+                                .bit_range()
+                                .start
+                        {
+                            return Err(IrAnalyzeAssertionFailure::SpBasedLocationFound {
+                                ir_index,
+                                sub_index,
+                            });
+                        }
+                    }
+                } else {
+                    // TODO
+                    todo!()
+                }
+            }
+        }
+
+        Ok(())
+    }
+    pub fn assert_datatypes(&self) -> Result<(), IrAnalyzeAssertionFailure> {
+        todo!()
     }
 }
 
@@ -87,6 +151,4 @@ pub struct Ir {
     pub address: Address,
     /// 실행된 명령. 파싱 실패시 Instruction
     pub statements: Either<&'static [IrStatement], Instruction>,
-    /// 해당 IR이 어떤 영역에 영향을 받는지
-    pub affected: Vec<DataAccess>,
 }
