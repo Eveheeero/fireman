@@ -2,7 +2,7 @@ use super::*;
 
 /// extend result to undefined flags
 /// ```rust,ignore
-/// extend_undefined_flags([add, assignment], size, &[&of, &sf, &zf, &af, &cf, &pf])
+/// extend_undefined_flags([add, assignment], &[&of, &sf, &zf, &af, &cf, &pf])
 /// ```
 #[inline]
 #[must_use]
