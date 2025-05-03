@@ -1,7 +1,7 @@
 use crate::{
     ir::{
         data::{AccessSize, IrData, IrDataContainable},
-        statements::IrStatement,
+        statements::{IrStatement, IrStatementSpecial},
         Ir,
     },
     utils::Aos,
@@ -40,7 +40,7 @@ pub fn analyze_datatype(ir: &Ir) -> Vec<KnownDataType> {
 /// 인스트럭션을 통한 데이터 타입 추가 유추 필요
 pub fn analyze_datatype_raw(v: &mut Vec<KnownDataType>, statement: &IrStatement) {
     match statement {
-        crate::ir::statements::IrStatement::Assignment { from, to, size } => {
+        IrStatement::Assignment { from, to, size } => {
             v.push(KnownDataType {
                 location: from.clone(),
                 data_type: DataType::Unknown,
@@ -52,21 +52,21 @@ pub fn analyze_datatype_raw(v: &mut Vec<KnownDataType>, statement: &IrStatement)
                 data_size: size.clone(),
             });
         }
-        crate::ir::statements::IrStatement::Jump { target } => {
+        IrStatement::Jump { target } => {
             v.push(KnownDataType {
                 location: target.clone(),
                 data_type: DataType::Address,
                 data_size: AccessSize::ArchitectureSize,
             });
         }
-        crate::ir::statements::IrStatement::Call { target } => {
+        IrStatement::Call { target } => {
             v.push(KnownDataType {
                 location: target.clone(),
                 data_type: DataType::Address,
                 data_size: AccessSize::ArchitectureSize,
             });
         }
-        crate::ir::statements::IrStatement::Condition {
+        IrStatement::Condition {
             condition: _,
             true_branch,
             false_branch,
@@ -75,31 +75,32 @@ pub fn analyze_datatype_raw(v: &mut Vec<KnownDataType>, statement: &IrStatement)
                 analyze_datatype_raw(v, statement);
             }
         }
-        crate::ir::statements::IrStatement::Special(
-            crate::ir::statements::IrStatementSpecial::TypeSpecified {
-                location,
-                size,
-                data_type,
-            },
-        ) => {
+        IrStatement::Special(IrStatementSpecial::TypeSpecified {
+            location,
+            size,
+            data_type,
+        }) => {
             v.push(KnownDataType {
                 location: location.clone(),
                 data_type: *data_type,
                 data_size: size.clone(),
             });
         }
-        IrStatement::Special(
-            crate::ir::statements::IrStatementSpecial::ArchitectureByteSizeCondition {
-                condition: _,
-                true_branch,
-                false_branch,
-            },
-        ) => {
+        IrStatement::Special(IrStatementSpecial::ArchitectureByteSizeCondition {
+            condition: _,
+            true_branch,
+            false_branch,
+        }) => {
             for statement in true_branch.iter().chain(false_branch.iter()) {
                 analyze_datatype_raw(v, statement);
             }
         }
-        _ => {}
+
+        IrStatement::Undefined
+        | IrStatement::Exception(_)
+        | IrStatement::Halt
+        | IrStatement::Special(IrStatementSpecial::Assertion { .. })
+        | IrStatement::Special(IrStatementSpecial::CalcFlagsAutomatically { .. }) => {}
     }
 }
 
