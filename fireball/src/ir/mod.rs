@@ -10,14 +10,17 @@ pub mod x86_64;
 
 use crate::{
     core::{Address, Instruction},
-    ir::data::{DataAccess, IrData, IrDataContainable as _},
+    ir::{
+        analyze::KnownDataType,
+        data::{DataAccess, IrData},
+    },
     prelude::BitBox,
     utils::{error::ir_analyze_assertion_error::IrAnalyzeAssertionFailure, Aos},
 };
 use either::Either;
 pub use register::Register;
 use statements::IrStatement;
-use std::{cell::UnsafeCell, collections::HashSet, sync::LazyLock};
+use std::{cell::UnsafeCell, sync::LazyLock};
 
 /// 컴퓨터가 동작하는 행동을 재현하기 위한 구조체
 ///
@@ -50,7 +53,7 @@ pub struct IrBlock {
     /// Data Access Per Instruction
     pub data_access_per_ir: Option<Box<[Vec<DataAccess>]>>,
     /// Analyzed Datatypes
-    pub known_datatypes: Option<HashSet<analyze::KnownDataType>>,
+    pub known_datatypes: Option<Box<[Vec<KnownDataType>]>>,
 }
 
 impl IrBlock {
@@ -76,13 +79,14 @@ impl IrBlock {
     }
 
     pub fn analyze_datatypes(&mut self) {
-        let mut known_datatypes: HashSet<analyze::KnownDataType> = HashSet::new();
+        let mut known_datatypes = Vec::new();
         for ir in &self.ir {
-            let analyzed_datatype = analyze::analyze_datatype(ir);
-            known_datatypes.extend(analyzed_datatype);
+            let mut analyzed_datatype = analyze::analyze_datatype(ir);
+            analyzed_datatype.shrink_to_fit();
+            known_datatypes.push(analyzed_datatype);
         }
         known_datatypes.shrink_to_fit();
-        self.known_datatypes = Some(known_datatypes);
+        self.known_datatypes = Some(known_datatypes.into_boxed_slice());
     }
 
     pub fn shrink_to_fit(&mut self) {
@@ -92,10 +96,10 @@ impl IrBlock {
             .for_each(Vec::shrink_to_fit);
         self.known_datatypes
             .iter_mut()
-            .for_each(HashSet::shrink_to_fit);
+            .flat_map(|x| x.iter_mut())
+            .for_each(Vec::shrink_to_fit);
     }
 
-    /// Analyzed Data Must Not Contain Sp Based Data
     pub fn validate(&self) -> Result<(), IrAnalyzeAssertionFailure> {
         self.validate_data_access()?;
         self.validate_datatypes()?;
@@ -107,23 +111,7 @@ impl IrBlock {
                 "Data Access",
             ));
         }
-        let data_access_per_ir = self.data_access_per_ir.as_ref().unwrap();
-
-        /* Validate Data Doesn't Contain Sp Based Data */
-        for (ir_index, data_access) in data_access_per_ir.iter().enumerate() {
-            for (sub_index, item) in data_access.iter().enumerate() {
-                let item = item.location();
-                let mut related_data = Vec::new();
-                item.get_related_ir_data(&mut related_data);
-                related_data.push(item.clone());
-                if Self::is_sp_related(related_data) {
-                    return Err(IrAnalyzeAssertionFailure::SpBasedLocationFound {
-                        ir_index: Some(ir_index),
-                        sub_index: Some(sub_index),
-                    });
-                }
-            }
-        }
+        let _data_access_per_ir = self.data_access_per_ir.as_ref().unwrap();
 
         Ok(())
     }
@@ -131,30 +119,13 @@ impl IrBlock {
         if self.known_datatypes.is_none() {
             return Err(IrAnalyzeAssertionFailure::AnalyzeNotPerformed("Datatype"));
         }
-        let known_datatypes = self.known_datatypes.as_ref().unwrap();
-
-        /* Validate Data Doesn't Contain Sp Based Data */
-        static VM_INTEL_SP_BIT_START: LazyLock<usize> = LazyLock::new(|| {
-            <VirtualMachine as crate::ir::x86_64::X64Range>::sp()
-                .bit_range()
-                .start
-        });
-        for datatype in known_datatypes {
-            let mut related_data = Vec::new();
-            datatype.get_related_ir_data(&mut related_data);
-
-            if Self::is_sp_related(related_data) {
-                return Err(IrAnalyzeAssertionFailure::SpBasedLocationFound {
-                    ir_index: None,
-                    sub_index: None,
-                });
-            }
-        }
+        let _known_datatypes = self.known_datatypes.as_ref().unwrap();
 
         Ok(())
     }
 
     /// Arg must contain self
+    #[deprecated]
     fn is_sp_related(related_data: Vec<Aos<IrData>>) -> bool {
         static VM_INTEL_SP_BIT_START: LazyLock<usize> = LazyLock::new(|| {
             <VirtualMachine as crate::ir::x86_64::X64Range>::sp()

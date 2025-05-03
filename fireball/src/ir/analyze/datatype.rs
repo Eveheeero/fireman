@@ -1,5 +1,4 @@
 use crate::{
-    core::Address,
     ir::{
         data::{AccessSize, IrData, IrDataContainable},
         statements::IrStatement,
@@ -10,7 +9,6 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct KnownDataType {
-    pub shown_in: Address,
     pub location: Aos<IrData>,
     pub data_type: DataType,
     /// None if size depends on architecture
@@ -32,30 +30,23 @@ pub fn analyze_datatype(ir: &Ir) -> Vec<KnownDataType> {
         return Vec::new();
     }
     let mut result = Vec::new();
-    let address = &ir.address;
     for statement in ir.statements.as_ref().unwrap_left().iter() {
-        analyze_datatype_raw(&mut result, address, statement);
+        analyze_datatype_raw(&mut result, statement);
     }
     result
 }
 
 /// ### TODO
 /// 인스트럭션을 통한 데이터 타입 추가 유추 필요
-pub fn analyze_datatype_raw(
-    v: &mut Vec<KnownDataType>,
-    address: &Address,
-    statement: &IrStatement,
-) {
+pub fn analyze_datatype_raw(v: &mut Vec<KnownDataType>, statement: &IrStatement) {
     match statement {
         crate::ir::statements::IrStatement::Assignment { from, to, size } => {
             v.push(KnownDataType {
-                shown_in: address.clone(),
                 location: from.clone(),
                 data_type: DataType::Unknown,
                 data_size: size.clone(),
             });
             v.push(KnownDataType {
-                shown_in: address.clone(),
                 location: to.clone(),
                 data_type: DataType::Unknown,
                 data_size: size.clone(),
@@ -63,7 +54,6 @@ pub fn analyze_datatype_raw(
         }
         crate::ir::statements::IrStatement::Jump { target } => {
             v.push(KnownDataType {
-                shown_in: address.clone(),
                 location: target.clone(),
                 data_type: DataType::Address,
                 data_size: AccessSize::ArchitectureSize,
@@ -71,7 +61,6 @@ pub fn analyze_datatype_raw(
         }
         crate::ir::statements::IrStatement::Call { target } => {
             v.push(KnownDataType {
-                shown_in: address.clone(),
                 location: target.clone(),
                 data_type: DataType::Address,
                 data_size: AccessSize::ArchitectureSize,
@@ -83,7 +72,7 @@ pub fn analyze_datatype_raw(
             false_branch,
         } => {
             for statement in true_branch.iter().chain(false_branch.iter()) {
-                analyze_datatype_raw(v, address, statement);
+                analyze_datatype_raw(v, statement);
             }
         }
         crate::ir::statements::IrStatement::Special(
@@ -94,11 +83,21 @@ pub fn analyze_datatype_raw(
             },
         ) => {
             v.push(KnownDataType {
-                shown_in: address.clone(),
                 location: location.clone(),
                 data_type: *data_type,
                 data_size: size.clone(),
             });
+        }
+        IrStatement::Special(
+            crate::ir::statements::IrStatementSpecial::ArchitectureByteSizeCondition {
+                condition: _,
+                true_branch,
+                false_branch,
+            },
+        ) => {
+            for statement in true_branch.iter().chain(false_branch.iter()) {
+                analyze_datatype_raw(v, statement);
+            }
         }
         _ => {}
     }
