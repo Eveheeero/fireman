@@ -210,72 +210,72 @@ pub(in crate::arch) fn d(d: impl Into<Aos<IrData>>) -> Aos<IrData> {
 #[must_use]
 pub(in crate::arch) fn unknown_data() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::Unknown)));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::Unknown)));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn undefined_data() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::Undefined)));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::Undefined)));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn signed_max(size: impl Into<AccessSize>) -> Aos<IrData> {
-    IrData::Intrinsic(IntrinsicType::SignedMax(size.into())).into()
+    IrData::Intrinsic(IrIntrinsic::SignedMax(size.into())).into()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn signed_min(size: impl Into<AccessSize>) -> Aos<IrData> {
-    IrData::Intrinsic(IntrinsicType::SignedMin(size.into())).into()
+    IrData::Intrinsic(IrIntrinsic::SignedMin(size.into())).into()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn unsigned_max(size: impl Into<AccessSize>) -> Aos<IrData> {
-    IrData::Intrinsic(IntrinsicType::UnsignedMax(size.into())).into()
+    IrData::Intrinsic(IrIntrinsic::UnsignedMax(size.into())).into()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn unsigned_min(size: impl Into<AccessSize>) -> Aos<IrData> {
-    IrData::Intrinsic(IntrinsicType::UnsignedMin(size.into())).into()
+    IrData::Intrinsic(IrIntrinsic::UnsignedMin(size.into())).into()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn bit_ones(size: impl Into<AccessSize>) -> Aos<IrData> {
-    IrData::Intrinsic(IntrinsicType::BitOnes(size.into())).into()
+    IrData::Intrinsic(IrIntrinsic::BitOnes(size.into())).into()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn bit_zeros(size: impl Into<AccessSize>) -> Aos<IrData> {
-    IrData::Intrinsic(IntrinsicType::BitZeros(size.into())).into()
+    IrData::Intrinsic(IrIntrinsic::BitZeros(size.into())).into()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn architecture_bit_size() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ArchitectureBitSize)));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::ArchitectureBitSize)));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn architecture_byte_size() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ArchitectureByteSize)));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::ArchitectureByteSize)));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn architecture_bit_per_byte() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ArchitectureBitPerByte)));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::ArchitectureBitPerByte)));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn instruction_byte_size() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::InstructionByteSize)));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::InstructionByteSize)));
     ONCE.clone()
 }
 #[must_use]
@@ -297,7 +297,7 @@ pub(in crate::arch) fn byte_size_of_data(data: impl Into<Aos<IrData>>) -> Aos<Ir
         () if data_ptr == o4_ptr => return byte_size_of_o4(),
         _ => {}
     }
-    IrData::Intrinsic(IntrinsicType::ByteSizeOf(data)).into()
+    IrData::Intrinsic(IrIntrinsic::ByteSizeOf(data)).into()
 }
 #[must_use]
 pub(in crate::arch) fn bit_size_of_data(data: impl Into<Aos<IrData>>) -> Aos<IrData> {
@@ -318,7 +318,7 @@ pub(in crate::arch) fn bit_size_of_data(data: impl Into<Aos<IrData>>) -> Aos<IrD
         () if data_ptr == o4_ptr => return bit_size_of_o4(),
         _ => {}
     }
-    IrData::Intrinsic(IntrinsicType::BitSizeOf(data)).into()
+    IrData::Intrinsic(IrIntrinsic::BitSizeOf(data)).into()
 }
 #[test]
 fn byte_size_of_data_singleton_test() {
@@ -346,56 +346,56 @@ fn byte_size_of_data_singleton_test() {
 #[must_use]
 pub(in crate::arch) fn byte_size_of_o1() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o1()))));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::ByteSizeOf(o1()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn byte_size_of_o2() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o2()))));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::ByteSizeOf(o2()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn byte_size_of_o3() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o3()))));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::ByteSizeOf(o3()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn byte_size_of_o4() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::ByteSizeOf(o4()))));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::ByteSizeOf(o4()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn bit_size_of_o1() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::BitSizeOf(o1()))));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::BitSizeOf(o1()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn bit_size_of_o2() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::BitSizeOf(o2()))));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::BitSizeOf(o2()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn bit_size_of_o3() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::BitSizeOf(o3()))));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::BitSizeOf(o3()))));
     ONCE.clone()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn bit_size_of_o4() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> =
-        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IntrinsicType::BitSizeOf(o4()))));
+        LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::BitSizeOf(o4()))));
     ONCE.clone()
 }
 #[inline]
@@ -404,13 +404,13 @@ pub(in crate::arch) fn sized(
     data: impl Into<Aos<IrData>>,
     size: impl Into<AccessSize>,
 ) -> Aos<IrData> {
-    IrData::Intrinsic(IntrinsicType::Sized(data.into(), size.into())).into()
+    IrData::Intrinsic(IrIntrinsic::Sized(data.into(), size.into())).into()
 }
 #[inline]
 #[must_use]
 pub(in crate::arch) fn is_o1_exists() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| {
-        Aos::new_static(IrData::Intrinsic(IntrinsicType::OperandExists(
+        Aos::new_static(IrData::Intrinsic(IrIntrinsic::OperandExists(
             1.try_into().unwrap(),
         )))
     });
@@ -420,7 +420,7 @@ pub(in crate::arch) fn is_o1_exists() -> Aos<IrData> {
 #[must_use]
 pub(in crate::arch) fn is_o2_exists() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| {
-        Aos::new_static(IrData::Intrinsic(IntrinsicType::OperandExists(
+        Aos::new_static(IrData::Intrinsic(IrIntrinsic::OperandExists(
             2.try_into().unwrap(),
         )))
     });
@@ -430,7 +430,7 @@ pub(in crate::arch) fn is_o2_exists() -> Aos<IrData> {
 #[must_use]
 pub(in crate::arch) fn is_o3_exists() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| {
-        Aos::new_static(IrData::Intrinsic(IntrinsicType::OperandExists(
+        Aos::new_static(IrData::Intrinsic(IrIntrinsic::OperandExists(
             3.try_into().unwrap(),
         )))
     });
@@ -440,7 +440,7 @@ pub(in crate::arch) fn is_o3_exists() -> Aos<IrData> {
 #[must_use]
 pub(in crate::arch) fn is_o4_exists() -> Aos<IrData> {
     static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| {
-        Aos::new_static(IrData::Intrinsic(IntrinsicType::OperandExists(
+        Aos::new_static(IrData::Intrinsic(IrIntrinsic::OperandExists(
             4.try_into().unwrap(),
         )))
     });

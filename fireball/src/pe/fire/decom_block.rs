@@ -38,7 +38,6 @@ impl PE {
             let ir = Ir {
                 address: instruction_address.clone(),
                 statements,
-                affected: Vec::new(),
             };
             ir_block.push(ir);
 
@@ -62,8 +61,8 @@ impl PE {
         let mut ir_block = IrBlock::new(ir_block);
 
         /* 분석 */
-        // TODO 데이터 엑세스 분석
-        // ir_block.analyze_data_access();
+        // 데이터 엑세스 분석
+        ir_block.analyze_data_access();
         // 접근 메모리 영역 파악 및 사용 인스트럭션에 따른 타입 지정
         ir_block.analyze_datatypes();
         // native api 호출 인자에 따른 타입 재 지정
@@ -72,6 +71,11 @@ impl PE {
         // TODO 사용되는 인자가 많을 경우 다른 함수의 내부인것으로 판단
         // 함수 코드 생성
         // TODO 이후 생성된 코드 ir_block에 저장
+        // 분석 결과 확인
+        let validate_result = ir_block.validate();
+        if let Err(e) = validate_result {
+            error!(?e, "블럭 분석 결과 오류");
+        }
         // 분석 내용 블럭에 저장
         block.set_ir(ir_block);
         // 해당 블록에 접근하고 있는 블록 디컴파일 재시도 -> 재귀는 1번까지 허용

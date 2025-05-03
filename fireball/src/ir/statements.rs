@@ -1,7 +1,7 @@
 //! IR의 각 명령이 담겨져 있는 모듈
 
 use crate::{
-    ir::data::{AccessSize, IrData},
+    ir::data::{AccessSize, IrData, IrDataContainable},
     utils::Aos,
 };
 
@@ -78,4 +78,71 @@ pub enum NumCondition {
     Between(u16, u16),
 
     NotBetween(u16, u16),
+}
+
+impl IrDataContainable for IrStatement {
+    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+        match self {
+            IrStatement::Assignment { from, to, size } => {
+                from.get_related_ir_data(v);
+                v.push(from.clone());
+                to.get_related_ir_data(v);
+                v.push(to.clone());
+                size.get_related_ir_data(v);
+            }
+            IrStatement::Jump { target } | IrStatement::Call { target } => {
+                target.get_related_ir_data(v);
+                v.push(target.clone());
+            }
+            IrStatement::Condition {
+                condition,
+                true_branch,
+                false_branch,
+            } => {
+                condition.get_related_ir_data(v);
+                v.push(condition.clone());
+                true_branch.iter().for_each(|b| b.get_related_ir_data(v));
+                false_branch.iter().for_each(|b| b.get_related_ir_data(v));
+            }
+            IrStatement::Special(ir_statement_special) => {
+                ir_statement_special.get_related_ir_data(v)
+            }
+            _ => {}
+        }
+    }
+}
+
+impl IrDataContainable for IrStatementSpecial {
+    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+        match self {
+            IrStatementSpecial::TypeSpecified {
+                location,
+                size,
+                data_type: _,
+            } => {
+                location.get_related_ir_data(v);
+                v.push(location.clone());
+                size.get_related_ir_data(v);
+            }
+            IrStatementSpecial::ArchitectureByteSizeCondition {
+                condition: _,
+                true_branch,
+                false_branch,
+            } => {
+                true_branch.iter().for_each(|b| b.get_related_ir_data(v));
+                false_branch.iter().for_each(|b| b.get_related_ir_data(v));
+            }
+            IrStatementSpecial::CalcFlagsAutomatically {
+                operation, size, ..
+            } => {
+                operation.get_related_ir_data(v);
+                v.push(operation.clone());
+                size.get_related_ir_data(v);
+            }
+            IrStatementSpecial::Assertion { condition } => {
+                condition.get_related_ir_data(v);
+                v.push(condition.clone());
+            }
+        }
+    }
 }

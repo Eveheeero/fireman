@@ -2,7 +2,7 @@
 
 use super::Sections;
 use crate::{
-    core::Address,
+    core::{Address, PreDefinedOffsets},
     prelude::{DecompileError, IoError},
 };
 use std::sync::Arc;
@@ -101,4 +101,10 @@ pub trait Fire {
     /// ### Note
     /// - 해당 함수는 아무런 추가적인 연산을 수행하지 않는다.
     fn get_sections(&self) -> Arc<Sections>;
+
+    /// 미리 정의된 데이터를 가져온다.
+    ///
+    /// ### Returns
+    /// - `Arc<PreDefinedOffsets>` - 바이너리 내부에 정의된 데이터
+    fn get_defined(&self) -> Arc<PreDefinedOffsets>;
 }

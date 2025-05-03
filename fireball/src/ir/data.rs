@@ -13,7 +13,7 @@ pub enum IrData {
     /// mov eax, 0x1234의 0x1234
     Constant(usize),
     /// Special (undefined, data remained before..)
-    Intrinsic(IntrinsicType),
+    Intrinsic(IrIntrinsic),
     // mov eax, ebx의 ebx
     Register(crate::ir::Register),
     /// mov eax, dword ptr [eax]의 dword ptr [eax]
@@ -25,7 +25,7 @@ pub enum IrData {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum IntrinsicType {
+pub enum IrIntrinsic {
     Unknown,
     Undefined,
     SignedMax(AccessSize),
@@ -46,7 +46,7 @@ pub enum IntrinsicType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DataAccess {
-    data: Aos<IrData>,
+    location: Aos<IrData>,
     access_type: DataAccessType,
     size: AccessSize,
 }
@@ -77,6 +77,10 @@ pub enum AccessSize {
     ArchitectureSize,
     Unlimited,
 }
+pub trait IrDataContainable {
+    /// Return Does not contain self
+    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>);
+}
 
 impl From<&AccessSize> for AccessSize {
     fn from(value: &AccessSize) -> Self {
@@ -86,5 +90,99 @@ impl From<&AccessSize> for AccessSize {
 impl From<&crate::ir::Register> for Aos<IrData> {
     fn from(value: &crate::ir::Register) -> Self {
         IrData::Register(*value).into()
+    }
+}
+
+impl DataAccess {
+    pub fn new(location: Aos<IrData>, access_type: DataAccessType, size: AccessSize) -> Self {
+        Self {
+            location,
+            access_type,
+            size,
+        }
+    }
+    pub fn location(&self) -> &Aos<IrData> {
+        &self.location
+    }
+    pub fn access_type(&self) -> &DataAccessType {
+        &self.access_type
+    }
+    pub fn size(&self) -> &AccessSize {
+        &self.size
+    }
+}
+
+impl IrDataContainable for IrData {
+    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+        match self {
+            IrData::Intrinsic(intrinsic) => intrinsic.get_related_ir_data(v),
+            IrData::Dereference(data) => {
+                data.get_related_ir_data(v);
+                v.push(data.clone());
+            }
+            IrData::Operation(operation) => match operation {
+                IrDataOperation::Unary { operator, arg } => {
+                    operator.get_related_ir_data(v);
+                    arg.get_related_ir_data(v);
+                    v.push(arg.clone());
+                }
+                IrDataOperation::Binary {
+                    operator,
+                    arg1,
+                    arg2,
+                } => {
+                    operator.get_related_ir_data(v);
+                    arg1.get_related_ir_data(v);
+                    arg2.get_related_ir_data(v);
+                    v.push(arg1.clone());
+                    v.push(arg2.clone());
+                }
+            },
+            _ => {}
+        }
+    }
+}
+
+impl IrDataContainable for DataAccess {
+    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+        self.location.get_related_ir_data(v);
+        v.push(self.location.clone());
+    }
+}
+
+impl IrDataContainable for AccessSize {
+    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+        match self {
+            AccessSize::ResultOfBit(aos)
+            | AccessSize::ResultOfByte(aos)
+            | AccessSize::RelativeWith(aos) => {
+                aos.get_related_ir_data(v);
+                v.push(aos.clone());
+            }
+            _ => {}
+        }
+    }
+}
+
+impl IrDataContainable for IrIntrinsic {
+    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+        match self {
+            IrIntrinsic::SignedMax(access_size)
+            | IrIntrinsic::SignedMin(access_size)
+            | IrIntrinsic::UnsignedMax(access_size)
+            | IrIntrinsic::UnsignedMin(access_size)
+            | IrIntrinsic::BitOnes(access_size)
+            | IrIntrinsic::BitZeros(access_size) => access_size.get_related_ir_data(v),
+            IrIntrinsic::ByteSizeOf(aos) | IrIntrinsic::BitSizeOf(aos) => {
+                aos.get_related_ir_data(v);
+                v.push(aos.clone());
+            }
+            IrIntrinsic::Sized(aos, access_size) => {
+                aos.get_related_ir_data(v);
+                v.push(aos.clone());
+                access_size.get_related_ir_data(v);
+            }
+            _ => {}
+        }
     }
 }
