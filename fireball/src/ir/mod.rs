@@ -53,7 +53,7 @@ pub struct IrBlock {
     /// Data Access Per Instruction
     pub data_access_per_ir: Option<Box<[Vec<DataAccess>]>>,
     /// Analyzed Datatypes
-    pub known_datatypes: Option<Box<[Vec<KnownDataType>]>>,
+    pub known_datatypes_per_ir: Option<Box<[Vec<KnownDataType>]>>,
 }
 
 impl IrBlock {
@@ -61,7 +61,7 @@ impl IrBlock {
         Self {
             ir: data.into_boxed_slice(),
             data_access_per_ir: None,
-            known_datatypes: None,
+            known_datatypes_per_ir: None,
         }
     }
     pub fn ir(&self) -> &[Ir] {
@@ -86,7 +86,7 @@ impl IrBlock {
             known_datatypes.push(analyzed_datatype);
         }
         known_datatypes.shrink_to_fit();
-        self.known_datatypes = Some(known_datatypes.into_boxed_slice());
+        self.known_datatypes_per_ir = Some(known_datatypes.into_boxed_slice());
     }
 
     pub fn shrink_to_fit(&mut self) {
@@ -94,7 +94,7 @@ impl IrBlock {
             .iter_mut()
             .flat_map(|x| x.iter_mut())
             .for_each(Vec::shrink_to_fit);
-        self.known_datatypes
+        self.known_datatypes_per_ir
             .iter_mut()
             .flat_map(|x| x.iter_mut())
             .for_each(Vec::shrink_to_fit);
@@ -116,10 +116,10 @@ impl IrBlock {
         Ok(())
     }
     pub fn validate_datatypes(&self) -> Result<(), IrAnalyzeAssertionFailure> {
-        if self.known_datatypes.is_none() {
+        if self.known_datatypes_per_ir.is_none() {
             return Err(IrAnalyzeAssertionFailure::AnalyzeNotPerformed("Datatype"));
         }
-        let _known_datatypes = self.known_datatypes.as_ref().unwrap();
+        let _known_datatypes_per_ir = self.known_datatypes_per_ir.as_ref().unwrap();
 
         Ok(())
     }
