@@ -65,6 +65,8 @@ impl PE {
         ir_block.analyze_data_access();
         // 접근 메모리 영역 파악 및 사용 인스트럭션에 따른 타입 지정
         ir_block.analyze_datatypes();
+        // 블럭 내부 변수 설정
+        ir_block.analyze_variables().unwrap();
         // native api 호출 인자에 따른 타입 재 지정
         // TODO
         // 해당 블럭 내부 사용 인자 파악

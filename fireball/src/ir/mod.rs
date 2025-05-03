@@ -11,7 +11,7 @@ pub mod x86_64;
 use crate::{
     core::{Address, Instruction},
     ir::{
-        analyze::KnownDataType,
+        analyze::{IrVariable, KnownDataType},
         data::{DataAccess, IrData},
     },
     prelude::BitBox,
@@ -20,7 +20,7 @@ use crate::{
 use either::Either;
 pub use register::Register;
 use statements::IrStatement;
-use std::{cell::UnsafeCell, sync::LazyLock};
+use std::{cell::UnsafeCell, collections::HashSet, sync::LazyLock};
 
 /// 컴퓨터가 동작하는 행동을 재현하기 위한 구조체
 ///
@@ -54,6 +54,8 @@ pub struct IrBlock {
     pub data_access_per_ir: Option<Box<[Vec<DataAccess>]>>,
     /// Analyzed Datatypes
     pub known_datatypes_per_ir: Option<Box<[Vec<KnownDataType>]>>,
+    /// Analyzed Variables
+    pub variables: Option<HashSet<IrVariable>>,
 }
 
 impl IrBlock {
@@ -62,6 +64,7 @@ impl IrBlock {
             ir: data.into_boxed_slice(),
             data_access_per_ir: None,
             known_datatypes_per_ir: None,
+            variables: None,
         }
     }
     pub fn ir(&self) -> &[Ir] {
@@ -89,6 +92,13 @@ impl IrBlock {
         self.known_datatypes_per_ir = Some(known_datatypes.into_boxed_slice());
     }
 
+    pub fn analyze_variables(&mut self) -> Result<(), &'static str> {
+        let mut variables = analyze::analyze_variables(&self)?;
+        variables.shrink_to_fit();
+        self.variables = Some(variables);
+        Ok(())
+    }
+
     pub fn shrink_to_fit(&mut self) {
         self.data_access_per_ir
             .iter_mut()
@@ -103,6 +113,7 @@ impl IrBlock {
     pub fn validate(&self) -> Result<(), IrAnalyzeAssertionFailure> {
         self.validate_data_access()?;
         self.validate_datatypes()?;
+        self.validate_variables()?;
         Ok(())
     }
     pub fn validate_data_access(&self) -> Result<(), IrAnalyzeAssertionFailure> {
@@ -120,6 +131,14 @@ impl IrBlock {
             return Err(IrAnalyzeAssertionFailure::AnalyzeNotPerformed("Datatype"));
         }
         let _known_datatypes_per_ir = self.known_datatypes_per_ir.as_ref().unwrap();
+
+        Ok(())
+    }
+    pub fn validate_variables(&self) -> Result<(), IrAnalyzeAssertionFailure> {
+        if self.variables.is_none() {
+            return Err(IrAnalyzeAssertionFailure::AnalyzeNotPerformed("Variables"));
+        }
+        let _variables = self.variables.as_ref().unwrap();
 
         Ok(())
     }
