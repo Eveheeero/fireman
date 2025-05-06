@@ -79,7 +79,7 @@ pub enum AccessSize {
 }
 pub trait IrDataContainable {
     /// Return Does not contain self
-    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>);
+    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>);
 }
 
 impl From<&AccessSize> for AccessSize {
@@ -113,18 +113,18 @@ impl DataAccess {
 }
 
 impl IrDataContainable for IrData {
-    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>){
         match self {
             IrData::Intrinsic(intrinsic) => intrinsic.get_related_ir_data(v),
             IrData::Dereference(data) => {
                 data.get_related_ir_data(v);
-                v.push(data.clone());
+                v.push(data);
             }
             IrData::Operation(operation) => match operation {
                 IrDataOperation::Unary { operator, arg } => {
                     operator.get_related_ir_data(v);
                     arg.get_related_ir_data(v);
-                    v.push(arg.clone());
+                    v.push(arg);
                 }
                 IrDataOperation::Binary {
                     operator,
@@ -134,8 +134,8 @@ impl IrDataContainable for IrData {
                     operator.get_related_ir_data(v);
                     arg1.get_related_ir_data(v);
                     arg2.get_related_ir_data(v);
-                    v.push(arg1.clone());
-                    v.push(arg2.clone());
+                    v.push(arg1);
+                    v.push(arg2);
                 }
             },
             _ => {}
@@ -144,20 +144,20 @@ impl IrDataContainable for IrData {
 }
 
 impl IrDataContainable for DataAccess {
-    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>){
         self.location.get_related_ir_data(v);
-        v.push(self.location.clone());
+        v.push(&self.location);
     }
 }
 
 impl IrDataContainable for AccessSize {
-    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>){
         match self {
             AccessSize::ResultOfBit(aos)
             | AccessSize::ResultOfByte(aos)
             | AccessSize::RelativeWith(aos) => {
                 aos.get_related_ir_data(v);
-                v.push(aos.clone());
+                v.push(aos);
             }
             _ => {}
         }
@@ -165,7 +165,7 @@ impl IrDataContainable for AccessSize {
 }
 
 impl IrDataContainable for IrIntrinsic {
-    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>){
         match self {
             IrIntrinsic::SignedMax(access_size)
             | IrIntrinsic::SignedMin(access_size)
@@ -175,11 +175,11 @@ impl IrDataContainable for IrIntrinsic {
             | IrIntrinsic::BitZeros(access_size) => access_size.get_related_ir_data(v),
             IrIntrinsic::ByteSizeOf(aos) | IrIntrinsic::BitSizeOf(aos) => {
                 aos.get_related_ir_data(v);
-                v.push(aos.clone());
+                v.push(aos);
             }
             IrIntrinsic::Sized(aos, access_size) => {
                 aos.get_related_ir_data(v);
-                v.push(aos.clone());
+                v.push(aos);
                 access_size.get_related_ir_data(v);
             }
             _ => {}

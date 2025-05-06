@@ -37,10 +37,10 @@ pub enum BinaryOperator {
 }
 
 impl IrDataContainable for UnaryOperator {
-    fn get_related_ir_data(&self, _v: &mut Vec<Aos<IrData>>) {}
+    fn get_related_ir_data<'d>(&'d self, _v: &mut Vec<&'d Aos<IrData>>) {}
 }
 impl IrDataContainable for BinaryOperator {
-    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>) {
         match self {
             BinaryOperator::Equal(access_size)
             | BinaryOperator::SignedLess(access_size)

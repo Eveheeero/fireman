@@ -11,7 +11,6 @@ use crate::{
 pub struct KnownDataType {
     pub location: Aos<IrData>,
     pub data_type: DataType,
-    /// None if size depends on architecture
     pub data_size: AccessSize,
 }
 
@@ -105,9 +104,9 @@ pub fn analyze_datatype_raw(v: &mut Vec<KnownDataType>, statement: &IrStatement)
 }
 
 impl IrDataContainable for KnownDataType {
-    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>) {
         self.location.get_related_ir_data(v);
-        v.push(self.location.clone());
+        v.push(&self.location);
         self.data_size.get_related_ir_data(v);
     }
 }
