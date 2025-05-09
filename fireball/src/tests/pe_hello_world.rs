@@ -201,6 +201,31 @@ fn pe_hello_world_print_assem_entry() {
     let entry = Address::from_virtual_address(&sections, gl.entry as u64);
     let insts = pe.parse_assem_range(&entry, 0x60).unwrap();
     for inst in insts {
+        /*
+        push rbp
+        mov rbp, rsp
+        sub rsp, 0x30
+        mov dword ptr [rbp - 4], 0xff
+        mov rax, qword ptr [rip + 0xa675]
+        mov dword ptr [rax], 0
+        call 0x1154
+        mov dword ptr [rbp - 4], eax
+        nop
+        nop
+        mov eax, dword ptr [rbp - 4]
+        add rsp, 0x30
+        pop rbp
+        ret
+        push rbp
+        mov rbp, rsp
+        sub rsp, 0xe0
+        mov qword ptr [rbp - 8], 0
+        mov dword ptr [rbp - 0xc], 0
+        lea rax, [rbp - 0xc0]
+        mov r8d, 0x68
+        mov edx, 0
+        mov rcx, rax
+         */
         println!("{:?}", inst);
     }
 }
