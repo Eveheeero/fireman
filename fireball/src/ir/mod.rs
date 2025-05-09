@@ -17,7 +17,6 @@ use crate::{
     prelude::BitBox,
     utils::{error::ir_analyze_assertion_error::IrAnalyzeAssertionFailure, Aos},
 };
-use either::Either;
 pub use register::Register;
 use statements::IrStatement;
 use std::{cell::UnsafeCell, collections::HashSet, sync::LazyLock};
@@ -170,6 +169,8 @@ impl IrBlock {
 pub struct Ir {
     /// IR 변화가 일어난 주소
     pub address: Address,
-    /// 실행된 명령. 파싱 실패시 Instruction
-    pub statements: Either<&'static [IrStatement], Instruction>,
+    /// 해당 인스트럭션에 대한 파싱된 구조체
+    pub instruction: Box<Instruction>,
+    /// 실행된 명령
+    pub statements: Option<&'static [IrStatement]>,
 }

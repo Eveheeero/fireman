@@ -4,7 +4,6 @@ use crate::{
     ir::{Ir, IrBlock},
     prelude::*,
 };
-use either::Either;
 
 impl PE {
     pub(super) fn _decom_block(&self, address: &Address) -> Result<(), DecompileError> {
@@ -26,36 +25,36 @@ impl PE {
         let mut ir_block = Vec::new();
         let mut instruction_address = address.clone();
         for instruction in instructions {
-            // 인스트럭션으로 ir생성
+            let instruction_size = instruction
+                .inner
+                .bytes
+                .as_ref()
+                .expect("어셈블리 파싱 결과값에는 바이트 값이 존재함")
+                .len();
+
+            /* ir생성 */
             let statements =
                 crate::arch::x86_64::instruction_analyze::create_ir_statement(&instruction);
-            let statements = if let Some(statements) = statements {
-                Either::Left(statements)
-            } else {
+            if statements.is_none() {
                 warn!(?address, "인스트럭션 변환 실패");
-                Either::Right(instruction.clone())
             };
             let ir = Ir {
                 address: instruction_address.clone(),
+                instruction: instruction.into(),
                 statements,
             };
             ir_block.push(ir);
 
             /* 후처리 */
             // 인스트럭션 주소 이동
-            let instruction_size = instruction
-                .inner
-                .bytes
-                .expect("어셈블리 파싱 결과값에는 바이트 값이 존재함")
-                .len();
             instruction_address += instruction_size as u64;
         }
         debug!(
             "블럭 내부 인스트럭션 IR 변환 완료, 총 {}개",
             ir_block
                 .iter()
-                .filter(|x| x.statements.is_left())
-                .map(|x| x.statements.as_ref().unwrap_left().len())
+                .filter(|x| x.statements.is_some())
+                .map(|x| x.statements.as_ref().unwrap().len())
                 .sum::<usize>()
         );
         let mut ir_block = IrBlock::new(ir_block);

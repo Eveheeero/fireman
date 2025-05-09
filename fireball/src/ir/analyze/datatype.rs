@@ -25,11 +25,11 @@ pub enum DataType {
 }
 
 pub fn analyze_datatype(ir: &Ir) -> Vec<KnownDataType> {
-    if ir.statements.is_right() {
+    if ir.statements.is_none() {
         return Vec::new();
     }
     let mut result = Vec::new();
-    for statement in ir.statements.as_ref().unwrap_left().iter() {
+    for statement in ir.statements.as_ref().unwrap().iter() {
         analyze_datatype_raw(&mut result, statement);
     }
     result

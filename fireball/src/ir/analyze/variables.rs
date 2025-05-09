@@ -160,10 +160,10 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<HashSet<IrVariable>, &'st
         .ok_or("Data Access Not Analyzed")?;
 
     for (ir_index, ir) in irs.iter().enumerate() {
-        if ir.statements.is_right() {
+        if ir.statements.is_none() {
             continue;
         }
-        let statements = ir.statements.as_ref().unwrap_left();
+        let statements = ir.statements.as_ref().unwrap();
         let known_datatypes_at_ir = &known_datatypes_per_ir[ir_index];
         let data_access_at_ir = &data_access_per_ir[ir_index];
 

@@ -211,7 +211,7 @@ fn pe_hello_world_print_statements() {
     let ir = ir.as_ref().unwrap();
     for ir in ir.ir() {
         println!("{:?}", ir.address.get_virtual_address());
-        for statement in ir.statements.as_ref().unwrap_left().iter() {
+        for statement in ir.statements.as_ref().unwrap().iter() {
             println!("{:?}", statement);
         }
     }

@@ -25,7 +25,6 @@ tracing = { version = "0.1", features = [
   "release_max_level_off",
 ] }
 bitvec = "1.0.1"
-either = "1.15.0"
 fireman_macro = { path = "../fireman_macro", version = "0.0.1" }
 
 [dev-dependencies]
