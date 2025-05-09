@@ -190,3 +190,17 @@ fn pe_hello_world_analyze_variables() {
         println!("{:?}", variable);
     }
 }
+
+#[test]
+fn pe_hello_world_print_assem_entry() {
+    test_init();
+    let binary = get_binary();
+    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let gl = goblin::pe::PE::parse(binary).unwrap();
+    let sections = pe.get_sections();
+    let entry = Address::from_virtual_address(&sections, gl.entry as u64);
+    let insts = pe.parse_assem_range(&entry, 0x60).unwrap();
+    for inst in insts {
+        println!("{:?}", inst);
+    }
+}
