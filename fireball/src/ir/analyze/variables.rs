@@ -1,14 +1,18 @@
 use crate::{
     ir::{
-        analyze::DataType,
-        data::{DataAccess, DataAccessType, IrData},
+        analyze::{DataType, KnownDataType},
+        data::{DataAccess, DataAccessType, IrData, IrDataContainable},
         statements::{IrStatement, IrStatementSpecial},
         IrBlock,
     },
     utils::Aos,
 };
 pub use private::IrVariable;
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    num::NonZeroU8,
+    sync::LazyLock,
+};
 
 mod private {
     use super::*;
@@ -78,13 +82,24 @@ mod private {
     }
 }
 
+static O1: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| Aos::new_static(IrData::Operand(NonZeroU8::new(1).unwrap())));
+static O2: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| Aos::new_static(IrData::Operand(NonZeroU8::new(2).unwrap())));
+static O3: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| Aos::new_static(IrData::Operand(NonZeroU8::new(3).unwrap())));
+static O4: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| Aos::new_static(IrData::Operand(NonZeroU8::new(4).unwrap())));
+
 fn collect_written_locations_recursive(
     stmt: &IrStatement,
     locations_written: &mut HashSet<Aos<IrData>>,
+    instruction_args: &Box<[iceball::Argument]>,
 ) {
     match stmt {
         IrStatement::Assignment { to, .. } => {
-            locations_written.insert(to.clone());
+            let resolved_loc = resolve_operand::<true>(to, instruction_args);
+            locations_written.insert(resolved_loc);
         }
         IrStatement::Condition {
             true_branch,
@@ -97,7 +112,7 @@ fn collect_written_locations_recursive(
             ..
         }) => {
             for s in true_branch.iter().chain(false_branch.iter()) {
-                collect_written_locations_recursive(s, locations_written);
+                collect_written_locations_recursive(s, locations_written, instruction_args);
             }
         }
         _ => {}
@@ -106,14 +121,15 @@ fn collect_written_locations_recursive(
 
 fn update_location_mapping_recursive(
     stmt: &IrStatement,
-    location_to_variable_ids: &mut HashMap<Aos<IrData>, HashSet<usize>>,
+    resolved_location_to_variable_ids: &mut HashMap<Aos<IrData>, HashSet<usize>>,
+    instruction_args: &Box<[iceball::Argument]>,
 ) {
     match stmt {
         IrStatement::Assignment { from, to, .. } => {
-            if let Some(src_ids) = location_to_variable_ids.get(from).cloned() {
-                location_to_variable_ids.insert(to.clone(), src_ids);
+            if let Some(src_ids) = resolved_location_to_variable_ids.get(from).cloned() {
+                resolved_location_to_variable_ids.insert(to.clone(), src_ids);
             } else {
-                location_to_variable_ids.remove(to);
+                resolved_location_to_variable_ids.remove(to);
             }
         }
         IrStatement::Condition {
@@ -126,21 +142,22 @@ fn update_location_mapping_recursive(
             false_branch,
             ..
         }) => {
-            let mut true_map = location_to_variable_ids.clone();
+            let mut true_map = resolved_location_to_variable_ids.clone();
             for s in true_branch.iter() {
-                update_location_mapping_recursive(s, &mut true_map);
+                update_location_mapping_recursive(s, &mut true_map, instruction_args);
             }
-            let mut false_map = location_to_variable_ids.clone();
+            let mut false_map = resolved_location_to_variable_ids.clone();
             for s in false_branch.iter() {
-                update_location_mapping_recursive(s, &mut false_map);
+                update_location_mapping_recursive(s, &mut false_map, instruction_args);
             }
 
             let mut merged_map: HashMap<Aos<IrData>, HashSet<usize>> = HashMap::new();
             for (loc, ids) in true_map.into_iter().chain(false_map.into_iter()) {
-                merged_map.entry(loc).or_default().extend(ids);
+                let resolved_loc = resolve_operand::<true>(&loc, instruction_args);
+                merged_map.entry(resolved_loc).or_default().extend(ids);
             }
 
-            *location_to_variable_ids = merged_map;
+            *resolved_location_to_variable_ids = merged_map;
         }
         _ => {}
     }
@@ -148,7 +165,8 @@ fn update_location_mapping_recursive(
 
 pub fn analyze_variables(ir_block: &IrBlock) -> Result<HashSet<IrVariable>, &'static str> {
     let mut variables: Vec<IrVariable> = Vec::new();
-    let mut location_to_variable_ids: HashMap<Aos<IrData>, HashSet<usize>> = HashMap::new();
+    let mut resolved_location_to_variable_ids: HashMap<Aos<IrData>, HashSet<usize>> =
+        HashMap::new();
     let irs = &ir_block.ir;
     let known_datatypes_per_ir = ir_block
         .known_datatypes_per_ir
@@ -164,23 +182,32 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<HashSet<IrVariable>, &'st
             continue;
         }
         let statements = ir.statements.as_ref().unwrap();
-        let known_datatypes_at_ir = &known_datatypes_per_ir[ir_index];
-        let data_access_at_ir = &data_access_per_ir[ir_index];
+        let instruction = &ir.instruction.as_ref().inner;
+        let instruction_args = &instruction.arguments;
+        let known_datatypes_at_ir_resolved =
+            resolve_known_datatypes(&known_datatypes_per_ir[ir_index], instruction_args);
+        let data_access_at_ir_resolved =
+            resolve_data_accesses(&data_access_per_ir[ir_index], instruction_args);
 
         // --- Step 1: Identify all locations written within this IR (including nested statements) ---
         let mut locations_written_this_ir: HashSet<Aos<IrData>> = HashSet::new();
-        for da in data_access_at_ir.iter() {
+        for da in data_access_at_ir_resolved.iter() {
             if *da.access_type() == DataAccessType::Write {
-                locations_written_this_ir.insert(da.location().clone());
+                let resolved_loc = da.location();
+                locations_written_this_ir.insert(resolved_loc.clone());
             }
         }
         for stmt in statements.iter() {
-            collect_written_locations_recursive(stmt, &mut locations_written_this_ir);
+            collect_written_locations_recursive(
+                stmt,
+                &mut locations_written_this_ir,
+                instruction_args,
+            );
         }
 
         // --- Step 2: Tentatively kill variables whose locations are overwritten ---
-        for loc in &locations_written_this_ir {
-            if let Some(old_ids) = location_to_variable_ids.remove(loc) {
+        for resolved_loc in &locations_written_this_ir {
+            if let Some(old_ids) = resolved_location_to_variable_ids.remove(resolved_loc) {
                 for id in old_ids {
                     if variables[id].live_out.is_none() {
                         variables[id].live_out = Some(ir_index);
@@ -190,10 +217,12 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<HashSet<IrVariable>, &'st
         }
 
         // --- Step 3: Process Data Accesses (Reads and Writes) ---
-        for da in data_access_at_ir.iter() {
-            let loc = da.location().clone();
+        for da in data_access_at_ir_resolved.iter() {
+            let resolved_loc = da.location().clone();
             let access_type = da.access_type();
-            let ids = location_to_variable_ids.entry(loc.clone()).or_default();
+            let ids = resolved_location_to_variable_ids
+                .entry(resolved_loc.clone())
+                .or_default();
 
             if ids.is_empty() {
                 let new_id = variables.len();
@@ -202,9 +231,9 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<HashSet<IrVariable>, &'st
                     DataAccessType::Read => None, // Live-in from block start (simplified assumption)
                 };
 
-                let data_type = known_datatypes_at_ir
+                let data_type = known_datatypes_at_ir_resolved
                     .iter()
-                    .filter(|x| x.location.as_ref() == loc.as_ref())
+                    .filter(|x| x.location.as_ref() == resolved_loc.as_ref())
                     .map(|x| x.data_type)
                     .find(|x| x != &DataType::Unknown)
                     .unwrap_or(DataType::Unknown);
@@ -235,10 +264,84 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<HashSet<IrVariable>, &'st
 
         // --- Step 4: Update location mapping based on assignments (recursively) ---
         for stmt in statements.iter() {
-            update_location_mapping_recursive(stmt, &mut location_to_variable_ids);
+            update_location_mapping_recursive(
+                stmt,
+                &mut resolved_location_to_variable_ids,
+                instruction_args,
+            );
         }
-        location_to_variable_ids.retain(|_, ids| !ids.is_empty());
+        resolved_location_to_variable_ids.retain(|_, ids| !ids.is_empty());
     }
 
     Ok(variables.into_iter().collect())
+}
+
+fn resolve_operand<const RECURSIVE: bool>(
+    data: &Aos<IrData>,
+    instruction_args: &Box<[iceball::Argument]>,
+) -> Aos<IrData> {
+    if *data == *O1 {
+        todo!()
+    } else if *data == *O2 {
+        todo!()
+    } else if *data == *O3 {
+        todo!()
+    } else if *data == *O4 {
+        todo!()
+    }
+
+    if !RECURSIVE {
+        return data.clone();
+    }
+    let mut related_data = Vec::new();
+    data.get_related_ir_data(&mut related_data);
+    todo!()
+}
+
+fn resolve_data_accesses(
+    data: &Vec<DataAccess>,
+    instruction_args: &Box<[iceball::Argument]>,
+) -> Vec<DataAccess> {
+    let mut result = Vec::new();
+    for data in data {
+        let mut related_data = Vec::new();
+        data.get_related_ir_data(&mut related_data);
+        if related_data
+            .iter()
+            .all(|x| resolve_operand::<false>(x, instruction_args) == **x)
+        {
+            result.push(data.clone());
+            continue;
+        }
+        let loc = data.location();
+        let access_type = data.access_type();
+        let size = data.size();
+        todo!()
+    }
+    result
+}
+
+fn resolve_known_datatypes(
+    data: &Vec<KnownDataType>,
+    instruction_args: &Box<[iceball::Argument]>,
+) -> Vec<KnownDataType> {
+    let mut result = Vec::new();
+    for data in data {
+        let mut related_data = Vec::new();
+        data.get_related_ir_data(&mut related_data);
+        if related_data
+            .iter()
+            .all(|x| resolve_operand::<false>(x, instruction_args) == **x)
+        {
+            result.push(data.clone());
+            continue;
+        }
+        let &KnownDataType {
+            location,
+            data_type,
+            data_size,
+        } = &data;
+        todo!()
+    }
+    result
 }

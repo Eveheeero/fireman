@@ -50,7 +50,7 @@ pub struct DataAccess {
     access_type: DataAccessType,
     size: AccessSize,
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub enum DataAccessType {
     Read,
     Write,
