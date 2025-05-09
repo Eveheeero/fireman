@@ -17,8 +17,6 @@ goblin = "0.8.2"
 cpp_demangle = "0.4.0"
 capstone = "0.12.0"
 pdb = "0.8.0"
-once_cell = "1.17.1"
-regex = "1.7.0"
 tracing = { version = "0.1", features = [
   "log",
   "max_level_trace",

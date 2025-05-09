@@ -8,12 +8,12 @@ mod static_register {
         ir::{data::IrData, x86_64::X64Range as X64, Register, VirtualMachine},
         utils::Aos,
     };
-    use once_cell::sync::Lazy;
+    use std::sync::LazyLock;
 
     macro_rules! static_register {
         ($name:ident) => {
-            pub static $name: Lazy<Aos<IrData>> =
-                Lazy::new(|| IrData::Register(<VirtualMachine as X64>::$name()).into());
+            pub static $name: LazyLock<Aos<IrData>> =
+            LazyLock::new(|| IrData::Register(<VirtualMachine as X64>::$name()).into());
         };
     }
 
