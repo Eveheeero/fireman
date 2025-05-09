@@ -2,7 +2,7 @@
 
 use super::Sections;
 use crate::{
-    core::{Address, PreDefinedOffsets},
+    core::{Address, Block, Blocks, PreDefinedOffsets},
     prelude::{DecompileError, IoError},
 };
 use std::sync::Arc;
@@ -53,18 +53,18 @@ pub trait Fire {
     /// 파일의 전체 내용을 디컴파일한다.
     ///
     /// ### Returns
-    /// - `Result<(), DecompileError>` - 디컴파일에 실패할 시 에러를 반환한다.
+    /// - `Result<Vec<Arc<Block>>, DecompileError>` - 디컴파일 결과
     ///
     /// ### Todo
     /// 해당 방법은 난독화에 대비하여, 분석을 마친 후, 이미 분석한 오프셋에서 일정 오프셋을 이동시켜 제대로 된 인스트럭션이 나오는지 확인하는 등으로 검사를 수행할 예정이다.
     /// 엔트리부터 분석을 시작한 후, 분석이 끝난 오프셋에서 일정 오프셋을 이동시킨 후 decom_from_file_offset등을 이용해 분석?
-    fn decom_all(&self) -> Result<(), DecompileError>;
+    fn decom_all(&self) -> Result<Vec<Arc<Block>>, DecompileError>;
 
     /// 엔트리포인트부터 디컴파일을 수행한다.
     ///
     /// ### Returns
-    /// - `Result<(), DecompileError>` - 디컴파일에 실패할 시 에러를 반환한다.
-    fn decom_from_entry(&self) -> Result<(), DecompileError>;
+    /// - `Result<Arc<Block>, DecompileError>` - 디컴파일 결과
+    fn decom_from_entry(&self) -> Result<Arc<Block>, DecompileError>;
 
     /// 주어진 파일 오프셋부터 블럭이 끝날 때까지 디컴파일을 수행한다.
     ///
@@ -72,8 +72,8 @@ pub trait Fire {
     /// - `address: u64` - 분석을 시작할 파일 오프셋
     ///
     /// ### Returns
-    /// - `Result<(), DecompileError>` - 디컴파일에 실패할 시 에러를 반환한다.
-    fn decom_from_file_offset(&self, address: u64) -> Result<(), DecompileError>;
+    /// - `Result<Arc<Block>, DecompileError>` - 디컴파일 결과
+    fn decom_from_file_offset(&self, address: u64) -> Result<Arc<Block>, DecompileError>;
 
     /// 주어진 가상 주소부터 블럭이 끝날 때까지 디컴파일을 수행한다.
     ///
@@ -81,8 +81,8 @@ pub trait Fire {
     /// - `address: u64` - 분석을 시작할 파일 오프셋
     ///
     /// ### Returns
-    /// - `Result<(), DecompileError>` - 디컴파일에 실패할 시 에러를 반환한다.
-    fn decom_from_virtual_address(&self, address: u64) -> Result<(), DecompileError>;
+    /// - `Result<Arc<Block>, DecompileError>` - 디컴파일 결과
+    fn decom_from_virtual_address(&self, address: u64) -> Result<Arc<Block>, DecompileError>;
 
     /// 주어진 주소부터 블럭이 끝날 때까지 디컴파일을 수행한다.
     ///
@@ -90,8 +90,8 @@ pub trait Fire {
     /// - `address: &Address` - 분석을 시작할 주소
     ///
     /// ### Returns
-    /// - `Result<(), DecompileError>` - 디컴파일에 실패할 시 에러를 반환한다.
-    fn decom_block(&self, address: &Address) -> Result<(), DecompileError>;
+    /// - `Result<Arc<Block>, DecompileError>` - 디컴파일 결과
+    fn decom_block(&self, address: &Address) -> Result<Arc<Block>, DecompileError>;
 
     /// 분석 후 나온 모든 섹션의 정보를 가져온다.
     ///
@@ -107,4 +107,9 @@ pub trait Fire {
     /// ### Returns
     /// - `Arc<PreDefinedOffsets>` - 바이너리 내부에 정의된 데이터
     fn get_defined(&self) -> Arc<PreDefinedOffsets>;
+    /// 분석에 의해 생성된 데이터를 가져온다.
+    ///
+    /// ### Returns
+    /// - `Arc<Blocks>` - 분석에 의해 생성된 블럭을 관리하는 객체
+    fn get_blocks(&self) -> Arc<Blocks>;
 }

@@ -82,10 +82,6 @@ impl Pe {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) fn inspect_blocks(&self) -> std::sync::Arc<Blocks> {
-        self.blocks.clone()
-    }
     pub fn entry(&self) -> &Address {
         &self.entry
     }

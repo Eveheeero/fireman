@@ -106,7 +106,7 @@ impl Blocks {
     ///
     /// ### Returns
     /// - `Option<Arc<Block>>`: 검출된 블럭
-    pub(crate) fn get_by_start_address(&self, address: &Address) -> Option<Arc<Block>> {
+    pub fn get_by_start_address(&self, address: &Address) -> Option<Arc<Block>> {
         /* 저장소의 락 해제 */
         let blocks_reader = &self.data.read().unwrap();
 
@@ -124,7 +124,7 @@ impl Blocks {
     ///
     /// ### Returns
     /// - `Vec<Arc<Block>>`: 검출된 블럭
-    pub(crate) fn get_by_containing_address(&self, address: &Address) -> Vec<Arc<Block>> {
+    pub fn get_by_containing_address(&self, address: &Address) -> Vec<Arc<Block>> {
         /* 저장소의 락 해제 */
         let blocks_reader = &self.data.read().unwrap();
 
@@ -150,7 +150,7 @@ impl Blocks {
     ///
     /// ### Returns
     /// - `Option<Arc<Block>>`: 아이디에 해당하는 블럭
-    pub(crate) fn get_by_block_id(&self, id: usize) -> Option<Arc<Block>> {
+    pub fn get_by_block_id(&self, id: usize) -> Option<Arc<Block>> {
         /* 저장소의 락 해제 */
         let blocks_reader = &self.data.read().unwrap();
 

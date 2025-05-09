@@ -8,7 +8,7 @@ mod decom_from_virtual_address;
 
 use super::Pe;
 use crate::{
-    core::{Address, Fire, PreDefinedOffsets, Sections},
+    core::{Address, Block, Blocks, Fire, PreDefinedOffsets, Sections},
     prelude::{DecompileError, IoError},
 };
 use std::sync::Arc;
@@ -31,23 +31,23 @@ impl Fire for Pe {
         &self.binary
     }
 
-    fn decom_all(&self) -> Result<(), DecompileError> {
+    fn decom_all(&self) -> Result<Vec<Arc<Block>>, DecompileError> {
         self._decom_all()
     }
 
-    fn decom_from_entry(&self) -> Result<(), DecompileError> {
+    fn decom_from_entry(&self) -> Result<Arc<Block>, DecompileError> {
         self._decom_from_entry()
     }
 
-    fn decom_from_file_offset(&self, address: u64) -> Result<(), DecompileError> {
+    fn decom_from_file_offset(&self, address: u64) -> Result<Arc<Block>, DecompileError> {
         self._decom_from_file_offset(address)
     }
 
-    fn decom_from_virtual_address(&self, address: u64) -> Result<(), DecompileError> {
+    fn decom_from_virtual_address(&self, address: u64) -> Result<Arc<Block>, DecompileError> {
         self._decom_from_virtual_address(address)
     }
 
-    fn decom_block(&self, address: &Address) -> Result<(), DecompileError> {
+    fn decom_block(&self, address: &Address) -> Result<Arc<Block>, DecompileError> {
         self._decom_block(address)
     }
 
@@ -57,5 +57,9 @@ impl Fire for Pe {
 
     fn get_defined(&self) -> Arc<PreDefinedOffsets> {
         self.defined.clone()
+    }
+
+    fn get_blocks(&self) -> Arc<Blocks> {
+        self.blocks.clone()
     }
 }

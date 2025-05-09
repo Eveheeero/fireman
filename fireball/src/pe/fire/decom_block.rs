@@ -1,12 +1,13 @@
 use super::Pe;
 use crate::{
-    core::Address,
+    core::{Address, Block},
     ir::{Ir, IrBlock},
     prelude::*,
 };
+use std::sync::Arc;
 
 impl Pe {
-    pub(super) fn _decom_block(&self, address: &Address) -> Result<(), DecompileError> {
+    pub(super) fn _decom_block(&self, address: &Address) -> Result<Arc<Block>, DecompileError> {
         debug!(?address, "블럭 디컴파일 시작");
 
         // 블럭 생성
@@ -82,6 +83,6 @@ impl Pe {
         // 해당 블록에 접근하고 있는 블록 디컴파일 재시도 -> 재귀는 1번까지 허용
         // TODO + 이미 분석된 블럭을 재분석하려고 시도할 시 일부만 분석되도록? 아니면 초기화?
 
-        Ok(())
+        Ok(block)
     }
 }

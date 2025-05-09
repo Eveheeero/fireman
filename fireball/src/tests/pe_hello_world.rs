@@ -113,7 +113,7 @@ fn pe_hello_world_block_relation() {
     /* 엔트리에 대한 블럭 파싱 및 relation 생성 확인 */
     let entry = pe.entry();
     pe.generate_block_from_address(entry);
-    let blocks = pe.inspect_blocks();
+    let blocks = pe.get_blocks();
     let entry_block = blocks.get_by_start_address(entry);
     assert!(entry_block.is_some());
     let entry_block = entry_block.unwrap();
@@ -125,7 +125,7 @@ fn pe_hello_world_block_relation() {
     /* 엔트리의 to에 대한 블럭 생성 확인 */
     let to_address = entry_connected_to[0].to().unwrap();
     pe.generate_block_from_address(&to_address);
-    let blocks = pe.inspect_blocks();
+    let blocks = pe.get_blocks();
     let to_block = blocks.get_by_start_address(&to_address);
     assert!(to_block.is_some());
     let to_block = to_block.unwrap();
@@ -149,12 +149,15 @@ fn pe_hello_world_decom_block() {
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
     /* 엔트리부터 디컴파일 시작 */
-    assert_eq!(pe.decom_from_entry(), Ok(()), "디컴파일 진행 실패");
+    let result = pe.decom_from_entry();
+    assert!(result.is_ok(), "디컴파일 진행 실패");
+    let result = result.unwrap();
     let entry = pe.entry();
-    let blocks = pe.inspect_blocks();
+    let blocks = pe.get_blocks();
     let block = blocks.get_by_start_address(entry);
     assert!(block.is_some(), "디컴파일된 블럭의 데이터가 없음");
     let block = block.unwrap();
+    assert_eq!(&block, &result, "디컴파일 결과값과 블럭이 일치하지 않음");
     let ir = block.get_ir();
     assert!(ir.is_some(), "디컴파일 진행 중 IR데이터가 생성되지 않음");
     let ir = ir.as_ref().unwrap();
@@ -179,12 +182,9 @@ fn pe_hello_world_analyze_variables() {
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
     /* 엔트리부터 디컴파일 시작 */
-    assert_eq!(pe.decom_from_entry(), Ok(()), "디컴파일 진행 실패");
-    let entry = pe.entry();
-    let blocks = pe.inspect_blocks();
-    let block = blocks.get_by_start_address(entry);
-    assert!(block.is_some(), "디컴파일된 블럭의 데이터가 없음");
-    let block = block.unwrap();
+    let result = pe.decom_from_entry();
+    assert!(result.is_ok(), "디컴파일 진행 실패");
+    let block = result.unwrap();
     let ir = block.get_ir();
     assert!(ir.is_some(), "디컴파일 진행 중 IR데이터가 생성되지 않음");
     let ir = ir.as_ref().unwrap();
@@ -202,12 +202,9 @@ fn pe_hello_world_print_statements() {
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
     /* 엔트리부터 디컴파일 시작 */
-    assert_eq!(pe.decom_from_entry(), Ok(()), "디컴파일 진행 실패");
-    let entry = pe.entry();
-    let blocks = pe.inspect_blocks();
-    let block = blocks.get_by_start_address(entry);
-    assert!(block.is_some(), "디컴파일된 블럭의 데이터가 없음");
-    let block = block.unwrap();
+    let result = pe.decom_from_entry();
+    assert!(result.is_ok(), "디컴파일 진행 실패");
+    let block = result.unwrap();
     let ir = block.get_ir();
     assert!(ir.is_some(), "디컴파일 진행 중 IR데이터가 생성되지 않음");
     let ir = ir.as_ref().unwrap();
