@@ -5,6 +5,7 @@ pub enum DecompileError {
     UnknwonWithMessage(String),
     HeaderParsingFailed,
     DisassembleFailed(super::disassemble_error::DisassembleError),
+    EntryNotFound,
 }
 
 impl std::fmt::Display for DecompileError {
@@ -14,6 +15,7 @@ impl std::fmt::Display for DecompileError {
             Self::UnknwonWithMessage(msg) => write!(f, "Unknown Error Occured! {}", msg),
             Self::HeaderParsingFailed => write!(f, "Header Parsing Failed!"),
             Self::DisassembleFailed(err) => write!(f, "Fail to disassemble block! {}", err),
+            Self::EntryNotFound => write!(f, "Entry Not Found!"),
         }
     }
 }

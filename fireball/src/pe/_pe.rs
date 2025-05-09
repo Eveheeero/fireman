@@ -72,6 +72,7 @@ impl PE {
         };
 
         PE {
+            entry: Address::from_virtual_address(&sections, gl.entry as u64),
             path,
             binary,
             capstone,
@@ -84,5 +85,8 @@ impl PE {
     #[cfg(test)]
     pub(crate) fn inspect_blocks(&self) -> std::sync::Arc<Blocks> {
         self.blocks.clone()
+    }
+    pub fn entry(&self) -> &Address {
+        &self.entry
     }
 }

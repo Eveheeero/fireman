@@ -17,6 +17,18 @@ fn pe_hello_world() {
 }
 
 #[test]
+fn pe_hello_world_entry() {
+    test_init();
+    let binary = get_binary();
+    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let gl = goblin::pe::PE::parse(binary).unwrap();
+    let sections = pe.get_sections();
+    let pe_entry = pe.entry();
+    let gl_entry = Address::from_virtual_address(&sections, gl.entry as u64);
+    assert_eq!(pe_entry, &gl_entry);
+}
+
+#[test]
 fn pe_hello_world_entry_parse() {
     test_init();
     let binary = get_binary();
@@ -61,14 +73,12 @@ fn pe_hello_world_detect_block_entry() {
     test_init();
     let binary = get_binary();
     let pe = PE::from_binary(binary.to_vec()).unwrap();
-    let gl = goblin::pe::PE::parse(binary).unwrap();
-    let sections = pe.get_sections();
-    let entry = Address::from_virtual_address(&sections, gl.entry as u64);
-    let block = pe.generate_block_from_address(&entry);
+    let entry = pe.entry();
+    let block = pe.generate_block_from_address(entry);
 
     assert_eq!(&block.get_section().unwrap().name, ".text");
-    assert_eq!(*block.get_start_address(), entry);
-    assert_ne!(*block.get_end_address().unwrap(), entry);
+    assert_eq!(block.get_start_address(), entry);
+    assert_ne!(block.get_end_address().unwrap(), entry);
 }
 
 #[test]
@@ -99,14 +109,12 @@ fn pe_hello_world_block_relation() {
     test_init();
     let binary = get_binary();
     let pe = PE::from_binary(binary.to_vec()).unwrap();
-    let gl = goblin::pe::PE::parse(binary).unwrap();
-    let sections = pe.get_sections();
 
     /* 엔트리에 대한 블럭 파싱 및 relation 생성 확인 */
-    let entry = Address::from_virtual_address(&sections, gl.entry as u64);
-    pe.generate_block_from_address(&entry);
+    let entry = pe.entry();
+    pe.generate_block_from_address(entry);
     let blocks = pe.inspect_blocks();
-    let entry_block = blocks.get_by_start_address(&entry);
+    let entry_block = blocks.get_by_start_address(entry);
     assert!(entry_block.is_some());
     let entry_block = entry_block.unwrap();
     let entry_block_id = entry_block.get_id();
@@ -139,14 +147,12 @@ fn pe_hello_world_decom_block() {
     test_init();
     let binary = get_binary();
     let pe = PE::from_binary(binary.to_vec()).unwrap();
-    let gl = goblin::pe::PE::parse(binary).unwrap();
-    let sections = pe.get_sections();
 
     /* 엔트리부터 디컴파일 시작 */
-    let entry = Address::from_virtual_address(&sections, gl.entry as u64);
-    assert_eq!(pe.decom_block(&entry), Ok(()), "디컴파일 진행 실패");
+    assert_eq!(pe.decom_from_entry(), Ok(()), "디컴파일 진행 실패");
+    let entry = pe.entry();
     let blocks = pe.inspect_blocks();
-    let block = blocks.get_by_start_address(&entry);
+    let block = blocks.get_by_start_address(entry);
     assert!(block.is_some(), "디컴파일된 블럭의 데이터가 없음");
     let block = block.unwrap();
     let ir = block.get_ir();
@@ -171,14 +177,12 @@ fn pe_hello_world_analyze_variables() {
     test_init();
     let binary = get_binary();
     let pe = PE::from_binary(binary.to_vec()).unwrap();
-    let gl = goblin::pe::PE::parse(binary).unwrap();
-    let sections = pe.get_sections();
 
     /* 엔트리부터 디컴파일 시작 */
-    let entry = Address::from_virtual_address(&sections, gl.entry as u64);
-    assert_eq!(pe.decom_block(&entry), Ok(()), "디컴파일 진행 실패");
+    assert_eq!(pe.decom_from_entry(), Ok(()), "디컴파일 진행 실패");
+    let entry = pe.entry();
     let blocks = pe.inspect_blocks();
-    let block = blocks.get_by_start_address(&entry);
+    let block = blocks.get_by_start_address(entry);
     assert!(block.is_some(), "디컴파일된 블럭의 데이터가 없음");
     let block = block.unwrap();
     let ir = block.get_ir();
@@ -196,21 +200,23 @@ fn pe_hello_world_print_statements() {
     test_init();
     let binary = get_binary();
     let pe = PE::from_binary(binary.to_vec()).unwrap();
-    let gl = goblin::pe::PE::parse(binary).unwrap();
-    let sections = pe.get_sections();
 
     /* 엔트리부터 디컴파일 시작 */
-    let entry = Address::from_virtual_address(&sections, gl.entry as u64);
-    assert_eq!(pe.decom_block(&entry), Ok(()), "디컴파일 진행 실패");
+    assert_eq!(pe.decom_from_entry(), Ok(()), "디컴파일 진행 실패");
+    let entry = pe.entry();
     let blocks = pe.inspect_blocks();
-    let block = blocks.get_by_start_address(&entry);
+    let block = blocks.get_by_start_address(entry);
     assert!(block.is_some(), "디컴파일된 블럭의 데이터가 없음");
     let block = block.unwrap();
     let ir = block.get_ir();
     assert!(ir.is_some(), "디컴파일 진행 중 IR데이터가 생성되지 않음");
     let ir = ir.as_ref().unwrap();
     for ir in ir.ir() {
-        println!("{:?} {:?}", ir.address.get_virtual_address(), ir.instruction);
+        println!(
+            "{:?} {:?}",
+            ir.address.get_virtual_address(),
+            ir.instruction
+        );
         for statement in ir.statements.as_ref().unwrap().iter() {
             println!("{:?}", statement);
         }
@@ -222,10 +228,8 @@ fn pe_hello_world_print_assem_entry() {
     test_init();
     let binary = get_binary();
     let pe = PE::from_binary(binary.to_vec()).unwrap();
-    let gl = goblin::pe::PE::parse(binary).unwrap();
-    let sections = pe.get_sections();
-    let entry = Address::from_virtual_address(&sections, gl.entry as u64);
-    let insts = pe.parse_assem_range(&entry, 0x60).unwrap();
+    let entry = pe.entry();
+    let insts = pe.parse_assem_range(entry, 0x60).unwrap();
     for inst in insts {
         /*
         push rbp

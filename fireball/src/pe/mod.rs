@@ -6,11 +6,13 @@ mod block;
 mod fire;
 mod fmt;
 
-use crate::core::{Blocks, PreDefinedOffsets, Sections};
+use crate::core::{Address, Blocks, PreDefinedOffsets, Sections};
 use std::{pin::Pin, sync::Arc};
 
 /// PE파일 파서
 pub struct PE {
+    /// 엔트리 주소
+    entry: Address,
     /// 파일 경로
     path: Option<String>,
     /// 바이너리
