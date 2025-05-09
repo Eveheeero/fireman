@@ -113,7 +113,7 @@ impl DataAccess {
 }
 
 impl IrDataContainable for IrData {
-    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>){
+    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>) {
         match self {
             IrData::Intrinsic(intrinsic) => intrinsic.get_related_ir_data(v),
             IrData::Dereference(data) => {
@@ -144,14 +144,14 @@ impl IrDataContainable for IrData {
 }
 
 impl IrDataContainable for DataAccess {
-    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>){
+    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>) {
         self.location.get_related_ir_data(v);
         v.push(&self.location);
     }
 }
 
 impl IrDataContainable for AccessSize {
-    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>){
+    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>) {
         match self {
             AccessSize::ResultOfBit(aos)
             | AccessSize::ResultOfByte(aos)
@@ -165,7 +165,7 @@ impl IrDataContainable for AccessSize {
 }
 
 impl IrDataContainable for IrIntrinsic {
-    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>){
+    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>) {
         match self {
             IrIntrinsic::SignedMax(access_size)
             | IrIntrinsic::SignedMin(access_size)
