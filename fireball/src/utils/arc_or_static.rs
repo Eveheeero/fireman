@@ -1,7 +1,7 @@
 use std::{ops::Deref, sync::Arc};
 
 /// Arc or static
-#[derive(Debug, Hash)]
+#[derive(Debug)]
 pub enum Aos<T: ?Sized + 'static> {
     Arc(Arc<T>),
     StaticRef(&'static T),
@@ -74,5 +74,11 @@ impl<T: Ord> Ord for Aos<T> {
 impl<T: PartialOrd + Eq> PartialOrd for Aos<T> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.as_ref().partial_cmp(other.as_ref())
+    }
+}
+impl<T: std::hash::Hash> std::hash::Hash for Aos<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let inner = self.as_ref();
+        core::mem::discriminant(inner).hash(state);
     }
 }

@@ -82,7 +82,7 @@ mod private {
 fn collect_written_locations_recursive(
     stmt: &IrStatement,
     locations_written: &mut HashSet<Aos<IrData>>,
-    instruction_args: &Box<[iceball::Argument]>,
+    instruction_args: &[iceball::Argument],
 ) {
     match stmt {
         IrStatement::Assignment { to, .. } => {
@@ -110,7 +110,7 @@ fn collect_written_locations_recursive(
 fn update_location_mapping_recursive(
     stmt: &IrStatement,
     resolved_location_to_variable_ids: &mut HashMap<Aos<IrData>, HashSet<usize>>,
-    instruction_args: &Box<[iceball::Argument]>,
+    instruction_args: &[iceball::Argument],
 ) {
     match stmt {
         IrStatement::Assignment { from, to, .. } => {
@@ -271,7 +271,7 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<HashSet<IrVariable>, &'st
 
 fn resolve_access_size(
     access_size: &AccessSize,
-    instruction_args: &Box<[iceball::Argument]>,
+    instruction_args: &[iceball::Argument],
 ) -> AccessSize {
     match access_size {
         AccessSize::ResultOfBit(data) => {
@@ -289,7 +289,7 @@ fn resolve_access_size(
 
 fn resolve_ir_intrinsic(
     intrinsic: &IrIntrinsic,
-    instruction_args: &Box<[iceball::Argument]>,
+    instruction_args: &[iceball::Argument],
 ) -> IrIntrinsic {
     match intrinsic {
         IrIntrinsic::SignedMax(size) => {
@@ -332,7 +332,7 @@ fn resolve_ir_intrinsic(
 
 fn resolve_binary_operator(
     op: &BinaryOperator,
-    instruction_args: &Box<[iceball::Argument]>,
+    instruction_args: &[iceball::Argument],
 ) -> BinaryOperator {
     match op {
         BinaryOperator::Equal(s) => BinaryOperator::Equal(resolve_access_size(s, instruction_args)),
@@ -364,7 +364,7 @@ fn resolve_binary_operator(
     }
 }
 
-fn resolve_operand(data: &Aos<IrData>, instruction_args: &Box<[iceball::Argument]>) -> Aos<IrData> {
+fn resolve_operand(data: &Aos<IrData>, instruction_args: &[iceball::Argument]) -> Aos<IrData> {
     match data.as_ref() {
         IrData::Operand(op_num) => {
             return (&instruction_args[(op_num.get() - 1) as usize]).into();
@@ -410,8 +410,8 @@ fn resolve_operand(data: &Aos<IrData>, instruction_args: &Box<[iceball::Argument
 }
 
 fn resolve_data_accesses(
-    data_access_vec: &Vec<DataAccess>, // Renamed from 'data' to avoid conflict
-    instruction_args: &Box<[iceball::Argument]>,
+    data_access_vec: &[DataAccess],
+    instruction_args: &[iceball::Argument],
 ) -> Vec<DataAccess> {
     data_access_vec
         .iter()
@@ -424,8 +424,8 @@ fn resolve_data_accesses(
 }
 
 fn resolve_known_datatypes(
-    known_datatype_vec: &Vec<KnownDataType>, // Renamed from 'data'
-    instruction_args: &Box<[iceball::Argument]>,
+    known_datatype_vec: &[KnownDataType],
+    instruction_args: &[iceball::Argument],
 ) -> Vec<KnownDataType> {
     known_datatype_vec
         .iter()
