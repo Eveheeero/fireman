@@ -210,7 +210,7 @@ fn pe_hello_world_print_statements() {
     assert!(ir.is_some(), "디컴파일 진행 중 IR데이터가 생성되지 않음");
     let ir = ir.as_ref().unwrap();
     for ir in ir.ir() {
-        println!("{:?}", ir.address.get_virtual_address());
+        println!("{:?} {:?}", ir.address.get_virtual_address(), ir.instruction);
         for statement in ir.statements.as_ref().unwrap().iter() {
             println!("{:?}", statement);
         }

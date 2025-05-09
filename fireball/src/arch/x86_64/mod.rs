@@ -13,7 +13,7 @@ mod static_register {
     macro_rules! static_register {
         ($name:ident) => {
             pub(crate) static $name: LazyLock<Aos<IrData>> =
-                LazyLock::new(|| IrData::Register(<VirtualMachine as X64>::$name()).into());
+                LazyLock::new(|| Aos::new_static(IrData::Register(<VirtualMachine as X64>::$name())));
         };
     }
 
