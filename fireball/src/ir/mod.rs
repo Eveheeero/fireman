@@ -93,7 +93,7 @@ impl IrBlock {
     }
 
     pub fn analyze_variables(&mut self) -> Result<(), &'static str> {
-        let mut variables = analyze::analyze_variables(&self)?;
+        let mut variables = analyze::analyze_variables(self)?;
         variables.shrink_to_fit();
         self.variables = Some(variables);
         Ok(())
