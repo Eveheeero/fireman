@@ -1,18 +1,15 @@
 use crate::{
     ir::{
         analyze::{DataType, KnownDataType},
-        data::{DataAccess, DataAccessType, IrData, IrDataContainable},
+        data::{AccessSize, DataAccess, DataAccessType, IrData, IrDataOperation, IrIntrinsic},
+        operator::BinaryOperator,
         statements::{IrStatement, IrStatementSpecial},
         IrBlock,
     },
     utils::Aos,
 };
 pub use private::IrVariable;
-use std::{
-    collections::{HashMap, HashSet},
-    num::NonZeroU8,
-    sync::LazyLock,
-};
+use std::collections::{HashMap, HashSet};
 
 mod private {
     use super::*;
@@ -82,15 +79,6 @@ mod private {
     }
 }
 
-static O1: LazyLock<Aos<IrData>> =
-    LazyLock::new(|| Aos::new_static(IrData::Operand(NonZeroU8::new(1).unwrap())));
-static O2: LazyLock<Aos<IrData>> =
-    LazyLock::new(|| Aos::new_static(IrData::Operand(NonZeroU8::new(2).unwrap())));
-static O3: LazyLock<Aos<IrData>> =
-    LazyLock::new(|| Aos::new_static(IrData::Operand(NonZeroU8::new(3).unwrap())));
-static O4: LazyLock<Aos<IrData>> =
-    LazyLock::new(|| Aos::new_static(IrData::Operand(NonZeroU8::new(4).unwrap())));
-
 fn collect_written_locations_recursive(
     stmt: &IrStatement,
     locations_written: &mut HashSet<Aos<IrData>>,
@@ -98,7 +86,7 @@ fn collect_written_locations_recursive(
 ) {
     match stmt {
         IrStatement::Assignment { to, .. } => {
-            let resolved_loc = resolve_operand::<true>(to, instruction_args);
+            let resolved_loc = resolve_operand(to, instruction_args);
             locations_written.insert(resolved_loc);
         }
         IrStatement::Condition {
@@ -126,10 +114,16 @@ fn update_location_mapping_recursive(
 ) {
     match stmt {
         IrStatement::Assignment { from, to, .. } => {
-            if let Some(src_ids) = resolved_location_to_variable_ids.get(from).cloned() {
-                resolved_location_to_variable_ids.insert(to.clone(), src_ids);
+            let resolved_to = resolve_operand(to, instruction_args);
+            let resolved_from = resolve_operand(from, instruction_args);
+
+            if let Some(src_ids) = resolved_location_to_variable_ids
+                .get(&resolved_from)
+                .cloned()
+            {
+                resolved_location_to_variable_ids.insert(resolved_to, src_ids);
             } else {
-                resolved_location_to_variable_ids.remove(to);
+                resolved_location_to_variable_ids.remove(&resolved_to);
             }
         }
         IrStatement::Condition {
@@ -153,10 +147,9 @@ fn update_location_mapping_recursive(
 
             let mut merged_map: HashMap<Aos<IrData>, HashSet<usize>> = HashMap::new();
             for (loc, ids) in true_map.into_iter().chain(false_map.into_iter()) {
-                let resolved_loc = resolve_operand::<true>(&loc, instruction_args);
+                let resolved_loc = resolve_operand(&loc, instruction_args);
                 merged_map.entry(resolved_loc).or_default().extend(ids);
             }
-
             *resolved_location_to_variable_ids = merged_map;
         }
         _ => {}
@@ -276,72 +269,176 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<HashSet<IrVariable>, &'st
     Ok(variables.into_iter().collect())
 }
 
-fn resolve_operand<const RECURSIVE: bool>(
-    data: &Aos<IrData>,
+fn resolve_access_size(
+    access_size: &AccessSize,
     instruction_args: &Box<[iceball::Argument]>,
-) -> Aos<IrData> {
-    if *data == *O1 {
-        todo!()
-    } else if *data == *O2 {
-        todo!()
-    } else if *data == *O3 {
-        todo!()
-    } else if *data == *O4 {
-        todo!()
+) -> AccessSize {
+    match access_size {
+        AccessSize::ResultOfBit(data) => {
+            AccessSize::ResultOfBit(resolve_operand(data, instruction_args))
+        }
+        AccessSize::ResultOfByte(data) => {
+            AccessSize::ResultOfByte(resolve_operand(data, instruction_args))
+        }
+        AccessSize::RelativeWith(data) => {
+            AccessSize::RelativeWith(resolve_operand(data, instruction_args))
+        }
+        AccessSize::ArchitectureSize | AccessSize::Unlimited => access_size.clone(),
+    }
+}
+
+fn resolve_ir_intrinsic(
+    intrinsic: &IrIntrinsic,
+    instruction_args: &Box<[iceball::Argument]>,
+) -> IrIntrinsic {
+    match intrinsic {
+        IrIntrinsic::SignedMax(size) => {
+            IrIntrinsic::SignedMax(resolve_access_size(size, instruction_args))
+        }
+        IrIntrinsic::SignedMin(size) => {
+            IrIntrinsic::SignedMin(resolve_access_size(size, instruction_args))
+        }
+        IrIntrinsic::UnsignedMax(size) => {
+            IrIntrinsic::UnsignedMax(resolve_access_size(size, instruction_args))
+        }
+        IrIntrinsic::UnsignedMin(size) => {
+            IrIntrinsic::UnsignedMin(resolve_access_size(size, instruction_args))
+        }
+        IrIntrinsic::BitOnes(size) => {
+            IrIntrinsic::BitOnes(resolve_access_size(size, instruction_args))
+        }
+        IrIntrinsic::BitZeros(size) => {
+            IrIntrinsic::BitZeros(resolve_access_size(size, instruction_args))
+        }
+        IrIntrinsic::ByteSizeOf(data) => {
+            IrIntrinsic::ByteSizeOf(resolve_operand(data, instruction_args))
+        }
+        IrIntrinsic::BitSizeOf(data) => {
+            IrIntrinsic::BitSizeOf(resolve_operand(data, instruction_args))
+        }
+        IrIntrinsic::Sized(data, size) => IrIntrinsic::Sized(
+            resolve_operand(data, instruction_args),
+            resolve_access_size(size, instruction_args),
+        ),
+        IrIntrinsic::OperandExists(_) => intrinsic.clone(),
+        IrIntrinsic::Unknown
+        | IrIntrinsic::Undefined
+        | IrIntrinsic::ArchitectureByteSize
+        | IrIntrinsic::ArchitectureBitSize
+        | IrIntrinsic::ArchitectureBitPerByte
+        | IrIntrinsic::InstructionByteSize => intrinsic.clone(),
+    }
+}
+
+fn resolve_binary_operator(
+    op: &BinaryOperator,
+    instruction_args: &Box<[iceball::Argument]>,
+) -> BinaryOperator {
+    match op {
+        BinaryOperator::Equal(s) => BinaryOperator::Equal(resolve_access_size(s, instruction_args)),
+        BinaryOperator::SignedLess(s) => {
+            BinaryOperator::SignedLess(resolve_access_size(s, instruction_args))
+        }
+        BinaryOperator::SignedLessOrEqual(s) => {
+            BinaryOperator::SignedLessOrEqual(resolve_access_size(s, instruction_args))
+        }
+        BinaryOperator::UnsignedLess(s) => {
+            BinaryOperator::UnsignedLess(resolve_access_size(s, instruction_args))
+        }
+        BinaryOperator::UnsignedLessOrEqual(s) => {
+            BinaryOperator::UnsignedLessOrEqual(resolve_access_size(s, instruction_args))
+        }
+        BinaryOperator::And
+        | BinaryOperator::Or
+        | BinaryOperator::Xor
+        | BinaryOperator::Shl
+        | BinaryOperator::Shr
+        | BinaryOperator::Sar
+        | BinaryOperator::Add
+        | BinaryOperator::Sub
+        | BinaryOperator::Mul
+        | BinaryOperator::SignedDiv
+        | BinaryOperator::SignedRem
+        | BinaryOperator::UnsignedDiv
+        | BinaryOperator::UnsignedRem => op.clone(),
+    }
+}
+
+fn resolve_operand(data: &Aos<IrData>, instruction_args: &Box<[iceball::Argument]>) -> Aos<IrData> {
+    match data.as_ref() {
+        IrData::Operand(op_num) => {
+            return (&instruction_args[(op_num.get() - 1) as usize]).into();
+        }
+        _ => {}
     }
 
-    if !RECURSIVE {
-        return data.clone();
+    match data.as_ref() {
+        IrData::Intrinsic(intrinsic) => Aos::new(IrData::Intrinsic(resolve_ir_intrinsic(
+            intrinsic,
+            instruction_args,
+        ))),
+        IrData::Dereference(inner_data) => {
+            let resolved_inner = resolve_operand(inner_data, instruction_args);
+            Aos::new(IrData::Dereference(resolved_inner))
+        }
+        IrData::Operation(operation) => match operation {
+            IrDataOperation::Unary { operator, arg } => {
+                let resolved_arg = resolve_operand(arg, instruction_args);
+                Aos::new(IrData::Operation(IrDataOperation::Unary {
+                    operator: *operator,
+                    arg: resolved_arg,
+                }))
+            }
+            IrDataOperation::Binary {
+                operator,
+                arg1,
+                arg2,
+            } => {
+                let resolved_arg1 = resolve_operand(arg1, instruction_args);
+                let resolved_arg2 = resolve_operand(arg2, instruction_args);
+                let resolved_op = resolve_binary_operator(operator, instruction_args);
+                Aos::new(IrData::Operation(IrDataOperation::Binary {
+                    operator: resolved_op,
+                    arg1: resolved_arg1,
+                    arg2: resolved_arg2,
+                }))
+            }
+        },
+        IrData::Operand(_) => unreachable!(),
+        IrData::Constant(_) | IrData::Register(_) => data.clone(),
     }
-    let mut related_data = Vec::new();
-    data.get_related_ir_data(&mut related_data);
-    todo!()
 }
 
 fn resolve_data_accesses(
-    data: &Vec<DataAccess>,
+    data_access_vec: &Vec<DataAccess>, // Renamed from 'data' to avoid conflict
     instruction_args: &Box<[iceball::Argument]>,
 ) -> Vec<DataAccess> {
-    let mut result = Vec::new();
-    for data in data {
-        let mut related_data = Vec::new();
-        data.get_related_ir_data(&mut related_data);
-        if related_data
-            .iter()
-            .all(|x| resolve_operand::<false>(x, instruction_args) == **x)
-        {
-            result.push(data.clone());
-            continue;
-        }
-        let loc = data.location();
-        let access_type = data.access_type();
-        let size = data.size();
-        todo!()
-    }
-    result
+    data_access_vec
+        .iter()
+        .map(|da| {
+            let resolved_loc = resolve_operand(da.location(), instruction_args);
+            let resolved_size = resolve_access_size(da.size(), instruction_args);
+            DataAccess::new(resolved_loc, *da.access_type(), resolved_size)
+        })
+        .collect()
 }
 
 fn resolve_known_datatypes(
-    data: &Vec<KnownDataType>,
+    known_datatype_vec: &Vec<KnownDataType>, // Renamed from 'data'
     instruction_args: &Box<[iceball::Argument]>,
 ) -> Vec<KnownDataType> {
-    let mut result = Vec::new();
-    for data in data {
-        let mut related_data = Vec::new();
-        data.get_related_ir_data(&mut related_data);
-        if related_data
-            .iter()
-            .all(|x| resolve_operand::<false>(x, instruction_args) == **x)
-        {
-            result.push(data.clone());
-            continue;
-        }
-        let &KnownDataType {
-            location,
-            data_type,
-            data_size,
-        } = &data;
-        todo!()
-    }
-    result
+    known_datatype_vec
+        .iter()
+        .map(|known_datatype| {
+            let resolved_location = resolve_operand(&known_datatype.location, instruction_args);
+            let resolved_data_size =
+                resolve_access_size(&known_datatype.data_size, instruction_args);
+
+            KnownDataType {
+                location: resolved_location,
+                data_type: known_datatype.data_type,
+                data_size: resolved_data_size,
+            }
+        })
+        .collect()
 }

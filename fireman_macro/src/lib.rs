@@ -47,6 +47,33 @@ pub fn str_to_enum(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+/// impl name() method for enum, result is Some(&'static), case is undefined, None if unmatched
+#[proc_macro_derive(EnumToStr)]
+pub fn enum_to_str(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let mut items: Vec<syn::Ident> = Vec::new();
+    let name = input.ident;
+    let syn::Data::Enum(syn::DataEnum { variants, .. }) = input.data else {
+        panic!("Not a enum!");
+    };
+    for item in variants {
+        items.push(item.ident);
+    }
+
+    let expanded = quote! {
+        impl #name {
+            pub fn name(&self) -> Option<&'static str> {
+                match self {
+                    #(Self::#items => Some(stringify!(#items)), )*
+                    _ => None
+                }
+            }
+        }
+    };
+    TokenStream::from(expanded)
+}
+
 /// Turn Box<T> into &'static T
 /// example:
 /// ```rust, ignore

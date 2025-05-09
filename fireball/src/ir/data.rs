@@ -186,3 +186,86 @@ impl IrDataContainable for IrIntrinsic {
         }
     }
 }
+
+impl From<&iceball::Argument> for Aos<IrData> {
+    fn from(value: &iceball::Argument) -> Self {
+        use iceball::{AddressingOperator, Argument, Memory, Register, RelativeAddressingArgument};
+        match value {
+            Argument::Constant(c) => IrData::Constant((*c).try_into().unwrap()).into(),
+            Argument::Memory(Memory::AbsoluteAddressing(v)) => {
+                IrData::Dereference(IrData::Constant((*v).try_into().unwrap()).into()).into()
+            }
+            Argument::Memory(Memory::RelativeAddressing(v)) => {
+                let v = v.as_ref();
+                let arg_count = v.len();
+                assert_ne!(arg_count, 0);
+                assert!(matches!(arg_count, 1 | 3));
+
+                let mut iter = v.iter();
+                let arg1 = iter.next().unwrap();
+                let mut current_expr: Aos<IrData> = match arg1 {
+                    RelativeAddressingArgument::Register(reg) => match reg {
+                        Register::X64(x64_reg) => x64_reg_to_ir_reg(*x64_reg),
+                    },
+                    RelativeAddressingArgument::Constant(c) => {
+                        if *c >= 0 {
+                            IrData::Constant((*c).try_into().unwrap()).into()
+                        } else {
+                            IrData::Operation(IrDataOperation::Unary {
+                                operator: UnaryOperator::Negation,
+                                arg: IrData::Constant((0 - *c).try_into().unwrap()).into(),
+                            })
+                            .into()
+                        }
+                    }
+                    RelativeAddressingArgument::Operator(_) => unreachable!(),
+                };
+
+                if let Some(operator) = iter.next() {
+                    let operator = match operator {
+                        RelativeAddressingArgument::Operator(op) => op,
+                        _ => unreachable!(),
+                    };
+                    let operand = iter.next().unwrap();
+                    let operand: Aos<IrData> = match operand {
+                        RelativeAddressingArgument::Register(reg) => match reg {
+                            Register::X64(x64_reg) => x64_reg_to_ir_reg(*x64_reg),
+                        },
+                        RelativeAddressingArgument::Constant(c) => {
+                            if *c >= 0 {
+                                IrData::Constant((*c).try_into().unwrap()).into()
+                            } else {
+                                IrData::Operation(IrDataOperation::Unary {
+                                    operator: UnaryOperator::Negation,
+                                    arg: IrData::Constant((0 - *c).try_into().unwrap()).into(),
+                                })
+                                .into()
+                            }
+                        }
+                        RelativeAddressingArgument::Operator(_) => unreachable!(),
+                    };
+
+                    let binary_op_ir = match operator {
+                        AddressingOperator::Add => BinaryOperator::Add,
+                        AddressingOperator::Sub => BinaryOperator::Sub,
+                        AddressingOperator::Mul => BinaryOperator::Mul,
+                    };
+
+                    current_expr = IrData::Operation(IrDataOperation::Binary {
+                        operator: binary_op_ir,
+                        arg1: current_expr,
+                        arg2: operand,
+                    })
+                    .into();
+                }
+
+                IrData::Dereference(current_expr).into()
+            }
+            Argument::Register(Register::X64(register)) => x64_reg_to_ir_reg(*register),
+        }
+    }
+}
+fn x64_reg_to_ir_reg(reg: iceball::X64Register) -> Aos<IrData> {
+    let reg = reg.name();
+    crate::arch::x86_64::str_to_x64_register(reg.expect("register uncovered"))
+}
