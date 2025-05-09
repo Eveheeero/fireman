@@ -12,8 +12,8 @@ mod static_register {
 
     macro_rules! static_register {
         ($name:ident) => {
-            pub static $name: LazyLock<Aos<IrData>> =
-            LazyLock::new(|| IrData::Register(<VirtualMachine as X64>::$name()).into());
+            pub(crate) static $name: LazyLock<Aos<IrData>> =
+                LazyLock::new(|| IrData::Register(<VirtualMachine as X64>::$name()).into());
         };
     }
 
@@ -149,10 +149,6 @@ mod static_register {
     static_register!(vip);
     /// ID Flag, true if CPUID is supported.
     static_register!(id);
-
-    static_register!(less);
-    static_register!(less_or_equal);
-    static_register!(below_or_equal);
 
     static_register!(fpu_status_word);
     static_register!(fpu_ie);
@@ -376,4 +372,356 @@ mod static_register {
     static_register!(tmp4_128);
     static_register!(tmp4_256);
     static_register!(tmp4_512);
+}
+
+pub(crate) fn str_to_x64_range(data: &str) -> crate::utils::Aos<crate::ir::data::IrData> {
+    let data = data.to_ascii_lowercase();
+    macro_rules! ww {
+        ($name:ident) => {
+            if data == "$name" {
+                return static_register::$name.clone();
+            }
+        };
+    }
+
+    ww!(rax);
+    ww!(eax);
+    ww!(ax);
+    ww!(al);
+    ww!(ah);
+
+    ww!(rbx);
+    ww!(ebx);
+    ww!(bx);
+    ww!(bl);
+    ww!(bh);
+
+    ww!(rcx);
+    ww!(ecx);
+    ww!(cx);
+    ww!(cl);
+    ww!(ch);
+
+    ww!(rdx);
+    ww!(edx);
+    ww!(dx);
+    ww!(dl);
+    ww!(dh);
+
+    ww!(rsp);
+    ww!(esp);
+    ww!(sp);
+    ww!(spl);
+
+    ww!(rbp);
+    ww!(ebp);
+    ww!(bp);
+    ww!(bpl);
+
+    ww!(rsi);
+    ww!(esi);
+    ww!(si);
+    ww!(sil);
+
+    ww!(rdi);
+    ww!(edi);
+    ww!(di);
+    ww!(dil);
+
+    ww!(r8);
+    ww!(r8d);
+    ww!(r8w);
+    ww!(r8b);
+
+    ww!(r9);
+    ww!(r9d);
+    ww!(r9w);
+    ww!(r9b);
+
+    ww!(r10);
+    ww!(r10d);
+    ww!(r10w);
+    ww!(r10b);
+
+    ww!(r11);
+    ww!(r11d);
+    ww!(r11w);
+    ww!(r11b);
+
+    ww!(r12);
+    ww!(r12d);
+    ww!(r12w);
+    ww!(r12b);
+
+    ww!(r13);
+    ww!(r13d);
+    ww!(r13w);
+    ww!(r13b);
+
+    ww!(r14);
+    ww!(r14d);
+    ww!(r14w);
+    ww!(r14b);
+
+    ww!(r15);
+    ww!(r15d);
+    ww!(r15w);
+    ww!(r15b);
+
+    ww!(cs);
+    ww!(ds);
+    ww!(es);
+    ww!(fs);
+    ww!(gs);
+    ww!(ss);
+
+    ww!(rip);
+    ww!(eip);
+    ww!(ip);
+
+    ww!(rflags);
+    ww!(eflags);
+    ww!(flags);
+    ww!(cf);
+    ww!(pf);
+    ww!(af);
+    ww!(zf);
+    ww!(sf);
+    ww!(tf);
+    ww!(r#if);
+    ww!(df);
+    ww!(of);
+    ww!(iopl);
+    ww!(nt);
+    ww!(rf);
+    ww!(vm);
+    ww!(ac);
+    ww!(vif);
+    ww!(vip);
+    ww!(id);
+
+    ww!(fpu_status_word);
+    ww!(fpu_ie);
+    ww!(fpu_de);
+    ww!(fpu_ze);
+    ww!(fpu_oe);
+    ww!(fpu_ue);
+    ww!(fpu_pe);
+    ww!(fpu_sf);
+    ww!(fpu_es);
+    ww!(fpu_c0);
+    ww!(fpu_c1);
+    ww!(fpu_c2);
+    ww!(fpu_top);
+    ww!(fpu_c3);
+    ww!(fpu_b);
+
+    ww!(st0);
+    ww!(st1);
+    ww!(st2);
+    ww!(st3);
+    ww!(st4);
+    ww!(st5);
+    ww!(st6);
+    ww!(st7);
+
+    ww!(mm0);
+    ww!(mm1);
+    ww!(mm2);
+    ww!(mm3);
+    ww!(mm4);
+    ww!(mm5);
+    ww!(mm6);
+    ww!(mm7);
+    ww!(mm8);
+    ww!(mm9);
+    ww!(mm10);
+    ww!(mm11);
+    ww!(mm12);
+    ww!(mm13);
+    ww!(mm14);
+    ww!(mm15);
+    ww!(mm16);
+    ww!(mm17);
+    ww!(mm18);
+    ww!(mm19);
+    ww!(mm20);
+    ww!(mm21);
+    ww!(mm22);
+    ww!(mm23);
+    ww!(mm24);
+    ww!(mm25);
+    ww!(mm26);
+    ww!(mm27);
+    ww!(mm28);
+    ww!(mm29);
+    ww!(mm30);
+    ww!(mm31);
+
+    ww!(xmm0);
+    ww!(xmm1);
+    ww!(xmm2);
+    ww!(xmm3);
+    ww!(xmm4);
+    ww!(xmm5);
+    ww!(xmm6);
+    ww!(xmm7);
+    ww!(xmm8);
+    ww!(xmm9);
+    ww!(xmm10);
+    ww!(xmm11);
+    ww!(xmm12);
+    ww!(xmm13);
+    ww!(xmm14);
+    ww!(xmm15);
+    ww!(xmm16);
+    ww!(xmm17);
+    ww!(xmm18);
+    ww!(xmm19);
+    ww!(xmm20);
+    ww!(xmm21);
+    ww!(xmm22);
+    ww!(xmm23);
+    ww!(xmm24);
+    ww!(xmm25);
+    ww!(xmm26);
+    ww!(xmm27);
+    ww!(xmm28);
+    ww!(xmm29);
+    ww!(xmm30);
+    ww!(xmm31);
+
+    ww!(ymm0);
+    ww!(ymm1);
+    ww!(ymm2);
+    ww!(ymm3);
+    ww!(ymm4);
+    ww!(ymm5);
+    ww!(ymm6);
+    ww!(ymm7);
+    ww!(ymm8);
+    ww!(ymm9);
+    ww!(ymm10);
+    ww!(ymm11);
+    ww!(ymm12);
+    ww!(ymm13);
+    ww!(ymm14);
+    ww!(ymm15);
+    ww!(ymm16);
+    ww!(ymm17);
+    ww!(ymm18);
+    ww!(ymm19);
+    ww!(ymm20);
+    ww!(ymm21);
+    ww!(ymm22);
+    ww!(ymm23);
+    ww!(ymm24);
+    ww!(ymm25);
+    ww!(ymm26);
+    ww!(ymm27);
+    ww!(ymm28);
+    ww!(ymm29);
+    ww!(ymm30);
+    ww!(ymm31);
+
+    ww!(zmm0);
+    ww!(zmm1);
+    ww!(zmm2);
+    ww!(zmm3);
+    ww!(zmm4);
+    ww!(zmm5);
+    ww!(zmm6);
+    ww!(zmm7);
+    ww!(zmm8);
+    ww!(zmm9);
+    ww!(zmm10);
+    ww!(zmm11);
+    ww!(zmm12);
+    ww!(zmm13);
+    ww!(zmm14);
+    ww!(zmm15);
+    ww!(zmm16);
+    ww!(zmm17);
+    ww!(zmm18);
+    ww!(zmm19);
+    ww!(zmm20);
+    ww!(zmm21);
+    ww!(zmm22);
+    ww!(zmm23);
+    ww!(zmm24);
+    ww!(zmm25);
+    ww!(zmm26);
+    ww!(zmm27);
+    ww!(zmm28);
+    ww!(zmm29);
+    ww!(zmm30);
+    ww!(zmm31);
+
+    ww!(cr0);
+    ww!(cr1);
+    ww!(cr2);
+    ww!(cr3);
+    ww!(cr4);
+    ww!(cr5);
+    ww!(cr6);
+    ww!(cr7);
+    ww!(cr8);
+    ww!(cr9);
+    ww!(cr10);
+    ww!(cr11);
+    ww!(cr12);
+    ww!(cr13);
+    ww!(cr14);
+    ww!(cr15);
+
+    ww!(dr0);
+    ww!(dr1);
+    ww!(dr2);
+    ww!(dr3);
+    ww!(dr4);
+    ww!(dr5);
+    ww!(dr6);
+    ww!(dr7);
+    ww!(dr8);
+    ww!(dr9);
+    ww!(dr10);
+    ww!(dr11);
+    ww!(dr12);
+    ww!(dr13);
+    ww!(dr14);
+    ww!(dr15);
+
+    ww!(tmp8);
+    ww!(tmp16);
+    ww!(tmp32);
+    ww!(tmp64);
+    ww!(tmp128);
+    ww!(tmp256);
+    ww!(tmp512);
+
+    ww!(tmp2_8);
+    ww!(tmp2_16);
+    ww!(tmp2_32);
+    ww!(tmp2_64);
+    ww!(tmp2_128);
+    ww!(tmp2_256);
+    ww!(tmp2_512);
+
+    ww!(tmp3_8);
+    ww!(tmp3_16);
+    ww!(tmp3_32);
+    ww!(tmp3_64);
+    ww!(tmp3_128);
+    ww!(tmp3_256);
+    ww!(tmp3_512);
+
+    ww!(tmp4_8);
+    ww!(tmp4_16);
+    ww!(tmp4_32);
+    ww!(tmp4_64);
+    ww!(tmp4_128);
+    ww!(tmp4_256);
+    ww!(tmp4_512);
+
+    unreachable!()
 }

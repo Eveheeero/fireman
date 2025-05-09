@@ -138,10 +138,6 @@ impl X64Mut for VirtualMachine {
     generate_register!(vip);
     generate_register!(id);
 
-    generate_register!(less);
-    generate_register!(less_or_equal);
-    generate_register!(below_or_equal);
-
     generate_register!(fpu_status_word);
     generate_register!(fpu_ie);
     generate_register!(fpu_de);
