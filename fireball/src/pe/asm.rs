@@ -1,12 +1,12 @@
 //! 어셈블리 파싱 모듈
 
-use super::PE;
+use super::Pe;
 use crate::{
     core::{Address, Instruction},
     prelude::*,
 };
 
-impl PE {
+impl Pe {
     /// 범위만큼의 어셈블리 코드를 파싱한다.
     pub(crate) fn parse_assem_range(
         &self,

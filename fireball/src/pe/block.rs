@@ -1,10 +1,10 @@
 use crate::{
     core::{Address, Block, DestinationType, RelationType},
-    pe::PE,
+    pe::Pe,
 };
 use std::sync::Arc;
 
-impl PE {
+impl Pe {
     /// 파일 오프셋을 기준으로 블럭의 범위를 계산한다
     ///
     /// ### Arguments
