@@ -162,12 +162,7 @@ impl std::hash::Hash for Block {
     }
 }
 
-impl Eq for Block {
-    fn assert_receiver_is_total_eq(&self) {
-        self.id.assert_receiver_is_total_eq();
-    }
-}
-
+impl Eq for Block {}
 impl PartialEq for Block {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id

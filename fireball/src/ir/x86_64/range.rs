@@ -126,9 +126,7 @@ impl X64Range for VirtualMachine {
     generate_range!(vip, 19, 20, 21);
     generate_range!(id, 19, 21, 22);
 
-    generate_range!(less, 20, 0, 1);
-    generate_range!(less_or_equal, 20, 1, 2);
-    generate_range!(below_or_equal, 20, 2, 3);
+    /* 20 is blank */
 
     generate_range!(fpu_status_word, 21, 0, 16);
     generate_range!(fpu_ie, 21, 0, 1);

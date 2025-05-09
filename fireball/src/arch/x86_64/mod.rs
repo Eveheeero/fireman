@@ -8,12 +8,12 @@ mod static_register {
         ir::{data::IrData, x86_64::X64Range as X64, Register, VirtualMachine},
         utils::Aos,
     };
-    use once_cell::sync::Lazy;
+    use std::sync::LazyLock;
 
     macro_rules! static_register {
         ($name:ident) => {
-            pub static $name: Lazy<Aos<IrData>> =
-                Lazy::new(|| IrData::Register(<VirtualMachine as X64>::$name()).into());
+            pub(crate) static $name: LazyLock<Aos<IrData>> =
+                LazyLock::new(|| Aos::new_static(IrData::Register(<VirtualMachine as X64>::$name())));
         };
     }
 
@@ -149,10 +149,6 @@ mod static_register {
     static_register!(vip);
     /// ID Flag, true if CPUID is supported.
     static_register!(id);
-
-    static_register!(less);
-    static_register!(less_or_equal);
-    static_register!(below_or_equal);
 
     static_register!(fpu_status_word);
     static_register!(fpu_ie);
@@ -376,4 +372,324 @@ mod static_register {
     static_register!(tmp4_128);
     static_register!(tmp4_256);
     static_register!(tmp4_512);
+}
+
+pub(crate) fn str_to_x64_register(data: &str) -> crate::utils::Aos<crate::ir::data::IrData> {
+    let data = data.to_ascii_lowercase();
+    macro_rules! str_to_reg {
+        ($name:ident) => {
+            if data == stringify!($name) {
+                return static_register::$name.clone();
+            }
+        };
+    }
+
+    str_to_reg!(rax);
+    str_to_reg!(eax);
+    str_to_reg!(ax);
+    str_to_reg!(al);
+    str_to_reg!(ah);
+
+    str_to_reg!(rbx);
+    str_to_reg!(ebx);
+    str_to_reg!(bx);
+    str_to_reg!(bl);
+    str_to_reg!(bh);
+
+    str_to_reg!(rcx);
+    str_to_reg!(ecx);
+    str_to_reg!(cx);
+    str_to_reg!(cl);
+    str_to_reg!(ch);
+
+    str_to_reg!(rdx);
+    str_to_reg!(edx);
+    str_to_reg!(dx);
+    str_to_reg!(dl);
+    str_to_reg!(dh);
+
+    str_to_reg!(rsp);
+    str_to_reg!(esp);
+    str_to_reg!(sp);
+    str_to_reg!(spl);
+
+    str_to_reg!(rbp);
+    str_to_reg!(ebp);
+    str_to_reg!(bp);
+    str_to_reg!(bpl);
+
+    str_to_reg!(rsi);
+    str_to_reg!(esi);
+    str_to_reg!(si);
+    str_to_reg!(sil);
+
+    str_to_reg!(rdi);
+    str_to_reg!(edi);
+    str_to_reg!(di);
+    str_to_reg!(dil);
+
+    str_to_reg!(r8);
+    str_to_reg!(r8d);
+    str_to_reg!(r8w);
+    str_to_reg!(r8b);
+
+    str_to_reg!(r9);
+    str_to_reg!(r9d);
+    str_to_reg!(r9w);
+    str_to_reg!(r9b);
+
+    str_to_reg!(r10);
+    str_to_reg!(r10d);
+    str_to_reg!(r10w);
+    str_to_reg!(r10b);
+
+    str_to_reg!(r11);
+    str_to_reg!(r11d);
+    str_to_reg!(r11w);
+    str_to_reg!(r11b);
+
+    str_to_reg!(r12);
+    str_to_reg!(r12d);
+    str_to_reg!(r12w);
+    str_to_reg!(r12b);
+
+    str_to_reg!(r13);
+    str_to_reg!(r13d);
+    str_to_reg!(r13w);
+    str_to_reg!(r13b);
+
+    str_to_reg!(r14);
+    str_to_reg!(r14d);
+    str_to_reg!(r14w);
+    str_to_reg!(r14b);
+
+    str_to_reg!(r15);
+    str_to_reg!(r15d);
+    str_to_reg!(r15w);
+    str_to_reg!(r15b);
+
+    str_to_reg!(cs);
+    str_to_reg!(ds);
+    str_to_reg!(es);
+    str_to_reg!(fs);
+    str_to_reg!(gs);
+    str_to_reg!(ss);
+
+    str_to_reg!(rip);
+    str_to_reg!(eip);
+    str_to_reg!(ip);
+
+    str_to_reg!(rflags);
+    str_to_reg!(eflags);
+    str_to_reg!(flags);
+    str_to_reg!(cf);
+    str_to_reg!(pf);
+    str_to_reg!(af);
+    str_to_reg!(zf);
+    str_to_reg!(sf);
+    str_to_reg!(tf);
+    str_to_reg!(r#if);
+    str_to_reg!(df);
+    str_to_reg!(of);
+    str_to_reg!(iopl);
+    str_to_reg!(nt);
+    str_to_reg!(rf);
+    str_to_reg!(vm);
+    str_to_reg!(ac);
+    str_to_reg!(vif);
+    str_to_reg!(vip);
+    str_to_reg!(id);
+
+    str_to_reg!(fpu_status_word);
+    str_to_reg!(fpu_ie);
+    str_to_reg!(fpu_de);
+    str_to_reg!(fpu_ze);
+    str_to_reg!(fpu_oe);
+    str_to_reg!(fpu_ue);
+    str_to_reg!(fpu_pe);
+    str_to_reg!(fpu_sf);
+    str_to_reg!(fpu_es);
+    str_to_reg!(fpu_c0);
+    str_to_reg!(fpu_c1);
+    str_to_reg!(fpu_c2);
+    str_to_reg!(fpu_top);
+    str_to_reg!(fpu_c3);
+    str_to_reg!(fpu_b);
+
+    str_to_reg!(st0);
+    str_to_reg!(st1);
+    str_to_reg!(st2);
+    str_to_reg!(st3);
+    str_to_reg!(st4);
+    str_to_reg!(st5);
+    str_to_reg!(st6);
+    str_to_reg!(st7);
+
+    str_to_reg!(mm0);
+    str_to_reg!(mm1);
+    str_to_reg!(mm2);
+    str_to_reg!(mm3);
+    str_to_reg!(mm4);
+    str_to_reg!(mm5);
+    str_to_reg!(mm6);
+    str_to_reg!(mm7);
+    str_to_reg!(mm8);
+    str_to_reg!(mm9);
+    str_to_reg!(mm10);
+    str_to_reg!(mm11);
+    str_to_reg!(mm12);
+    str_to_reg!(mm13);
+    str_to_reg!(mm14);
+    str_to_reg!(mm15);
+    str_to_reg!(mm16);
+    str_to_reg!(mm17);
+    str_to_reg!(mm18);
+    str_to_reg!(mm19);
+    str_to_reg!(mm20);
+    str_to_reg!(mm21);
+    str_to_reg!(mm22);
+    str_to_reg!(mm23);
+    str_to_reg!(mm24);
+    str_to_reg!(mm25);
+    str_to_reg!(mm26);
+    str_to_reg!(mm27);
+    str_to_reg!(mm28);
+    str_to_reg!(mm29);
+    str_to_reg!(mm30);
+    str_to_reg!(mm31);
+
+    str_to_reg!(xmm0);
+    str_to_reg!(xmm1);
+    str_to_reg!(xmm2);
+    str_to_reg!(xmm3);
+    str_to_reg!(xmm4);
+    str_to_reg!(xmm5);
+    str_to_reg!(xmm6);
+    str_to_reg!(xmm7);
+    str_to_reg!(xmm8);
+    str_to_reg!(xmm9);
+    str_to_reg!(xmm10);
+    str_to_reg!(xmm11);
+    str_to_reg!(xmm12);
+    str_to_reg!(xmm13);
+    str_to_reg!(xmm14);
+    str_to_reg!(xmm15);
+    str_to_reg!(xmm16);
+    str_to_reg!(xmm17);
+    str_to_reg!(xmm18);
+    str_to_reg!(xmm19);
+    str_to_reg!(xmm20);
+    str_to_reg!(xmm21);
+    str_to_reg!(xmm22);
+    str_to_reg!(xmm23);
+    str_to_reg!(xmm24);
+    str_to_reg!(xmm25);
+    str_to_reg!(xmm26);
+    str_to_reg!(xmm27);
+    str_to_reg!(xmm28);
+    str_to_reg!(xmm29);
+    str_to_reg!(xmm30);
+    str_to_reg!(xmm31);
+
+    str_to_reg!(ymm0);
+    str_to_reg!(ymm1);
+    str_to_reg!(ymm2);
+    str_to_reg!(ymm3);
+    str_to_reg!(ymm4);
+    str_to_reg!(ymm5);
+    str_to_reg!(ymm6);
+    str_to_reg!(ymm7);
+    str_to_reg!(ymm8);
+    str_to_reg!(ymm9);
+    str_to_reg!(ymm10);
+    str_to_reg!(ymm11);
+    str_to_reg!(ymm12);
+    str_to_reg!(ymm13);
+    str_to_reg!(ymm14);
+    str_to_reg!(ymm15);
+    str_to_reg!(ymm16);
+    str_to_reg!(ymm17);
+    str_to_reg!(ymm18);
+    str_to_reg!(ymm19);
+    str_to_reg!(ymm20);
+    str_to_reg!(ymm21);
+    str_to_reg!(ymm22);
+    str_to_reg!(ymm23);
+    str_to_reg!(ymm24);
+    str_to_reg!(ymm25);
+    str_to_reg!(ymm26);
+    str_to_reg!(ymm27);
+    str_to_reg!(ymm28);
+    str_to_reg!(ymm29);
+    str_to_reg!(ymm30);
+    str_to_reg!(ymm31);
+
+    str_to_reg!(zmm0);
+    str_to_reg!(zmm1);
+    str_to_reg!(zmm2);
+    str_to_reg!(zmm3);
+    str_to_reg!(zmm4);
+    str_to_reg!(zmm5);
+    str_to_reg!(zmm6);
+    str_to_reg!(zmm7);
+    str_to_reg!(zmm8);
+    str_to_reg!(zmm9);
+    str_to_reg!(zmm10);
+    str_to_reg!(zmm11);
+    str_to_reg!(zmm12);
+    str_to_reg!(zmm13);
+    str_to_reg!(zmm14);
+    str_to_reg!(zmm15);
+    str_to_reg!(zmm16);
+    str_to_reg!(zmm17);
+    str_to_reg!(zmm18);
+    str_to_reg!(zmm19);
+    str_to_reg!(zmm20);
+    str_to_reg!(zmm21);
+    str_to_reg!(zmm22);
+    str_to_reg!(zmm23);
+    str_to_reg!(zmm24);
+    str_to_reg!(zmm25);
+    str_to_reg!(zmm26);
+    str_to_reg!(zmm27);
+    str_to_reg!(zmm28);
+    str_to_reg!(zmm29);
+    str_to_reg!(zmm30);
+    str_to_reg!(zmm31);
+
+    str_to_reg!(cr0);
+    str_to_reg!(cr1);
+    str_to_reg!(cr2);
+    str_to_reg!(cr3);
+    str_to_reg!(cr4);
+    str_to_reg!(cr5);
+    str_to_reg!(cr6);
+    str_to_reg!(cr7);
+    str_to_reg!(cr8);
+    str_to_reg!(cr9);
+    str_to_reg!(cr10);
+    str_to_reg!(cr11);
+    str_to_reg!(cr12);
+    str_to_reg!(cr13);
+    str_to_reg!(cr14);
+    str_to_reg!(cr15);
+
+    str_to_reg!(dr0);
+    str_to_reg!(dr1);
+    str_to_reg!(dr2);
+    str_to_reg!(dr3);
+    str_to_reg!(dr4);
+    str_to_reg!(dr5);
+    str_to_reg!(dr6);
+    str_to_reg!(dr7);
+    str_to_reg!(dr8);
+    str_to_reg!(dr9);
+    str_to_reg!(dr10);
+    str_to_reg!(dr11);
+    str_to_reg!(dr12);
+    str_to_reg!(dr13);
+    str_to_reg!(dr14);
+    str_to_reg!(dr15);
+
+    unreachable!("{}", data)
 }

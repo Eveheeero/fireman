@@ -17,15 +17,12 @@ goblin = "0.9"
 cpp_demangle = "0.4.0"
 capstone = "0.13"
 pdb = "0.8.0"
-once_cell = "1.17.1"
-regex = "1.7.0"
 tracing = { version = "0.1", features = [
   "log",
   "max_level_trace",
   "release_max_level_off",
 ] }
 bitvec = "1.0.1"
-either = "1.15.0"
 fireman_macro = { path = "../fireman_macro", version = "0.0.1" }
 
 [dev-dependencies]

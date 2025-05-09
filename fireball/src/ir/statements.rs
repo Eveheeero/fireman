@@ -81,18 +81,18 @@ pub enum NumCondition {
 }
 
 impl IrDataContainable for IrStatement {
-    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>) {
         match self {
             IrStatement::Assignment { from, to, size } => {
                 from.get_related_ir_data(v);
-                v.push(from.clone());
+                v.push(from);
                 to.get_related_ir_data(v);
-                v.push(to.clone());
+                v.push(to);
                 size.get_related_ir_data(v);
             }
             IrStatement::Jump { target } | IrStatement::Call { target } => {
                 target.get_related_ir_data(v);
-                v.push(target.clone());
+                v.push(target);
             }
             IrStatement::Condition {
                 condition,
@@ -100,7 +100,7 @@ impl IrDataContainable for IrStatement {
                 false_branch,
             } => {
                 condition.get_related_ir_data(v);
-                v.push(condition.clone());
+                v.push(condition);
                 true_branch.iter().for_each(|b| b.get_related_ir_data(v));
                 false_branch.iter().for_each(|b| b.get_related_ir_data(v));
             }
@@ -113,7 +113,7 @@ impl IrDataContainable for IrStatement {
 }
 
 impl IrDataContainable for IrStatementSpecial {
-    fn get_related_ir_data(&self, v: &mut Vec<Aos<IrData>>) {
+    fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>) {
         match self {
             IrStatementSpecial::TypeSpecified {
                 location,
@@ -121,7 +121,7 @@ impl IrDataContainable for IrStatementSpecial {
                 data_type: _,
             } => {
                 location.get_related_ir_data(v);
-                v.push(location.clone());
+                v.push(location);
                 size.get_related_ir_data(v);
             }
             IrStatementSpecial::ArchitectureByteSizeCondition {
@@ -136,12 +136,12 @@ impl IrDataContainable for IrStatementSpecial {
                 operation, size, ..
             } => {
                 operation.get_related_ir_data(v);
-                v.push(operation.clone());
+                v.push(operation);
                 size.get_related_ir_data(v);
             }
             IrStatementSpecial::Assertion { condition } => {
                 condition.get_related_ir_data(v);
-                v.push(condition.clone());
+                v.push(condition);
             }
         }
     }

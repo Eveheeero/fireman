@@ -93,16 +93,11 @@ pub(in crate::arch) fn size_unlimited() -> AccessSize {
     AccessSize::Unlimited
 }
 
-/// Operand
-#[inline]
-#[must_use]
-fn o(o: u8) -> Aos<IrData> {
-    IrData::Operand(NonZeroU8::new(o).unwrap()).into()
-}
 #[inline]
 #[must_use]
 pub(in crate::arch) fn o1() -> Aos<IrData> {
-    static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| o(1));
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Operand(NonZeroU8::new(1).unwrap())));
     ONCE.clone()
 }
 /// Relative size
@@ -114,7 +109,8 @@ pub(in crate::arch) fn o1_size() -> AccessSize {
 #[inline]
 #[must_use]
 pub(in crate::arch) fn o2() -> Aos<IrData> {
-    static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| o(2));
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Operand(NonZeroU8::new(2).unwrap())));
     ONCE.clone()
 }
 /// Relative size
@@ -126,7 +122,8 @@ pub(in crate::arch) fn o2_size() -> AccessSize {
 #[inline]
 #[must_use]
 pub(in crate::arch) fn o3() -> Aos<IrData> {
-    static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| o(3));
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Operand(NonZeroU8::new(3).unwrap())));
     ONCE.clone()
 }
 /// Relative size
@@ -138,7 +135,8 @@ pub(in crate::arch) fn o3_size() -> AccessSize {
 #[inline]
 #[must_use]
 pub(in crate::arch) fn o4() -> Aos<IrData> {
-    static ONCE: LazyLock<Aos<IrData>> = LazyLock::new(|| o(4));
+    static ONCE: LazyLock<Aos<IrData>> =
+        LazyLock::new(|| Aos::new_static(IrData::Operand(NonZeroU8::new(4).unwrap())));
     ONCE.clone()
 }
 /// Relative size

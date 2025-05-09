@@ -145,10 +145,6 @@ pub trait X64 {
     generate_register!(vip);
     generate_register!(id);
 
-    generate_register!(less);
-    generate_register!(less_or_equal);
-    generate_register!(below_or_equal);
-
     generate_register!(fpu_status_word);
     generate_register!(fpu_ie);
     generate_register!(fpu_de);
@@ -491,10 +487,6 @@ pub trait X64Mut {
     generate_mutable_register!(vip);
     generate_mutable_register!(id);
 
-    generate_mutable_register!(less);
-    generate_mutable_register!(less_or_equal);
-    generate_mutable_register!(below_or_equal);
-
     generate_mutable_register!(fpu_status_word);
     generate_mutable_register!(fpu_ie);
     generate_mutable_register!(fpu_de);
@@ -835,10 +827,6 @@ pub(crate) trait X64Range {
     generate_range!(vif);
     generate_range!(vip);
     generate_range!(id);
-
-    generate_range!(less);
-    generate_range!(less_or_equal);
-    generate_range!(below_or_equal);
 
     generate_range!(fpu_status_word);
     generate_range!(fpu_ie);

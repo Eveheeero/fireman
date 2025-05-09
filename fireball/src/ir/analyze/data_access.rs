@@ -5,11 +5,11 @@ use crate::ir::{
 };
 
 pub fn analyze_data_access(ir: &Ir) -> Vec<DataAccess> {
-    if ir.statements.is_right() {
+    if ir.statements.is_none() {
         return Vec::new();
     }
     let mut result = Vec::new();
-    for statement in ir.statements.as_ref().unwrap_left().iter() {
+    for statement in ir.statements.as_ref().unwrap().iter() {
         analyze_data_access_raw(&mut result, statement);
     }
     result
