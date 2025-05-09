@@ -1,10 +1,22 @@
 //! PE 구조체에 대한 구현이 담겨있는 모듈
 
 use super::Pe;
-use crate::core::{Address, Blocks, PreDefinedOffset, PreDefinedOffsets, Sections};
+use crate::{
+    core::{Address, Blocks, PreDefinedOffset, PreDefinedOffsets, Sections},
+    prelude::IoError,
+};
 use capstone::prelude::BuildsCapstone;
 
 impl Pe {
+    pub fn from_path(path: &str) -> Result<Pe, IoError> {
+        let binary = std::fs::read(path)?;
+        Ok(Pe::new(Some(path.to_owned()), binary))
+    }
+
+    pub fn from_binary(binary: Vec<u8>) -> Result<Pe, IoError> {
+        Ok(Pe::new(None, binary))
+    }
+
     /// 바이너리를 기반으로 PE 구조체를 생성한다.
     pub(crate) fn new(path: Option<String>, binary: Vec<u8>) -> Self {
         // 1. 섹션정보 생성

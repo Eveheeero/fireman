@@ -9,20 +9,11 @@ mod decom_from_virtual_address;
 use super::Pe;
 use crate::{
     core::{Address, Block, Blocks, Fire, PreDefinedOffsets, Sections},
-    prelude::{DecompileError, IoError},
+    prelude::DecompileError,
 };
 use std::sync::Arc;
 
 impl Fire for Pe {
-    fn from_path(path: &str) -> Result<Pe, IoError> {
-        let binary = std::fs::read(path)?;
-        Ok(Pe::new(Some(path.to_owned()), binary))
-    }
-
-    fn from_binary(binary: Vec<u8>) -> Result<Pe, IoError> {
-        Ok(Pe::new(None, binary))
-    }
-
     fn get_path(&self) -> Option<String> {
         self.path.clone()
     }
