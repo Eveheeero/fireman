@@ -6,21 +6,21 @@ mod decom_from_entry;
 mod decom_from_file_offset;
 mod decom_from_virtual_address;
 
-use super::PE;
+use super::Pe;
 use crate::{
     core::{Address, Fire, PreDefinedOffsets, Sections},
     prelude::{DecompileError, IoError},
 };
 use std::sync::Arc;
 
-impl Fire for PE {
-    fn from_path(path: &str) -> Result<PE, IoError> {
+impl Fire for Pe {
+    fn from_path(path: &str) -> Result<Pe, IoError> {
         let binary = std::fs::read(path)?;
-        Ok(PE::new(Some(path.to_owned()), binary))
+        Ok(Pe::new(Some(path.to_owned()), binary))
     }
 
-    fn from_binary(binary: Vec<u8>) -> Result<PE, IoError> {
-        Ok(PE::new(None, binary))
+    fn from_binary(binary: Vec<u8>) -> Result<Pe, IoError> {
+        Ok(Pe::new(None, binary))
     }
 
     fn get_path(&self) -> Option<String> {

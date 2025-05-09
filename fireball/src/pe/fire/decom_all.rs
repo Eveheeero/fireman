@@ -1,7 +1,7 @@
-use super::PE;
+use super::Pe;
 use crate::prelude::DecompileError;
 
-impl PE {
+impl Pe {
     pub(super) fn _decom_all(&self) -> Result<(), DecompileError> {
         todo!();
     }

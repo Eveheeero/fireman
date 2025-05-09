@@ -1,11 +1,11 @@
-use super::PE;
+use super::Pe;
 use crate::{
     core::Address,
     ir::{Ir, IrBlock},
     prelude::*,
 };
 
-impl PE {
+impl Pe {
     pub(super) fn _decom_block(&self, address: &Address) -> Result<(), DecompileError> {
         debug!(?address, "블럭 디컴파일 시작");
 

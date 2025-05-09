@@ -10,7 +10,7 @@ use crate::core::{Address, Blocks, PreDefinedOffsets, Sections};
 use std::{pin::Pin, sync::Arc};
 
 /// PE파일 파서
-pub struct PE {
+pub struct Pe {
     /// 엔트리 주소
     entry: Address,
     /// 파일 경로

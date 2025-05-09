@@ -1,10 +1,10 @@
 //! PE 구조체에 대한 구현이 담겨있는 모듈
 
-use super::PE;
+use super::Pe;
 use crate::core::{Address, Blocks, PreDefinedOffset, PreDefinedOffsets, Sections};
 use capstone::prelude::BuildsCapstone;
 
-impl PE {
+impl Pe {
     /// 바이너리를 기반으로 PE 구조체를 생성한다.
     pub(crate) fn new(path: Option<String>, binary: Vec<u8>) -> Self {
         // 1. 섹션정보 생성
@@ -71,7 +71,7 @@ impl PE {
             defined
         };
 
-        PE {
+        Pe {
             entry: Address::from_virtual_address(&sections, gl.entry as u64),
             path,
             binary,

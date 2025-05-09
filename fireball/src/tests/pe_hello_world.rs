@@ -1,6 +1,6 @@
 use crate::{
     core::{Address, Fire, RelationType},
-    pe::PE,
+    pe::Pe,
     prelude::*,
 };
 
@@ -12,7 +12,7 @@ fn get_binary() -> &'static [u8] {
 fn pe_hello_world() {
     test_init();
     let binary = get_binary();
-    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let pe = Pe::from_binary(binary.to_vec()).unwrap();
     dbg!(pe);
 }
 
@@ -20,7 +20,7 @@ fn pe_hello_world() {
 fn pe_hello_world_entry() {
     test_init();
     let binary = get_binary();
-    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let pe = Pe::from_binary(binary.to_vec()).unwrap();
     let gl = goblin::pe::PE::parse(binary).unwrap();
     let sections = pe.get_sections();
     let pe_entry = pe.entry();
@@ -32,7 +32,7 @@ fn pe_hello_world_entry() {
 fn pe_hello_world_entry_parse() {
     test_init();
     let binary = get_binary();
-    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let pe = Pe::from_binary(binary.to_vec()).unwrap();
     let gl = goblin::pe::PE::parse(binary).unwrap();
 
     let sections = pe.get_sections();
@@ -72,7 +72,7 @@ fn pe_hello_world_entry_parse() {
 fn pe_hello_world_detect_block_entry() {
     test_init();
     let binary = get_binary();
-    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let pe = Pe::from_binary(binary.to_vec()).unwrap();
     let entry = pe.entry();
     let block = pe.generate_block_from_address(entry);
 
@@ -85,7 +85,7 @@ fn pe_hello_world_detect_block_entry() {
 fn pe_hello_world_detect_block_etc() {
     test_init();
     let binary = get_binary();
-    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let pe = Pe::from_binary(binary.to_vec()).unwrap();
     let gl = goblin::pe::PE::parse(binary).unwrap();
     let sections = pe.get_sections();
     let entry = Address::from_virtual_address(&sections, gl.entry as u64);
@@ -108,7 +108,7 @@ fn pe_hello_world_detect_block_etc() {
 fn pe_hello_world_block_relation() {
     test_init();
     let binary = get_binary();
-    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
     /* 엔트리에 대한 블럭 파싱 및 relation 생성 확인 */
     let entry = pe.entry();
@@ -146,7 +146,7 @@ fn pe_hello_world_block_relation() {
 fn pe_hello_world_decom_block() {
     test_init();
     let binary = get_binary();
-    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
     /* 엔트리부터 디컴파일 시작 */
     assert_eq!(pe.decom_from_entry(), Ok(()), "디컴파일 진행 실패");
@@ -176,7 +176,7 @@ fn pe_hello_world_decom_block() {
 fn pe_hello_world_analyze_variables() {
     test_init();
     let binary = get_binary();
-    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
     /* 엔트리부터 디컴파일 시작 */
     assert_eq!(pe.decom_from_entry(), Ok(()), "디컴파일 진행 실패");
@@ -199,7 +199,7 @@ fn pe_hello_world_analyze_variables() {
 fn pe_hello_world_print_statements() {
     test_init();
     let binary = get_binary();
-    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
     /* 엔트리부터 디컴파일 시작 */
     assert_eq!(pe.decom_from_entry(), Ok(()), "디컴파일 진행 실패");
@@ -227,7 +227,7 @@ fn pe_hello_world_print_statements() {
 fn pe_hello_world_print_assem_entry() {
     test_init();
     let binary = get_binary();
-    let pe = PE::from_binary(binary.to_vec()).unwrap();
+    let pe = Pe::from_binary(binary.to_vec()).unwrap();
     let entry = pe.entry();
     let insts = pe.parse_assem_range(entry, 0x60).unwrap();
     for inst in insts {
