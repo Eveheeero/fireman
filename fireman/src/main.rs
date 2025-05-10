@@ -64,7 +64,7 @@ fn main() {
     }
 
     let input = input.unwrap();
-    let fire = Fireball::from_path(&input).unwrap();
+    let fire = Fireball::from_path(input).unwrap();
     let result = fire.decom_from_entry().unwrap();
     let mut walked = Vec::new();
     let mut queue: Vec<_> = [result.get_start_address().clone()].into();
@@ -83,7 +83,7 @@ fn main() {
         );
         println!();
         for ir in ir_block.ir().iter() {
-            println!("");
+            println!();
             println!("{:?}", ir.instruction);
             ir.statements.as_ref().unwrap().iter().for_each(|x| {
                 println!("{:?}", x);
