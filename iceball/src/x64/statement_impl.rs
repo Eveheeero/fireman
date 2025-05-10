@@ -23,8 +23,10 @@ impl StatementInner for X64Statement {
                 | X64Statement::Jo
                 | X64Statement::Jp
                 | X64Statement::Js
-                | X64Statement::Jmp
         )
+    }
+    fn is_jmp(&self) -> bool {
+        matches!(*self, X64Statement::Jmp)
     }
 
     fn is_call(&self) -> bool {
