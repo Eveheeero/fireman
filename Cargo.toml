@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "fireman",
     "fireball",
-    "firebat",
+    "firebat/src-tauri",
     "iceball",
     "dryice",
     "iceball/architecture_doc_extractor",
