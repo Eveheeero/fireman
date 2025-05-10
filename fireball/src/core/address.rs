@@ -66,7 +66,7 @@ impl Address {
     ///
     /// ### Returns
     /// - `Option<u64>` - 파일 오프셋
-    pub(crate) fn get_file_offset(&self) -> Option<u64> {
+    pub fn get_file_offset(&self) -> Option<u64> {
         if let Some(section) = &self.section {
             if self.virtual_offset - section.virtual_address > section.size_of_file {
                 return None;
@@ -84,7 +84,7 @@ impl Address {
     ///
     /// ### Returns
     /// - `u64` - 가상 주소
-    pub(crate) fn get_virtual_address(&self) -> u64 {
+    pub fn get_virtual_address(&self) -> u64 {
         self.virtual_offset
     }
 

@@ -1,21 +1,96 @@
-use clap::Parser;
-use fireball::Fireball;
+use fireball::{core::Fire, Fireball};
 
-/// 디컴파일러 CLI 도구입니다.
-/// 현재 개발중입니다.
-#[derive(Parser)]
-struct Args {
-    /// 파일 경로
-    #[arg(short = 'i', long = "input", value_name = "PATH")]
-    input_path: String,
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+struct Setting {
+    path: String,
+    output: Option<String>,
+}
 
-    /// 설정값 경로
-    #[arg(short = 'j', long = "json", value_name = "PATH")]
-    json_path: Option<String>,
+fn parse_arg() -> clap::ArgMatches {
+    use clap::*;
+    Command::new("fireman")
+        .author("Eveheeero, xhve00000@mail.com")
+        .version("0.0.0")
+        .about("Fireman decopiler CLI")
+        .args([
+            Arg::new("tui")
+                .long("tui")
+                .action(ArgAction::SetTrue)
+                .help("Run decompiler as TUI mode"),
+            Arg::new("json")
+                .short('j')
+                .long("json")
+                .value_name("PATH")
+                .action(ArgAction::Set)
+                .help("JSON config path"),
+            Arg::new("json sample")
+                .long("jsonsample")
+                .action(ArgAction::SetTrue)
+                .help("Print json sample"),
+            Arg::new("input path")
+                .short('i')
+                .long("path")
+                .value_name("TARGET PATH")
+                .action(ArgAction::Set)
+                .help("Program wants to decompile")
+                .required_unless_present_any(["tui", "json", "json sample"]),
+            Arg::new("output path")
+                .short('o')
+                .long("out")
+                .value_name("OUTPUT PATH")
+                .action(ArgAction::Set)
+                .help("Output Path"),
+        ])
+        .get_matches()
 }
 
 fn main() {
-    let args = Args::parse();
-    let fire = Fireball::from_path(&args.input_path).unwrap();
-    dbg!(fire);
+    let args = parse_arg();
+    let tui = args.get_one::<bool>("tui").unwrap();
+    let input = args.get_one::<String>("input path");
+    let json = args.get_one::<String>("json");
+    let json_sample = args.get_one::<bool>("json sample").unwrap();
+
+    if *json_sample {
+        todo!()
+    }
+
+    if let Some(json) = json {
+        todo!("json preset mode {}", json)
+    }
+
+    if *tui {
+        todo!("tui mode, reads inputs or json too")
+    }
+
+    let input = input.unwrap();
+    let fire = Fireball::from_path(input).unwrap();
+    let result = fire.decom_from_entry().unwrap();
+    let mut walked = Vec::new();
+    let mut queue: Vec<_> = [result.get_start_address().clone()].into();
+    while let Some(address) = queue.pop() {
+        if walked.contains(&address) {
+            continue;
+        }
+        let now = fire.decom_block(&address).unwrap();
+        walked.push(address);
+        let reader = now.get_ir();
+        let ir_block = reader.as_ref().unwrap();
+        let first = ir_block.ir().first().unwrap();
+        println!(
+            "Ir Block starts from {:#010x}",
+            first.address.get_virtual_address()
+        );
+        println!();
+        for ir in ir_block.ir().iter() {
+            println!();
+            println!("{:?}", ir.instruction);
+            ir.statements.as_ref().unwrap().iter().for_each(|x| {
+                println!("{:?}", x);
+            });
+        }
+        println!();
+        println!();
+        queue.extend(now.get_connected_to().iter().filter_map(|x| x.to()));
+    }
 }

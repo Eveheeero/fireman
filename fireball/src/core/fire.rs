@@ -3,35 +3,13 @@
 use super::Sections;
 use crate::{
     core::{Address, Block, Blocks, PreDefinedOffsets},
-    prelude::{DecompileError, IoError},
+    prelude::DecompileError,
 };
 use std::sync::Arc;
 
 /// ## Main Decompile Trait
 /// 해당 Trait는 디컴파일러를 작성할 때, 해당라이브러리에서 필요한 기능들을 정의해준다.
 pub trait Fire {
-    /// 파일 경로를 기반으로 파서 객체를 생성한다.
-    ///
-    /// ### Arguments
-    /// - `path: &str` - 읽어올 파일 경로
-    ///
-    /// ### Returns
-    /// - `Result<Self, IoError>` - 파일을 읽는것을 성공할 시 파서 객체를 반환하며, 파일을 읽을 수 없을 시 에러를 반환한다.
-    fn from_path(path: &str) -> Result<Self, IoError>
-    where
-        Self: Sized;
-
-    /// 바이너리를 기반으로 파서 객체를 생성한다.
-    ///
-    /// ### Arguments
-    /// - `binary: Vec<u8>` - 파싱할 바이너리 데이터
-    ///
-    /// ### Returns
-    /// - `Result<Self, IoError>` - 파서 객체를 반환하며, 항상 성공한다.
-    fn from_binary(binary: Vec<u8>) -> Result<Self, IoError>
-    where
-        Self: Sized;
-
     /// 파일 경로를 반환한다.
     ///
     /// ### Returns
