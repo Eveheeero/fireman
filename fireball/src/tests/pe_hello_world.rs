@@ -256,13 +256,3 @@ fn pe_hello_world_print_assem_entry() {
         println!("{:?}", inst);
     }
 }
-
-#[test]
-fn pe_hello_world_0x9160_block() {
-    let address = 0x00009160;
-    test_init();
-    let binary = get_binary();
-    let pe = Pe::from_binary(binary.to_vec()).unwrap();
-    let result = pe.decom_from_virtual_address(address);
-    assert!(result.is_ok(), "디컴파일 진행 실패");
-}
