@@ -78,6 +78,9 @@ impl Relation {
         self.to.clone()
     }
 
+    pub fn destination_type(&self) -> &DestinationType {
+        &self.destination_type
+    }
     pub fn relation_type(&self) -> &RelationType {
         &self.relation_type
     }

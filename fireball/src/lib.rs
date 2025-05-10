@@ -86,4 +86,8 @@ impl Fire for Fireball {
     fn get_blocks(&self) -> std::sync::Arc<core::Blocks> {
         self.get_object().get_blocks()
     }
+
+    fn get_relations(&self) -> std::sync::Arc<core::Relations> {
+        self.get_object().get_relations()
+    }
 }

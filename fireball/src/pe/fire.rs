@@ -8,7 +8,7 @@ mod decom_from_virtual_address;
 
 use super::Pe;
 use crate::{
-    core::{Address, Block, Blocks, Fire, PreDefinedOffsets, Sections},
+    core::{Address, Block, Blocks, Fire, PreDefinedOffsets, Relations, Sections},
     prelude::DecompileError,
 };
 use std::sync::Arc;
@@ -52,5 +52,9 @@ impl Fire for Pe {
 
     fn get_blocks(&self) -> Arc<Blocks> {
         self.blocks.clone()
+    }
+
+    fn get_relations(&self) -> Arc<Relations> {
+        self.relations.clone()
     }
 }
