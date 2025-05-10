@@ -78,7 +78,7 @@ fn pe_hello_world_detect_block_entry() {
 
     assert_eq!(&block.get_section().unwrap().name, ".text");
     assert_eq!(block.get_start_address(), entry);
-    assert_ne!(block.get_block_size(), Some(&0));
+    assert_eq!(block.get_block_size(), Some(&33)); // verified with debugger
 }
 
 #[test]
