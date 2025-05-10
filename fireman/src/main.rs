@@ -72,15 +72,14 @@ fn main() {
         if walked.contains(&address) {
             continue;
         }
+        println!(
+            "Ir Block starts from {:#010x}",
+            address.get_virtual_address()
+        );
         let now = fire.decom_block(&address).unwrap();
         walked.push(address);
         let reader = now.get_ir();
         let ir_block = reader.as_ref().unwrap();
-        let first = ir_block.ir().first().unwrap();
-        println!(
-            "Ir Block starts from {:#010x}",
-            first.address.get_virtual_address()
-        );
         println!();
         for ir in ir_block.ir().iter() {
             println!();

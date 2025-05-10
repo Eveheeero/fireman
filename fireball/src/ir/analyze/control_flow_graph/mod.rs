@@ -51,8 +51,9 @@ impl ControlFlowGraphAnalyzer {
     pub fn get_analyzed(&self) -> Option<&Vec<ControlFlowGraph>> {
         self.analyzed.as_ref()
     }
-    pub fn analyze(&mut self) {
+    pub fn analyze(&mut self) -> &Vec<ControlFlowGraph> {
         self.analyzed = Some(analyze_control_flow_graph(&self.targets, &self.relations));
+        self.analyzed.as_ref().unwrap()
     }
 }
 
