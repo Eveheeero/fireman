@@ -16,8 +16,8 @@ pub struct Block {
     name: Option<String>,
     /// 블럭의 시작 주소
     start_address: Address,
-    /// 블럭의 마지막 인스트럭션의 주소
-    end_address: Option<Address>,
+    /// 블럭의 사이즈
+    block_size: Option<u64>,
     /// 현재 블럭과 연관되어있는 블럭
     connected_from: RwLock<Vec<Relation>>,
     /// 현재 블럭과 연관된 블럭
@@ -38,7 +38,7 @@ impl Block {
     /// - `id: usize` - 블럭의 아이디
     /// - `name: Option<String>` - 블럭의 이름
     /// - `start_address: Address` - 블럭의 시작주소
-    /// - `end_address: Option<Address>` - 블럭의 마지막 인스트럭션의 주소
+    /// - `block_size: Option<u64>,` - 블럭의 사이즈
     ///
     /// ### Returns
     /// - `Arc<Self>` - 생성된 블럭
@@ -50,14 +50,14 @@ impl Block {
         id: usize,
         name: Option<String>,
         start_address: Address,
-        end_address: Option<Address>,
+        block_size: Option<u64>,
     ) -> Arc<Self> {
         let section = start_address.get_section();
         Arc::new(Self {
             id,
             name,
             start_address,
-            end_address,
+            block_size,
             connected_from: Default::default(),
             connected_to: Default::default(),
             section,
@@ -89,12 +89,12 @@ impl Block {
         &self.start_address
     }
 
-    /// 블럭의 끝 주소를 반환한다.
+    /// 블럭의 사이즈를 반환한다.
     ///
     /// ### Returns
-    /// - `Option<&Address>` - 블럭의 끝 주소
-    pub fn get_end_address(&self) -> Option<&Address> {
-        self.end_address.as_ref()
+    /// - `Option<&u64>` - 블럭의 사이즈
+    pub fn get_block_size(&self) -> Option<&u64> {
+        self.block_size.as_ref()
     }
 
     /// 어떤 블럭이 해당 블럭에서 연결되어있는지를 반환한다.
