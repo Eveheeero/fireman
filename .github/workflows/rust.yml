@@ -26,7 +26,7 @@ jobs:
                   path: |
                       target
                       ~/.cargo
-                  key: ${{ matrix.os }}-fireman-${{ hashFiles('**/Cargo.toml') }}
+                  key: ${{ matrix.os }}-fireman
             - name: Print Target
               run: rustup show
             - name: Build Debug
@@ -47,7 +47,7 @@ jobs:
                       target
                       ~/.cargo
                       ~/.rustup
-                  key: windows-static-build-${{ hashFiles('**/Cargo.toml') }}
+                  key: windows-static-build
             - name: Build Debug
               run: |
                   set RUSTFLAGS='-C target-feature=+crt-static'
@@ -70,7 +70,7 @@ jobs:
                       target
                       ~/.cargo
                       ~/.rustup
-                  key: ubuntu-static-build-${{ hashFiles('**/Cargo.toml') }}
+                  key: ubuntu-static-build
             - name: Setup dependency
               run: |
                   sudo apt install -y musl-tools
@@ -97,7 +97,7 @@ jobs:
                       target
                       ~/.cargo
                       ~/.rustup
-                  key: macos-static-build-${{ hashFiles('**/Cargo.toml') }}
+                  key: macos-static-build
             - name: Setup dependency
               run: |
                   rustup target add aarch64-apple-darwin
@@ -131,7 +131,7 @@ jobs:
                   path: |
                       target
                       ~/.cargo
-                  key: ${{ matrix.os }}-fireman-${{ hashFiles('**/Cargo.toml') }}
+                  key: ${{ matrix.os }}-fireman
             - name: Test Debug
               run: cargo test --verbose --workspace --exclude firebat
             - name: Test Release
