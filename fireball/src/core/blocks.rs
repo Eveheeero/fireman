@@ -138,16 +138,7 @@ impl Blocks {
         /* 저장소의 데이터에서 검사 */
         blocks_reader
             .iter()
-            .filter(|block| {
-                let start_address = block.get_start_address();
-                if let Some(block_size) = block.get_block_size() {
-                    start_address <= address && address - start_address < *block_size
-                } else {
-                    start_address <= address
-                        && address.get_section().is_some()
-                        && block.get_section() == address.get_section().as_ref()
-                }
-            })
+            .filter(|block| block.contains(address))
             .map(Arc::clone)
             .collect()
     }

@@ -17,7 +17,7 @@ pub use address::Address;
 pub use block::Block;
 pub use blocks::Blocks;
 pub use fire::Fire;
-pub(crate) use instruction::Instruction;
+pub use instruction::Instruction;
 pub use pre_defined_offset::PreDefinedOffset;
 pub use pre_defined_offsets::PreDefinedOffsets;
 pub use relation::{DestinationType, Relation, RelationType};

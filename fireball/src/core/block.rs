@@ -140,6 +140,23 @@ impl Block {
             "한 블럭에는 최대 두 개의 블럭이 연결될 수 있습니다."
         );
     }
+    /// 블럭이 특정 주소를 포함하는지 여부를 반환한다.
+    ///
+    /// ### Arguments
+    /// - `address: &Address` - 확인할 주소
+    ///
+    /// ### Returns
+    /// - `bool` - 포함하면 true, 포함하지 않으면 false
+    pub fn contains(&self, address: &Address) -> bool {
+        let start_address = self.get_start_address();
+        if let Some(block_size) = self.get_block_size() {
+            start_address <= address && address - start_address < *block_size
+        } else {
+            start_address <= address
+                && address.get_section().is_some()
+                && self.get_section() == address.get_section().as_ref()
+        }
+    }
     /// 블럭의 IR 데이터를 반환한다.
     ///
     /// ### Returns
