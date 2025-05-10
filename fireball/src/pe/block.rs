@@ -29,7 +29,7 @@ impl Pe {
             if inst.statement.is_err() {
                 break;
             }
-            if inst.is_jcc() || inst.is_call() || inst.is_ret() {
+            if inst.is_jcc() || inst.is_jmp() || inst.is_call() || inst.is_ret() {
                 end_address = Some(address);
                 break;
             }
@@ -66,6 +66,7 @@ impl Pe {
         let relation_type = match () {
             _ if inst.is_ret() => RelationType::Return,
             _ if inst.is_jcc() => RelationType::Jcc,
+            _ if inst.is_jmp() => RelationType::Jump,
             _ if inst.is_call() => RelationType::Call,
             _ => unreachable!("{:?}", inst),
         };

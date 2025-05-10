@@ -25,6 +25,7 @@ pub enum Statement {
 }
 pub trait StatementInner {
     fn is_jcc(&self) -> bool;
+    fn is_jmp(&self) -> bool;
     fn is_call(&self) -> bool;
     fn is_ret(&self) -> bool;
 }
@@ -78,6 +79,9 @@ impl Instruction {
     pub fn is_jcc(&self) -> bool {
         self.statement.is_ok() && self.statement.unwrap().is_jcc()
     }
+    pub fn is_jmp(&self) -> bool {
+        self.statement.is_ok() && self.statement.unwrap().is_jmp()
+    }
     pub fn is_call(&self) -> bool {
         self.statement.is_ok() && self.statement.unwrap().is_call()
     }
@@ -90,6 +94,11 @@ impl Statement {
     pub fn is_jcc(&self) -> bool {
         match self {
             Statement::X64(statement) => statement.is_jcc(),
+        }
+    }
+    pub fn is_jmp(&self) -> bool {
+        match self {
+            Statement::X64(statement) => statement.is_jmp(),
         }
     }
     pub fn is_call(&self) -> bool {
