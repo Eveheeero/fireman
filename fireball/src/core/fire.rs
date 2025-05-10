@@ -2,7 +2,7 @@
 
 use super::Sections;
 use crate::{
-    core::{Address, Block, Blocks, PreDefinedOffsets},
+    core::{Address, Block, Blocks, PreDefinedOffsets, Relations},
     prelude::DecompileError,
 };
 use std::sync::Arc;
@@ -90,4 +90,9 @@ pub trait Fire {
     /// ### Returns
     /// - `Arc<Blocks>` - 분석에 의해 생성된 블럭을 관리하는 객체
     fn get_blocks(&self) -> Arc<Blocks>;
+    /// 분석에 의해 생성된 블럭들의 연결 정보를 가져온다.
+    ///
+    /// ### Returns
+    /// - `Arc<Relations>` - 분석에 의해 생성된 블럭들의 연결 정보를 관리하는 객체
+    fn get_relations(&self) -> Arc<Relations>;
 }

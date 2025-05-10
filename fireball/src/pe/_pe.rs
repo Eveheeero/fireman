@@ -2,7 +2,7 @@
 
 use super::Pe;
 use crate::{
-    core::{Address, Blocks, PreDefinedOffset, PreDefinedOffsets, Sections},
+    core::{Address, Blocks, PreDefinedOffset, PreDefinedOffsets, Relations, Sections},
     prelude::IoError,
 };
 use capstone::prelude::BuildsCapstone;
@@ -83,6 +83,7 @@ impl Pe {
             defined
         };
 
+        let relations = Relations::new();
         Pe {
             entry: Address::from_virtual_address(&sections, gl.entry as u64),
             path,
@@ -90,7 +91,8 @@ impl Pe {
             capstone,
             defined,
             sections,
-            blocks: Blocks::new(),
+            relations: relations.clone(),
+            blocks: Blocks::new(relations),
         }
     }
 

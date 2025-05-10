@@ -1,6 +1,6 @@
 //! 프로그램을 분석한 결과로 나온 "Block"를 모아두는 구조체를 정의하는 모듈
 
-use crate::core::{relation::DestinationType, Address, Block, Relation, RelationType};
+use crate::core::{relation::DestinationType, Address, Block, Relation, RelationType, Relations};
 use std::sync::Arc;
 
 /// 어셈블리 단위의 블럭들을 관리하는 구조체
@@ -9,16 +9,22 @@ use std::sync::Arc;
 pub struct Blocks {
     /// 블럭들의 실제 데이터
     data: std::sync::RwLock<std::collections::HashSet<Arc<Block>>>,
+    /// Relations of block
+    relations: Arc<Relations>,
 }
 
 impl Blocks {
     /// 블럭 저장소 구조체를 생성한다.
     ///
+    /// ### Arguments
+    /// - `relations: Arc<Relation>`: 블럭 간의 관계를 저장하는 구조체
+    ///
     /// ### Returns
     /// - `Arc<Self>`: 생성된 블럭 저장소 구조체
-    pub(crate) fn new() -> Arc<Self> {
+    pub(crate) fn new(relations: Arc<Relations>) -> Arc<Self> {
         Arc::new(Self {
             data: Default::default(),
+            relations,
         })
     }
 
@@ -86,6 +92,7 @@ impl Blocks {
                 connected_to.1,
                 connected_to.2,
             );
+            self.relations.add_relation(relation.clone());
             new_block.add_connected_to(relation.clone());
             if let Some(connected_block) = connected_block {
                 connected_block.add_connected_from(relation);
@@ -131,16 +138,7 @@ impl Blocks {
         /* 저장소의 데이터에서 검사 */
         blocks_reader
             .iter()
-            .filter(|block| {
-                let start_address = block.get_start_address();
-                if let Some(block_size) = block.get_block_size() {
-                    start_address <= address && address - start_address < *block_size
-                } else {
-                    start_address <= address
-                        && address.get_section().is_some()
-                        && block.get_section() == address.get_section().as_ref()
-                }
-            })
+            .filter(|block| block.contains(address))
             .map(Arc::clone)
             .collect()
     }

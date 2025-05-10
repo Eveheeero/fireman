@@ -6,7 +6,7 @@ mod block;
 mod fire;
 mod fmt;
 
-use crate::core::{Address, Blocks, PreDefinedOffsets, Sections};
+use crate::core::{Address, Blocks, PreDefinedOffsets, Relations, Sections};
 use std::{pin::Pin, sync::Arc};
 
 /// PE파일 파서
@@ -26,4 +26,6 @@ pub struct Pe {
     sections: Arc<Sections>,
     /// 블럭에 대한 정보를 담고 있는 데이터
     blocks: Arc<Blocks>,
+    /// 블럭의 연결에 대한 정보를 담고 잇는 데이터
+    relations: Arc<Relations>,
 }
