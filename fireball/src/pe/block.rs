@@ -18,7 +18,8 @@ impl Pe {
         }
         let mut address = address.clone();
         let start_address = address.clone();
-        let mut end_address = None;
+        let mut last_instruction_address = None;
+        let mut block_size = None;
         loop {
             let inst = self.parse_assem_count(&address, 1);
             if inst.is_err() || inst.as_ref().unwrap().is_empty() {
@@ -30,7 +31,7 @@ impl Pe {
                 break;
             }
             if inst.is_jcc() || inst.is_jmp() || inst.is_call() || inst.is_ret() {
-                end_address = Some(address);
+                last_instruction_address = Some(address);
                 break;
             }
             address += inst.bytes.as_ref().unwrap().len() as u64;
@@ -39,22 +40,27 @@ impl Pe {
         /* 해당 블럭에서 연결된 다른 블럭 찾기 */
         let mut connected_to = Vec::new();
         // 끝 주소가 정해지지 않은 경우 연결된 블럭 없음
-        if let Some(end_address) = &end_address {
-            let inst = &self.parse_assem_count(end_address, 1).unwrap()[0].inner;
+        if let Some(last_instruction_address) = &last_instruction_address {
+            let inst = &self.parse_assem_count(last_instruction_address, 1).unwrap()[0].inner;
+            block_size = Some(
+                last_instruction_address - &start_address
+                    + inst.bytes.as_ref().unwrap().len() as u64,
+            );
             if inst.is_jcc() {
                 // 다음 주소
                 connected_to.push((
-                    Some(end_address + inst.bytes.as_ref().unwrap().len() as u64),
+                    Some(last_instruction_address + inst.bytes.as_ref().unwrap().len() as u64),
                     DestinationType::Static,
                     RelationType::Continued,
                 ));
             }
             // jcc나 call등에 의해 이동하는 주소
-            connected_to.push(self.get_connected_address_and_relation_type(end_address, inst));
+            connected_to
+                .push(self.get_connected_address_and_relation_type(last_instruction_address, inst));
         }
 
         self.blocks
-            .generate_block(start_address, end_address, &connected_to, None)
+            .generate_block(start_address, block_size, &connected_to, None)
     }
 
     /// 마지막 인스트럭션을 통해 어떤 주소와 연결되어있는지 파악한다

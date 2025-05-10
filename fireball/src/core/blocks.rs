@@ -26,7 +26,7 @@ impl Blocks {
     ///
     /// ### Arguments
     /// - `start_address: Address`: 블럭의 시작 주소
-    /// - `end_address: Option<Address>`: 블럭의 마지막 인스트럭션의 주소
+    /// - `block_size: Option<u64>,` - 블럭의 사이즈
     /// - `connected_to: &[(Option<Address>, DestinationType, RelationType)]`: 이 블럭이 어떤 블럭과 연결되었는지
     /// - `name: Option<String>`: 블럭의 이름
     ///
@@ -35,7 +35,7 @@ impl Blocks {
     pub(crate) fn generate_block(
         &self,
         start_address: Address,
-        end_address: Option<Address>,
+        block_size: Option<u64>,
         connected_to: &[(Option<Address>, DestinationType, RelationType)],
         name: Option<String>,
     ) -> Arc<Block> {
@@ -71,7 +71,7 @@ impl Blocks {
         let blocks_writer = &mut self.data.write().unwrap();
 
         /* 주어진 정보로 새 블록 생성 */
-        let new_block = Block::new(blocks_writer.len(), name, start_address, end_address);
+        let new_block = Block::new(blocks_writer.len(), name, start_address, block_size);
 
         for connected_from in connected_from {
             new_block.add_connected_from(connected_from);
@@ -132,12 +132,14 @@ impl Blocks {
         blocks_reader
             .iter()
             .filter(|block| {
-                block.get_start_address() <= address
-                    && if block.get_end_address().is_some() {
-                        block.get_end_address().unwrap() >= address
-                    } else {
-                        true
-                    }
+                let start_address = block.get_start_address();
+                if let Some(block_size) = block.get_block_size() {
+                    start_address <= address && address - start_address < *block_size
+                } else {
+                    start_address <= address
+                        && address.get_section().is_some()
+                        && block.get_section() == address.get_section().as_ref()
+                }
             })
             .map(Arc::clone)
             .collect()

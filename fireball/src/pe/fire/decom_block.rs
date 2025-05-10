@@ -13,9 +13,8 @@ impl Pe {
         // 블럭 생성
         let block = self.generate_block_from_address(address);
         // 해당 블럭의 인스트럭션 파싱
-        let end_address = block.get_end_address();
-        let block_size = if let Some(end_address) = end_address {
-            end_address - address
+        let block_size = if let Some(block_size) = block.get_block_size() {
+            *block_size
         } else {
             warn!(?address, "디컴파일 대상의 종료 위치를 찾을 수 없음");
             1
