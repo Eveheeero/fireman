@@ -1,0 +1,9 @@
+[profile.dev]
+opt-level = 0
+debug = false
+strip = "debuginfo"
+panic = 'abort'
+
+[profile.release]
+strip = "debuginfo"
+panic = 'abort'
