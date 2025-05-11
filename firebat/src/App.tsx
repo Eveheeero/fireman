@@ -1,5 +1,5 @@
 import { useState } from "react";
-import logoTransparent from "./assets/logo transparent.svg";
+import logoBackgrounded from "./assets/logo colored 512.png";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
@@ -16,8 +16,8 @@ function App() {
       <h1>Welcome to Tauri + React</h1>
 
       <div className="row">
-        <img src="/logo colored 512.png" className="logo" alt="logo1" />
-        <img src={logoTransparent} className="logo" alt="transparent logo" />
+        <img src="/logo transparent.svg" className="logo" alt="transparent logo" />
+        <img src={logoBackgrounded} className="logo" alt="backgrounded logo" />
       </div>
       <p>Click on the Tauri, Vite, and React logos to learn more.</p>
 
@@ -31,6 +31,7 @@ function App() {
         <input
           id="greet-input"
           onChange={(e) => setName(e.currentTarget.value)}
+          autoComplete="off"
           placeholder="Enter a name..."
         />
         <button type="submit">Greet</button>
