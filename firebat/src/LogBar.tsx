@@ -24,7 +24,7 @@ const LogBar: React.FC = () => {
         logs.length > 0 ? (
           <div className="flex flex-col-reverse">
             {logs.map((logMessage, index) => (
-              <div key={index} className="py-0.5 border-b border-gray-700">
+              <div key={index} className="py-0.5 border-b border-gray-700 first:border-b-0">
                 {logMessage}
               </div>
             ))}
