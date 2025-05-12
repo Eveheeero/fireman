@@ -1,6 +1,6 @@
 # Fireman
 
-![Logo](firebat\src-tauri\icons\icon.png)
+![Logo](firebat/src-tauri/icons/icon.png)
 
 Working In Progress (2025.05 Updated)
 
