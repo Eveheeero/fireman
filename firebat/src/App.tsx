@@ -2,6 +2,7 @@ import { useState } from "react";
 import logoBackgrounded from "./assets/logo colored 512.png";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
+import Navigation from "./Navigation";
 
 function App() {
   const [greetMsg, setGreetMsg] = useState("");
@@ -12,31 +13,32 @@ function App() {
   }
 
   return (
-    <main className="container">
+    <main>
+      <Navigation />
       <h1>Welcome to Tauri + React</h1>
 
-      <div className="row">
+      <div className="container">
+        {/* <div className="row invisible">
         <img src="/logo transparent.svg" className="logo" alt="transparent logo" />
         <img src={logoBackgrounded} className="logo" alt="backgrounded logo" />
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+      </div> */}
+        <p>Click on the Tauri, Vite, and React logos to learn more.</p>
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          autoComplete="off"
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            greet();
+          }}
+        >
+          <input
+            onChange={(e) => setName(e.currentTarget.value)}
+            autoComplete="off"
+            placeholder="Enter a name..."
+          />
+          <button type="submit">Greet</button>
+        </form>
+        <p>{greetMsg}</p>
+      </div>
     </main>
   );
 }
