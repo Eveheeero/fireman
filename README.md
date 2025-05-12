@@ -6,7 +6,7 @@ Working In Progress (2025.05 Updated)
 
 ## Features & Plans
 
-**Currently, There is no executable file.**
+**Currently, There is only IR Based Analyzed Routine.**
 
 - [x] Generate IR Based Environment
 - [X] Complete Instruction Parsing Routine
