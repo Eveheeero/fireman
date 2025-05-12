@@ -10,6 +10,7 @@ export const log = (...data: any[]) => {
   let s = "";
   for (const i of data) {
     s += i;
+    s += " ";
   }
   const formattedMessage = formatLogMessage(s);
   logStorage.getState().addLog(formattedMessage);

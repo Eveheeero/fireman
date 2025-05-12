@@ -10,7 +10,7 @@
 }
 
 .dft-btn {
-  @apply px-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/70 block text-sm transition duration-300 hover:text-white
+  @apply px-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/70 block text-sm transition duration-300 hover:text-white m-0.5
 }
 
 .dropdown {

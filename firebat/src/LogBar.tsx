@@ -14,9 +14,9 @@ const LogBar: React.FC = () => {
   return (
     <div
       className={`
-        fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-2 text-sm cursor-pointer
+        fixed bottom-0 left-0 right-0 bg-gray-900 text-white p-0.5 text-sm cursor-pointer
         transition-all duration-300 ease-in-out
-        ${isExpanded ? 'h-60 overflow-y-auto' : 'h-8 overflow-hidden'}
+        ${isExpanded ? 'h-60 overflow-y-auto' : 'h-7 overflow-hidden'}
       `}
       onClick={handleClick}
     >
