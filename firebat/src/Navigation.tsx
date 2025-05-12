@@ -1,5 +1,7 @@
 import { useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { open } from '@tauri-apps/plugin-dialog';
+import { log } from "./logger";
 
 function Nav() {
   function closeAllDropdowns() {
@@ -35,24 +37,27 @@ function Nav() {
     };
   }
 
-  async function click() {
-    const file = await open({
-      multiple: false,
-      directory: false,
-    });
-    console.log(file);
-  }
-
   useEffect(() => {
     const cleanup = registerEventListener();
     return cleanup; // cleanup
   }, []); // 빈 배열: 마운트 시 한 번 실행, 언마운트 시 클린업 실행
 
+  async function openFile() {
+    const file = await open({
+      multiple: false,
+      directory: false,
+    });
+    log("Open Fireball with", file);
+    await invoke("open_file", { path: file }).then(() => { log("Open Success"); }).catch((error) => {
+      log(error);
+    });
+  }
+
   return (<nav className="navbar shadow-md mx-1 flex justify-start">
     <div className="relative dropdown-group">
       <button onClick={(e) => openDropdown(e)} className="dft-btn mx-0.5">Files</button>
       <div className="dropdown dropdown-menu hidden">
-        <button onClick={(_e) => click()} className="dropdown-item">Open</button>
+        <button onClick={(_e) => openFile()} className="dropdown-item">Open</button>
       </div>
     </div>
     <div className="relative dropdown-group">

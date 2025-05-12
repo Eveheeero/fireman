@@ -3,6 +3,8 @@ import logoBackgrounded from "./assets/logo colored 512.png";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 import Navigation from "./Navigation";
+import LogBar from "./LogBar";
+import { log } from "./logger";
 
 function App() {
   const [greetMsg, setGreetMsg] = useState("");
@@ -10,6 +12,14 @@ function App() {
 
   async function greet() {
     setGreetMsg(await invoke("greet", { name }));
+  }
+
+  async function decomFromEntry() {
+    await invoke("decom_from_entry").then((result) => {
+      log(result);
+    }).catch((error) => {
+      log(error);
+    });
   }
 
   return (
@@ -38,7 +48,10 @@ function App() {
           <button type="submit">Greet</button>
         </form>
         <p>{greetMsg}</p>
+        <button onClick={decomFromEntry}>decom from entry</button>
       </div>
+
+      <LogBar />
     </main>
   );
 }
