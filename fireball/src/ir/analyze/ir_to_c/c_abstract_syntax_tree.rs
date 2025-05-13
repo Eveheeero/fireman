@@ -27,11 +27,12 @@ pub struct Variable {
 }
 
 pub type VariableId = u32;
-pub type FunctionId = u32;
+pub type FunctionId = u64;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CType {
     Void,
+    Unknown,
     Int8,
     Int16,
     Int32,
@@ -40,6 +41,7 @@ pub enum CType {
     UInt16,
     UInt32,
     UInt64,
+    Char,
     Float,
     Double,
     Pointer(Box<CType>),
@@ -203,6 +205,7 @@ impl std::fmt::Display for CType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CType::Void => write!(f, "void"),
+            CType::Unknown => write!(f, "unknown"),
             CType::Int8 => write!(f, "int8_t"),
             CType::Int16 => write!(f, "int16_t"),
             CType::Int32 => write!(f, "int32_t"),
@@ -211,6 +214,7 @@ impl std::fmt::Display for CType {
             CType::UInt16 => write!(f, "uint16_t"),
             CType::UInt32 => write!(f, "uint32_t"),
             CType::UInt64 => write!(f, "uint64_t"),
+            CType::Char => write!(f, "char"),
             CType::Float => write!(f, "float"),
             CType::Double => write!(f, "double"),
             CType::Pointer(t) => write!(f, "{}*", t),
