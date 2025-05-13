@@ -1,7 +1,6 @@
 use fireball::{
     core::Fire,
-    ir::analyze::{ir_block_merger::merge_blocks, ControlFlowGraphAnalyzer},
-    ir_to_c::generate_c,
+    ir::analyze::{generate_c, ir_block_merger::merge_blocks, ControlFlowGraphAnalyzer},
     pe::Pe,
 };
 
