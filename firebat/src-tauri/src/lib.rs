@@ -1,4 +1,4 @@
-use fireball::{core::Address, Fire, Fireball};
+use fireball::{core::Address, ir::utils::IrStatementDescriptor, Fire, Fireball};
 use serde::Serialize;
 use std::sync::{Arc, LazyLock, Mutex};
 use ts_bind::TsBind;
@@ -92,9 +92,13 @@ fn decom_from_address(address: &str) -> Result<Vec<u64>, String> {
 #[derive(Serialize, TsBind)]
 struct IrInspectResult {
     instruction: String,
-    statements: Option<Vec<String>>,
-    data_accesses: Option<Vec<String>>,
-    data_access_per_ir: Option<Vec<String>>,
+    statements: Vec<IrInspectResultSingle>,
+}
+#[derive(Serialize, TsBind)]
+struct IrInspectResultSingle {
+    statement: String,
+    data_accesses: Vec<String>,
+    data_access_per_ir: Vec<String>,
 }
 #[tauri::command]
 fn ir_inspect(address: &str) -> Result<Vec<IrInspectResult>, String> {
@@ -107,34 +111,35 @@ fn ir_inspect(address: &str) -> Result<Vec<IrInspectResult>, String> {
     let block = &block.get(0).ok_or("Block Not Analyzed")?;
     let ir_block = block.get_ir();
     let ir_block = ir_block.as_ref().ok_or("Block Not Analyzed")?;
-    let data_access_per_ir = ir_block
-        .data_access_per_ir
-        .as_ref()
-        .ok_or("Block Not Analyzed")?;
-    let known_datatypes_per_ir = ir_block
-        .known_datatypes_per_ir
+    let data_access = ir_block.data_access.as_ref().ok_or("Block Not Analyzed")?;
+    let known_datatypes = ir_block
+        .known_datatypes
         .as_ref()
         .ok_or("Block Not Analyzed")?;
     let mut result = Vec::new();
-    for (i, ir) in ir_block.ir().iter().enumerate() {
+    for (ir_index, ir) in ir_block.ir().iter().enumerate() {
         let instruction = ir.instruction.as_ref();
         if let Some(statements) = ir.statements {
-            let data_access = data_access_per_ir.get(i).unwrap();
-            let known_datatypes = known_datatypes_per_ir.get(i).unwrap();
-            result.push(IrInspectResult {
-                instruction: format!("{:?}", instruction),
-                statements: Some(statements.iter().map(|s| format!("{:?}", s)).collect()),
-                data_accesses: Some(data_access.iter().map(|s| format!("{:?}", s)).collect()),
-                data_access_per_ir: Some(
-                    known_datatypes.iter().map(|s| format!("{:?}", s)).collect(),
-                ),
-            });
+            for (statement_index, statement) in statements.iter().enumerate() {
+                let key = IrStatementDescriptor::new(ir_index as u32, statement_index as u8);
+                let data_access = data_access.get(key).unwrap();
+                let known_datatypes = known_datatypes.get(key).unwrap();
+                result.push(IrInspectResult {
+                    instruction: format!("{}", instruction),
+                    statements: vec![IrInspectResultSingle {
+                        statement: format!("{}", statement),
+                        data_accesses: data_access.iter().map(|s| format!("{}", s)).collect(),
+                        data_access_per_ir: known_datatypes
+                            .iter()
+                            .map(|s| format!("{}", s))
+                            .collect(),
+                    }],
+                });
+            }
         } else {
             result.push(IrInspectResult {
-                instruction: format!("{:?}", instruction),
-                statements: None,
-                data_accesses: None,
-                data_access_per_ir: None,
+                instruction: format!("{}", instruction),
+                statements: vec![],
             });
         }
     }

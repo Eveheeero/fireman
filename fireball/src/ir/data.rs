@@ -328,3 +328,16 @@ impl std::fmt::Display for IrDataOperation {
         }
     }
 }
+impl std::fmt::Display for DataAccess {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}({}) {}", self.access_type, self.location, self.size)
+    }
+}
+impl std::fmt::Display for DataAccessType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DataAccessType::Read => write!(f, "r"),
+            DataAccessType::Write => write!(f, "w"),
+        }
+    }
+}

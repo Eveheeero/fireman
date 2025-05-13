@@ -1,3 +1,6 @@
+[alias]
+ts = "build --features tsexport"
+
 [profile.dev]
 opt-level = 0
 debug = false

@@ -26,3 +26,4 @@ ts-bind = "0.1.7"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
+tsexport = []
