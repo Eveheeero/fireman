@@ -59,6 +59,7 @@ fn decom_from_entry() -> Result<Vec<u64>, String> {
     let result = result.unwrap();
     let reader = result.get_connected_to();
     let mut connected_to = Vec::new();
+    connected_to.push(result.get_start_address().get_virtual_address());
     for i in reader.iter() {
         let Some(to) = i.to() else {
             continue;
@@ -80,6 +81,7 @@ fn decom_from_address(address: &str) -> Result<Vec<u64>, String> {
     let result = result.unwrap();
     let reader = result.get_connected_to();
     let mut connected_to = Vec::new();
+    connected_to.push(result.get_start_address().get_virtual_address());
     for i in reader.iter() {
         let Some(to) = i.to() else {
             continue;
