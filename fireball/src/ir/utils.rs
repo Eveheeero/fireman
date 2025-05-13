@@ -1,4 +1,4 @@
-use intmap::IntMap;
+use hashbrown::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IrStatementDescriptor {
@@ -37,23 +37,23 @@ impl IrStatementDescriptor {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IrStatementDescriptorMap<T> {
-    inner: IntMap<u64, T>,
+    inner: HashMap<u64, T>,
 }
 
 impl<T> IrStatementDescriptorMap<T> {
     #[inline]
     pub fn new() -> Self {
         Self {
-            inner: IntMap::new(),
+            inner: HashMap::new(),
         }
     }
     #[inline]
     pub fn get(&self, key: IrStatementDescriptor) -> Option<&T> {
-        self.inner.get(key.to_u64())
+        self.inner.get(&key.to_u64())
     }
     #[inline]
     pub fn get_mut(&mut self, key: IrStatementDescriptor) -> Option<&mut T> {
-        self.inner.get_mut(key.to_u64())
+        self.inner.get_mut(&key.to_u64())
     }
     #[inline]
     pub fn insert(&mut self, key: IrStatementDescriptor, value: T) -> Option<T> {
@@ -61,11 +61,11 @@ impl<T> IrStatementDescriptorMap<T> {
     }
     #[inline]
     pub fn insert_checked(&mut self, key: IrStatementDescriptor, value: T) -> bool {
-        self.inner.insert_checked(key.to_u64(), value)
+        self.inner.try_insert(key.to_u64(), value).is_ok()
     }
     #[inline]
     pub fn remove(&mut self, key: IrStatementDescriptor) -> Option<T> {
-        self.inner.remove(key.to_u64())
+        self.inner.remove(&key.to_u64())
     }
     #[inline]
     pub fn clear(&mut self) {
@@ -73,7 +73,7 @@ impl<T> IrStatementDescriptorMap<T> {
     }
     #[inline]
     pub fn contains_key(&self, key: IrStatementDescriptor) -> bool {
-        self.inner.contains_key(key.to_u64())
+        self.inner.contains_key(&key.to_u64())
     }
     #[inline]
     pub fn len(&self) -> usize {
@@ -84,26 +84,26 @@ impl<T> IrStatementDescriptorMap<T> {
         self.inner.is_empty()
     }
     #[inline]
-    pub fn values(&self) -> intmap::Values<u64, T> {
+    pub fn values(&self) -> hashbrown::hash_map::Values<u64, T> {
         self.inner.values()
     }
     #[inline]
     pub fn keys(&self) -> Vec<IrStatementDescriptor> {
         self.inner
             .keys()
-            .map(|x| IrStatementDescriptor::from_u64(x))
+            .map(|x| IrStatementDescriptor::from_u64(*x))
             .collect()
     }
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = (IrStatementDescriptor, &T)> {
         self.inner
             .iter()
-            .map(|(key, value)| (IrStatementDescriptor::from_u64(key), value))
+            .map(|(key, value)| (IrStatementDescriptor::from_u64(*key), value))
     }
     #[inline]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (IrStatementDescriptor, &mut T)> {
         self.inner
             .iter_mut()
-            .map(|(key, value)| (IrStatementDescriptor::from_u64(key), value))
+            .map(|(key, value)| (IrStatementDescriptor::from_u64(*key), value))
     }
 }
