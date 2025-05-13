@@ -2,6 +2,7 @@ use crate::{
     ir::{
         data::{AccessSize, IrData, IrDataContainable},
         statements::{IrStatement, IrStatementSpecial},
+        utils::{IrStatementDescriptor, IrStatementDescriptorMap},
         Ir,
     },
     utils::Aos,
@@ -24,42 +25,51 @@ pub enum DataType {
     Address,
 }
 
-pub fn analyze_datatype(ir: &Ir) -> Vec<KnownDataType> {
+pub fn analyze_datatype(
+    out: &mut IrStatementDescriptorMap<Vec<KnownDataType>>,
+    ir_index: u32,
+    ir: &Ir,
+) {
     if ir.statements.is_none() {
-        return Vec::new();
+        return;
     }
-    let mut result = Vec::new();
-    for statement in ir.statements.as_ref().unwrap().iter() {
-        analyze_datatype_raw(&mut result, statement);
+    for (statement_index, statement) in ir.statements.as_ref().unwrap().iter().enumerate() {
+        let statement_index = statement_index as u8;
+        let mut now = Vec::new();
+        let mut insert = |x| {
+            now.push(x);
+        };
+        analyze_datatype_raw(&mut insert, statement);
+        now.shrink_to_fit();
+        out.insert(IrStatementDescriptor::new(ir_index, statement_index), now);
     }
-    result
 }
 
 /// ### TODO
 /// 인스트럭션을 통한 데이터 타입 추가 유추 필요
-pub fn analyze_datatype_raw(v: &mut Vec<KnownDataType>, statement: &IrStatement) {
+pub fn analyze_datatype_raw(insert: &mut impl FnMut(KnownDataType), statement: &IrStatement) {
     match statement {
         IrStatement::Assignment { from, to, size } => {
-            v.push(KnownDataType {
+            insert(KnownDataType {
                 location: from.clone(),
                 data_type: DataType::Unknown,
                 data_size: size.clone(),
             });
-            v.push(KnownDataType {
+            insert(KnownDataType {
                 location: to.clone(),
                 data_type: DataType::Unknown,
                 data_size: size.clone(),
             });
         }
         IrStatement::Jump { target } => {
-            v.push(KnownDataType {
+            insert(KnownDataType {
                 location: target.clone(),
                 data_type: DataType::Address,
                 data_size: AccessSize::ArchitectureSize,
             });
         }
         IrStatement::Call { target } => {
-            v.push(KnownDataType {
+            insert(KnownDataType {
                 location: target.clone(),
                 data_type: DataType::Address,
                 data_size: AccessSize::ArchitectureSize,
@@ -71,7 +81,7 @@ pub fn analyze_datatype_raw(v: &mut Vec<KnownDataType>, statement: &IrStatement)
             false_branch,
         } => {
             for statement in true_branch.iter().chain(false_branch.iter()) {
-                analyze_datatype_raw(v, statement);
+                analyze_datatype_raw(insert, statement);
             }
         }
         IrStatement::Special(IrStatementSpecial::TypeSpecified {
@@ -79,7 +89,7 @@ pub fn analyze_datatype_raw(v: &mut Vec<KnownDataType>, statement: &IrStatement)
             size,
             data_type,
         }) => {
-            v.push(KnownDataType {
+            insert(KnownDataType {
                 location: location.clone(),
                 data_type: *data_type,
                 data_size: size.clone(),
@@ -91,7 +101,7 @@ pub fn analyze_datatype_raw(v: &mut Vec<KnownDataType>, statement: &IrStatement)
             false_branch,
         }) => {
             for statement in true_branch.iter().chain(false_branch.iter()) {
-                analyze_datatype_raw(v, statement);
+                analyze_datatype_raw(insert, statement);
             }
         }
 
@@ -108,5 +118,24 @@ impl IrDataContainable for KnownDataType {
         self.location.get_related_ir_data(v);
         v.push(&self.location);
         self.data_size.get_related_ir_data(v);
+    }
+}
+
+impl std::fmt::Display for KnownDataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {} {}", self.location, self.data_type, self.data_size)
+    }
+}
+
+impl std::fmt::Display for DataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DataType::Unknown => write!(f, "u"),
+            DataType::Int => write!(f, "i"),
+            DataType::Float => write!(f, "f"),
+            DataType::StringPointer => write!(f, "*c"),
+            DataType::Char => write!(f, "c"),
+            DataType::Address => write!(f, "*"),
+        }
     }
 }

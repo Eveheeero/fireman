@@ -53,3 +53,37 @@ impl IrDataContainable for BinaryOperator {
         }
     }
 }
+impl std::fmt::Display for UnaryOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UnaryOperator::Not => write!(f, "!",),
+            UnaryOperator::Negation => write!(f, "-",),
+            UnaryOperator::SignExtend => write!(f, "sign_extend",),
+            UnaryOperator::ZeroExtend => write!(f, "zero_extend",),
+        }
+    }
+}
+impl std::fmt::Display for BinaryOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BinaryOperator::And => write!(f, "&"),
+            BinaryOperator::Or => write!(f, "|"),
+            BinaryOperator::Xor => write!(f, "^"),
+            BinaryOperator::Shl => write!(f, "<<"),
+            BinaryOperator::Shr => write!(f, ">>"),
+            BinaryOperator::Sar => write!(f, "sar"),
+            BinaryOperator::Add => write!(f, "+"),
+            BinaryOperator::Sub => write!(f, "-"),
+            BinaryOperator::Mul => write!(f, "*"),
+            BinaryOperator::SignedDiv => write!(f, "/"),
+            BinaryOperator::SignedRem => write!(f, "%"),
+            BinaryOperator::UnsignedDiv => write!(f, "div"),
+            BinaryOperator::UnsignedRem => write!(f, "rem"),
+            BinaryOperator::Equal(access_size) => write!(f, "== ({})", access_size),
+            BinaryOperator::SignedLess(access_size) => write!(f, "< ({})", access_size),
+            BinaryOperator::SignedLessOrEqual(access_size) => write!(f, "<= ({})", access_size),
+            BinaryOperator::UnsignedLess(access_size) => write!(f, "< ({})", access_size),
+            BinaryOperator::UnsignedLessOrEqual(access_size) => write!(f, "<= ({})", access_size),
+        }
+    }
+}

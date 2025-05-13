@@ -6,6 +6,7 @@ pub mod data;
 pub mod operator;
 mod register;
 pub mod statements;
+pub mod utils;
 pub mod x86_64;
 
 use crate::{
@@ -19,7 +20,8 @@ use crate::{
 };
 pub use register::Register;
 use statements::IrStatement;
-use std::{cell::UnsafeCell, collections::HashSet, sync::LazyLock};
+use std::{cell::UnsafeCell, sync::LazyLock};
+use utils::IrStatementDescriptorMap;
 
 /// 컴퓨터가 동작하는 행동을 재현하기 위한 구조체
 ///
@@ -49,20 +51,19 @@ impl VirtualMachine {
 #[derive(Debug, Clone)]
 pub struct IrBlock {
     ir: Box<[Ir]>,
-    /// Data Access Per Instruction
-    pub data_access_per_ir: Option<Box<[Vec<DataAccess>]>>,
-    /// Analyzed Datatypes
-    pub known_datatypes_per_ir: Option<Box<[Vec<KnownDataType>]>>,
+    pub data_access: Option<IrStatementDescriptorMap<Vec<DataAccess>>>,
+    /// Analyzed Datatypes.
+    pub known_datatypes: Option<IrStatementDescriptorMap<Vec<KnownDataType>>>,
     /// Analyzed Variables
-    pub variables: Option<HashSet<IrVariable>>,
+    pub variables: Option<Vec<IrVariable>>,
 }
 
 impl IrBlock {
     pub fn new(data: Vec<Ir>) -> Self {
         Self {
             ir: data.into_boxed_slice(),
-            data_access_per_ir: None,
-            known_datatypes_per_ir: None,
+            data_access: None,
+            known_datatypes: None,
             variables: None,
         }
     }
@@ -71,24 +72,19 @@ impl IrBlock {
     }
 
     pub fn analyze_data_access(&mut self) {
-        let mut data_access_per_ir = Vec::new();
-        for ir in &self.ir {
-            let mut data_access_per_instruction = analyze::analyze_data_access(ir);
-            data_access_per_instruction.shrink_to_fit();
-            data_access_per_ir.push(data_access_per_instruction);
+        let mut result = IrStatementDescriptorMap::new();
+        for (ir_index, ir) in self.ir.iter().enumerate() {
+            analyze::analyze_data_access(&mut result, ir_index as u32, ir);
         }
-        self.data_access_per_ir = Some(data_access_per_ir.into_boxed_slice());
+        self.data_access = Some(result);
     }
 
     pub fn analyze_datatypes(&mut self) {
-        let mut known_datatypes = Vec::new();
-        for ir in &self.ir {
-            let mut analyzed_datatype = analyze::analyze_datatype(ir);
-            analyzed_datatype.shrink_to_fit();
-            known_datatypes.push(analyzed_datatype);
+        let mut result = IrStatementDescriptorMap::new();
+        for (ir_index, ir) in self.ir.iter().enumerate() {
+            analyze::analyze_datatype(&mut result, ir_index as u32, ir);
         }
-        known_datatypes.shrink_to_fit();
-        self.known_datatypes_per_ir = Some(known_datatypes.into_boxed_slice());
+        self.known_datatypes = Some(result);
     }
 
     pub fn analyze_variables(&mut self) -> Result<(), &'static str> {
@@ -98,17 +94,6 @@ impl IrBlock {
         Ok(())
     }
 
-    pub fn shrink_to_fit(&mut self) {
-        self.data_access_per_ir
-            .iter_mut()
-            .flat_map(|x| x.iter_mut())
-            .for_each(Vec::shrink_to_fit);
-        self.known_datatypes_per_ir
-            .iter_mut()
-            .flat_map(|x| x.iter_mut())
-            .for_each(Vec::shrink_to_fit);
-    }
-
     pub fn validate(&self) -> Result<(), IrAnalyzeAssertionFailure> {
         self.validate_data_access()?;
         self.validate_datatypes()?;
@@ -116,20 +101,20 @@ impl IrBlock {
         Ok(())
     }
     pub fn validate_data_access(&self) -> Result<(), IrAnalyzeAssertionFailure> {
-        if self.data_access_per_ir.is_none() {
+        if self.data_access.is_none() {
             return Err(IrAnalyzeAssertionFailure::AnalyzeNotPerformed(
                 "Data Access",
             ));
         }
-        let _data_access_per_ir = self.data_access_per_ir.as_ref().unwrap();
+        let _data_access_per_ir = self.data_access.as_ref().unwrap();
 
         Ok(())
     }
     pub fn validate_datatypes(&self) -> Result<(), IrAnalyzeAssertionFailure> {
-        if self.known_datatypes_per_ir.is_none() {
+        if self.known_datatypes.is_none() {
             return Err(IrAnalyzeAssertionFailure::AnalyzeNotPerformed("Datatype"));
         }
-        let _known_datatypes_per_ir = self.known_datatypes_per_ir.as_ref().unwrap();
+        let _known_datatypes_per_ir = self.known_datatypes.as_ref().unwrap();
 
         Ok(())
     }

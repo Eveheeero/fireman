@@ -82,3 +82,8 @@ impl<T: std::hash::Hash> std::hash::Hash for Aos<T> {
         core::mem::discriminant(inner).hash(state);
     }
 }
+impl<T: std::fmt::Display> std::fmt::Display for Aos<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_ref())
+    }
+}

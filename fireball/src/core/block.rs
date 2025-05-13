@@ -185,3 +185,16 @@ impl PartialEq for Block {
         self.id == other.id
     }
 }
+impl std::fmt::Display for Block {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({} ~ ", self.start_address)?;
+        if let Some(len) = self.block_size {
+            write!(f, "{}", &self.start_address + len)?;
+        }
+        if self.ir.read().unwrap().is_some() {
+            write!(f, ")(Analyzed)")
+        } else {
+            write!(f, ")")
+        }
+    }
+}

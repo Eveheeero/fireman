@@ -152,3 +152,11 @@ impl PartialOrd for Address {
         self.virtual_offset.partial_cmp(&other.virtual_offset)
     }
 }
+impl std::fmt::Display for Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(section) = &self.section {
+            write!(f, "[{}]", section)?
+        }
+        write!(f, "{:#X}", self.virtual_offset)
+    }
+}

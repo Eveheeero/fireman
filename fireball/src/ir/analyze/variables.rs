@@ -4,6 +4,7 @@ use crate::{
         data::{AccessSize, DataAccess, DataAccessType, IrData, IrDataOperation, IrIntrinsic},
         operator::BinaryOperator,
         statements::{IrStatement, IrStatementSpecial},
+        utils::{IrStatementDescriptor, IrStatementDescriptorMap},
         IrBlock,
     },
     utils::Aos,
@@ -13,56 +14,40 @@ use std::collections::{HashMap, HashSet};
 
 mod private {
     use super::*;
-    #[derive(Clone, PartialEq, Eq, Hash)]
+    #[derive(Clone, PartialEq, Eq)]
     pub struct IrVariable {
-        /// Index of Ir in IrBlock, None if passed last IrBlock
-        pub live_in: Option<usize>,
-        /// Index of Ir in IrBlock
-        pub shown_in: Vec<usize>,
-        /// Index of Ir in IrBlock
-        pub live_out: Option<usize>,
-        /// Index of Ir in IrBlock
-        accesses: Vec<Option<Vec<DataAccess>>>,
+        pub live_in: Option<u32>,
+        pub shown_in: Vec<u32>,
+        pub live_out: Option<u32>,
+        accesses: IrStatementDescriptorMap<Vec<DataAccess>>,
         pub data_type: DataType,
     }
     impl IrVariable {
         #[inline]
-        pub fn new(live_in_ir_index: Option<usize>, data_type: DataType) -> Self {
+        pub fn new(live_in: Option<u32>, data_type: DataType) -> Self {
             Self {
-                live_in: live_in_ir_index,
+                live_in,
                 shown_in: Vec::new(),
                 live_out: None,
-                accesses: Vec::new(),
+                accesses: IrStatementDescriptorMap::new(),
                 data_type,
             }
         }
         #[inline]
-        pub fn get_data_accesses(&self, ir_index: usize) -> &[DataAccess] {
-            self.accesses
-                .get(ir_index)
-                .unwrap_or(&None)
-                .as_ref()
-                .map(Vec::as_slice)
-                .unwrap_or(&[])
+        pub fn get_data_accesses(&self) -> &IrStatementDescriptorMap<Vec<DataAccess>> {
+            &self.accesses
         }
         #[inline]
-        pub fn add_data_access(&mut self, ir_index: usize, access: DataAccess) {
-            if self.accesses.len() <= ir_index {
-                self.accesses.resize_with(ir_index + 1, || None);
-            }
-            if self.accesses[ir_index].is_none() {
-                self.accesses[ir_index] = Some(Vec::new());
-            }
-            self.accesses[ir_index].as_mut().unwrap().push(access);
+        pub fn add_data_access(&mut self, ir_index: u32, statement_index: u8, access: DataAccess) {
+            let key = IrStatementDescriptor::new(ir_index, statement_index);
+            self.accesses.insert_checked(key, Vec::new());
+            self.accesses.get_mut(key).unwrap().push(access);
         }
         #[inline]
-        pub fn get_all_data_accesses(&self) -> Vec<(usize, &[DataAccess])> {
-            self.accesses
-                .iter()
-                .enumerate()
-                .filter_map(|(ir_index, access)| {
-                    access.as_ref().map(|access| (ir_index, access.as_slice()))
-                })
+        pub fn get_all_data_accesses(&self) -> Vec<(IrStatementDescriptor, &[DataAccess])> {
+            let keys = self.accesses.keys();
+            keys.into_iter()
+                .map(|key| (key, self.accesses.get(key).unwrap().as_slice()))
                 .collect()
         }
     }
@@ -156,17 +141,17 @@ fn update_location_mapping_recursive(
     }
 }
 
-pub fn analyze_variables(ir_block: &IrBlock) -> Result<HashSet<IrVariable>, &'static str> {
+pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static str> {
     let mut variables: Vec<IrVariable> = Vec::new();
     let mut resolved_location_to_variable_ids: HashMap<Aos<IrData>, HashSet<usize>> =
         HashMap::new();
     let irs = &ir_block.ir;
-    let known_datatypes_per_ir = ir_block
-        .known_datatypes_per_ir
+    let known_datatypes = ir_block
+        .known_datatypes
         .as_ref()
         .ok_or("Datatypes Not Analyzed")?;
-    let data_access_per_ir = ir_block
-        .data_access_per_ir
+    let data_access = ir_block
+        .data_access
         .as_ref()
         .ok_or("Data Access Not Analyzed")?;
 
@@ -174,19 +159,26 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<HashSet<IrVariable>, &'st
         if ir.statements.is_none() {
             continue;
         }
+        let ir_index = ir_index as u32;
         let statements = ir.statements.as_ref().unwrap();
         let instruction = &ir.instruction.as_ref().inner;
         let instruction_args = &instruction.arguments;
-        let known_datatypes_at_ir_resolved =
-            resolve_known_datatypes(&known_datatypes_per_ir[ir_index], instruction_args);
+        let known_datatypes_at_ir_resolved = resolve_known_datatypes(
+            &known_datatypes
+                .iter()
+                .filter(|(key, _)| key.ir_index() == ir_index)
+                .flat_map(|(_, value)| value)
+                .collect::<Vec<_>>(),
+            instruction_args,
+        );
         let data_access_at_ir_resolved =
-            resolve_data_accesses(&data_access_per_ir[ir_index], instruction_args);
+            resolve_data_accesses(data_access, ir_index, instruction_args);
 
         // --- Step 1: Identify all locations written within this IR (including nested statements) ---
         let mut locations_written_this_ir: HashSet<Aos<IrData>> = HashSet::new();
         for da in data_access_at_ir_resolved.iter() {
-            if *da.access_type() == DataAccessType::Write {
-                let resolved_loc = da.location();
+            if *da.1.access_type() == DataAccessType::Write {
+                let resolved_loc = da.1.location();
                 locations_written_this_ir.insert(resolved_loc.clone());
             }
         }
@@ -211,8 +203,8 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<HashSet<IrVariable>, &'st
 
         // --- Step 3: Process Data Accesses (Reads and Writes) ---
         for da in data_access_at_ir_resolved.iter() {
-            let resolved_loc = da.location().clone();
-            let access_type = da.access_type();
+            let resolved_loc = da.1.location().clone();
+            let access_type = da.1.access_type();
             let ids = resolved_location_to_variable_ids
                 .entry(resolved_loc.clone())
                 .or_default();
@@ -245,7 +237,7 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<HashSet<IrVariable>, &'st
                 if !variables[var_id].shown_in.contains(&ir_index) {
                     variables[var_id].shown_in.push(ir_index);
                 }
-                variables[var_id].add_data_access(ir_index, da.clone());
+                variables[var_id].add_data_access(ir_index, da.0.statement_index(), da.1.clone());
 
                 if *access_type == DataAccessType::Read
                     && variables[var_id].live_out == Some(ir_index)
@@ -266,7 +258,7 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<HashSet<IrVariable>, &'st
         resolved_location_to_variable_ids.retain(|_, ids| !ids.is_empty());
     }
 
-    Ok(variables.into_iter().collect())
+    Ok(variables)
 }
 
 fn resolve_access_size(
@@ -410,24 +402,31 @@ fn resolve_operand(data: &Aos<IrData>, instruction_args: &[iceball::Argument]) -
 }
 
 fn resolve_data_accesses(
-    data_access_vec: &[DataAccess],
+    data_access: &IrStatementDescriptorMap<Vec<DataAccess>>,
+    ir_index: u32,
     instruction_args: &[iceball::Argument],
-) -> Vec<DataAccess> {
-    data_access_vec
+) -> Vec<(IrStatementDescriptor, DataAccess)> {
+    data_access
         .iter()
-        .map(|da| {
-            let resolved_loc = resolve_operand(da.location(), instruction_args);
-            let resolved_size = resolve_access_size(da.size(), instruction_args);
-            DataAccess::new(resolved_loc, *da.access_type(), resolved_size)
+        .filter(|(k, _v)| k.ir_index() == ir_index)
+        .flat_map(|(k, da)| {
+            da.iter().map(move |da| {
+                let resolved_loc = resolve_operand(da.location(), instruction_args);
+                let resolved_size = resolve_access_size(da.size(), instruction_args);
+                (
+                    k,
+                    DataAccess::new(resolved_loc, *da.access_type(), resolved_size),
+                )
+            })
         })
         .collect()
 }
 
 fn resolve_known_datatypes(
-    known_datatype_vec: &[KnownDataType],
+    known_datatype: &[&KnownDataType],
     instruction_args: &[iceball::Argument],
 ) -> Vec<KnownDataType> {
-    known_datatype_vec
+    known_datatype
         .iter()
         .map(|known_datatype| {
             let resolved_location = resolve_operand(&known_datatype.location, instruction_args);

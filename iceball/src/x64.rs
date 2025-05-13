@@ -1,4 +1,5 @@
 pub mod register;
+mod register_impl;
 pub mod statement;
 mod statement_impl;
 
