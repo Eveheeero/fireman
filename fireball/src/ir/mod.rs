@@ -20,7 +20,7 @@ use crate::{
 };
 pub use register::Register;
 use statements::IrStatement;
-use std::{cell::UnsafeCell, collections::HashSet, sync::LazyLock};
+use std::{cell::UnsafeCell, sync::LazyLock};
 use utils::IrStatementDescriptorMap;
 
 /// 컴퓨터가 동작하는 행동을 재현하기 위한 구조체

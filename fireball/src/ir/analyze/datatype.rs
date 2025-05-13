@@ -36,10 +36,10 @@ pub fn analyze_datatype(
     for (statement_index, statement) in ir.statements.as_ref().unwrap().iter().enumerate() {
         let statement_index = statement_index as u8;
         let mut now = Vec::new();
-        let insert = |x| {
+        let mut insert = |x| {
             now.push(x);
         };
-        analyze_datatype_raw(insert, statement);
+        analyze_datatype_raw(&mut insert, statement);
         now.shrink_to_fit();
         out.insert(IrStatementDescriptor::new(ir_index, statement_index), now);
     }
@@ -47,7 +47,7 @@ pub fn analyze_datatype(
 
 /// ### TODO
 /// 인스트럭션을 통한 데이터 타입 추가 유추 필요
-pub fn analyze_datatype_raw(mut insert: impl FnMut(KnownDataType), statement: &IrStatement) {
+pub fn analyze_datatype_raw(insert: &mut impl FnMut(KnownDataType), statement: &IrStatement) {
     match statement {
         IrStatement::Assignment { from, to, size } => {
             insert(KnownDataType {
@@ -81,7 +81,7 @@ pub fn analyze_datatype_raw(mut insert: impl FnMut(KnownDataType), statement: &I
             false_branch,
         } => {
             for statement in true_branch.iter().chain(false_branch.iter()) {
-                analyze_datatype_raw(&mut insert, statement);
+                analyze_datatype_raw(insert, statement);
             }
         }
         IrStatement::Special(IrStatementSpecial::TypeSpecified {
@@ -101,7 +101,7 @@ pub fn analyze_datatype_raw(mut insert: impl FnMut(KnownDataType), statement: &I
             false_branch,
         }) => {
             for statement in true_branch.iter().chain(false_branch.iter()) {
-                analyze_datatype_raw(&mut insert, statement);
+                analyze_datatype_raw(insert, statement);
             }
         }
 

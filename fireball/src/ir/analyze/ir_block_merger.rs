@@ -1,8 +1,7 @@
 use crate::{
     core::Block,
-    ir::{analyze::DataType, data::DataAccess, Ir},
+    ir::{analyze::DataType, data::DataAccess, utils::IrStatementDescriptorMap, Ir},
 };
-use intmap::IntMap;
 use std::sync::Arc;
 
 pub fn merge_blocks(blocks: &[Arc<Block>]) -> MergedIr {
@@ -16,7 +15,6 @@ pub struct MergedIr {
 }
 
 pub struct MergedIrVariable {
-    /// Key is statement hash
-    pub accesses: IntMap<usize, Vec<DataAccess>>,
+    pub accesses: IrStatementDescriptorMap<Vec<DataAccess>>,
     pub data_type: DataType,
 }

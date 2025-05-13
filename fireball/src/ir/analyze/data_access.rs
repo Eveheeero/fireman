@@ -16,16 +16,16 @@ pub fn analyze_data_access(
     for (statement_index, statement) in ir.statements.as_ref().unwrap().iter().enumerate() {
         let statement_index = statement_index as u8;
         let mut now = Vec::new();
-        let insert = |x| {
+        let mut insert = |x| {
             now.push(x);
         };
-        analyze_data_access_raw(insert, statement);
+        analyze_data_access_raw(&mut insert, statement);
         now.shrink_to_fit();
         out.insert(IrStatementDescriptor::new(ir_index, statement_index), now);
     }
 }
 
-pub fn analyze_data_access_raw(mut insert: impl FnMut(DataAccess), statement: &IrStatement) {
+pub fn analyze_data_access_raw(insert: &mut impl FnMut(DataAccess), statement: &IrStatement) {
     match statement {
         IrStatement::Assignment { from, to, size } => {
             insert(DataAccess::new(
@@ -69,7 +69,7 @@ pub fn analyze_data_access_raw(mut insert: impl FnMut(DataAccess), statement: &I
                 AccessSize::Unlimited,
             ));
             for statement in true_branch.iter().chain(false_branch.iter()) {
-                analyze_data_access_raw(&mut insert, statement);
+                analyze_data_access_raw(insert, statement);
             }
         }
         IrStatement::Special(IrStatementSpecial::ArchitectureByteSizeCondition {
@@ -78,7 +78,7 @@ pub fn analyze_data_access_raw(mut insert: impl FnMut(DataAccess), statement: &I
             false_branch,
         }) => {
             for statement in true_branch.iter().chain(false_branch.iter()) {
-                analyze_data_access_raw(&mut insert, statement);
+                analyze_data_access_raw(insert, statement);
             }
         }
 
