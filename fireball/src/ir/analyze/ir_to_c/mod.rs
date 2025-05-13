@@ -1,3 +1,5 @@
+pub mod c_abstract_syntax_tree;
+
 use crate::ir::{analyze::MergedIr, statements::IrStatement};
 
 pub fn generate_c(data: &MergedIr) -> String {
