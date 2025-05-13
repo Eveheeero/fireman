@@ -159,4 +159,14 @@ impl Blocks {
             .find(|block| block.get_id() == id)
             .map(Arc::clone)
     }
+
+    /// 모든 블럭을 반환한다.
+    /// 
+    /// ### Returns
+    /// - `Vec<Arc<Block>>`: 모든 블럭
+    pub fn get_all(&self) -> Vec<Arc<Block>> {
+        /* 저장소의 락 해제 */
+        let blocks_reader = &self.data.read().unwrap();
+        blocks_reader.iter().map(Arc::clone).collect()
+    }
 }

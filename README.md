@@ -1,25 +1,40 @@
 # Fireman
 
-Working In Progress
+![Logo](firebat/src-tauri/icons/icon.png)
 
-top is main goal, lower is subs
+Working In Progress (2025.05 Updated)
+
+## Features & Plans
+
+**Currently, There is only IR Based Analyzed Routine.**
 
 - [x] Generate IR Based Environment
-- [ ] Complete Instruction Parsing Routine
-  - [ ] X64
-    - [ ] Copy All Instruction Documents
-    - [ ] Complete Instruction Parsing Function
+- [X] Complete Instruction Parsing Routine
+  - [X] X64
+    - [X] Copy All Instruction Documents
+    - [X] Complete Instruction Parsing Function
   - [ ] ARM
   - [ ] ...
-- [ ] IR to C like code
-  - [ ] ...
-- [ ] GUI based decompiler
-- [ ] TUI based decompiler
-- [ ] Command line decompiler
+- [ ] IR Based Analyzed Routine
+  - [X] Single Block Variable Analysis (aka Data Flow Analysis)
+    - [X] Reaching Definitions Analysis
+    - [X] Liveness Analysis
+  - [X] Control Flow Analysis
+    - [ ] Complex Loop Analysis
+  - [ ] Merged Block Variable Analysis
+- [ ] Simulation Routine
+- [ ] Generate C Code
+- [ ] GUI decompiler
+  - [ ] Inspect IR
+  - [ ] Modify IR or Instruction
+  - [ ] Generate C Code
+  - [ ] Simulate With Memory / Register
+  - [ ] Graph
+- [ ] TUI decompiler
+- [ ] CLI decompiler
 - [ ] IR Pattern Matching Routine (to detect well-known library's function like msvc's memcpy)
 - [ ] Optimizer
 - [ ] Obfucasioner (possible?)
-
 
 ## Code style
 

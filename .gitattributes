@@ -1,6 +1,11 @@
 *.rs eol=lf
+*.ts eol=lf
+*.tsx eol=lf
+*.css eol=lf
+*.json eol=lf
+*.html eol=lf
 .gitattributes eol=lf
 .gitignore eol=lf
 .gitmodules eol=lf
-.md eol=lf
-.toml eol=lf
+*.md eol=lf
+*.toml eol=lf

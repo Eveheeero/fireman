@@ -1,0 +1,17 @@
+[alias]
+ts = "build --features tsexport"
+
+[profile.dev]
+opt-level = 0
+debug = false
+panic = 'abort'
+
+[env]
+# RUST_BACKTRACE="1"
+
+[profile.dev.package.tauri]
+strip = "debuginfo"
+
+[profile.release]
+strip = "debuginfo"
+panic = 'abort'

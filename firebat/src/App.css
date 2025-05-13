@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+:root {
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  user-select: none;
+  @apply text-gray-300 bg-gray-800
+}
+
+.dft-btn {
+  @apply px-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/70 block text-sm transition duration-300 hover:text-white m-0.5
+}
+
+.dropdown {
+  @apply absolute top-full left-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg z-10
+}
+
+.dropdown-item {
+  @apply block px-4 py-2 text-sm text-gray-200 hover:bg-gray-600 w-48 text-justify
+}
+
+.separator {
+  @apply border-t border-gray-600
+}

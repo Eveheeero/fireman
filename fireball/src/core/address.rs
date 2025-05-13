@@ -30,7 +30,7 @@ impl Address {
     ///
     /// ### Returns
     /// - `Self` - 파일 오프셋으로부터 생성된 Address 객체
-    pub(crate) fn from_file_offset(sections: &Sections, offset: u64) -> Self {
+    pub fn from_file_offset(sections: &Sections, offset: u64) -> Self {
         // 오프셋에 해당하는 섹션 찾기
         let section = sections.from_file_offset(offset);
         // 섹션정보를 기반으로 가상주소 연산
@@ -52,7 +52,7 @@ impl Address {
     ///
     /// ### Returns
     /// - `Self` - 가상 주소로부터 생성된 Address 객체
-    pub(crate) fn from_virtual_address(sections: &Sections, offset: u64) -> Self {
+    pub fn from_virtual_address(sections: &Sections, offset: u64) -> Self {
         // 가상주소에 해당하는 섹션 찾기
         let section = sections.from_virtual_address(offset);
 
