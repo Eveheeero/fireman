@@ -170,7 +170,7 @@ impl std::fmt::Display for Argument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Argument::Register(register) => write!(f, "{}", register),
-            Argument::Constant(constant) => write!(f, "{:X}", constant),
+            Argument::Constant(constant) => write!(f, "0x{:X}", constant),
             Argument::Memory(memory) => write!(f, "{}", memory),
         }
     }
@@ -200,7 +200,7 @@ impl std::fmt::Display for RelativeAddressingArgument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RelativeAddressingArgument::Register(register) => write!(f, "{}", register),
-            RelativeAddressingArgument::Constant(constant) => write!(f, "{:X}", constant),
+            RelativeAddressingArgument::Constant(constant) => write!(f, "0x{:X}", constant),
             RelativeAddressingArgument::Operator(operator) => write!(f, "{}", operator),
         }
     }
