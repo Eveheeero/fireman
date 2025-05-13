@@ -26,7 +26,7 @@ pub enum IrStatement {
         target: Aos<IrData>,
     },
     /// 함수 호출
-    Call {
+    JumpByCall {
         target: Aos<IrData>,
     },
     /// 함수 호출 후 반환
@@ -90,7 +90,7 @@ impl IrDataContainable for IrStatement {
                 v.push(to);
                 size.get_related_ir_data(v);
             }
-            IrStatement::Jump { target } | IrStatement::Call { target } => {
+            IrStatement::Jump { target } | IrStatement::JumpByCall { target } => {
                 target.get_related_ir_data(v);
                 v.push(target);
             }
@@ -154,7 +154,7 @@ impl std::fmt::Display for IrStatement {
                 write!(f, "{} = ({}){}", to, size, from)
             }
             IrStatement::Jump { target } => write!(f, "jmp {}", target),
-            IrStatement::Call { target } => write!(f, "call {}", target),
+            IrStatement::JumpByCall { target } => write!(f, "call {}", target),
             IrStatement::Condition {
                 condition,
                 true_branch,

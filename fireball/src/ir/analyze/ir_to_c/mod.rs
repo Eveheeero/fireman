@@ -94,7 +94,7 @@ fn convert_stmt(stmt: &IrStatement) -> Statement {
             let to_expr = convert_expr(to);
             Statement::Assignment(to_expr, from_expr)
         }
-        IrStatement::Call { target } => Statement::Call(target.to_string(), Vec::new()),
+        IrStatement::JumpByCall { target } => Statement::Call(target.to_string(), Vec::new()),
         IrStatement::Jump { target } => Statement::Goto(target.to_string()),
         IrStatement::Condition {
             condition,

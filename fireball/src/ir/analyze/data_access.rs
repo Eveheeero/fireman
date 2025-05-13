@@ -51,7 +51,7 @@ pub fn analyze_data_access_raw(insert: &mut impl FnMut(DataAccess), statement: &
                 | AccessSize::Unlimited => {}
             }
         }
-        IrStatement::Jump { target } | IrStatement::Call { target } => {
+        IrStatement::Jump { target } | IrStatement::JumpByCall { target } => {
             insert(DataAccess::new(
                 target.clone(),
                 DataAccessType::Read,

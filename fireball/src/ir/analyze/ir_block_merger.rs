@@ -1,6 +1,6 @@
 use crate::{
     core::Block,
-    ir::{IrBlock, analyze::DataType, data::DataAccess, utils::IrStatementDescriptorMap, Ir},
+    ir::{analyze::DataType, data::DataAccess, utils::IrStatementDescriptorMap, Ir, IrBlock},
 };
 use std::sync::Arc;
 
@@ -17,7 +17,9 @@ pub fn merge_blocks(blocks: &[Arc<Block>]) -> MergedIr {
     let mut ir_block = IrBlock::new(combined_ir.clone());
     ir_block.analyze_data_access();
     ir_block.analyze_datatypes();
-    ir_block.analyze_variables().expect("Variable analysis failed");
+    ir_block
+        .analyze_variables()
+        .expect("Variable analysis failed");
 
     // Collect merged variables
     let vars = ir_block.variables.unwrap();

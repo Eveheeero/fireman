@@ -10,7 +10,7 @@ pub(super) fn call() -> &'static [IrStatement] {
     );
     let ret_address = b::add(rip.clone(), instruction_byte_size());
     let save_ret = assign(ret_address, d(rsp.clone()), size_architecture());
-    let call = super::shortcuts::call(o1());
+    let call = super::shortcuts::jump_by_call(o1());
     [set_sp, save_ret, call].into()
 }
 

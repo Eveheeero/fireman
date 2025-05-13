@@ -35,8 +35,8 @@ pub(in crate::arch) fn jump(target: impl Into<Aos<IrData>>) -> IrStatement {
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn call(target: impl Into<Aos<IrData>>) -> IrStatement {
-    IrStatement::Call {
+pub(in crate::arch) fn jump_by_call(target: impl Into<Aos<IrData>>) -> IrStatement {
+    IrStatement::JumpByCall {
         target: target.into(),
     }
 }
