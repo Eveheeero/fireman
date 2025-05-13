@@ -4,7 +4,7 @@ use crate::{
     ir::{
         analyze::{
             ir_to_c::c_abstract_syntax_tree::{
-                CAst, CType, Expression, Function, Literal, Statement, Variable,
+                self as cast, CAst, CType, Expression, Function, Literal, Statement, Variable,
             },
             DataType, MergedIr,
         },
@@ -76,14 +76,18 @@ fn convert_expr(data: &Aos<IrData>) -> Expression {
                 operator,
                 arg1,
                 arg2,
-            } => Expression::BinaryOp(
-                to_c_binary_operator(operator),
-                Box::new(convert_expr(arg1)),
-                Box::new(convert_expr(arg2)),
-            ),
+            } => {
+                let (op, cast) = to_c_binary_operator(operator);
+                let arg2 = if let Some(cast) = cast {
+                    Expression::UnaryOp(cast, Box::new(convert_expr(arg2)))
+                } else {
+                    convert_expr(arg2)
+                };
+                Expression::BinaryOp(op, Box::new(convert_expr(arg1)), Box::new(arg2))
+            }
         },
         IrData::Intrinsic(ir_intrinsic) => todo!(),
-        IrData::Operand(non_zero) => todo!(),
+        IrData::Operand(_) => panic!("Should not be here"),
     }
 }
 
@@ -106,43 +110,47 @@ fn convert_stmt(stmt: &IrStatement) -> Statement {
             let else_stmts = false_branch.iter().map(convert_stmt).collect();
             Statement::If(cond, then_stmts, Some(else_stmts))
         }
-        IrStatement::Undefined => todo!(),
-        IrStatement::Exception(_) => todo!(),
-        IrStatement::Halt => Statement::Return(None),
+        IrStatement::Undefined => Statement::Undefined,
+        IrStatement::Exception(e) => Statement::Exception(e),
+        IrStatement::Halt => Statement::Return(Some(Expression::Unknown)),
         IrStatement::Special(_) => todo!(),
     }
 }
-fn to_c_unary_operator(op: IrUnaryOp) -> c_abstract_syntax_tree::UnaryOperator {
+fn to_c_unary_operator(op: IrUnaryOp) -> cast::UnaryOperator {
     match op {
-        IrUnaryOp::Not => c_abstract_syntax_tree::UnaryOperator::Not,
-        IrUnaryOp::Negation => c_abstract_syntax_tree::UnaryOperator::Negate,
-        IrUnaryOp::SignExtend => todo!(),
-        IrUnaryOp::ZeroExtend => todo!(),
+        IrUnaryOp::Not => cast::UnaryOperator::Not,
+        IrUnaryOp::Negation => cast::UnaryOperator::Negate,
+        IrUnaryOp::SignExtend => cast::UnaryOperator::CastSigned,
+        IrUnaryOp::ZeroExtend => cast::UnaryOperator::CastUnsigned,
     }
 }
 
-fn to_c_binary_operator(op: &IrBinaryOp) -> c_abstract_syntax_tree::BinaryOperator {
+fn to_c_binary_operator(op: &IrBinaryOp) -> (cast::BinaryOperator, Option<cast::UnaryOperator>) {
     match op {
-        IrBinaryOp::Add => c_abstract_syntax_tree::BinaryOperator::Add,
-        IrBinaryOp::Sub => c_abstract_syntax_tree::BinaryOperator::Sub,
-        IrBinaryOp::Mul => c_abstract_syntax_tree::BinaryOperator::Mul,
-        IrBinaryOp::SignedDiv | IrBinaryOp::UnsignedDiv => {
-            c_abstract_syntax_tree::BinaryOperator::Div
-        }
-        IrBinaryOp::SignedRem | IrBinaryOp::UnsignedRem => {
-            c_abstract_syntax_tree::BinaryOperator::Mod
-        }
-        IrBinaryOp::And => c_abstract_syntax_tree::BinaryOperator::BitAnd,
-        IrBinaryOp::Or => c_abstract_syntax_tree::BinaryOperator::BitOr,
-        IrBinaryOp::Xor => c_abstract_syntax_tree::BinaryOperator::BitXor,
-        IrBinaryOp::Shl => c_abstract_syntax_tree::BinaryOperator::LeftShift,
-        IrBinaryOp::Shr | IrBinaryOp::Sar => c_abstract_syntax_tree::BinaryOperator::RightShift,
-        IrBinaryOp::Equal(_) => c_abstract_syntax_tree::BinaryOperator::Equal,
+        IrBinaryOp::Add => (cast::BinaryOperator::Add, None),
+        IrBinaryOp::Sub => (cast::BinaryOperator::Sub, None),
+        IrBinaryOp::Mul => (cast::BinaryOperator::Mul, None),
+        IrBinaryOp::SignedDiv => (cast::BinaryOperator::Div, None),
+        IrBinaryOp::UnsignedDiv => (
+            cast::BinaryOperator::Div,
+            Some(cast::UnaryOperator::CastUnsigned),
+        ),
+        IrBinaryOp::SignedRem => (cast::BinaryOperator::Mod, None),
+        IrBinaryOp::UnsignedRem => (
+            cast::BinaryOperator::Mod,
+            Some(cast::UnaryOperator::CastUnsigned),
+        ),
+        IrBinaryOp::And => (cast::BinaryOperator::BitAnd, None),
+        IrBinaryOp::Or => (cast::BinaryOperator::BitOr, None),
+        IrBinaryOp::Xor => (cast::BinaryOperator::BitXor, None),
+        IrBinaryOp::Shl => (cast::BinaryOperator::LeftShift, None),
+        IrBinaryOp::Shr | IrBinaryOp::Sar => (cast::BinaryOperator::RightShift, None),
+        IrBinaryOp::Equal(_) => (cast::BinaryOperator::Equal, None),
         IrBinaryOp::SignedLess(_) | IrBinaryOp::UnsignedLess(_) => {
-            c_abstract_syntax_tree::BinaryOperator::Less
+            (cast::BinaryOperator::Less, None)
         }
         IrBinaryOp::SignedLessOrEqual(_) | IrBinaryOp::UnsignedLessOrEqual(_) => {
-            c_abstract_syntax_tree::BinaryOperator::LessEqual
+            (cast::BinaryOperator::LessEqual, None)
         }
     }
 }

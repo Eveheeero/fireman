@@ -62,11 +62,17 @@ pub enum Statement {
     Label(String),
     Goto(String),
     Block(Vec<Statement>),
+    Undefined,
+    Exception(&'static str),
     Empty,
 }
 
 #[derive(Debug, Clone)]
 pub enum Expression {
+    Unknown,
+    Undefined,
+    ArchitectureBitSize,
+    ArchitectureByteSize,
     Literal(Literal),
     Variable(VariableId),
     UnaryOp(UnaryOperator, Box<Expression>),
@@ -98,6 +104,9 @@ pub enum UnaryOperator {
     PreDec,  // --x
     PostInc, // x++
     PostDec, // x--
+    Sized { bit: u8 },
+    CastSigned,
+    CastUnsigned,
 }
 
 #[derive(Debug, Clone)]
@@ -205,7 +214,7 @@ impl std::fmt::Display for CType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CType::Void => write!(f, "void"),
-            CType::Unknown => write!(f, "unknown"),
+            CType::Unknown => write!(f, "unknown_t"),
             CType::Int8 => write!(f, "int8_t"),
             CType::Int16 => write!(f, "int16_t"),
             CType::Int32 => write!(f, "int32_t"),
@@ -299,6 +308,8 @@ impl std::fmt::Display for Statement {
                 write!(f, "}}")
             }
             Statement::Empty => write!(f, ";"),
+            Statement::Undefined => write!(f, "<UNDEFINED BEHAVIOR>"),
+            Statement::Exception(e) => write!(f, "<EXCEPTION: {e}>"),
         }
     }
 }
@@ -320,8 +331,17 @@ impl std::fmt::Display for Expression {
                 }
                 write!(f, ")")
             }
-            // ... implement other variants ...
-            _ => write!(f, "<unimplemented>"),
+            Expression::Unknown => write!(f, "<UNKNOWN DATA>"),
+            Expression::Undefined => write!(f, "<UNDEFINED DATA>"),
+            Expression::Cast(ctype, expression) => write!(f, "({}){}", ctype, expression),
+            Expression::Deref(expression) => write!(f, "*{}", expression),
+            Expression::AddressOf(expression) => write!(f, "&{}", expression),
+            Expression::ArrayAccess(expression, expression1) => {
+                write!(f, "{}[{}]", expression, expression1)
+            }
+            Expression::MemberAccess(expression, member) => write!(f, "{}.{}", expression, member),
+            Expression::ArchitectureBitSize => write!(f, "ARCH_BIT_SIZE"),
+            Expression::ArchitectureByteSize => write!(f, "ARCH_BYTE_SIZE"),
         }
     }
 }
@@ -347,6 +367,9 @@ impl std::fmt::Display for UnaryOperator {
             UnaryOperator::PreDec => write!(f, "--"),
             UnaryOperator::PostInc => write!(f, "++"),
             UnaryOperator::PostDec => write!(f, "--"),
+            UnaryOperator::Sized { bit } => write!(f, "({}bit)", bit),
+            UnaryOperator::CastSigned => write!(f, "(signed)"),
+            UnaryOperator::CastUnsigned => write!(f, "(unsigned)"),
         }
     }
 }
