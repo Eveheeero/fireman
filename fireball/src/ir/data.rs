@@ -266,6 +266,65 @@ impl From<&iceball::Argument> for Aos<IrData> {
     }
 }
 fn x64_reg_to_ir_reg(reg: iceball::X64Register) -> Aos<IrData> {
-    let reg = reg.name();
-    crate::arch::x86_64::str_to_x64_register(reg.expect("register uncovered"))
+    crate::arch::x86_64::str_to_x64_register(reg.name())
+}
+
+impl std::fmt::Display for IrData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IrData::Constant(c) => write!(f, "{:#X}", c),
+            IrData::Register(reg) => write!(f, "{}", reg),
+            IrData::Dereference(data) => write!(f, "{}", data),
+            IrData::Operation(operation) => write!(f, "{}", operation),
+            IrData::Intrinsic(intrinsic) => write!(f, "{}", intrinsic),
+            IrData::Operand(operand) => write!(f, "o{}", operand.get()),
+        }
+    }
+}
+impl std::fmt::Display for AccessSize {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AccessSize::ResultOfBit(aos) => write!(f, "({})bit", aos),
+            AccessSize::ResultOfByte(aos) => write!(f, "({})byte", aos),
+            AccessSize::RelativeWith(aos) => write!(f, "({})of", aos),
+            AccessSize::ArchitectureSize => write!(f, "arch_len"),
+            AccessSize::Unlimited => write!(f, "unlimited"),
+        }
+    }
+}
+impl std::fmt::Display for IrIntrinsic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IrIntrinsic::Unknown => write!(f, "unknown"),
+            IrIntrinsic::Undefined => write!(f, "undefined"),
+            IrIntrinsic::SignedMax(access_size) => write!(f, "signed_max({})", access_size),
+            IrIntrinsic::SignedMin(access_size) => write!(f, "signed_min({})", access_size),
+            IrIntrinsic::UnsignedMax(access_size) => write!(f, "unsigned_max({})", access_size),
+            IrIntrinsic::UnsignedMin(access_size) => write!(f, "unsigned_min({})", access_size),
+            IrIntrinsic::BitOnes(access_size) => write!(f, "bit_ones({})", access_size),
+            IrIntrinsic::BitZeros(access_size) => write!(f, "bit_zeros({})", access_size),
+            IrIntrinsic::ArchitectureByteSize => write!(f, "arch_byte_size"),
+            IrIntrinsic::ArchitectureBitSize => write!(f, "arch_bit_size"),
+            IrIntrinsic::ArchitectureBitPerByte => write!(f, "arch_bit_per_byte"),
+            IrIntrinsic::InstructionByteSize => write!(f, "instruction_byte_size"),
+            IrIntrinsic::ByteSizeOf(aos) => write!(f, "byte_size_of({})", aos),
+            IrIntrinsic::BitSizeOf(aos) => write!(f, "bit_size_of({})", aos),
+            IrIntrinsic::Sized(aos, access_size) => write!(f, "sized({},{})", aos, access_size),
+            IrIntrinsic::OperandExists(operand) => write!(f, "operand_exists({})", operand),
+        }
+    }
+}
+impl std::fmt::Display for IrDataOperation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IrDataOperation::Unary { operator, arg } => write!(f, "{} {}", operator, arg),
+            IrDataOperation::Binary {
+                operator,
+                arg1,
+                arg2,
+            } => {
+                write!(f, "{} {} {}", arg1, operator, arg2)
+            }
+        }
+    }
 }

@@ -120,3 +120,22 @@ impl IrDataContainable for KnownDataType {
         self.data_size.get_related_ir_data(v);
     }
 }
+
+impl std::fmt::Display for KnownDataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {} {}", self.location, self.data_type, self.data_size)
+    }
+}
+
+impl std::fmt::Display for DataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DataType::Unknown => write!(f, "u"),
+            DataType::Int => write!(f, "i"),
+            DataType::Float => write!(f, "f"),
+            DataType::StringPointer => write!(f, "*c"),
+            DataType::Char => write!(f, "c"),
+            DataType::Address => write!(f, "*"),
+        }
+    }
+}
