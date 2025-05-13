@@ -9,7 +9,11 @@ const formatLogMessage = (message: string): string => {
 export const log = (...data: any[]) => {
   let s = "";
   for (const i of data) {
-    s += JSON.stringify(i);
+    if (typeof i === "object") {
+      s += JSON.stringify(i);
+    } else {
+      s += i;
+    }
     s += " ";
   }
   const formattedMessage = formatLogMessage(s);
