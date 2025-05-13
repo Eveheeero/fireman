@@ -4,24 +4,30 @@ use hashbrown::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct CAst {
+    pub static_variables: HashMap<VariableId, Variable>,
     pub functions: Vec<Function>,
-    pub variables: HashMap<String, Variable>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub name: String,
+    pub name: Option<String>,
+    pub id: FunctionId,
     pub return_type: CType,
     pub parameters: Vec<Variable>,
+    pub variables: HashMap<VariableId, Variable>,
     pub body: Vec<Statement>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variable {
-    pub name: String,
+    pub name: Option<String>,
+    pub id: VariableId,
     pub var_type: CType,
     pub is_const: bool,
 }
+
+pub type VariableId = u32;
+pub type FunctionId = u32;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CType {
@@ -60,7 +66,7 @@ pub enum Statement {
 #[derive(Debug, Clone)]
 pub enum Expression {
     Literal(Literal),
-    Variable(String),
+    Variable(VariableId),
     UnaryOp(UnaryOperator, Box<Expression>),
     BinaryOp(BinaryOperator, Box<Expression>, Box<Expression>),
     Call(String, Vec<Expression>),
@@ -118,7 +124,7 @@ impl CAst {
     pub fn new() -> Self {
         Self {
             functions: Vec::new(),
-            variables: HashMap::new(),
+            static_variables: HashMap::new(),
         }
     }
 
@@ -135,12 +141,12 @@ impl CAst {
         let mut output = String::new();
 
         // Global variables
-        for var in self.variables.values() {
+        for (&id, var) in self.static_variables.iter() {
             output.push_str(&format!(
-                "{}{} {};\n",
+                "{}{} g{};\n",
                 if var.is_const { "const " } else { "" },
                 var.var_type.to_string(),
-                var.name
+                id
             ));
         }
 
@@ -148,7 +154,7 @@ impl CAst {
 
         // Functions
         for func in &self.functions {
-            output.push_str(&format!("{} {}(", func.return_type.to_string(), func.name));
+            output.push_str(&format!("{} f{}(", func.return_type.to_string(), func.id));
 
             // Parameters
             if !func.parameters.is_empty() {
@@ -157,10 +163,10 @@ impl CAst {
                     .iter()
                     .map(|p| {
                         format!(
-                            "{}{} {}",
+                            "{}{} v{}",
                             if p.is_const { "const " } else { "" },
                             p.var_type.to_string(),
-                            p.name
+                            p.id
                         )
                     })
                     .collect();
@@ -168,6 +174,17 @@ impl CAst {
             }
 
             output.push_str(") {\n");
+
+            // Local variables
+            for (&id, var) in func.variables.iter() {
+                output.push_str(&format!(
+                    "{}{} v{};\n",
+                    if var.is_const { "const " } else { "" },
+                    var.var_type.to_string(),
+                    id
+                ));
+            }
+            output.push_str("\n");
 
             // Function body
             for stmt in &func.body {
@@ -207,9 +224,9 @@ impl std::fmt::Display for CType {
 impl std::fmt::Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Statement::Declaration(var, None) => write!(f, "{} {};", var.var_type, var.name),
+            Statement::Declaration(var, None) => write!(f, "{} v{};", var.var_type, var.id),
             Statement::Declaration(var, Some(expr)) => {
-                write!(f, "{} {} = {};", var.var_type, var.name, expr)
+                write!(f, "{} v{} = {};", var.var_type, var.id, expr)
             }
             Statement::Assignment(left, right) => write!(f, "{} = {};", left, right),
             Statement::If(cond, then_body, else_body) => {
@@ -235,7 +252,7 @@ impl std::fmt::Display for Statement {
             Statement::For(init, cond, update, body) => {
                 write!(f, "for (")?;
                 if let Statement::Declaration(var, _) = &**init {
-                    write!(f, "{} {};", var.var_type, var.name)?;
+                    write!(f, "{} v{};", var.var_type, var.id)?;
                 } else {
                     write!(f, "{};", init)?;
                 }
@@ -286,7 +303,7 @@ impl std::fmt::Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Expression::Literal(lit) => write!(f, "{}", lit),
-            Expression::Variable(name) => write!(f, "{}", name),
+            Expression::Variable(id) => write!(f, "v{}", id),
             Expression::UnaryOp(op, expr) => write!(f, "{}{}", op, expr),
             Expression::BinaryOp(op, left, right) => write!(f, "({} {} {})", left, op, right),
             Expression::Call(name, args) => {
@@ -355,6 +372,6 @@ impl std::fmt::Display for BinaryOperator {
 }
 impl std::fmt::Display for Variable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}", self.var_type, self.name)
+        write!(f, "{} v{}", self.var_type, self.id)
     }
 }
