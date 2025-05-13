@@ -1,0 +1,4 @@
+[alias]
+b = "build --workspace --exclude firebat --exclude architecture_doc_extractor"
+r = "run --workspace --exclude firebat --exclude architecture_doc_extractor"
+t = "test --workspace --exclude firebat --exclude architecture_doc_extractor"
