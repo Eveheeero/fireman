@@ -7,7 +7,7 @@ pub mod ir_to_c;
 pub mod pe;
 pub mod prelude;
 #[cfg(test)]
-mod tests;
+pub mod tests;
 pub mod utils;
 
 pub use crate::core::Fire;
