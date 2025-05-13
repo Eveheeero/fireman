@@ -1,36 +1,46 @@
 use crate::ir::{
     data::{AccessSize, DataAccess, DataAccessType},
     statements::{IrStatement, IrStatementSpecial},
+    utils::{IrStatementDescriptor, IrStatementDescriptorMap},
     Ir,
 };
 
-pub fn analyze_data_access(ir: &Ir) -> Vec<DataAccess> {
+pub fn analyze_data_access(
+    out: &mut IrStatementDescriptorMap<Vec<DataAccess>>,
+    ir_index: u32,
+    ir: &Ir,
+) {
     if ir.statements.is_none() {
-        return Vec::new();
+        return;
     }
-    let mut result = Vec::new();
-    for statement in ir.statements.as_ref().unwrap().iter() {
-        analyze_data_access_raw(&mut result, statement);
+    for (statement_index, statement) in ir.statements.as_ref().unwrap().iter().enumerate() {
+        let statement_index = statement_index as u8;
+        let mut now = Vec::new();
+        let mut insert = |x| {
+            now.push(x);
+        };
+        analyze_data_access_raw(&mut insert, statement);
+        now.shrink_to_fit();
+        out.insert(IrStatementDescriptor::new(ir_index, statement_index), now);
     }
-    result
 }
 
-pub fn analyze_data_access_raw(v: &mut Vec<DataAccess>, statement: &IrStatement) {
+pub fn analyze_data_access_raw(insert: &mut impl FnMut(DataAccess), statement: &IrStatement) {
     match statement {
         IrStatement::Assignment { from, to, size } => {
-            v.push(DataAccess::new(
+            insert(DataAccess::new(
                 from.clone(),
                 DataAccessType::Read,
                 size.clone(),
             ));
-            v.push(DataAccess::new(
+            insert(DataAccess::new(
                 to.clone(),
                 DataAccessType::Write,
                 size.clone(),
             ));
             match size {
                 AccessSize::ResultOfBit(aos) | AccessSize::ResultOfByte(aos) => {
-                    v.push(DataAccess::new(
+                    insert(DataAccess::new(
                         aos.clone(),
                         DataAccessType::Read,
                         AccessSize::Unlimited,
@@ -42,7 +52,7 @@ pub fn analyze_data_access_raw(v: &mut Vec<DataAccess>, statement: &IrStatement)
             }
         }
         IrStatement::Jump { target } | IrStatement::Call { target } => {
-            v.push(DataAccess::new(
+            insert(DataAccess::new(
                 target.clone(),
                 DataAccessType::Read,
                 AccessSize::ArchitectureSize,
@@ -53,13 +63,13 @@ pub fn analyze_data_access_raw(v: &mut Vec<DataAccess>, statement: &IrStatement)
             true_branch,
             false_branch,
         } => {
-            v.push(DataAccess::new(
+            insert(DataAccess::new(
                 condition.clone(),
                 DataAccessType::Read,
                 AccessSize::Unlimited,
             ));
             for statement in true_branch.iter().chain(false_branch.iter()) {
-                analyze_data_access_raw(v, statement);
+                analyze_data_access_raw(insert, statement);
             }
         }
         IrStatement::Special(IrStatementSpecial::ArchitectureByteSizeCondition {
@@ -68,7 +78,7 @@ pub fn analyze_data_access_raw(v: &mut Vec<DataAccess>, statement: &IrStatement)
             false_branch,
         }) => {
             for statement in true_branch.iter().chain(false_branch.iter()) {
-                analyze_data_access_raw(v, statement);
+                analyze_data_access_raw(insert, statement);
             }
         }
 
