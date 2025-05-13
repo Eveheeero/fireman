@@ -47,7 +47,7 @@ pub fn str_to_enum(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-/// impl name() method for enum, result is Some(&'static), case is undefined, None if unmatched
+/// impl name() method for enum, result is &'static str, case is undefined
 #[proc_macro_derive(EnumToStr)]
 pub fn enum_to_str(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -63,10 +63,9 @@ pub fn enum_to_str(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         impl #name {
-            pub fn name(&self) -> Option<&'static str> {
+            pub fn name(&self) -> &'static str {
                 match self {
-                    #(Self::#items => Some(stringify!(#items)), )*
-                    _ => None
+                    #(Self::#items => stringify!(#items), )*
                 }
             }
         }

@@ -140,3 +140,77 @@ pub fn parse_argument(
         Architecture::X64 => x64::parse_argument(op),
     }
 }
+
+impl std::fmt::Display for Instruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Ok(statement) = self.statement {
+            write!(f, "{}", statement)?;
+            for arg in self.arguments.iter() {
+                write!(f, " {}", arg)?;
+            }
+            Ok(())
+        } else {
+            let bytes = self.bytes.as_ref().unwrap();
+            for byte in bytes {
+                write!(f, "{:02X}", byte)?;
+            }
+            Ok(())
+        }
+    }
+}
+
+impl std::fmt::Display for Statement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Statement::X64(statement) => write!(f, "{}", statement),
+        }
+    }
+}
+impl std::fmt::Display for Argument {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Argument::Register(register) => write!(f, "{}", register),
+            Argument::Constant(constant) => write!(f, "{:X}", constant),
+            Argument::Memory(memory) => write!(f, "{}", memory),
+        }
+    }
+}
+impl std::fmt::Display for Register {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Register::X64(register) => write!(f, "{}", register),
+        }
+    }
+}
+impl std::fmt::Display for Memory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Memory::AbsoluteAddressing(address) => write!(f, "{}", address),
+            Memory::RelativeAddressing(arguments) => {
+                write!(f, "[")?;
+                for arg in arguments.iter() {
+                    write!(f, "{}", arg)?;
+                }
+                write!(f, "]")
+            }
+        }
+    }
+}
+impl std::fmt::Display for RelativeAddressingArgument {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RelativeAddressingArgument::Register(register) => write!(f, "{}", register),
+            RelativeAddressingArgument::Constant(constant) => write!(f, "{:X}", constant),
+            RelativeAddressingArgument::Operator(operator) => write!(f, "{}", operator),
+        }
+    }
+}
+impl std::fmt::Display for AddressingOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AddressingOperator::Add => write!(f, "+"),
+            AddressingOperator::Sub => write!(f, "-"),
+            AddressingOperator::Mul => write!(f, "*"),
+        }
+    }
+}
