@@ -172,7 +172,7 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
             instruction_args,
         );
         let data_access_at_ir_resolved =
-            resolve_data_accesses(&data_access, ir_index, instruction_args);
+            resolve_data_accesses(data_access, ir_index, instruction_args);
 
         // --- Step 1: Identify all locations written within this IR (including nested statements) ---
         let mut locations_written_this_ir: HashSet<Aos<IrData>> = HashSet::new();

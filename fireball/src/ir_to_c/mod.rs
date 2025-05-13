@@ -9,7 +9,7 @@ pub fn generate_c(data: &MergedIr) -> String {
         code.push_str(&format!("    {} v{};\n", var.data_type, i));
     }
 
-    code.push_str("\n");
+    code.push('\n');
 
     // IR statements
     for (idx, ir) in data.ir.iter().enumerate() {
