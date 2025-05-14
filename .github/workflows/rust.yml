@@ -18,10 +18,10 @@ jobs:
                     [windows-latest, ubuntu-latest, macos-latest]
         runs-on: ${{ matrix.os }}
         steps:
-            - uses: actions/checkout@latest
+            - uses: actions/checkout@v4
               with:
                   submodules: "true"
-            - uses: actions/cache@latest
+            - uses: actions/cache@v4
               with:
                   path: |
                       target
@@ -42,10 +42,10 @@ jobs:
         needs: build-test
         runs-on: windows-latest
         steps:
-            - uses: actions/checkout@latest
+            - uses: actions/checkout@v4
               with:
                   submodules: "true"
-            - uses: actions/cache@latest
+            - uses: actions/cache@v4
               with:
                   path: |
                       target
@@ -73,10 +73,10 @@ jobs:
         needs: build-test
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@latest
+            - uses: actions/checkout@v4
               with:
                   submodules: "true"
-            - uses: actions/cache@latest
+            - uses: actions/cache@v4
               with:
                   path: |
                       target
@@ -108,10 +108,10 @@ jobs:
         needs: build-test
         runs-on: macos-latest
         steps:
-            - uses: actions/checkout@latest
+            - uses: actions/checkout@v4
               with:
                   submodules: "true"
-            - uses: actions/cache@latest
+            - uses: actions/cache@v4
               with:
                   path: |
                       target
