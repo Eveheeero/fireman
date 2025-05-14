@@ -4,13 +4,14 @@ use crate::{
     ir::{
         analyze::{
             ir_to_c::c_abstract_syntax_tree::{
-                self as cast, CAst, CType, Expression, Function, Literal, Statement, Variable,
+                BinaryOperator, CAst, CType, Expression, Function, Literal, Statement,
+                UnaryOperator, Variable,
             },
             DataType, MergedIr,
         },
-        data::{IrData, IrDataOperation},
+        data::{AccessSize, IrData, IrDataOperation, IrIntrinsic},
         operator::{BinaryOperator as IrBinaryOp, UnaryOperator as IrUnaryOp},
-        statements::IrStatement,
+        statements::{IrStatement, IrStatementSpecial, NumCondition},
     },
     utils::Aos,
 };
@@ -39,6 +40,7 @@ pub fn generate_c(data: &MergedIr) -> CAst {
             },
         );
     }
+
     let mut func = Function {
         name: None,
         id: data
@@ -52,105 +54,361 @@ pub fn generate_c(data: &MergedIr) -> CAst {
         body: Vec::new(),
     };
 
-    for ir in &data.ir {
-        if let Some(stmts) = ir.statements {
-            for stmt in stmts.iter() {
-                func.body.push(convert_stmt(stmt));
+    let mut var_map: HashMap<Aos<IrData>, u32> = HashMap::new();
+    for (var_id, mvar) in data.variables.iter().enumerate() {
+        for (_key, accesses) in mvar.accesses.iter() {
+            for da in accesses.iter() {
+                var_map.insert(da.location().clone(), var_id as u32);
             }
         }
     }
-    ast.functions.push(func);
 
+    for ir in &data.ir {
+        if let Some(stmts) = ir.statements {
+            for stmt in stmts.iter() {
+                func.body.push(convert_stmt(stmt, &var_map));
+            }
+        }
+    }
+
+    ast.functions.push(func);
     ast
 }
-fn convert_expr(data: &Aos<IrData>) -> Expression {
+
+fn convert_expr(data: &Aos<IrData>, var_map: &HashMap<Aos<IrData>, u32>) -> Expression {
+    if let Some(&vid) = var_map.get(data) {
+        return Expression::Variable(vid);
+    }
+
     match data.as_ref() {
         IrData::Constant(c) => Expression::Literal(Literal::Int(*c as i64)),
-        IrData::Register(_) => todo!(),
-        IrData::Dereference(inner) => Expression::Deref(Box::new(convert_expr(inner))),
-        IrData::Operation(op) => match op {
-            IrDataOperation::Unary { operator, arg } => {
-                Expression::UnaryOp(to_c_unary_operator(*operator), Box::new(convert_expr(arg)))
+        IrData::Dereference(inner) => Expression::Deref(Box::new(convert_expr(inner, var_map))),
+        IrData::Intrinsic(intr) => match intr {
+            IrIntrinsic::ArchitectureByteSize => Expression::ArchitectureByteSize,
+            IrIntrinsic::ArchitectureBitSize => Expression::ArchitectureBitSize,
+            IrIntrinsic::ArchitectureBitPerByte => {
+                Expression::Call("ARCH_BIT_PER_BYTE".into(), vec![])
             }
+            IrIntrinsic::InstructionByteSize => {
+                Expression::Call("INSTRUCTION_BYTE_SIZE".into(), vec![])
+            }
+            IrIntrinsic::ByteSizeOf(inner) => {
+                Expression::Call("byte_size_of".into(), vec![convert_expr(inner, var_map)])
+            }
+            IrIntrinsic::BitSizeOf(inner) => {
+                Expression::Call("bit_size_of".into(), vec![convert_expr(inner, var_map)])
+            }
+            IrIntrinsic::Sized(inner, size) => {
+                let arg = convert_expr(inner, var_map);
+                let sz = convert_size(size, var_map);
+                Expression::Call("sized".into(), vec![arg, sz])
+            }
+            IrIntrinsic::OperandExists(n) => Expression::Call(
+                "operand_exists".into(),
+                vec![Expression::Literal(Literal::UInt(n.get() as u64))],
+            ),
+            IrIntrinsic::Unknown => Expression::Unknown,
+            IrIntrinsic::Undefined => Expression::Undefined,
+            IrIntrinsic::SignedMax(size) => {
+                Expression::Call("signed_max".into(), vec![convert_size(size, var_map)])
+            }
+            IrIntrinsic::SignedMin(size) => {
+                Expression::Call("signed_min".into(), vec![convert_size(size, var_map)])
+            }
+            IrIntrinsic::UnsignedMax(size) => {
+                Expression::Call("unsigned_max".into(), vec![convert_size(size, var_map)])
+            }
+            IrIntrinsic::UnsignedMin(size) => {
+                Expression::Call("unsigned_min".into(), vec![convert_size(size, var_map)])
+            }
+            IrIntrinsic::BitOnes(size) => {
+                Expression::Call("bit_ones".into(), vec![convert_size(size, var_map)])
+            }
+            IrIntrinsic::BitZeros(size) => {
+                Expression::Call("bit_zeros".into(), vec![convert_size(size, var_map)])
+            }
+        },
+        IrData::Operation(op) => match op {
+            IrDataOperation::Unary { operator, arg } => convert_unary(operator, arg, var_map),
             IrDataOperation::Binary {
                 operator,
                 arg1,
                 arg2,
-            } => {
-                let (op, cast) = to_c_binary_operator(operator);
-                let arg2 = if let Some(cast) = cast {
-                    Expression::UnaryOp(cast, Box::new(convert_expr(arg2)))
-                } else {
-                    convert_expr(arg2)
-                };
-                Expression::BinaryOp(op, Box::new(convert_expr(arg1)), Box::new(arg2))
-            }
+            } => convert_binary(operator, arg1, arg2, var_map),
         },
-        IrData::Intrinsic(ir_intrinsic) => todo!(),
-        IrData::Operand(_) => panic!("Should not be here"),
+        IrData::Register(_) | IrData::Operand(_) => unreachable!("Should not be here"),
     }
 }
 
-fn convert_stmt(stmt: &IrStatement) -> Statement {
+fn convert_stmt(stmt: &IrStatement, var_map: &HashMap<Aos<IrData>, u32>) -> Statement {
     match stmt {
         IrStatement::Assignment { from, to, .. } => {
-            let from_expr = convert_expr(from);
-            let to_expr = convert_expr(to);
-            Statement::Assignment(to_expr, from_expr)
+            Statement::Assignment(convert_expr(to, var_map), convert_expr(from, var_map))
         }
-        IrStatement::JumpByCall { target } => Statement::Call(target.to_string(), Vec::new()),
-        IrStatement::Jump { target } => Statement::Goto(target.to_string()),
+        IrStatement::JumpByCall { target } => {
+            let e = convert_expr(target, var_map);
+            let name = match e {
+                Expression::Variable(id) => format!("v{}", id),
+                _ => e.to_string(),
+            };
+            Statement::Call(name, Vec::new())
+        }
+        IrStatement::Jump { target } => {
+            let e = convert_expr(target, var_map);
+            let label = match e {
+                Expression::Variable(id) => format!("L{}", id),
+                _ => e.to_string(),
+            };
+            Statement::Goto(label)
+        }
         IrStatement::Condition {
             condition,
             true_branch,
             false_branch,
         } => {
-            let cond = convert_expr(condition);
-            let then_stmts = true_branch.iter().map(convert_stmt).collect();
-            let else_stmts = false_branch.iter().map(convert_stmt).collect();
-            Statement::If(cond, then_stmts, Some(else_stmts))
+            let cond = convert_expr(condition, var_map);
+            let then_b = true_branch
+                .iter()
+                .map(|s| convert_stmt(s, var_map))
+                .collect();
+            let else_b = false_branch
+                .iter()
+                .map(|s| convert_stmt(s, var_map))
+                .collect();
+            Statement::If(cond, then_b, Some(else_b))
         }
+        IrStatement::Halt => Statement::Return(None),
         IrStatement::Undefined => Statement::Undefined,
         IrStatement::Exception(e) => Statement::Exception(e),
-        IrStatement::Halt => Statement::Return(Some(Expression::Unknown)),
-        IrStatement::Special(_) => todo!(),
-    }
-}
-fn to_c_unary_operator(op: IrUnaryOp) -> cast::UnaryOperator {
-    match op {
-        IrUnaryOp::Not => cast::UnaryOperator::Not,
-        IrUnaryOp::Negation => cast::UnaryOperator::Negate,
-        IrUnaryOp::SignExtend => cast::UnaryOperator::CastSigned,
-        IrUnaryOp::ZeroExtend => cast::UnaryOperator::CastUnsigned,
+        IrStatement::Special(special) => match special {
+            IrStatementSpecial::Assertion { .. } => Statement::Empty,
+            IrStatementSpecial::ArchitectureByteSizeCondition {
+                condition,
+                true_branch,
+                false_branch,
+            } => {
+                // NumCondition → Expression 변환
+                let cond_expr = match condition {
+                    NumCondition::Higher(v) => Expression::BinaryOp(
+                        BinaryOperator::Greater,
+                        Box::new(Expression::ArchitectureByteSize),
+                        Box::new(Expression::Literal(Literal::UInt(*v as u64))),
+                    ),
+                    NumCondition::HigherOrEqual(v) => Expression::BinaryOp(
+                        BinaryOperator::GreaterEqual,
+                        Box::new(Expression::ArchitectureByteSize),
+                        Box::new(Expression::Literal(Literal::UInt(*v as u64))),
+                    ),
+                    NumCondition::Lower(v) => Expression::BinaryOp(
+                        BinaryOperator::Less,
+                        Box::new(Expression::ArchitectureByteSize),
+                        Box::new(Expression::Literal(Literal::UInt(*v as u64))),
+                    ),
+                    NumCondition::LowerOrEqual(v) => Expression::BinaryOp(
+                        BinaryOperator::LessEqual,
+                        Box::new(Expression::ArchitectureByteSize),
+                        Box::new(Expression::Literal(Literal::UInt(*v as u64))),
+                    ),
+                    NumCondition::Equal(v) => Expression::BinaryOp(
+                        BinaryOperator::Equal,
+                        Box::new(Expression::ArchitectureByteSize),
+                        Box::new(Expression::Literal(Literal::UInt(*v as u64))),
+                    ),
+                    NumCondition::NotEqual(v) => Expression::BinaryOp(
+                        BinaryOperator::NotEqual,
+                        Box::new(Expression::ArchitectureByteSize),
+                        Box::new(Expression::Literal(Literal::UInt(*v as u64))),
+                    ),
+                    NumCondition::RangeInclusive(v1, v2) => {
+                        let ge = Expression::BinaryOp(
+                            BinaryOperator::GreaterEqual,
+                            Box::new(Expression::ArchitectureByteSize),
+                            Box::new(Expression::Literal(Literal::UInt(*v1 as u64))),
+                        );
+                        let le = Expression::BinaryOp(
+                            BinaryOperator::LessEqual,
+                            Box::new(Expression::ArchitectureByteSize),
+                            Box::new(Expression::Literal(Literal::UInt(*v2 as u64))),
+                        );
+                        Expression::BinaryOp(BinaryOperator::LogicAnd, Box::new(ge), Box::new(le))
+                    }
+                    NumCondition::ExcludesRange(v1, v2) => {
+                        let ge = Expression::BinaryOp(
+                            BinaryOperator::GreaterEqual,
+                            Box::new(Expression::ArchitectureByteSize),
+                            Box::new(Expression::Literal(Literal::UInt(*v1 as u64))),
+                        );
+                        let le = Expression::BinaryOp(
+                            BinaryOperator::LessEqual,
+                            Box::new(Expression::ArchitectureByteSize),
+                            Box::new(Expression::Literal(Literal::UInt(*v2 as u64))),
+                        );
+                        let between = Expression::BinaryOp(
+                            BinaryOperator::LogicAnd,
+                            Box::new(ge),
+                            Box::new(le),
+                        );
+                        Expression::UnaryOp(UnaryOperator::Not, Box::new(between))
+                    }
+                };
+                let tb = true_branch
+                    .iter()
+                    .map(|s| convert_stmt(s, var_map))
+                    .collect();
+                let fb = false_branch
+                    .iter()
+                    .map(|s| convert_stmt(s, var_map))
+                    .collect();
+                Statement::If(cond_expr, tb, Some(fb))
+            }
+            IrStatementSpecial::CalcFlagsAutomatically {
+                operation,
+                size: _,
+                flags,
+            } => {
+                let stmts = calc_flags_automatically(operation, flags, var_map);
+                Statement::Block(stmts)
+            }
+            IrStatementSpecial::TypeSpecified {
+                location: _,
+                size: _,
+                data_type: _,
+            } => Statement::Empty, // Used to detect types
+        },
     }
 }
 
-fn to_c_binary_operator(op: &IrBinaryOp) -> (cast::BinaryOperator, Option<cast::UnaryOperator>) {
-    match op {
-        IrBinaryOp::Add => (cast::BinaryOperator::Add, None),
-        IrBinaryOp::Sub => (cast::BinaryOperator::Sub, None),
-        IrBinaryOp::Mul => (cast::BinaryOperator::Mul, None),
-        IrBinaryOp::SignedDiv => (cast::BinaryOperator::Div, None),
-        IrBinaryOp::UnsignedDiv => (
-            cast::BinaryOperator::Div,
-            Some(cast::UnaryOperator::CastUnsigned),
+fn convert_unary(
+    operator: &IrUnaryOp,
+    arg: &Aos<IrData>,
+    var_map: &HashMap<Aos<IrData>, u32>,
+) -> Expression {
+    let expr = convert_expr(arg, var_map);
+    let op = match operator {
+        IrUnaryOp::Not => UnaryOperator::Not,
+        IrUnaryOp::Negation => UnaryOperator::Negate,
+        IrUnaryOp::SignExtend => UnaryOperator::CastSigned,
+        IrUnaryOp::ZeroExtend => UnaryOperator::CastUnsigned,
+    };
+    Expression::UnaryOp(op, Box::new(expr))
+}
+
+fn convert_binary(
+    operator: &IrBinaryOp,
+    arg1: &Aos<IrData>,
+    arg2: &Aos<IrData>,
+    var_map: &HashMap<Aos<IrData>, u32>,
+) -> Expression {
+    let lhs = convert_expr(arg1, var_map);
+    let rhs = convert_expr(arg2, var_map);
+
+    match operator {
+        IrBinaryOp::Add => Expression::BinaryOp(BinaryOperator::Add, Box::new(lhs), Box::new(rhs)),
+        IrBinaryOp::Sub => Expression::BinaryOp(BinaryOperator::Sub, Box::new(lhs), Box::new(rhs)),
+        IrBinaryOp::Mul => Expression::BinaryOp(BinaryOperator::Mul, Box::new(lhs), Box::new(rhs)),
+        IrBinaryOp::SignedDiv => Expression::BinaryOp(
+            BinaryOperator::Div,
+            Box::new(lhs),
+            Box::new(Expression::UnaryOp(
+                UnaryOperator::CastSigned,
+                Box::new(rhs),
+            )),
         ),
-        IrBinaryOp::SignedRem => (cast::BinaryOperator::Mod, None),
-        IrBinaryOp::UnsignedRem => (
-            cast::BinaryOperator::Mod,
-            Some(cast::UnaryOperator::CastUnsigned),
+        IrBinaryOp::UnsignedDiv => Expression::BinaryOp(
+            BinaryOperator::Div,
+            Box::new(lhs),
+            Box::new(Expression::UnaryOp(
+                UnaryOperator::CastUnsigned,
+                Box::new(rhs),
+            )),
         ),
-        IrBinaryOp::And => (cast::BinaryOperator::BitAnd, None),
-        IrBinaryOp::Or => (cast::BinaryOperator::BitOr, None),
-        IrBinaryOp::Xor => (cast::BinaryOperator::BitXor, None),
-        IrBinaryOp::Shl => (cast::BinaryOperator::LeftShift, None),
-        IrBinaryOp::Shr | IrBinaryOp::Sar => (cast::BinaryOperator::RightShift, None),
-        IrBinaryOp::Equal(_) => (cast::BinaryOperator::Equal, None),
-        IrBinaryOp::SignedLess(_) | IrBinaryOp::UnsignedLess(_) => {
-            (cast::BinaryOperator::Less, None)
+        IrBinaryOp::SignedRem => Expression::BinaryOp(
+            BinaryOperator::Mod,
+            Box::new(lhs),
+            Box::new(Expression::UnaryOp(
+                UnaryOperator::CastSigned,
+                Box::new(rhs),
+            )),
+        ),
+        IrBinaryOp::UnsignedRem => Expression::BinaryOp(
+            BinaryOperator::Mod,
+            Box::new(lhs),
+            Box::new(Expression::UnaryOp(
+                UnaryOperator::CastUnsigned,
+                Box::new(rhs),
+            )),
+        ),
+        IrBinaryOp::And => {
+            Expression::BinaryOp(BinaryOperator::BitAnd, Box::new(lhs), Box::new(rhs))
         }
-        IrBinaryOp::SignedLessOrEqual(_) | IrBinaryOp::UnsignedLessOrEqual(_) => {
-            (cast::BinaryOperator::LessEqual, None)
+        IrBinaryOp::Or => Expression::BinaryOp(BinaryOperator::BitOr, Box::new(lhs), Box::new(rhs)),
+        IrBinaryOp::Xor => {
+            Expression::BinaryOp(BinaryOperator::BitXor, Box::new(lhs), Box::new(rhs))
+        }
+        IrBinaryOp::Shl => {
+            Expression::BinaryOp(BinaryOperator::LeftShift, Box::new(lhs), Box::new(rhs))
+        }
+        IrBinaryOp::Shr | IrBinaryOp::Sar => {
+            Expression::BinaryOp(BinaryOperator::RightShift, Box::new(lhs), Box::new(rhs))
+        }
+        IrBinaryOp::Equal(size) => {
+            let sz = convert_size(size, var_map);
+            let lhs_s = Expression::Call("sized".into(), vec![lhs.clone(), sz.clone()]);
+            let rhs_s = Expression::Call("sized".into(), vec![rhs.clone(), sz]);
+            Expression::BinaryOp(BinaryOperator::Equal, Box::new(lhs_s), Box::new(rhs_s))
+        }
+        IrBinaryOp::SignedLess(size) => {
+            let sz = convert_size(size, var_map);
+            let lhs_s = Expression::Call("sized".into(), vec![lhs.clone(), sz.clone()]); // TODO does lhs need to be sized?
+            let rhs_s = Expression::Call("sized".into(), vec![rhs.clone(), sz]);
+            Expression::BinaryOp(BinaryOperator::Less, Box::new(lhs_s), Box::new(rhs_s))
+        }
+        IrBinaryOp::UnsignedLess(size) => {
+            let sz = convert_size(size, var_map);
+            let lhs_s = Expression::Call("sized".into(), vec![lhs.clone(), sz.clone()]);
+            let rhs_s = Expression::Call("sized".into(), vec![rhs.clone(), sz]);
+            let rhs_c = Expression::UnaryOp(UnaryOperator::CastUnsigned, Box::new(rhs_s));
+            Expression::BinaryOp(BinaryOperator::Less, Box::new(lhs_s), Box::new(rhs_c))
+        }
+        IrBinaryOp::SignedLessOrEqual(size) => {
+            let sz = convert_size(size, var_map);
+            let lhs_s = Expression::Call("sized".into(), vec![lhs.clone(), sz.clone()]);
+            let rhs_s = Expression::Call("sized".into(), vec![rhs.clone(), sz]);
+            Expression::BinaryOp(BinaryOperator::LessEqual, Box::new(lhs_s), Box::new(rhs_s))
+        }
+        IrBinaryOp::UnsignedLessOrEqual(size) => {
+            let sz = convert_size(size, var_map);
+            let lhs_s = Expression::Call("sized".into(), vec![lhs.clone(), sz.clone()]);
+            let rhs_s = Expression::Call("sized".into(), vec![rhs.clone(), sz]);
+            let rhs_c = Expression::UnaryOp(UnaryOperator::CastUnsigned, Box::new(rhs_s));
+            Expression::BinaryOp(BinaryOperator::LessEqual, Box::new(lhs_s), Box::new(rhs_c))
         }
     }
+}
+
+fn convert_size(size: &AccessSize, var_map: &HashMap<Aos<IrData>, u32>) -> Expression {
+    match size {
+        AccessSize::ResultOfBit(d) | AccessSize::ResultOfByte(d) | AccessSize::RelativeWith(d) => {
+            convert_expr(d, var_map)
+        }
+        AccessSize::ArchitectureSize => Expression::ArchitectureByteSize,
+        AccessSize::Unlimited => Expression::Unknown,
+    }
+}
+
+fn calc_flags_automatically(
+    operation: &Aos<IrData>,
+    affected_registers: &[Aos<IrData>],
+    var_map: &HashMap<Aos<IrData>, u32>,
+) -> Vec<Statement> {
+    // TODO INVALID
+    let val = convert_expr(operation, var_map);
+    affected_registers
+        .iter()
+        .filter_map(|reg| {
+            var_map
+                .get(reg)
+                .map(|&vid| Statement::Assignment(Expression::Variable(vid), val.clone()))
+        })
+        .collect()
 }

@@ -81,12 +81,10 @@ pub(in crate::arch) fn calc_flags_automatically(
     IrStatement::Special(IrStatementSpecial::CalcFlagsAutomatically {
         operation: operation.into(),
         size: size.into(),
-        of: affected_registers.contains(&&*of),
-        sf: affected_registers.contains(&&*sf),
-        zf: affected_registers.contains(&&*zf),
-        af: affected_registers.contains(&&*af),
-        cf: affected_registers.contains(&&*cf),
-        pf: affected_registers.contains(&&*pf),
+        flags: affected_registers
+            .into_iter()
+            .map(|x| (*x).clone())
+            .collect(),
     })
 }
 #[inline]

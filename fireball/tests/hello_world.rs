@@ -57,7 +57,7 @@ fn hello_world() {
         let merged = merge_blocks(cfg.get_blocks());
         let result = generate_c(&merged);
 
-        println!("{}", result);
+        println!("{}", result.to_c_code());
         println!(
             "--------------------------------------------------------------------------------"
         );
