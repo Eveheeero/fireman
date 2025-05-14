@@ -161,7 +161,7 @@ impl Blocks {
     }
 
     /// 모든 블럭을 반환한다.
-    /// 
+    ///
     /// ### Returns
     /// - `Vec<Arc<Block>>`: 모든 블럭
     pub fn get_all(&self) -> Vec<Arc<Block>> {

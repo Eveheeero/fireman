@@ -1,7 +1,6 @@
 use fireball::{
     core::Fire,
-    ir::analyze::{ir_block_merger::merge_blocks, ControlFlowGraphAnalyzer},
-    ir_to_c::generate_c,
+    ir::analyze::{generate_c, ir_block_merger::merge_blocks, ControlFlowGraphAnalyzer},
     pe::Pe,
 };
 
@@ -36,21 +35,7 @@ fn hello_world() {
     let binary = get_binary();
 
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
-    let entry = pe.entry();
-    let mut queue = Vec::new();
-    queue.push(entry.clone());
-    let mut targets = Vec::new();
-    while let Some(address) = queue.pop() {
-        let block = pe.decom_block(&address).unwrap();
-        targets.push(block.clone());
-        let connected_to = block.get_connected_to();
-        for connected_to in connected_to.iter() {
-            if let Some(address) = connected_to.to() {
-                queue.push(address);
-            }
-        }
-    }
-
+    let targets = pe.decom_all().unwrap();
     let mut cfg_analyzer = ControlFlowGraphAnalyzer::new();
     cfg_analyzer.add_targets(targets);
     let cfgs = cfg_analyzer.analyze();
@@ -58,7 +43,7 @@ fn hello_world() {
         let merged = merge_blocks(cfg.get_blocks());
         let result = generate_c(&merged);
 
-        println!("{}", result);
+        println!("{}", result.to_c_code());
         println!(
             "--------------------------------------------------------------------------------"
         );

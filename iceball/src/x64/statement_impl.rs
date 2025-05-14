@@ -51,6 +51,6 @@ impl X64Statement {
 }
 impl std::fmt::Display for X64Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
+        write!(f, "{}", self.name().to_ascii_lowercase())
     }
 }

@@ -28,6 +28,8 @@ pub enum DestinationType {
 pub enum RelationType {
     /// 해당 연결이 call 연결임을 나타낸다.
     Call,
+    /// By return
+    Halt,
     /// 해당 연결이 jmp 연결임을 나타낸다.
     Jump,
     Jcc,

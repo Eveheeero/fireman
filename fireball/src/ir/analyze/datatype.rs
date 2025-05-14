@@ -68,7 +68,7 @@ pub fn analyze_datatype_raw(insert: &mut impl FnMut(KnownDataType), statement: &
                 data_size: AccessSize::ArchitectureSize,
             });
         }
-        IrStatement::Call { target } => {
+        IrStatement::JumpByCall { target } => {
             insert(KnownDataType {
                 location: target.clone(),
                 data_type: DataType::Address,

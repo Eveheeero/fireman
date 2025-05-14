@@ -18,6 +18,6 @@ impl Instruction {
 }
 impl std::fmt::Display for Instruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:X} {}", self.address, self.inner)
+        write!(f, "0x{:X} {}", self.address, self.inner)
     }
 }

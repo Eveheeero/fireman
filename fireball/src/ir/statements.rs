@@ -26,7 +26,7 @@ pub enum IrStatement {
         target: Aos<IrData>,
     },
     /// 함수 호출
-    Call {
+    JumpByCall {
         target: Aos<IrData>,
     },
     /// 함수 호출 후 반환
@@ -55,12 +55,7 @@ pub enum IrStatementSpecial {
     CalcFlagsAutomatically {
         operation: Aos<IrData>,
         size: AccessSize,
-        of: bool,
-        sf: bool,
-        zf: bool,
-        af: bool,
-        cf: bool,
-        pf: bool,
+        flags: Vec<Aos<IrData>>,
     },
     Assertion {
         condition: Aos<IrData>,
@@ -75,9 +70,8 @@ pub enum NumCondition {
     LowerOrEqual(u16),
     Equal(u16),
     NotEqual(u16),
-    Between(u16, u16),
-
-    NotBetween(u16, u16),
+    RangeInclusive(u16, u16),
+    ExcludesRange(u16, u16),
 }
 
 impl IrDataContainable for IrStatement {
@@ -90,7 +84,7 @@ impl IrDataContainable for IrStatement {
                 v.push(to);
                 size.get_related_ir_data(v);
             }
-            IrStatement::Jump { target } | IrStatement::Call { target } => {
+            IrStatement::Jump { target } | IrStatement::JumpByCall { target } => {
                 target.get_related_ir_data(v);
                 v.push(target);
             }
@@ -154,7 +148,7 @@ impl std::fmt::Display for IrStatement {
                 write!(f, "{} = ({}){}", to, size, from)
             }
             IrStatement::Jump { target } => write!(f, "jmp {}", target),
-            IrStatement::Call { target } => write!(f, "call {}", target),
+            IrStatement::JumpByCall { target } => write!(f, "call {}", target),
             IrStatement::Condition {
                 condition,
                 true_branch,
@@ -211,33 +205,14 @@ impl std::fmt::Display for IrStatementSpecial {
             IrStatementSpecial::CalcFlagsAutomatically {
                 operation,
                 size: _,
-                of,
-                sf,
-                zf,
-                af,
-                cf,
-                pf,
+                flags,
             } => {
-                let mut flags = 0;
-                if *of {
-                    flags |= 1 << 0;
-                }
-                if *sf {
-                    flags |= 1 << 1;
-                }
-                if *zf {
-                    flags |= 1 << 2;
-                }
-                if *af {
-                    flags |= 1 << 3;
-                }
-                if *cf {
-                    flags |= 1 << 4;
-                }
-                if *pf {
-                    flags |= 1 << 5;
-                }
-                write!(f, "calc_flags {:#b} ({})", flags, operation)
+                let flags = flags
+                    .iter()
+                    .map(|flag| format!("{}", flag))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(f, "calc_flags [{}] ({})", flags, operation)
             }
             IrStatementSpecial::Assertion { condition } => write!(f, "assert ({})", condition),
         }
@@ -252,10 +227,10 @@ impl std::fmt::Display for NumCondition {
             NumCondition::LowerOrEqual(value) => write!(f, "{} <= {}", self, value),
             NumCondition::Equal(value) => write!(f, "{} == {}", self, value),
             NumCondition::NotEqual(value) => write!(f, "{} != {}", self, value),
-            NumCondition::Between(value1, value2) => {
+            NumCondition::RangeInclusive(value1, value2) => {
                 write!(f, "{} in [{}..{}]", self, value1, value2)
             }
-            NumCondition::NotBetween(value1, value2) => {
+            NumCondition::ExcludesRange(value1, value2) => {
                 write!(f, "{} not in [{}..{}]", self, value1, value2)
             }
         }

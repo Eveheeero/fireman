@@ -10,7 +10,10 @@ use crate::{
     utils::Aos,
 };
 pub use private::IrVariable;
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::LazyLock,
+};
 
 mod private {
     use super::*;
@@ -356,9 +359,15 @@ fn resolve_binary_operator(
     }
 }
 
-fn resolve_operand(data: &Aos<IrData>, instruction_args: &[iceball::Argument]) -> Aos<IrData> {
+pub fn resolve_operand(data: &Aos<IrData>, instruction_args: &[iceball::Argument]) -> Aos<IrData> {
     match data.as_ref() {
         IrData::Operand(op_num) => {
+            if instruction_args.len() < op_num.get() as usize {
+                /* Fallback if `operand_exists` based routine */
+                static UNDEFINED: LazyLock<Aos<IrData>> =
+                    LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::Undefined)));
+                return UNDEFINED.clone();
+            }
             return (&instruction_args[(op_num.get() - 1) as usize]).into();
         }
         _ => {}

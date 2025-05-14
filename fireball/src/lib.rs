@@ -3,7 +3,6 @@
 pub mod arch;
 pub mod core;
 pub mod ir;
-pub mod ir_to_c;
 pub mod pe;
 pub mod prelude;
 #[cfg(test)]
