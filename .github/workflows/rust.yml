@@ -10,7 +10,7 @@ env:
     CARGO_TERM_COLOR: always
 
 jobs:
-    build:
+    build-test:
         strategy:
             matrix:
                 os:
@@ -33,8 +33,12 @@ jobs:
               run: cargo build --verbose --workspace --exclude firebat
             - name: Build Release
               run: cargo build --release --verbose --workspace --exclude firebat
+            - name: Test Debug
+              run: cargo test --verbose --workspace --exclude firebat
+            - name: Test Release
+              run: cargo test --release --verbose --workspace --exclude firebat
 
-    build-static-windows:
+    build-test-static-windows:
         needs: build
         runs-on: windows-latest
         steps:
@@ -56,8 +60,16 @@ jobs:
               run: |
                   set RUSTFLAGS='-C target-feature=+crt-static'
                   cargo build --target x86_64-pc-windows-msvc --release --verbose --workspace --exclude firebat
+            - name: Test Debug
+              run: |
+                  set RUSTFLAGS='-C target-feature=+crt-static'
+                  cargo test --target x86_64-pc-windows-msvc --verbose --workspace --exclude firebat
+            - name: Test Release
+              run: |
+                  set RUSTFLAGS='-C target-feature=+crt-static'
+                  cargo test --target x86_64-pc-windows-msvc --release --verbose --workspace --exclude firebat
 
-    build-static-ubuntu:
+    build-test-static-ubuntu:
         needs: build
         runs-on: ubuntu-latest
         steps:
@@ -83,8 +95,16 @@ jobs:
               run: |
                   RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-unknown-linux-gnu --release --verbose --workspace --exclude firebat
                   cargo build --target x86_64-unknown-linux-musl --release --verbose --workspace --exclude firebat
+            - name: Test Debug
+              run: |
+                  RUSTFLAGS='-C target-feature=+crt-static' cargo test --target x86_64-unknown-linux-gnu --verbose --workspace --exclude firebat
+                  cargo test --target x86_64-unknown-linux-musl --verbose --workspace --exclude firebat
+            - name: Test Release
+              run: |
+                  RUSTFLAGS='-C target-feature=+crt-static' cargo test --target x86_64-unknown-linux-gnu --release --verbose --workspace --exclude firebat
+                  cargo test --target x86_64-unknown-linux-musl --release --verbose --workspace --exclude firebat
 
-    build-static-macos:
+    build-test-static-macos:
         needs: build
         runs-on: macos-latest
         steps:
@@ -110,29 +130,11 @@ jobs:
               run: |
                   RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-apple-darwin --release --verbose --workspace --exclude firebat
                   RUSTFLAGS='-C target-feature=+crt-static' cargo build --target aarch64-apple-darwin --release --verbose --workspace --exclude firebat
-
-    test:
-        needs:
-            - build-static-windows
-            - build-static-ubuntu
-            - build-static-macos
-        strategy:
-            matrix:
-                os:
-                    # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
-                    [windows-latest, ubuntu-latest, macos-latest]
-        runs-on: ${{ matrix.os }}
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  submodules: "true"
-            - uses: actions/cache@v4
-              with:
-                  path: |
-                      target
-                      ~/.cargo
-                  key: ${{ matrix.os }}-fireman
             - name: Test Debug
-              run: cargo test --verbose --workspace --exclude firebat
+              run: |
+                  RUSTFLAGS='-C target-feature=+crt-static' cargo test --target x86_64-apple-darwin --verbose --workspace --exclude firebat
+                  RUSTFLAGS='-C target-feature=+crt-static' cargo test --target aarch64-apple-darwin --verbose --workspace --exclude firebat
             - name: Test Release
-              run: cargo test --release --verbose --workspace --exclude firebat
+              run: |
+                  RUSTFLAGS='-C target-feature=+crt-static' cargo test --target x86_64-apple-darwin --release --verbose --workspace --exclude firebat
+                  RUSTFLAGS='-C target-feature=+crt-static' cargo test --target aarch64-apple-darwin --release --verbose --workspace --exclude firebat
