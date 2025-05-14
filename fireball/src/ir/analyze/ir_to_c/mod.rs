@@ -7,6 +7,7 @@ use crate::{
                 BinaryOperator, CAst, CType, Expression, Function, Literal, Statement,
                 UnaryOperator, Variable,
             },
+            variables::resolve_operand,
             DataType, MergedIr,
         },
         data::{AccessSize, IrData, IrDataOperation, IrIntrinsic},
@@ -65,9 +66,14 @@ pub fn generate_c(data: &MergedIr) -> CAst {
 
     for ir in &data.ir {
         if let Some(stmts) = ir.statements {
+            let instruction_args = ir.instruction.inner.arguments.as_ref();
             for stmt in stmts.iter() {
-                func.body.push(convert_stmt(stmt, &var_map));
+                func.body
+                    .push(convert_stmt(stmt, &var_map, instruction_args));
             }
+        } else {
+            func.body
+                .push(Statement::Assembly(ir.instruction.inner.to_string()));
         }
     }
 
@@ -140,12 +146,19 @@ fn convert_expr(data: &Aos<IrData>, var_map: &HashMap<Aos<IrData>, u32>) -> Expr
     }
 }
 
-fn convert_stmt(stmt: &IrStatement, var_map: &HashMap<Aos<IrData>, u32>) -> Statement {
+fn convert_stmt(
+    stmt: &IrStatement,
+    var_map: &HashMap<Aos<IrData>, u32>,
+    instruction_args: &[iceball::Argument],
+) -> Statement {
     match stmt {
         IrStatement::Assignment { from, to, .. } => {
+            let from = &resolve_operand(from, instruction_args);
+            let to = &resolve_operand(to, instruction_args);
             Statement::Assignment(convert_expr(to, var_map), convert_expr(from, var_map))
         }
         IrStatement::JumpByCall { target } => {
+            let target = &resolve_operand(target, instruction_args);
             let e = convert_expr(target, var_map);
             let name = match e {
                 Expression::Variable(id) => format!("v{}", id),
@@ -154,6 +167,7 @@ fn convert_stmt(stmt: &IrStatement, var_map: &HashMap<Aos<IrData>, u32>) -> Stat
             Statement::Call(name, Vec::new())
         }
         IrStatement::Jump { target } => {
+            let target = &resolve_operand(target, instruction_args);
             let e = convert_expr(target, var_map);
             let label = match e {
                 Expression::Variable(id) => format!("L{}", id),
@@ -166,14 +180,15 @@ fn convert_stmt(stmt: &IrStatement, var_map: &HashMap<Aos<IrData>, u32>) -> Stat
             true_branch,
             false_branch,
         } => {
+            let condition = &resolve_operand(condition, instruction_args);
             let cond = convert_expr(condition, var_map);
             let then_b = true_branch
                 .iter()
-                .map(|s| convert_stmt(s, var_map))
+                .map(|s| convert_stmt(s, var_map, instruction_args))
                 .collect();
             let else_b = false_branch
                 .iter()
-                .map(|s| convert_stmt(s, var_map))
+                .map(|s| convert_stmt(s, var_map, instruction_args))
                 .collect();
             Statement::If(cond, then_b, Some(else_b))
         }
@@ -187,7 +202,6 @@ fn convert_stmt(stmt: &IrStatement, var_map: &HashMap<Aos<IrData>, u32>) -> Stat
                 true_branch,
                 false_branch,
             } => {
-                // NumCondition → Expression 변환
                 let cond_expr = match condition {
                     NumCondition::Higher(v) => Expression::BinaryOp(
                         BinaryOperator::Greater,
@@ -253,11 +267,11 @@ fn convert_stmt(stmt: &IrStatement, var_map: &HashMap<Aos<IrData>, u32>) -> Stat
                 };
                 let tb = true_branch
                     .iter()
-                    .map(|s| convert_stmt(s, var_map))
+                    .map(|s| convert_stmt(s, var_map, instruction_args))
                     .collect();
                 let fb = false_branch
                     .iter()
-                    .map(|s| convert_stmt(s, var_map))
+                    .map(|s| convert_stmt(s, var_map, instruction_args))
                     .collect();
                 Statement::If(cond_expr, tb, Some(fb))
             }
@@ -266,6 +280,7 @@ fn convert_stmt(stmt: &IrStatement, var_map: &HashMap<Aos<IrData>, u32>) -> Stat
                 size: _,
                 flags,
             } => {
+                let operation = &resolve_operand(operation, instruction_args);
                 let stmts = calc_flags_automatically(operation, flags, var_map);
                 Statement::Block(stmts)
             }

@@ -80,6 +80,7 @@ pub enum Statement {
     Label(String),
     Goto(String),
     Block(Vec<Statement>),
+    Assembly(String),
     Undefined,
     Exception(&'static str),
     Empty,
@@ -328,6 +329,7 @@ impl std::fmt::Display for Statement {
             Statement::Empty => write!(f, ";"),
             Statement::Undefined => write!(f, "<UNDEFINED BEHAVIOR>"),
             Statement::Exception(e) => write!(f, "<EXCEPTION: {e}>"),
+            Statement::Assembly(code) => write!(f, "<ASSEMBLY: {code}>"),
         }
     }
 }

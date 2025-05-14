@@ -37,7 +37,6 @@ pub fn merge_blocks(blocks: &[Arc<Block>]) -> MergedIr {
     }
 }
 
-// Placeholder for the IR block merger.
 pub struct MergedIr {
     pub ir: Vec<Ir>,
     pub variables: Vec<MergedIrVariable>,

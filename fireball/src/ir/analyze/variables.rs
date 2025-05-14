@@ -356,7 +356,7 @@ fn resolve_binary_operator(
     }
 }
 
-fn resolve_operand(data: &Aos<IrData>, instruction_args: &[iceball::Argument]) -> Aos<IrData> {
+pub fn resolve_operand(data: &Aos<IrData>, instruction_args: &[iceball::Argument]) -> Aos<IrData> {
     match data.as_ref() {
         IrData::Operand(op_num) => {
             return (&instruction_args[(op_num.get() - 1) as usize]).into();
