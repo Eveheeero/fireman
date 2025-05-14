@@ -1,5 +1,9 @@
 //! Unusued are for optimization process
 
+use crate::{
+    ir::{data::IrData, utils::IrStatementDescriptor},
+    utils::Aos,
+};
 use hashbrown::HashMap;
 
 #[derive(Debug, Clone)]
@@ -16,6 +20,20 @@ pub struct Function {
     pub parameters: Vec<Variable>,
     pub variables: HashMap<VariableId, Variable>,
     pub body: Vec<Statement>,
+}
+
+#[derive(Debug, Clone)]
+pub enum WrappedItem<T> {
+    FromIrData {
+        item: T,
+        from: Aos<IrData>,
+        comment: String,
+    },
+    FromIrStatement {
+        item: T,
+        from: IrStatementDescriptor,
+        comment: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -73,6 +91,7 @@ pub enum Expression {
     Undefined,
     ArchitectureBitSize,
     ArchitectureByteSize,
+    Comment(String),
     Literal(Literal),
     Variable(VariableId),
     UnaryOp(UnaryOperator, Box<Expression>),
@@ -104,7 +123,6 @@ pub enum UnaryOperator {
     PreDec,  // --x
     PostInc, // x++
     PostDec, // x--
-    Sized { bit: u8 },
     CastSigned,
     CastUnsigned,
 }
@@ -342,6 +360,7 @@ impl std::fmt::Display for Expression {
             Expression::MemberAccess(expression, member) => write!(f, "{}.{}", expression, member),
             Expression::ArchitectureBitSize => write!(f, "ARCH_BIT_SIZE"),
             Expression::ArchitectureByteSize => write!(f, "ARCH_BYTE_SIZE"),
+            Expression::Comment(comment) => write!(f, "// {}", comment),
         }
     }
 }
@@ -367,7 +386,6 @@ impl std::fmt::Display for UnaryOperator {
             UnaryOperator::PreDec => write!(f, "--"),
             UnaryOperator::PostInc => write!(f, "++"),
             UnaryOperator::PostDec => write!(f, "--"),
-            UnaryOperator::Sized { bit } => write!(f, "({}bit)", bit),
             UnaryOperator::CastSigned => write!(f, "(signed)"),
             UnaryOperator::CastUnsigned => write!(f, "(unsigned)"),
         }
