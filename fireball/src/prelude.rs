@@ -1,4 +1,4 @@
-//! 기본적으로 사용되는 use문 등이 들어가는 모듈
+//! Module containing commonly used `use` statements and utilities
 
 #![allow(unused_imports)]
 
@@ -36,11 +36,11 @@ pub(crate) fn test_init() {
 
 #[cfg(test)]
 mod tests {
-    /// bitvec 내부 구현이 Bit 어떤 순서대로 저장되는지 테스트
-    /// 데이터 조작 후 캐스팅을 위한 방법 포함.
+    /// Tests the storage order of bits in the bitvec implementation (Msb0)
+    /// Includes methods for data manipulation and casting.
     #[test]
     fn bit_align_test_msb0() {
-        /* BitPtr형태로 변환하여 Cast를 사용하는 것은 불안정하기 떄문에, 해당 연산을 사용해야 합니다. */
+        /* Converting to BitPtr and using Cast is unstable, so this operation must be used. */
         let mut bits = bitvec::prelude::BitVec::<usize, bitvec::order::Msb0>::new();
         bits.resize(8, false);
         let mut bits = bits.into_boxed_bitslice();
@@ -49,11 +49,11 @@ mod tests {
         assert_eq!(data, 0b00000001)
     }
 
-    /// bitvec 내부 구현이 Bit 어떤 순서대로 저장되는지 테스트
-    /// 데이터 조작 후 캐스팅을 위한 방법 포함.
+    /// Tests the storage order of bits in the bitvec implementation (Lsb0)
+    /// Includes methods for data manipulation and casting.
     #[test]
     fn bit_align_test_lsb0() {
-        /* BitPtr형태로 변환하여 Cast를 사용하는 것은 불안정하기 떄문에, 해당 연산을 사용해야 합니다. */
+        /* Converting to BitPtr and using Cast is unstable, so this operation must be used. */
         let mut bits = bitvec::prelude::BitVec::<usize>::new();
         bits.resize(8, false);
         let mut bits = bits.into_boxed_bitslice();

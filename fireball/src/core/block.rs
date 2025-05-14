@@ -4,7 +4,7 @@ use super::{Address, Relation, Section};
 use crate::ir::IrBlock;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
-/// 분석에 의해 생성된 어셈블리단위 블럭
+/// 분석에 의해 생성된 IR단위 블럭
 ///
 /// 해당 구조체는 한 지점에서 jmp XXXX라는 명령어가 수행되어졌을 때, XXXX을 시작 주소로 하나의 블럭이 생성되며
 /// 해당 블럭별로 가상 코드를 작성하여 디컴파일을 진행한다.

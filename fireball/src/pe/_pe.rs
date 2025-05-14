@@ -1,4 +1,4 @@
-//! PE 구조체에 대한 구현이 담겨있는 모듈
+//! Module containing the implementation of the PE struct
 
 use super::Pe;
 use crate::{
@@ -17,7 +17,7 @@ impl Pe {
         Ok(Pe::new(None, binary))
     }
 
-    /// 바이너리를 기반으로 PE 구조체를 생성한다.
+    /// Creates a PE struct from binary data.
     pub(crate) fn new(path: Option<String>, binary: Vec<u8>) -> Self {
         // 1. 섹션정보 생성
         // 2. 캡스톤 객체 생성

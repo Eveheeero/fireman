@@ -1,4 +1,4 @@
-//! IR 분석 관련 모듈
+//! Module for IR analysis
 
 pub mod analyze;
 pub mod arm;
@@ -23,31 +23,28 @@ use statements::IrStatement;
 use std::{cell::UnsafeCell, sync::LazyLock};
 use utils::IrStatementDescriptorMap;
 
-/// 컴퓨터가 동작하는 행동을 재현하기 위한 구조체
+/// A structure to simulate the computer's behavior
 ///
 /// ### Todo
-///
-/// - 레지스터 데이터 외에도, 메모리 변환, 파일 등을 다뤄야 합니다.
+/// - Handle memory transformations, file I/O, etc., in addition to register data.
 pub struct VirtualMachine {
-    /// 0~64비트의 값은 rax, 64~128비트의 값은 rbx 를 가지고 있는 등으로, CPU의 데이터를 가지고 있습니다.
+    /// CPU registers storage (e.g., bits 0-64 for rax, 64-128 for rbx)
     register: UnsafeCell<BitBox>,
 }
 
-/// IR 데이터의 기본적인 행동 인터페이스 (파일 변환 등..., 하지만 구현되지 않았습니다.)
+/// Basic interface for IR data behavior (e.g., file transformations); not yet implemented
 impl VirtualMachine {
-    /// 가공되지 앟은 레지스터 데이터를 가져옵니다.
+    /// Returns the raw register data
     pub fn get_raw(&self) -> &BitBox {
         unsafe { &*self.register.get() }
     }
-    /// 가공되지 앟은 레지스터 데이터를 가져옵니다.
+    /// Returns the raw register data (mutable)
     pub fn get_raw_mut(&mut self) -> &mut BitBox {
         unsafe { &mut *self.register.get() }
     }
 }
 
-/// IR statements per block
-///
-/// 한 블럭 안에서 IR명령이 어떻게 동작하는지를 저장하는 구조체
+/// Structure that stores how IR instructions operate within a block
 #[derive(Debug, Clone)]
 pub struct IrBlock {
     ir: Box<[Ir]>,
@@ -148,14 +145,12 @@ impl IrBlock {
 }
 
 /// IR statements per address
-///
-/// 특정 주소에 대한 IR 명령의 모음
 #[derive(Debug, Clone)]
 pub struct Ir {
-    /// IR 변화가 일어난 주소
+    /// Address of the instruction
     pub address: Address,
-    /// 해당 인스트럭션에 대한 파싱된 구조체
+    /// Parsed instruction structure for this instruction
     pub instruction: Box<Instruction>,
-    /// 실행된 명령
+    /// Executed statements
     pub statements: Option<&'static [IrStatement]>,
 }

@@ -1,26 +1,32 @@
-//! 프로그램을 분석한 결과로 나온 "Block"를 모아두는 구조체를 정의하는 모듈
+//! Module defining a structure that collects "Block"s resulting from program analysis
 
 use crate::core::{relation::DestinationType, Address, Block, Relation, RelationType, Relations};
 use std::sync::Arc;
 
-/// 어셈블리 단위의 블럭들을 관리하는 구조체
+/// A structure that manages IR-level blocks
 ///
-/// 해당 구조체를 이용해 블럭을 생성하고, 이미 존재하는 블럭을 가져온다.
+/// Use this structure to create new blocks and retrieve existing ones.
 pub struct Blocks {
-    /// 블럭들의 실제 데이터
+    /// Actual block data storage
     data: std::sync::RwLock<std::collections::HashSet<Arc<Block>>>,
-    /// Relations of block
+    /// Block relations
     relations: Arc<Relations>,
 }
 
+pub(crate) struct BlockRelationInformation {
+    pub(crate) destination: Option<Address>,
+    pub(crate) destination_type: DestinationType,
+    pub(crate) relation_type: RelationType,
+}
+
 impl Blocks {
-    /// 블럭 저장소 구조체를 생성한다.
+    /// Creates the block storage structure.
     ///
     /// ### Arguments
-    /// - `relations: Arc<Relation>`: 블럭 간의 관계를 저장하는 구조체
+    /// - `relations: Arc<Relations>`: A structure that stores relations between blocks
     ///
     /// ### Returns
-    /// - `Arc<Self>`: 생성된 블럭 저장소 구조체
+    /// - `Arc<Self>`: The created block store structure
     pub(crate) fn new(relations: Arc<Relations>) -> Arc<Self> {
         Arc::new(Self {
             data: Default::default(),
@@ -28,24 +34,24 @@ impl Blocks {
         })
     }
 
-    /// 저장소에 새 블럭을 생성한다.
+    /// Generates a new block in the store.
     ///
     /// ### Arguments
-    /// - `start_address: Address`: 블럭의 시작 주소
-    /// - `block_size: Option<u64>,` - 블럭의 사이즈
-    /// - `connected_to: &[(Option<Address>, DestinationType, RelationType)]`: 이 블럭이 어떤 블럭과 연결되었는지
-    /// - `name: Option<String>`: 블럭의 이름
+    /// - `start_address: Address`: The start address of the block
+    /// - `block_size: Option<u64>`: The size of the block
+    /// - `connected_to: &[BlockRelationInformation]`: the relations to other blocks
+    /// - `name: Option<String>`: The name of the block
     ///
     /// ### Returns
-    /// - `Arc<Block>`: 생성된 블럭
+    /// - `Arc<Block>`: The generated block
     pub(crate) fn generate_block(
         &self,
         start_address: Address,
         block_size: Option<u64>,
-        connected_to: &[(Option<Address>, DestinationType, RelationType)],
+        connected_to: &[BlockRelationInformation],
         name: Option<String>,
     ) -> Arc<Block> {
-        /* 락 해제 전 해당 블럭을 향해 지정되어있는 관계 확인 */
+        /* Before acquiring the lock, check relations targeting this block */
         let connected_from: Vec<_> = {
             self.data
                 .read()
@@ -56,41 +62,35 @@ impl Blocks {
                 .collect()
         };
 
-        /* 락 해제 전 관계 생성 (관계 생성중 저장소 접근 필요하기 떄문) */
+        /* Before acquiring the lock, create relations (requires access to the store during creation) */
         let connected_to: Vec<_> = connected_to
             .iter()
             .map(|connected_to| {
                 let connected_block = connected_to
-                    .0
+                    .destination
                     .as_ref()
                     .and_then(|connected_to| self.get_by_start_address(connected_to));
-                (
-                    connected_to.0.clone(),
-                    connected_to.1,
-                    connected_to.2,
-                    connected_block,
-                )
+                (connected_to, connected_block)
             })
             .collect();
 
-        /* 저장소의 락 해제 */
+        /* Acquire the lock on the store */
         let blocks_writer = &mut self.data.write().unwrap();
 
-        /* 주어진 정보로 새 블록 생성 */
+        /* Create the new block with the provided information */
         let new_block = Block::new(blocks_writer.len(), name, start_address, block_size);
 
         for connected_from in connected_from {
             new_block.add_connected_from(connected_from);
         }
 
-        for connected_to in connected_to {
-            let connected_address = connected_to.0;
-            let connected_block = connected_to.3;
+        for (relation, connected_block) in connected_to {
+            let connected_address = relation.destination.clone();
             let relation = Relation::new(
                 new_block.get_id(),
                 connected_address.clone(),
-                connected_to.1,
-                connected_to.2,
+                relation.destination_type,
+                relation.relation_type,
             );
             self.relations.add_relation(relation.clone());
             new_block.add_connected_to(relation.clone());
@@ -99,43 +99,43 @@ impl Blocks {
             }
         }
 
-        /* 새 블록을 저장소에 저장 */
+        /* Insert the new block into the store */
         blocks_writer.insert(new_block.clone());
 
-        /* 반환 */
+        /* Return the new block */
         new_block
     }
 
-    /// 주어진 주소를 시작주소로 가진 블럭을 반환한다.
+    /// Returns the block with the given start address.
     ///
     /// ### Arguments
-    /// - `address: &Address`: 대상 주소
+    /// - `address: &Address`: The target address
     ///
     /// ### Returns
-    /// - `Option<Arc<Block>>`: 검출된 블럭
+    /// - `Option<Arc<Block>>`: The found block, if any
     pub fn get_by_start_address(&self, address: &Address) -> Option<Arc<Block>> {
-        /* 저장소의 락 해제 */
+        /* Acquire a read lock on the store */
         let blocks_reader = &self.data.read().unwrap();
 
-        /* 저장소의 데이터에서 검사 */
+        /* Inspect the store's data */
         blocks_reader
             .iter()
             .find(|block| block.get_start_address() == address)
             .map(Arc::clone)
     }
 
-    /// 주어진 주소를 포함하는 블럭을 반환한다.
+    /// Returns the blocks containing the given address.
     ///
     /// ### Arguments
-    /// - `address: &Address`: 대상 주소
+    /// - `address: &Address`: The target address
     ///
     /// ### Returns
-    /// - `Vec<Arc<Block>>`: 검출된 블럭
+    /// - `Vec<Arc<Block>>`: The found blocks
     pub fn get_by_containing_address(&self, address: &Address) -> Vec<Arc<Block>> {
-        /* 저장소의 락 해제 */
+        /* Acquire a read lock on the store */
         let blocks_reader = &self.data.read().unwrap();
 
-        /* 저장소의 데이터에서 검사 */
+        /* Inspect the store's data */
         blocks_reader
             .iter()
             .filter(|block| block.contains(address))
@@ -143,29 +143,30 @@ impl Blocks {
             .collect()
     }
 
-    /// 블럭 아이디를 기반으로 블럭을 가져온다.
+    /// Retrieves a block by its ID.
     ///
     /// ### Arguments
-    /// - `id: usize`: 블럭 아이디
+    /// - `id: usize`: The block ID
     ///
     /// ### Returns
-    /// - `Option<Arc<Block>>`: 아이디에 해당하는 블럭
+    /// - `Option<Arc<Block>>`: The block corresponding to the ID, if any
     pub fn get_by_block_id(&self, id: usize) -> Option<Arc<Block>> {
-        /* 저장소의 락 해제 */
+        /* Acquire a read lock on the store */
         let blocks_reader = &self.data.read().unwrap();
 
+        /* Inspect the store's data */
         blocks_reader
             .iter()
             .find(|block| block.get_id() == id)
             .map(Arc::clone)
     }
 
-    /// 모든 블럭을 반환한다.
+    /// Returns all blocks.
     ///
     /// ### Returns
-    /// - `Vec<Arc<Block>>`: 모든 블럭
+    /// - `Vec<Arc<Block>>`: All blocks
     pub fn get_all(&self) -> Vec<Arc<Block>> {
-        /* 저장소의 락 해제 */
+        /* Acquire a read lock on the store */
         let blocks_reader = &self.data.read().unwrap();
         blocks_reader.iter().map(Arc::clone).collect()
     }

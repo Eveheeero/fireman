@@ -4,23 +4,20 @@ use crate::{
 };
 use std::num::NonZeroU8;
 
-/// IR 내부에 사용되는 데이터
-///
-/// ### Note
-/// snowman's Term + classes based ExpressionBase class
+/// Data used internally by the IR
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IrData {
-    /// mov eax, 0x1234의 0x1234
+    /// The literal value (e.g., 0x1234) in `mov eax, 0x1234`
     Constant(usize),
-    /// Special (undefined, data remained before..)
+    /// Special data (undefined, residual data)
     Intrinsic(IrIntrinsic),
-    // mov eax, ebx의 ebx
+    /// The register operand (e.g., ebx) in `mov eax, ebx`
     Register(crate::ir::Register),
-    /// mov eax, dword ptr [eax]의 dword ptr [eax]
+    /// The memory operand (e.g., dword ptr [eax]) in `mov eax, dword ptr [eax]`
     Dereference(Aos<IrData>),
-    /// Operation
+    /// An IR data operation
     Operation(IrDataOperation),
-    /// Nth operand
+    /// Nth operand index
     Operand(NonZeroU8),
 }
 

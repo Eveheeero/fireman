@@ -1,3 +1,3 @@
-//! 테스트 모듈
+//! Test module
 
 mod pe_hello_world;

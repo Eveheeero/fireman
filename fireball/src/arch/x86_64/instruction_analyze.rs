@@ -1,4 +1,4 @@
-//! x86_64 아키텍처 인스트럭션을 IR로 변환하는 함수가 담긴 모듈
+//! Module containing functions to convert x86_64 architecture instructions into IR
 #![allow(unused_imports)]
 
 mod a;

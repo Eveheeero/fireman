@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-//! 코어 트레이트가 담겨있는 모듈
+//! Module containing core traits and structures
 
 mod address;
 mod block;
@@ -15,6 +15,7 @@ mod sections;
 
 pub use address::Address;
 pub use block::Block;
+pub(crate) use blocks::BlockRelationInformation;
 pub use blocks::Blocks;
 pub use fire::Fire;
 pub use instruction::Instruction;
