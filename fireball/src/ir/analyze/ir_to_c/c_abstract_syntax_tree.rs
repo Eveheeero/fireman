@@ -83,6 +83,7 @@ pub enum Statement {
     Assembly(String),
     Undefined,
     Exception(&'static str),
+    Comment(String),
     Empty,
 }
 
@@ -92,7 +93,6 @@ pub enum Expression {
     Undefined,
     ArchitectureBitSize,
     ArchitectureByteSize,
-    Comment(String),
     Literal(Literal),
     Variable(VariableId),
     UnaryOp(UnaryOperator, Box<Expression>),
@@ -184,7 +184,7 @@ impl CAst {
 
         // Functions
         for func in &self.functions {
-            output.push_str(&format!("{} f{}(", func.return_type.to_string(), func.id));
+            output.push_str(&format!("{} f{:X}(", func.return_type.to_string(), func.id));
 
             // Parameters
             if !func.parameters.is_empty() {
@@ -330,6 +330,7 @@ impl std::fmt::Display for Statement {
             Statement::Undefined => write!(f, "<UNDEFINED BEHAVIOR>"),
             Statement::Exception(e) => write!(f, "<EXCEPTION: {e}>"),
             Statement::Assembly(code) => write!(f, "<ASSEMBLY: {code}>"),
+            Statement::Comment(comment) => write!(f, "// {}", comment),
         }
     }
 }
@@ -362,7 +363,6 @@ impl std::fmt::Display for Expression {
             Expression::MemberAccess(expression, member) => write!(f, "{}.{}", expression, member),
             Expression::ArchitectureBitSize => write!(f, "ARCH_BIT_SIZE"),
             Expression::ArchitectureByteSize => write!(f, "ARCH_BYTE_SIZE"),
-            Expression::Comment(comment) => write!(f, "// {}", comment),
         }
     }
 }

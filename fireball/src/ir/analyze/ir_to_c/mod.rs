@@ -24,7 +24,7 @@ pub fn generate_c(data: &MergedIr) -> CAst {
     let mut locals = HashMap::new();
     for (i, var) in data.variables.iter().enumerate() {
         let c_type = match var.data_type {
-            DataType::Unknown => CType::Int32,
+            DataType::Unknown => CType::Unknown,
             DataType::Int => CType::Int32,
             DataType::Float => CType::Double,
             DataType::StringPointer => CType::Pointer(Box::new(CType::Char)),
@@ -65,9 +65,12 @@ pub fn generate_c(data: &MergedIr) -> CAst {
     }
 
     for ir in &data.ir {
+        func.body
+            .push(Statement::Comment(ir.instruction.to_string()));
         if let Some(stmts) = ir.statements {
             let instruction_args = ir.instruction.inner.arguments.as_ref();
             for stmt in stmts.iter() {
+                func.body.push(Statement::Comment(stmt.to_string()));
                 func.body
                     .push(convert_stmt(stmt, &var_map, instruction_args));
             }
