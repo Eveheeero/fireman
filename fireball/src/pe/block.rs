@@ -48,10 +48,15 @@ impl Pe {
             );
             if inst.is_jcc() || inst.is_call() {
                 // 다음 주소
+                let relation_type = if inst.is_jcc() {
+                    RelationType::Continued
+                } else {
+                    RelationType::Halt
+                };
                 connected_to.push((
                     Some(last_instruction_address + inst.bytes.as_ref().unwrap().len() as u64),
                     DestinationType::Static,
-                    RelationType::Continued,
+                    relation_type,
                 ));
             }
             // jcc나 call등에 의해 이동하는 주소

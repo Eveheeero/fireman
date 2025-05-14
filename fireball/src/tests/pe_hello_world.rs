@@ -119,11 +119,20 @@ fn pe_hello_world_block_relation() {
     let entry_block = entry_block.unwrap();
     let entry_block_id = entry_block.get_id();
     let entry_connected_to = entry_block.get_connected_to();
-    assert_eq!(entry_connected_to.len(), 1);
-    assert_eq!(entry_connected_to[0].relation_type(), &RelationType::Call);
+    assert_eq!(entry_connected_to.len(), 2);
+    for connected_to in entry_connected_to.iter() {
+        assert!(matches!(
+            connected_to.relation_type(),
+            &RelationType::Call | &RelationType::Halt
+        ));
+    }
 
     /* 엔트리의 to에 대한 블럭 생성 확인 */
-    let to_address = entry_connected_to[0].to().unwrap();
+    let to_address = entry_connected_to
+        .iter()
+        .find(|x| x.relation_type() == &RelationType::Call)
+        .and_then(|x| x.to())
+        .unwrap();
     pe.generate_block_from_address(&to_address);
     let blocks = pe.get_blocks();
     let to_block = blocks.get_by_start_address(&to_address);
@@ -135,9 +144,14 @@ fn pe_hello_world_block_relation() {
     assert_eq!(to_connected_from[0].from(), entry_block_id);
     // check connected to
     let to_connected_to = to_block.get_connected_to();
-    assert_eq!(to_connected_to.len(), 1);
+    assert_eq!(to_connected_to.len(), 2);
     assert_eq!(
-        to_connected_to[0].to().unwrap().get_virtual_address(),
+        to_connected_to
+            .iter()
+            .find(|x| x.relation_type() == &RelationType::Call)
+            .and_then(|x| x.to())
+            .map(|x| x.get_virtual_address())
+            .unwrap(),
         37216
     );
 }
