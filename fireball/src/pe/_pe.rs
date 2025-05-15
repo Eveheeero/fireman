@@ -19,23 +19,23 @@ impl Pe {
 
     /// Creates a PE struct from binary data.
     pub(crate) fn new(path: Option<String>, binary: Vec<u8>) -> Self {
-        // 1. 섹션정보 생성
-        // 2. 캡스톤 객체 생성
-        // 3. 바이너리에 이미 지정되어있는 정보 생성
+        // 1. Build section information
+        // 2. Create Capstone object
+        // 3. Generate predefined binary offset information
 
-        // 공통적으로 사용되는 객체 생성
+        // Common objects used throughout
         let gl = goblin::pe::PE::parse(&binary).unwrap();
 
-        // 바이너리 전체에 대한 섹션정보 생성
+        // Build section information for the entire binary
         let sections = Sections::new();
         sections.build_all(&binary);
 
-        // 캡스톤 객체 생성
+        // Create Capstone object
         let capstone = {
-            // 바이너리를 기반으로 86x64인지 확인한다.
+            // Check if it's 86x64 based on the binary
             let is_86 = !gl.is_64;
 
-            // 캡스톤 객체 생성
+            // Create Capstone object
             let capstone = capstone::Capstone::new()
                 .x86()
                 .mode(if is_86 {
@@ -49,7 +49,7 @@ impl Pe {
             Box::pin(capstone)
         };
 
-        // 바이너리에 이미 지정되어있는 정보 생성
+        // Generate predefined binary offset information
         let defined = {
             let defined = PreDefinedOffsets::new();
 

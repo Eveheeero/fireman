@@ -21,7 +21,7 @@ impl Sections {
     /// Build all section struct from binary.
     /// This method is only called when start analysis.
     pub(crate) fn build_all(&self, binary: &[u8]) {
-        // golbin으로부터 모든 바이너리를 파싱해 섹션 정보를 가져온다.
+        // Parse the binary using goblin
         let gl = goblin::Object::parse(binary).unwrap();
         let section_writer = &mut self.data.write().unwrap();
 

@@ -1,20 +1,19 @@
-//! "Relation"을 모아두는 구조체를 정의하는 모듈
+//! Modules that contain the `Relations` struct and its methods.
 
 use super::Relation;
 use std::sync::{Arc, RwLockReadGuard};
 
-/// 코드 블럭의 연결 데이터를 관리하는 구조체
+/// Struct to manage relations between blocks
 #[derive(Debug)]
 pub struct Relations {
-    /// 내부 데이터
     data: std::sync::RwLock<Vec<Relation>>,
 }
 
 impl Relations {
-    /// 연결을 관리하는 구조체를 생성한다.
+    /// Creates a container for managing relations between blocks.
     ///
     /// ### Returns
-    /// - `Arc<Self>`: 연결 데이터를 관리하는 구조체
+    /// - `Arc<Self>`: container
     pub(crate) fn new() -> Arc<Self> {
         Arc::new(Self {
             data: Default::default(),

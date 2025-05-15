@@ -1,13 +1,13 @@
-//! 복사할 수 있는 인스트럭션을 정의하는 모듈
+//! Module defining instruction information
 
-/// 어셈블리 인스트럭션 정보
+/// Information about an assembly instruction
 ///
-/// Capstone엔진의 Instruction은 Clone을 사용할 수 없어, 복사할 수 있는 Instruction을 만들어 사용한다.
+/// Since Capstone engine's `Instruction` cannot be cloned, we define a cloneable `Instruction`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Instruction {
-    /// 인스트럭션의 주소
+    /// The instruction's virtual address
     pub(crate) address: u64,
-    /// 인스트럭션의 길이
+    /// Parsed Instruction
     pub(crate) inner: iceball::Instruction,
 }
 

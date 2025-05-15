@@ -1,4 +1,4 @@
-//! 코어 트레이트에 대한 구현이 담겨있는 모듈
+//! Modules that implement the `Fire` trait for the `Pe` struct.
 
 mod decom_all;
 mod decom_block;
