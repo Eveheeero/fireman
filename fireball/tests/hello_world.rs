@@ -1,8 +1,4 @@
-use fireball::{
-    core::Fire,
-    ir::analyze::{generate_c, ir_block_merger::merge_blocks, ControlFlowGraphAnalyzer},
-    pe::Pe,
-};
+use fireball::{core::Fire, pe::Pe};
 
 fn test_init() {
     use tracing_subscriber::{
@@ -35,17 +31,6 @@ fn hello_world() {
     let binary = get_binary();
 
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
-    let targets = pe.analyze_all().unwrap();
-    let mut cfg_analyzer = ControlFlowGraphAnalyzer::new();
-    cfg_analyzer.add_targets(targets);
-    let cfgs = cfg_analyzer.analyze();
-    for cfg in cfgs.iter() {
-        let merged = merge_blocks(cfg.get_blocks());
-        let result = generate_c(&merged);
-
-        println!("{}", result.to_c_code());
-        println!(
-            "--------------------------------------------------------------------------------"
-        );
-    }
+    println!("{}", pe.decompile_all().unwrap());
+    assert!(true);
 }

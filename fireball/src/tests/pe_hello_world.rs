@@ -1,5 +1,5 @@
 use crate::{
-    core::{Address, Fire, RelationType},
+    core::{Address, FireRaw, RelationType},
     pe::Pe,
     prelude::*,
 };

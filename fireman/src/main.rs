@@ -1,4 +1,4 @@
-use fireball::{core::Fire, Fireball};
+use fireball::{core::FireRaw, Fireball};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Setting {
