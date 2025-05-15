@@ -16,6 +16,7 @@ use crate::{
         data::{DataAccess, IrData},
     },
     prelude::BitBox,
+    prelude::*,
     utils::{error::ir_analyze_assertion_error::IrAnalyzeAssertionFailure, Aos},
 };
 pub use register::Register;
@@ -69,6 +70,7 @@ impl IrBlock {
     }
 
     pub fn analyze_data_access(&mut self) {
+        debug!("Analyzing data access");
         let mut result = IrStatementDescriptorMap::new();
         for (ir_index, ir) in self.ir.iter().enumerate() {
             analyze::analyze_data_access(&mut result, ir_index as u32, ir);
@@ -77,6 +79,7 @@ impl IrBlock {
     }
 
     pub fn analyze_datatypes(&mut self) {
+        debug!("Analyzing datatypes");
         let mut result = IrStatementDescriptorMap::new();
         for (ir_index, ir) in self.ir.iter().enumerate() {
             analyze::analyze_datatype(&mut result, ir_index as u32, ir);
@@ -85,6 +88,7 @@ impl IrBlock {
     }
 
     pub fn analyze_variables(&mut self) -> Result<(), &'static str> {
+        debug!("Analyzing variables");
         let mut variables = analyze::analyze_variables(self)?;
         variables.shrink_to_fit();
         self.variables = Some(variables);

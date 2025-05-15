@@ -163,7 +163,7 @@ fn pe_hello_world_decom_block() {
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
     /* Start decompilation from the entry point */
-    let result = pe.decom_from_entry();
+    let result = pe.analyze_from_entry();
     assert!(result.is_ok(), "Decompilation failed");
     let result = result.unwrap();
     let entry = pe.entry();
@@ -196,7 +196,7 @@ fn pe_hello_world_analyze_variables() {
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
     /* Start decompilation from the entry point */
-    let result = pe.decom_from_entry();
+    let result = pe.analyze_from_entry();
     assert!(result.is_ok(), "Decompilation failed");
     let block = result.unwrap();
     let ir = block.get_ir();
@@ -216,7 +216,7 @@ fn pe_hello_world_print_statements() {
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
     /* Start decompilation from the entry point */
-    let result = pe.decom_from_entry();
+    let result = pe.analyze_from_entry();
     assert!(result.is_ok(), "Decompilation failed");
     let block = result.unwrap();
     let ir = block.get_ir();

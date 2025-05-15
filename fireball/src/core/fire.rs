@@ -27,44 +27,44 @@ pub trait Fire {
     /// - This function performs no additional computation.
     fn get_binary(&self) -> &Vec<u8>;
 
-    /// Decompiles the entire file.
+    /// Analyze the entire file.
     ///
     /// ### Returns
-    /// - `Result<Vec<Arc<Block>>, DecompileError>` - the decompilation result
-    fn decom_all(&self) -> Result<Vec<Arc<Block>>, DecompileError>;
+    /// - `Result<Vec<Arc<Block>>, DecompileError>` - the analyzed blocks
+    fn analyze_all(&self) -> Result<Vec<Arc<Block>>, DecompileError>;
 
-    /// Decompiles starting from the entry point.
+    /// Analyzes starting from the entry point.
     ///
     /// ### Returns
-    /// - `Result<Arc<Block>, DecompileError>` - the decompilation result
-    fn decom_from_entry(&self) -> Result<Arc<Block>, DecompileError>;
+    /// - `Result<Arc<Block>, DecompileError>` - the analyzed block
+    fn analyze_from_entry(&self) -> Result<Arc<Block>, DecompileError>;
 
-    /// Decompiles a block from a given file offset until the block ends.
+    /// Analyzes a block from a given file offset until the block ends.
     ///
     /// ### Arguments
     /// - `address: u64` - the file offset to start analysis
     ///
     /// ### Returns
-    /// - `Result<Arc<Block>, DecompileError>` - the decompilation result
-    fn decom_from_file_offset(&self, address: u64) -> Result<Arc<Block>, DecompileError>;
+    /// - `Result<Arc<Block>, DecompileError>` - the analyzed block
+    fn analyze_from_file_offset(&self, address: u64) -> Result<Arc<Block>, DecompileError>;
 
-    /// Decompiles a block from a given virtual address until the block ends.
+    /// Analyzes a block from a given virtual address until the block ends.
     ///
     /// ### Arguments
     /// - `address: u64` - the virtual address to start analysis
     ///
     /// ### Returns
-    /// - `Result<Arc<Block>, DecompileError>` - the decompilation result
-    fn decom_from_virtual_address(&self, address: u64) -> Result<Arc<Block>, DecompileError>;
+    /// - `Result<Arc<Block>, DecompileError>` - the analyzed block
+    fn analyze_from_virtual_address(&self, address: u64) -> Result<Arc<Block>, DecompileError>;
 
-    /// Decompiles a block from a given `Address` until the block ends.
+    /// Analyzes a block from a given `Address` until the block ends.
     ///
     /// ### Arguments
     /// - `address: &Address` - the address to start analysis
     ///
     /// ### Returns
-    /// - `Result<Arc<Block>, DecompileError>` - the decompilation result
-    fn decom_block(&self, address: &Address) -> Result<Arc<Block>, DecompileError>;
+    /// - `Result<Arc<Block>, DecompileError>` - the analyzed block
+    fn analyze_block(&self, address: &Address) -> Result<Arc<Block>, DecompileError>;
 
     /// Returns all section information obtained after analysis.
     ///

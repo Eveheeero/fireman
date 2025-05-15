@@ -52,7 +52,7 @@ fn open_file(path: &str) -> Result<(), String> {
 fn decom_from_entry() -> Result<Vec<u64>, String> {
     let app = APP.lock().unwrap();
     let fireball = app.fireball()?;
-    let result = fireball.decom_from_entry();
+    let result = fireball.analyze_from_entry();
     if let Err(e) = result {
         return Err(e.to_string());
     }
@@ -74,7 +74,7 @@ fn decom_from_address(address: &str) -> Result<Vec<u64>, String> {
     let app = APP.lock().unwrap();
     let fireball = app.fireball()?;
     let address = parse_address(address)?;
-    let result = fireball.decom_from_virtual_address(address);
+    let result = fireball.analyze_from_virtual_address(address);
     if let Err(e) = result {
         return Err(e.to_string());
     }

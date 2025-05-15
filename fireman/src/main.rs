@@ -65,7 +65,7 @@ fn main() {
 
     let input = input.unwrap();
     let fire = Fireball::from_path(input).unwrap();
-    let result = fire.decom_from_entry().unwrap();
+    let result = fire.analyze_from_entry().unwrap();
     let mut walked = Vec::new();
     let mut queue: Vec<_> = [result.get_start_address().clone()].into();
     while let Some(address) = queue.pop() {
@@ -76,7 +76,7 @@ fn main() {
             "Ir Block starts from {:#010x}",
             address.get_virtual_address()
         );
-        let now = fire.decom_block(&address).unwrap();
+        let now = fire.analyze_block(&address).unwrap();
         walked.push(address);
         let reader = now.get_ir();
         let ir_block = reader.as_ref().unwrap();

@@ -46,33 +46,33 @@ impl Fire for Fireball {
         self.get_object().get_binary()
     }
 
-    fn decom_all(&self) -> Result<Vec<std::sync::Arc<core::Block>>, prelude::DecompileError> {
-        self.get_object().decom_all()
+    fn analyze_all(&self) -> Result<Vec<std::sync::Arc<core::Block>>, prelude::DecompileError> {
+        self.get_object().analyze_all()
     }
 
-    fn decom_from_entry(&self) -> Result<std::sync::Arc<core::Block>, prelude::DecompileError> {
-        self.get_object().decom_from_entry()
+    fn analyze_from_entry(&self) -> Result<std::sync::Arc<core::Block>, prelude::DecompileError> {
+        self.get_object().analyze_from_entry()
     }
 
-    fn decom_from_file_offset(
+    fn analyze_from_file_offset(
         &self,
         address: u64,
     ) -> Result<std::sync::Arc<core::Block>, prelude::DecompileError> {
-        self.get_object().decom_from_file_offset(address)
+        self.get_object().analyze_from_file_offset(address)
     }
 
-    fn decom_from_virtual_address(
+    fn analyze_from_virtual_address(
         &self,
         address: u64,
     ) -> Result<std::sync::Arc<core::Block>, prelude::DecompileError> {
-        self.get_object().decom_from_virtual_address(address)
+        self.get_object().analyze_from_virtual_address(address)
     }
 
-    fn decom_block(
+    fn analyze_block(
         &self,
         address: &core::Address,
     ) -> Result<std::sync::Arc<core::Block>, prelude::DecompileError> {
-        self.get_object().decom_block(address)
+        self.get_object().analyze_block(address)
     }
 
     fn get_sections(&self) -> std::sync::Arc<core::Sections> {

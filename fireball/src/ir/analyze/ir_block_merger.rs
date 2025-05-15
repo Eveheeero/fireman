@@ -1,10 +1,12 @@
 use crate::{
     core::Block,
     ir::{analyze::DataType, data::DataAccess, utils::IrStatementDescriptorMap, Ir, IrBlock},
+    prelude::*,
 };
 use std::sync::Arc;
 
 pub fn merge_blocks(blocks: &[Arc<Block>]) -> MergedIr {
+    info!("Merging IR from {} blocks", blocks.len());
     // Merge IRs from all blocks in execution order
     let mut combined_ir = Vec::new();
     for block in blocks {
@@ -13,6 +15,7 @@ pub fn merge_blocks(blocks: &[Arc<Block>]) -> MergedIr {
         }
     }
 
+    debug!("Merged IR size: {}", combined_ir.len());
     // Analyze merged IR
     let mut ir_block = IrBlock::new(combined_ir.clone());
     ir_block.analyze_data_access();
@@ -26,11 +29,12 @@ pub fn merge_blocks(blocks: &[Arc<Block>]) -> MergedIr {
     let merged_vars = vars
         .into_iter()
         .map(|v| MergedIrVariable {
-            accesses: v.get_data_accesses().clone(),
             data_type: v.data_type,
+            accesses: v.into_data_accesses(),
         })
         .collect();
 
+    info!("Merge completed");
     MergedIr {
         ir: combined_ir,
         variables: merged_vars,

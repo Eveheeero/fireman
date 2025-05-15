@@ -1,10 +1,10 @@
 //! Modules that implement the `Fire` trait for the `Pe` struct.
 
-mod decom_all;
-mod decom_block;
-mod decom_from_entry;
-mod decom_from_file_offset;
-mod decom_from_virtual_address;
+mod analyze_all;
+mod analyze_block;
+mod analyze_from_entry;
+mod analyze_from_file_offset;
+mod analyze_from_virtual_address;
 
 use super::Pe;
 use crate::{
@@ -22,24 +22,24 @@ impl Fire for Pe {
         &self.binary
     }
 
-    fn decom_all(&self) -> Result<Vec<Arc<Block>>, DecompileError> {
-        self._decom_all()
+    fn analyze_all(&self) -> Result<Vec<Arc<Block>>, DecompileError> {
+        self._analyze_all()
     }
 
-    fn decom_from_entry(&self) -> Result<Arc<Block>, DecompileError> {
-        self._decom_from_entry()
+    fn analyze_from_entry(&self) -> Result<Arc<Block>, DecompileError> {
+        self._analyze_from_entry()
     }
 
-    fn decom_from_file_offset(&self, address: u64) -> Result<Arc<Block>, DecompileError> {
-        self._decom_from_file_offset(address)
+    fn analyze_from_file_offset(&self, address: u64) -> Result<Arc<Block>, DecompileError> {
+        self._analyze_from_file_offset(address)
     }
 
-    fn decom_from_virtual_address(&self, address: u64) -> Result<Arc<Block>, DecompileError> {
-        self._decom_from_virtual_address(address)
+    fn analyze_from_virtual_address(&self, address: u64) -> Result<Arc<Block>, DecompileError> {
+        self._analyze_from_virtual_address(address)
     }
 
-    fn decom_block(&self, address: &Address) -> Result<Arc<Block>, DecompileError> {
-        self._decom_block(address)
+    fn analyze_block(&self, address: &Address) -> Result<Arc<Block>, DecompileError> {
+        self._analyze_block(address)
     }
 
     fn get_sections(&self) -> Arc<Sections> {
