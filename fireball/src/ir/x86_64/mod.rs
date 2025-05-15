@@ -1,4 +1,4 @@
-//! x86_64 CPU 컴퓨터를 IR구조로 변환하는데 사용되는 서브모듈입니다.
+//! Submodule for x86_64 architectures.
 
 mod base;
 mod r#mut;
@@ -25,7 +25,7 @@ macro_rules! generate_range {
     };
 }
 
-/// X64(32비트 포함) 레지스터를 가져오는 인터페이스입니다.
+/// Trait for x86_64 CPU registers.
 pub trait X64 {
     fn new() -> Self;
 
@@ -369,7 +369,7 @@ pub trait X64 {
     generate_register!(tmp4_512);
 }
 
-/// X64(32비트 포함) 수정할 수 있는 레지스터를 가져오는 인터페이스입니다.
+/// Trait for mutable x86_64 CPU registers.
 pub trait X64Mut {
     generate_mutable_register!(rax);
     generate_mutable_register!(eax);

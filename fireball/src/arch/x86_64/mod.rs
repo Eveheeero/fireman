@@ -1,4 +1,4 @@
-//! x86_64 아키텍처 어셈블리를 IR로 변환하는 모듈
+//! Module that converts x86_64 architecture instructions into IR
 
 pub mod instruction_analyze;
 

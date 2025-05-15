@@ -1,55 +1,55 @@
-//! 분석중 나온 분기에 대한 연관관계를 정의하는 모듈
+//! Module defining branch relationships discovered during analysis
 
 use crate::core::Address;
 
-/// 코드 블럭과 다른 블럭과의 연결을 나타낸다. (jmp, call 등)
+/// Represents a connection between this code block and another (e.g., jmp, call)
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct Relation {
-    /// 해당 연결의 출발 블럭 아이디
+    /// ID of the source block for this connection
     from: usize,
-    /// 해당 연결의 도착 주소
+    /// Address of the destination block
     to: Option<Address>,
-    /// 해당 연결의 도착 주소 타입
+    /// Type of the destination address
     destination_type: DestinationType,
-    /// 해당 연결의 타입
+    /// Type of this relation
     relation_type: RelationType,
 }
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Copy)]
 pub enum DestinationType {
-    /// 정적 주소
+    /// Static address
     Static,
-    /// 동적 주소
+    /// Dynamic address
     Dynamic,
 }
 
-/// 코드 블럭의 연결 타입을 나타낸다.
+/// Types of connections between code blocks
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Copy)]
 pub enum RelationType {
-    /// 해당 연결이 call 연결임을 나타낸다.
+    /// Indicates a call connection
     Call,
-    /// By return
+    /// Indicates a halt connection (by return)
     Halt,
-    /// 해당 연결이 jmp 연결임을 나타낸다.
+    /// Indicates a jump connection
     Jump,
     Jcc,
-    /// 한 블럭이 여러 블럭으로 나누어 진 경우
+    /// Indicates the block continues into multiple blocks
     Continued,
-    /// 해당 연결이 ret 연결임을 나타낸다.
+    /// Indicates a return connection
     Return,
 }
 
 impl Relation {
-    /// 새로운 연결을 생성한다.
+    /// Creates a new relation.
     ///
     /// ### Arguments
-    /// - `from: usize`: 연결의 출발 블럭 아이디
-    /// - `to: Option<Address>`: 연결의 도착 주소
-    /// - `destination_type: DestinationType`: 연결의 도착 주소 타입
-    /// - `relation_type: RelationType`: 연결의 타입
+    /// - `from: usize` - ID of the source block
+    /// - `to: Option<Address>` - Address of the destination block
+    /// - `destination_type: DestinationType` - Type of the destination address
+    /// - `relation_type: RelationType` - Type of the connection
     ///
     /// ### Returns
-    /// - `Self`: 새로 생성된 연결
+    /// - `Self` - newly created relation
     pub fn new(
         from: usize,
         to: Option<Address>,
@@ -64,18 +64,18 @@ impl Relation {
         }
     }
 
-    /// 연결의 시작 블럭을 가져온다.
+    /// Returns the source block ID.
     ///
     /// ### Returns
-    /// - `usize`: 연결의 시작 블럭 아이디
+    /// - `usize` - source block ID
     pub fn from(&self) -> usize {
         self.from
     }
 
-    /// 연결의 도착 블럭을 가져온다.
+    /// Returns the destination address.
     ///
     /// ### Returns
-    /// - `Option<Address>`: 연결의 도착 주소
+    /// - `Option<Address>` - destination address
     pub fn to(&self) -> Option<Address> {
         self.to.clone()
     }

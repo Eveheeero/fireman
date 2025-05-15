@@ -1,4 +1,4 @@
-//! x86_64 아키텍처 인스트럭션을 IR로 변환하는 함수가 담긴 모듈
+//! Module containing functions to convert x86_64 architecture instructions into IR
 #![allow(unused_imports)]
 
 mod a;
@@ -33,13 +33,14 @@ mod shortcuts {
 use crate::{core::Instruction, ir::statements::*};
 use iceball::Statement;
 
-/// 어셈블리 인스트럭션을 받아 IR 명령으로 변환한다.
+/// Converts x86_64 assembly instructions into IR statements.
 ///
 /// ### Arguments
-/// - `instruction` : 어셈블리 인스트럭션
+/// - `instruction: &Instruction` : x86_64 assembly instruction
 ///
 /// ### Returns
-/// `Option<&'static [IrStatement]>` : IR 명령 배열, 분석 실패시 None
+/// `Option<&'static [IrStatement]>` : IR statements corresponding to the x86_64 instruction
+/// or `None` if the instruction is not supported.
 pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStatement]> {
     let op = if let Ok(Statement::X64(op)) = instruction.inner.statement {
         op

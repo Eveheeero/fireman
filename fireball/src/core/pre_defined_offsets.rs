@@ -1,37 +1,36 @@
-//! 프로그램에 대한 "PreDefinedOffset"를 모아두는 구조체를 정의하는 모듈
+//! Module defining `PreDefinedOffsets`, a container for `PreDefinedOffset` entries
 
 use super::PreDefinedOffset;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
-/// 파일 내부에 미리 지정되어있는 정보를 관리하는 구조체
+/// Struct managing pre-defined address information inside the binary
 pub struct PreDefinedOffsets {
-    /// 내부 데이터
     data: RwLock<Vec<PreDefinedOffset>>,
 }
 
 impl PreDefinedOffsets {
-    /// 미리 지정된 데이터를 저장하는 구조체를 생성한다.
+    /// Creates a container for storing pre-defined offsets.
     ///
     /// ### Returns
-    /// - `Arc<Self>`: 미리 지정되어있는 정보를 관리하는 컨테이너
+    /// - `Arc<Self>` - container managing pre-defined offset information
     pub(crate) fn new() -> Arc<Self> {
         Arc::new(Self {
             data: Default::default(),
         })
     }
 
-    /// 미리 지정된 정보를 저장소에 추가한다.
+    /// Inserts a pre-defined offset into the container.
     ///
     /// ### Arguments
-    /// - `data: PreDefinedOffset`: 파일 내부에 미리 지정되어있는 "주소에 대한 정보"
+    /// - `data: PreDefinedOffset` - pre-defined address information
     pub(crate) fn insert(&self, data: PreDefinedOffset) {
         self.data.write().unwrap().push(data);
     }
 
-    /// 내부 데이터의 리더를 가져온다.
+    /// Returns a read guard for the internal data.
     ///
     /// ### Returns
-    /// - `RwLockReadGuard<Vec<PreDefinedOffset>>`: 내부 데이터의 리더
+    /// - `RwLockReadGuard<Vec<PreDefinedOffset>>` - read guard for internal data
     pub fn get_reader(&self) -> RwLockReadGuard<Vec<PreDefinedOffset>> {
         self.data.read().unwrap()
     }

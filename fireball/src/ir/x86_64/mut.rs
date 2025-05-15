@@ -6,8 +6,9 @@ use crate::{
     prelude::BitSlice,
 };
 
-/// generate_register!(rax);가 들어올 경우 다음을 반환함
 /// ```ignore
+/// generate_register!(rax);
+/// // equals
 /// fn rax(&mut self) -> &mut BitSlice {
 ///     Self::const_bitslice_to_mut(X64::rax(self))
 /// }

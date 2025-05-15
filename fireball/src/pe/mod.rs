@@ -1,4 +1,4 @@
-//! PE파일에 대한 구조체가 담겨있는 모듈
+//! Module containing structures for PE files
 
 mod _pe;
 mod asm;
@@ -9,23 +9,22 @@ mod fmt;
 use crate::core::{Address, Blocks, PreDefinedOffsets, Relations, Sections};
 use std::{pin::Pin, sync::Arc};
 
-/// PE파일 파서
 pub struct Pe {
-    /// 엔트리 주소
+    /// Entry address
     entry: Address,
-    /// 파일 경로
+    /// File path
     path: Option<String>,
-    /// 바이너리
+    /// Binary data
     binary: Vec<u8>,
-    /// 캡스톤 엔진
+    /// Capstone engine
     capstone: Pin<Box<capstone::Capstone>>,
 
-    /// 파일 내부에서 이미 지정된 데이터
+    /// Predefined offsets within the file
     defined: Arc<PreDefinedOffsets>,
-    /// 섹션에 대한 정보를 담고 있는 데이터
+    /// Section information data
     sections: Arc<Sections>,
-    /// 블럭에 대한 정보를 담고 있는 데이터
+    /// Block information data
     blocks: Arc<Blocks>,
-    /// 블럭의 연결에 대한 정보를 담고 잇는 데이터
+    /// Block relation information data
     relations: Arc<Relations>,
 }

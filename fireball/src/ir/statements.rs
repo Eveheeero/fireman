@@ -1,37 +1,37 @@
-//! IR의 각 명령이 담겨져 있는 모듈
+//! Module containing IR statements
 
 use crate::{
     ir::data::{AccessSize, IrData, IrDataContainable},
     utils::Aos,
 };
 
-/// IR의 각 명령에 대한 Enum
+/// Enum representing each IR statement
 ///
 /// ### Note
 /// snowman's expressions.h, StatementBase based classes, or snowman's ir::statement.h classes
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IrStatement {
-    /// 정의되지 않은 명령
+    /// Undefined statement
     Undefined,
-    /// 오류 발생
+    /// Exception occurred
     Exception(&'static str),
-    /// 변수 할당
+    /// Variable assignment
     Assignment {
         from: Aos<IrData>,
         to: Aos<IrData>,
         size: AccessSize,
     },
-    /// 명령 라인 변경
+    /// Jump instruction
     Jump {
         target: Aos<IrData>,
     },
-    /// 함수 호출
+    /// Function call
     JumpByCall {
         target: Aos<IrData>,
     },
-    /// 함수 호출 후 반환
+    /// Return after function call
     Halt,
-    /// 조건문
+    /// Conditional statement
     Condition {
         condition: Aos<IrData>,
         true_branch: Box<[IrStatement]>,

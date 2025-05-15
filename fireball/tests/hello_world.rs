@@ -35,7 +35,7 @@ fn hello_world() {
     let binary = get_binary();
 
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
-    let targets = pe.decom_all().unwrap();
+    let targets = pe.analyze_all().unwrap();
     let mut cfg_analyzer = ControlFlowGraphAnalyzer::new();
     cfg_analyzer.add_targets(targets);
     let cfgs = cfg_analyzer.analyze();

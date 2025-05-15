@@ -41,6 +41,10 @@ mod private {
             &self.accesses
         }
         #[inline]
+        pub(crate) fn into_data_accesses(self) -> IrStatementDescriptorMap<Vec<DataAccess>> {
+            self.accesses
+        }
+        #[inline]
         pub fn add_data_access(&mut self, ir_index: u32, statement_index: u8, access: DataAccess) {
             let key = IrStatementDescriptor::new(ir_index, statement_index);
             self.accesses.insert_checked(key, Vec::new());
@@ -368,7 +372,8 @@ pub fn resolve_operand(data: &Aos<IrData>, instruction_args: &[iceball::Argument
                     LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::Undefined)));
                 return UNDEFINED.clone();
             }
-            return (&instruction_args[(op_num.get() - 1) as usize]).into();
+            let result = (&instruction_args[op_num.get() as usize - 1]).into();
+            return result;
         }
         _ => {}
     }

@@ -1,3 +1,3 @@
-//! 여러 아키텍처 별 구현이 담겨있는 모듈
+//! Module containing implementations for multiple architectures
 
 pub mod x86_64;

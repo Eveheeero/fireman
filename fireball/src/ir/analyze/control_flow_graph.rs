@@ -173,7 +173,7 @@ pub fn analyze_control_flow_graph(
             let component_blocks: Vec<Arc<Block>> = component_ids
                 .iter()
                 .filter_map(|id| id_to_block.get(id).cloned())
-                .cloned() // Arc<Block> 복제
+                .cloned()
                 .collect();
 
             /* Analyze with component blocks */

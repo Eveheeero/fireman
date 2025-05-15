@@ -37,13 +37,13 @@ fn pe_hello_world_entry_parse() {
 
     let sections = pe.get_sections();
 
-    // 가상주소 기반 어셈블리 파싱 확인
+    // Verify assembly parsing based on virtual address
     let entry_of_virtual_address = Address::from_virtual_address(&sections, gl.entry as u64);
     let insts_by_virtual_address = pe
         .parse_assem_range(&entry_of_virtual_address, 0x60)
         .unwrap();
 
-    // 엔트리 포인트의 파일 오프셋 연산 (2022-10-19 기준 0x725)
+    // Compute file offset for entry point (as of 2022-10-19: 0x725)
     let mut entry_of_file_offset = 0;
     for section in gl.sections {
         if section.virtual_address as u64 <= gl.entry as u64
@@ -55,11 +55,11 @@ fn pe_hello_world_entry_parse() {
         }
     }
 
-    // 파일 오프셋 기반 어셈블리 파싱 확인
+    // Verify assembly parsing based on file offset
     let entry_of_file_offset = Address::from_file_offset(&sections, entry_of_file_offset);
     let insts_by_file_offset = pe.parse_assem_range(&entry_of_file_offset, 0x60).unwrap();
 
-    // 두 결과값이 일치하는지 확인
+    // Check if both results match
     for (left, right) in insts_by_virtual_address
         .iter()
         .zip(insts_by_file_offset.iter())
@@ -90,7 +90,7 @@ fn pe_hello_world_detect_block_etc() {
     let sections = pe.get_sections();
     let entry = Address::from_virtual_address(&sections, gl.entry as u64);
     for offset in std::iter::once(-6).chain(2..=7) {
-        info!("{} 오프셋에 대한 파싱 진행", offset);
+        info!("Parsing at offset {}", offset);
         let address;
         if offset < 0 {
             address = &entry - (-offset) as u64;
@@ -110,7 +110,7 @@ fn pe_hello_world_block_relation() {
     let binary = get_binary();
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
-    /* 엔트리에 대한 블럭 파싱 및 relation 생성 확인 */
+    /* Validate parsing and relation creation for the entry block */
     let entry = pe.entry();
     pe.generate_block_from_address(entry);
     let blocks = pe.get_blocks();
@@ -127,7 +127,7 @@ fn pe_hello_world_block_relation() {
         ));
     }
 
-    /* 엔트리의 to에 대한 블럭 생성 확인 */
+    /* Validate block creation for the entry's target */
     let to_address = entry_connected_to
         .iter()
         .find(|x| x.relation_type() == &RelationType::Call)
@@ -162,30 +162,30 @@ fn pe_hello_world_decom_block() {
     let binary = get_binary();
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
-    /* 엔트리부터 디컴파일 시작 */
-    let result = pe.decom_from_entry();
-    assert!(result.is_ok(), "디컴파일 진행 실패");
+    /* Start decompilation from the entry point */
+    let result = pe.analyze_from_entry();
+    assert!(result.is_ok(), "Decompilation failed");
     let result = result.unwrap();
     let entry = pe.entry();
     let blocks = pe.get_blocks();
     let block = blocks.get_by_start_address(entry);
-    assert!(block.is_some(), "디컴파일된 블럭의 데이터가 없음");
+    assert!(block.is_some(), "No data for decompiled block");
     let block = block.unwrap();
-    assert_eq!(&block, &result, "디컴파일 결과값과 블럭이 일치하지 않음");
+    assert_eq!(&block, &result, "Decompiled result does not match block");
     let ir = block.get_ir();
-    assert!(ir.is_some(), "디컴파일 진행 중 IR데이터가 생성되지 않음");
+    assert!(ir.is_some(), "IR data not generated during decompilation");
     let ir = ir.as_ref().unwrap();
     assert!(
         ir.data_access.is_some(),
-        "디컴파일 진행 중 접근하는 데이터 영역이 분석되지 않음"
+        "Data access not analyzed during decompilation"
     );
     assert!(
         ir.known_datatypes.is_some(),
-        "디컴파일 진행 중 데이터타입이 분석되지 않음"
+        "Data types not analyzed during decompilation"
     );
     assert!(
         ir.variables.is_some(),
-        "디컴파일 진행 중 변수 분석이 되지 않음"
+        "Variables not analyzed during decompilation"
     );
 }
 
@@ -195,12 +195,12 @@ fn pe_hello_world_analyze_variables() {
     let binary = get_binary();
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
-    /* 엔트리부터 디컴파일 시작 */
-    let result = pe.decom_from_entry();
-    assert!(result.is_ok(), "디컴파일 진행 실패");
+    /* Start decompilation from the entry point */
+    let result = pe.analyze_from_entry();
+    assert!(result.is_ok(), "Decompilation failed");
     let block = result.unwrap();
     let ir = block.get_ir();
-    assert!(ir.is_some(), "디컴파일 진행 중 IR데이터가 생성되지 않음");
+    assert!(ir.is_some(), "IR data not generated during decompilation");
     let ir = ir.as_ref().unwrap();
     let analyzed_variables = ir.variables.as_ref().unwrap();
     assert_ne!(analyzed_variables.len(), 0);
@@ -215,12 +215,12 @@ fn pe_hello_world_print_statements() {
     let binary = get_binary();
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
-    /* 엔트리부터 디컴파일 시작 */
-    let result = pe.decom_from_entry();
-    assert!(result.is_ok(), "디컴파일 진행 실패");
+    /* Start decompilation from the entry point */
+    let result = pe.analyze_from_entry();
+    assert!(result.is_ok(), "Decompilation failed");
     let block = result.unwrap();
     let ir = block.get_ir();
-    assert!(ir.is_some(), "디컴파일 진행 중 IR데이터가 생성되지 않음");
+    assert!(ir.is_some(), "IR data not generated during decompilation");
     let ir = ir.as_ref().unwrap();
     for ir in ir.ir() {
         println!(

@@ -1,17 +1,17 @@
 use crate::{
-    core::{Address, Block, DestinationType, RelationType},
+    core::{Address, Block, BlockRelationInformation, DestinationType, RelationType},
     pe::Pe,
 };
 use std::sync::Arc;
 
 impl Pe {
-    /// 파일 오프셋을 기준으로 블럭의 범위를 계산한다
+    /// Generate and return a block from the given address.
     ///
     /// ### Arguments
-    /// - `address: &Address` - 블럭의 시작
+    /// - `address: &Address` - The address from which to generate the block.
     ///
     /// ### Returns
-    /// - `Arc<Block>` - 해당 주소로부터 계산된 블럭
+    /// - `Arc<Block>` - The block generated from the address.
     pub(crate) fn generate_block_from_address(&self, address: &Address) -> Arc<Block> {
         if let Some(block) = self.blocks.get_by_start_address(address) {
             return block;
@@ -20,6 +20,7 @@ impl Pe {
         let start_address = address.clone();
         let mut last_instruction_address = None;
         let mut block_size = None;
+        // loop until we find a jump or call instruction
         loop {
             let inst = self.parse_assem_count(&address, 1);
             if inst.is_err() || inst.as_ref().unwrap().is_empty() {
@@ -37,9 +38,9 @@ impl Pe {
             address += inst.bytes.as_ref().unwrap().len() as u64;
         }
 
-        /* 해당 블럭에서 연결된 다른 블럭 찾기 */
+        /* Find connected blocks */
         let mut connected_to = Vec::new();
-        // 끝 주소가 정해지지 않은 경우 연결된 블럭 없음
+        // if the last instruction is not set, there is no connected block
         if let Some(last_instruction_address) = &last_instruction_address {
             let inst = &self.parse_assem_count(last_instruction_address, 1).unwrap()[0].inner;
             block_size = Some(
@@ -47,19 +48,21 @@ impl Pe {
                     + inst.bytes.as_ref().unwrap().len() as u64,
             );
             if inst.is_jcc() || inst.is_call() {
-                // 다음 주소
+                // false branch or halt
                 let relation_type = if inst.is_jcc() {
                     RelationType::Continued
                 } else {
                     RelationType::Halt
                 };
-                connected_to.push((
-                    Some(last_instruction_address + inst.bytes.as_ref().unwrap().len() as u64),
-                    DestinationType::Static,
+                connected_to.push(BlockRelationInformation {
+                    destination: Some(
+                        last_instruction_address + inst.bytes.as_ref().unwrap().len() as u64,
+                    ),
+                    destination_type: DestinationType::Static,
                     relation_type,
-                ));
+                });
             }
-            // jcc나 call등에 의해 이동하는 주소
+            // address that the last instruction points to
             connected_to
                 .push(self.get_connected_address_and_relation_type(last_instruction_address, inst));
         }
@@ -68,12 +71,12 @@ impl Pe {
             .generate_block(start_address, block_size, &connected_to, None)
     }
 
-    /// 마지막 인스트럭션을 통해 어떤 주소와 연결되어있는지 파악한다
+    /// Returns the target address and relation type from the final instruction.
     fn get_connected_address_and_relation_type(
         &self,
         ip: &Address,
         inst: &iceball::Instruction,
-    ) -> (Option<Address>, DestinationType, RelationType) {
+    ) -> BlockRelationInformation {
         let relation_type = match () {
             _ if inst.is_ret() => RelationType::Return,
             _ if inst.is_jcc() => RelationType::Jcc,
@@ -82,17 +85,27 @@ impl Pe {
             _ => unreachable!("{:?}", inst),
         };
         if inst.arguments.len() != 1 {
-            return (None, DestinationType::Dynamic, relation_type);
+            return BlockRelationInformation {
+                destination: None,
+                destination_type: DestinationType::Dynamic,
+                relation_type,
+            };
         }
         let arg = &inst.arguments[0];
         match arg {
             // only rip is predictable target but we can't get it
-            iceball::Argument::Register(_) => (None, DestinationType::Dynamic, relation_type),
-            iceball::Argument::Memory(iceball::Memory::AbsoluteAddressing(offset)) => (
-                Some(Address::from_virtual_address(&self.sections, *offset)),
-                DestinationType::Static,
+            iceball::Argument::Register(_) => BlockRelationInformation {
+                destination: None,
+                destination_type: DestinationType::Dynamic,
                 relation_type,
-            ),
+            },
+            iceball::Argument::Memory(iceball::Memory::AbsoluteAddressing(offset)) => {
+                BlockRelationInformation {
+                    destination: Some(Address::from_virtual_address(&self.sections, *offset)),
+                    destination_type: DestinationType::Static,
+                    relation_type,
+                }
+            }
             iceball::Argument::Memory(iceball::Memory::RelativeAddressing(args)) => {
                 if args
                     .iter()
@@ -108,22 +121,28 @@ impl Pe {
                         )
                     })
                 {
-                    (
-                        Some(self.calc_relative_address_with_ip(ip, args)),
-                        DestinationType::Static,
+                    BlockRelationInformation {
+                        destination: Some(self.calc_relative_address_with_ip(ip, args)),
+                        destination_type: DestinationType::Static,
                         relation_type,
-                    )
+                    }
                 } else {
-                    (None, DestinationType::Dynamic, relation_type)
+                    BlockRelationInformation {
+                        destination: None,
+                        destination_type: DestinationType::Dynamic,
+                        relation_type,
+                    }
                 }
             }
-            iceball::Argument::Constant(arg) => (
-                Some(Address::from_virtual_address(&self.sections, *arg)),
-                DestinationType::Static,
+            iceball::Argument::Constant(arg) => BlockRelationInformation {
+                destination: Some(Address::from_virtual_address(&self.sections, *arg)),
+                destination_type: DestinationType::Static,
                 relation_type,
-            ),
+            },
         }
     }
+
+    /// Calculates the absolute address for a RIP/EIP-relative operand.
     fn calc_relative_address_with_ip(
         &self,
         ip: &Address,
@@ -216,12 +235,12 @@ impl Pe {
         // return
         debug_assert!(
             args.len() == 1,
-            "주소 계산이 완전하게 끝나지 않았습니다. {:?}",
+            "Address computation not fully reduced: {:?}",
             args
         );
         let address = extract_constant(&args[0])
             .try_into()
-            .expect("주소 연산 결과가 음수값입니다.");
+            .expect("Negative address result");
         Address::from_virtual_address(&self.sections, address)
     }
 }
