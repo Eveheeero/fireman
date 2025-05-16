@@ -23,17 +23,14 @@ impl ControlFlowGraphAnalyzer {
         }
     }
     pub fn add_target(&mut self, target: Arc<Block>) {
-        trace!(
-            "id: {}, start address: {}",
-            target.get_id(),
-            target.get_start_address()
-        );
         {
             let connected_from = target.get_connected_from();
             let connected_to = target.get_connected_to();
 
             debug!(
-                "CFG analyzer target block relation from: (id){:?}, to: (addr){:?}",
+                "CFG analyzer target block (id: {}, start address: {}) relation from: (id){:?}, to: (addr){:?}",
+                target.get_id(),
+                target.get_start_address(),
                 connected_from.iter().map(|r| r.from()).collect::<Vec<_>>(),
                 connected_to
                     .iter()
