@@ -13,6 +13,7 @@ pub struct Blocks {
     relations: Arc<Relations>,
 }
 
+#[derive(Clone)]
 pub(crate) struct BlockRelationInformation {
     pub(crate) destination: Option<Address>,
     pub(crate) destination_type: DestinationType,
@@ -169,5 +170,18 @@ impl Blocks {
         /* Acquire a read lock on the store */
         let blocks_reader = &self.data.read().unwrap();
         blocks_reader.iter().map(Arc::clone).collect()
+    }
+}
+
+impl std::fmt::Debug for BlockRelationInformation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BlockRelationInformation")
+            .field(
+                "destination",
+                &self.destination.as_ref().map(|x| x.to_string()),
+            )
+            .field("destination_type", &self.destination_type)
+            .field("relation_type", &self.relation_type)
+            .finish()
     }
 }

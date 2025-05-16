@@ -1,6 +1,7 @@
 use crate::{
     core::{Address, Block, BlockRelationInformation, DestinationType, RelationType},
     pe::Pe,
+    prelude::*,
 };
 use std::sync::Arc;
 
@@ -16,6 +17,7 @@ impl Pe {
         if let Some(block) = self.blocks.get_by_start_address(address) {
             return block;
         }
+        debug!("Block generation started {}", address);
         let mut address = address.clone();
         let start_address = address.clone();
         let mut last_instruction_address = None;
@@ -67,6 +69,10 @@ impl Pe {
                 .push(self.get_connected_address_and_relation_type(last_instruction_address, inst));
         }
 
+        debug!(
+            ?connected_to,
+            "Block generation done for size {:?}", block_size
+        );
         self.blocks
             .generate_block(start_address, block_size, &connected_to, None)
     }
