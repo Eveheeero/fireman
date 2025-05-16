@@ -8,8 +8,9 @@ mod analyze_from_virtual_address;
 
 use super::Pe;
 use crate::{
-    core::{Address, Block, Blocks, Fire, PreDefinedOffsets, Relations, Sections},
+    core::{Address, Block, Blocks, Fire, FireRaw, PreDefinedOffsets, Relations, Sections},
     prelude::DecompileError,
+    utils::ir_blocks_to_code,
 };
 use std::sync::Arc;
 
@@ -22,6 +23,25 @@ impl Fire for Pe {
         &self.binary
     }
 
+    fn decompile_all(&self) -> Result<String, DecompileError> {
+        Ok(ir_blocks_to_code(self.analyze_all()?))
+    }
+
+    fn decompile_from_entry(&self) -> Result<String, DecompileError> {
+        Ok(ir_blocks_to_code([self.analyze_from_entry()?]))
+    }
+
+    fn decompile_from_file_offset(&self, address: u64) -> Result<String, DecompileError> {
+        Ok(ir_blocks_to_code([self.analyze_from_file_offset(address)?]))
+    }
+
+    fn decompile_from_virtual_address(&self, address: u64) -> Result<String, DecompileError> {
+        Ok(ir_blocks_to_code([
+            self.analyze_from_virtual_address(address)?
+        ]))
+    }
+}
+impl FireRaw for Pe {
     fn analyze_all(&self) -> Result<Vec<Arc<Block>>, DecompileError> {
         self._analyze_all()
     }

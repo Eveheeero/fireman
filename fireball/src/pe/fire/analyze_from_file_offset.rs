@@ -1,6 +1,6 @@
 use super::Pe;
 use crate::{
-    core::{Address, Block, Fire},
+    core::{Address, Block, FireRaw},
     prelude::DecompileError,
 };
 use std::sync::Arc;

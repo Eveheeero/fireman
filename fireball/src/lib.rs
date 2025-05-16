@@ -10,7 +10,10 @@ pub mod tests;
 pub mod utils;
 
 pub use crate::core::Fire;
-use crate::prelude::{trace, FireballError};
+use crate::{
+    core::FireRaw,
+    prelude::{trace, FireballError},
+};
 
 /// Enum storing parsers for all supported types
 #[derive(Debug)]
@@ -30,7 +33,7 @@ impl Fireball {
     }
 
     /// Returns the parser object.
-    pub fn get_object(&self) -> &impl Fire {
+    pub fn get_object(&self) -> &impl FireRaw {
         match self {
             Self::Pe(pe) => pe,
         }
@@ -46,6 +49,26 @@ impl Fire for Fireball {
         self.get_object().get_binary()
     }
 
+    fn decompile_all(&self) -> Result<String, prelude::DecompileError> {
+        self.get_object().decompile_all()
+    }
+
+    fn decompile_from_entry(&self) -> Result<String, prelude::DecompileError> {
+        self.get_object().decompile_from_entry()
+    }
+
+    fn decompile_from_file_offset(&self, address: u64) -> Result<String, prelude::DecompileError> {
+        self.get_object().decompile_from_file_offset(address)
+    }
+
+    fn decompile_from_virtual_address(
+        &self,
+        address: u64,
+    ) -> Result<String, prelude::DecompileError> {
+        self.get_object().decompile_from_virtual_address(address)
+    }
+}
+impl FireRaw for Fireball {
     fn analyze_all(&self) -> Result<Vec<std::sync::Arc<core::Block>>, prelude::DecompileError> {
         self.get_object().analyze_all()
     }
