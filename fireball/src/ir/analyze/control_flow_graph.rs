@@ -1,4 +1,7 @@
-use crate::core::{Address, Block, Relation};
+use crate::{
+    core::{Address, Block, Relation},
+    prelude::*,
+};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -20,20 +23,38 @@ impl ControlFlowGraphAnalyzer {
         }
     }
     pub fn add_target(&mut self, target: Arc<Block>) {
+        trace!(
+            "id: {}, start address: {}",
+            target.get_id(),
+            target.get_start_address()
+        );
         {
+            let connected_from = target.get_connected_from();
             let connected_to = target.get_connected_to();
-            for relation in connected_to.iter() {
+
+            debug!(
+                "CFG analyzer target block relation from: (id){:?}, to: (addr){:?}",
+                connected_from.iter().map(|r| r.from()).collect::<Vec<_>>(),
+                connected_to
+                    .iter()
+                    .filter_map(|r| r.to())
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+            );
+
+            for relation in connected_from.iter() {
                 let block_id = relation.from();
                 if self.targets.iter().any(|x| x.get_id() == block_id) {
+                    debug!("Found relation with: (id){}", block_id);
                     self.relations.push(relation.clone());
                 }
             }
-            let connected_from = target.get_connected_from();
-            for relation in connected_from.iter() {
+            for relation in connected_to.iter() {
                 let Some(to) = relation.to() else {
                     continue;
                 };
                 if self.targets.iter().any(|x| x.contains(&to)) {
+                    debug!("Found relation with: (addr){}", to);
                     self.relations.push(relation.clone());
                 }
             }
@@ -42,7 +63,7 @@ impl ControlFlowGraphAnalyzer {
     }
     pub fn add_targets(&mut self, targets: impl IntoIterator<Item = Arc<Block>>) {
         for target in targets {
-            self.targets.push(target);
+            self.add_target(target);
         }
     }
     pub fn get_targets(&self) -> &Vec<Arc<Block>> {
