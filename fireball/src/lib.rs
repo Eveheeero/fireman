@@ -10,10 +10,7 @@ pub mod tests;
 pub mod utils;
 
 pub use crate::core::Fire;
-use crate::{
-    core::FireRaw,
-    prelude::{trace, FireballError},
-};
+use crate::{core::FireRaw, prelude::*};
 
 /// Enum storing parsers for all supported types
 #[derive(Debug)]
@@ -23,16 +20,16 @@ pub enum Fireball {
 }
 
 impl Fireball {
-    /// Creates a parser object from a file path.
+    /// Creates a decompiler object from a file path.
     pub fn from_path(path: &str) -> Result<Self, FireballError> {
-        trace!("Initializing parser with file path {}", path);
+        info!("Initializing decompiler object with file path {}", path);
         Ok(Fireball::Pe(pe::Pe::from_path(path)?))
     }
     pub fn from_binary(binary: Vec<u8>) -> Result<Self, FireballError> {
         Ok(Fireball::Pe(pe::Pe::from_binary(binary)?))
     }
 
-    /// Returns the parser object.
+    /// Returns the decompiler object.
     pub fn get_object(&self) -> &impl FireRaw {
         match self {
             Self::Pe(pe) => pe,

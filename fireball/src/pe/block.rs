@@ -1,6 +1,7 @@
 use crate::{
     core::{Address, Block, BlockRelationInformation, DestinationType, RelationType},
     pe::Pe,
+    prelude::*,
 };
 use std::sync::Arc;
 
@@ -16,6 +17,7 @@ impl Pe {
         if let Some(block) = self.blocks.get_by_start_address(address) {
             return block;
         }
+        debug!("Block generation started {}", address);
         let mut address = address.clone();
         let start_address = address.clone();
         let mut last_instruction_address = None;
@@ -24,11 +26,17 @@ impl Pe {
         loop {
             let inst = self.parse_assem_count(&address, 1);
             if inst.is_err() || inst.as_ref().unwrap().is_empty() {
+                warn!("Instruction parsing failed: {:#x}", address.get_virtual_address());
                 break;
             }
             debug_assert_eq!(inst.as_ref().unwrap().len(), 1);
             let inst = &inst.unwrap()[0].inner;
-            if inst.statement.is_err() {
+            if let Err(e) = inst.statement {
+                error!(
+                    "Instruction converting failed: {:#x} {:?}",
+                    address.get_virtual_address(),
+                    e
+                );
                 break;
             }
             if inst.is_jcc() || inst.is_jmp() || inst.is_call() || inst.is_ret() {
@@ -67,6 +75,10 @@ impl Pe {
                 .push(self.get_connected_address_and_relation_type(last_instruction_address, inst));
         }
 
+        debug!(
+            ?connected_to,
+            "Block generation done for size {:?}", block_size
+        );
         self.blocks
             .generate_block(start_address, block_size, &connected_to, None)
     }

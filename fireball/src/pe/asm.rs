@@ -81,7 +81,7 @@ impl Pe {
         for item in input.iter() {
             let mnemonic = item.mnemonic().unwrap();
             let op = item.op_str();
-            trace!("Parsing instruction {} {:?}", mnemonic, op);
+            trace!("Parsing instruction {} {}", mnemonic, op.unwrap_or_default());
             let statement = iceball::parse_statement(iceball::Architecture::X64, mnemonic);
             let mut arguments = Vec::new();
             if op.is_some() {
