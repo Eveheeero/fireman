@@ -9,6 +9,7 @@ impl StatementInner for X64Statement {
                 | X64Statement::Jb
                 | X64Statement::Jbe
                 | X64Statement::Jcxz
+                | X64Statement::Je
                 | X64Statement::Jecxz
                 | X64Statement::Jrcxz
                 | X64Statement::Jz
@@ -17,6 +18,7 @@ impl StatementInner for X64Statement {
                 | X64Statement::Jl
                 | X64Statement::Jle
                 | X64Statement::Jnz
+                | X64Statement::Jne
                 | X64Statement::Jno
                 | X64Statement::Jnp
                 | X64Statement::Jns

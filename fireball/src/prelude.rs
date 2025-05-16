@@ -19,12 +19,23 @@ pub(crate) fn test_init() {
 
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| {
+        let file = std::fs::File::create("fireball.log").unwrap();
         let _ = tracing_subscriber::registry()
             .with(
                 tracing_subscriber::fmt::layer()
+                    .without_time()
                     .with_file(true)
                     .with_line_number(true)
                     .with_target(false),
+            )
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .without_time()
+                    .with_file(true)
+                    .with_line_number(true)
+                    .with_target(false)
+                    .with_ansi(false)
+                    .with_writer(file),
             )
             .with(
                 tracing_subscriber::filter::Targets::new()

@@ -42,7 +42,7 @@ impl Pe {
             let statements =
                 crate::arch::x86_64::instruction_analyze::create_ir_statement(&instruction);
             if statements.is_none() {
-                warn!("Instruction conversion failed");
+                warn!("Instruction conversion failed: {}", instruction);
             };
             let ir = Ir {
                 address: instruction_address.clone(),

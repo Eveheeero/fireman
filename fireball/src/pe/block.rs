@@ -26,11 +26,17 @@ impl Pe {
         loop {
             let inst = self.parse_assem_count(&address, 1);
             if inst.is_err() || inst.as_ref().unwrap().is_empty() {
+                warn!("Instruction parsing failed: {:#x}", address.get_virtual_address());
                 break;
             }
             debug_assert_eq!(inst.as_ref().unwrap().len(), 1);
             let inst = &inst.unwrap()[0].inner;
-            if inst.statement.is_err() {
+            if let Err(e) = inst.statement {
+                error!(
+                    "Instruction converting failed: {:#x} {:?}",
+                    address.get_virtual_address(),
+                    e
+                );
                 break;
             }
             if inst.is_jcc() || inst.is_jmp() || inst.is_call() || inst.is_ret() {
