@@ -5,7 +5,7 @@ use crate::{
         analyze::{
             ir_to_c::c_abstract_syntax_tree::{
                 BinaryOperator, CAst, CType, Expression, Function, Literal, Statement,
-                UnaryOperator, Variable,
+                UnaryOperator, Variable, WrappedData, WrappedStatement,
             },
             variables::resolve_operand,
             DataType, MergedIr,
@@ -13,10 +13,28 @@ use crate::{
         data::{AccessSize, IrData, IrDataOperation, IrIntrinsic},
         operator::{BinaryOperator as IrBinaryOp, UnaryOperator as IrUnaryOp},
         statements::{IrStatement, IrStatementSpecial, NumCondition},
+        utils::IrStatementDescriptor,
     },
     utils::Aos,
 };
 use hashbrown::HashMap;
+
+/// Wrap Statement
+fn ws(statement: Statement, from: IrStatementDescriptor) -> WrappedStatement {
+    WrappedStatement {
+        statement,
+        from: Some(from),
+        comment: None,
+    }
+}
+/// Wrap Data
+fn wd<T>(item: T, from: impl Into<Option<Aos<IrData>>>) -> WrappedData<T> {
+    WrappedData {
+        item,
+        from: from.into(),
+        comment: None,
+    }
+}
 
 pub fn generate_c(data: &MergedIr) -> CAst {
     let mut ast = CAst::new();
@@ -64,18 +82,36 @@ pub fn generate_c(data: &MergedIr) -> CAst {
         }
     }
 
-    for (ir, instruction) in data.get_ir().iter().zip(data.get_instructions().iter()) {
-        func.body.push(Statement::Comment(instruction.to_string()));
+    for (ir_index, (ir, instruction)) in data
+        .get_ir()
+        .iter()
+        .zip(data.get_instructions().iter())
+        .enumerate()
+    {
+        let ir_index = ir_index as u32;
+        func.body.push(ws(
+            Statement::Comment(instruction.to_string()),
+            IrStatementDescriptor::new(ir_index, None),
+        ));
         if let Some(stmts) = ir.statements {
             let instruction_args = instruction.inner.arguments.as_ref();
-            for stmt in stmts.iter() {
-                func.body.push(Statement::Comment(stmt.to_string()));
+            for (stmt_index, stmt) in stmts.iter().enumerate() {
+                let stmt_index = stmt_index as u8;
+                let stmt_position = IrStatementDescriptor::new(ir_index, Some(stmt_index));
                 func.body
-                    .push(convert_stmt(stmt, &var_map, instruction_args));
+                    .push(ws(Statement::Comment(stmt.to_string()), stmt_position));
+                func.body.push(convert_stmt(
+                    stmt,
+                    &stmt_position,
+                    &var_map,
+                    instruction_args,
+                ));
             }
         } else {
-            func.body
-                .push(Statement::Assembly(instruction.inner.to_string()));
+            func.body.push(ws(
+                Statement::Assembly(instruction.inner.to_string()),
+                IrStatementDescriptor::new(ir_index, None),
+            ));
         }
     }
 
@@ -150,10 +186,11 @@ fn convert_expr(data: &Aos<IrData>, var_map: &HashMap<Aos<IrData>, u32>) -> Expr
 
 fn convert_stmt(
     stmt: &IrStatement,
+    stmt_position: &IrStatementDescriptor,
     var_map: &HashMap<Aos<IrData>, u32>,
     instruction_args: &[iceball::Argument],
-) -> Statement {
-    match stmt {
+) -> WrappedStatement {
+    let result = match stmt {
         IrStatement::Assignment { from, to, .. } => {
             let from = &resolve_operand(from, instruction_args);
             let to = &resolve_operand(to, instruction_args);
@@ -186,11 +223,11 @@ fn convert_stmt(
             let cond = convert_expr(condition, var_map);
             let then_b = true_branch
                 .iter()
-                .map(|s| convert_stmt(s, var_map, instruction_args))
+                .map(|s| convert_stmt(s, stmt_position, var_map, instruction_args))
                 .collect();
             let else_b = false_branch
                 .iter()
-                .map(|s| convert_stmt(s, var_map, instruction_args))
+                .map(|s| convert_stmt(s, stmt_position, var_map, instruction_args))
                 .collect();
             Statement::If(cond, then_b, Some(else_b))
         }
@@ -269,11 +306,11 @@ fn convert_stmt(
                 };
                 let tb = true_branch
                     .iter()
-                    .map(|s| convert_stmt(s, var_map, instruction_args))
+                    .map(|s| convert_stmt(s, stmt_position, var_map, instruction_args))
                     .collect();
                 let fb = false_branch
                     .iter()
-                    .map(|s| convert_stmt(s, var_map, instruction_args))
+                    .map(|s| convert_stmt(s, stmt_position, var_map, instruction_args))
                     .collect();
                 Statement::If(cond_expr, tb, Some(fb))
             }
@@ -283,7 +320,7 @@ fn convert_stmt(
                 flags,
             } => {
                 let operation = &resolve_operand(operation, instruction_args);
-                let stmts = calc_flags_automatically(operation, flags, var_map);
+                let stmts = calc_flags_automatically(operation, stmt_position, flags, var_map);
                 Statement::Block(stmts)
             }
             IrStatementSpecial::TypeSpecified {
@@ -292,7 +329,8 @@ fn convert_stmt(
                 data_type: _,
             } => Statement::Empty, // Used to detect types
         },
-    }
+    };
+    ws(result, *stmt_position)
 }
 
 fn convert_unary(
@@ -415,9 +453,10 @@ fn convert_size(size: &AccessSize, var_map: &HashMap<Aos<IrData>, u32>) -> Expre
 
 fn calc_flags_automatically(
     operation: &Aos<IrData>,
+    stmt_position: &IrStatementDescriptor,
     affected_registers: &[Aos<IrData>],
     var_map: &HashMap<Aos<IrData>, u32>,
-) -> Vec<Statement> {
+) -> Vec<WrappedStatement> {
     // TODO INVALID
     let val = convert_expr(operation, var_map);
     affected_registers
@@ -427,5 +466,6 @@ fn calc_flags_automatically(
                 .get(reg)
                 .map(|&vid| Statement::Assignment(Expression::Variable(vid), val.clone()))
         })
+        .map(|stmt| ws(stmt, *stmt_position))
         .collect()
 }

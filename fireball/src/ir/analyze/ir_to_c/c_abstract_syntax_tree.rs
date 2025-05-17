@@ -19,21 +19,21 @@ pub struct Function {
     pub return_type: CType,
     pub parameters: Vec<Variable>,
     pub variables: HashMap<VariableId, Variable>,
-    pub body: Vec<Statement>,
+    pub body: Vec<WrappedStatement>,
 }
 
 #[derive(Debug, Clone)]
-pub enum WrappedItem<T> {
-    FromIrData {
-        item: T,
-        from: Aos<IrData>,
-        comment: String,
-    },
-    FromIrStatement {
-        item: T,
-        from: IrStatementDescriptor,
-        comment: String,
-    },
+pub struct WrappedStatement {
+    pub statement: Statement,
+    pub from: Option<IrStatementDescriptor>,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WrappedData<T> {
+    pub item: T,
+    pub from: Option<Aos<IrData>>,
+    pub comment: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -72,14 +72,23 @@ pub enum CType {
 pub enum Statement {
     Declaration(Variable, Option<Expression>),
     Assignment(Expression, Expression),
-    If(Expression, Vec<Statement>, Option<Vec<Statement>>),
-    While(Expression, Vec<Statement>),
-    For(Box<Statement>, Expression, Box<Statement>, Vec<Statement>),
+    If(
+        Expression,
+        Vec<WrappedStatement>,
+        Option<Vec<WrappedStatement>>,
+    ),
+    While(Expression, Vec<WrappedStatement>),
+    For(
+        Box<WrappedStatement>,
+        Expression,
+        Box<WrappedStatement>,
+        Vec<WrappedStatement>,
+    ),
     Return(Option<Expression>),
     Call(String, Vec<Expression>),
     Label(String),
     Goto(String),
-    Block(Vec<Statement>),
+    Block(Vec<WrappedStatement>),
     Assembly(String),
     Undefined,
     Exception(&'static str),
@@ -283,13 +292,13 @@ impl std::fmt::Display for Statement {
             }
             Statement::For(init, cond, update, body) => {
                 write!(f, "for (")?;
-                if let Statement::Declaration(var, _) = &**init {
+                if let Statement::Declaration(var, _) = init.as_ref().as_ref() {
                     write!(f, "{} v{};", var.var_type, var.id)?;
                 } else {
                     write!(f, "{};", init)?;
                 }
                 write!(f, " {};", cond)?;
-                if let Statement::Assignment(left, right) = &**update {
+                if let Statement::Assignment(left, right) = update.as_ref().as_ref() {
                     write!(f, "{} = {};", left, right)?;
                 } else {
                     write!(f, "{};", update)?;
@@ -420,5 +429,31 @@ impl std::fmt::Display for BinaryOperator {
 impl std::fmt::Display for Variable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} v{}", self.var_type, self.id)
+    }
+}
+impl std::fmt::Display for WrappedStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(comment) = &self.comment {
+            write!(f, "/** {} */", comment)?;
+        }
+        write!(f, "{}", self.statement)
+    }
+}
+impl<T: std::fmt::Display> std::fmt::Display for WrappedData<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.comment {
+            Some(ref comment) => write!(f, "{} /* {} */", self.item, comment),
+            None => write!(f, "{}", self.item),
+        }
+    }
+}
+impl AsRef<Statement> for WrappedStatement {
+    fn as_ref(&self) -> &Statement {
+        &self.statement
+    }
+}
+impl<T> AsRef<T> for WrappedData<T> {
+    fn as_ref(&self) -> &T {
+        &self.item
     }
 }
