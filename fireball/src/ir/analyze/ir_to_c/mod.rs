@@ -4,8 +4,8 @@ use crate::{
     ir::{
         analyze::{
             ir_to_c::c_abstract_syntax_tree::{
-                BinaryOperator, CAst, CType, Expression, Function, Literal, Statement,
-                UnaryOperator, Variable, WrappedData, WrappedStatement,
+                BinaryOperator, CAst, CType, Expression, FunctionId, JumpTarget, Literal,
+                Statement, UnaryOperator, Variable, VariableId, WrappedData, WrappedStatement,
             },
             variables::resolve_operand,
             DataType, MergedIr,
@@ -15,9 +15,11 @@ use crate::{
         statements::{IrStatement, IrStatementSpecial, NumCondition},
         utils::IrStatementDescriptor,
     },
+    prelude::*,
     utils::Aos,
 };
 use hashbrown::HashMap;
+use std::sync::{Arc, RwLock};
 
 /// Wrap Statement
 fn ws(statement: Statement, from: IrStatementDescriptor) -> WrappedStatement {
@@ -39,8 +41,12 @@ fn wd<T>(item: T, from: impl Into<Option<Aos<IrData>>>) -> WrappedData<T> {
 pub fn generate_c(data: &MergedIr) -> CAst {
     let mut ast = CAst::new();
 
+    let func_id = ast.generate_default_function(data.get_ir().first().map(|x| &x.address).unwrap());
+
     let mut locals = HashMap::new();
-    for (i, var) in data.get_variables().iter().enumerate() {
+    let mut var_map: HashMap<Aos<IrData>, VariableId> = HashMap::new();
+    for var in data.get_variables().iter() {
+        let var_id = ast.new_variable_id(&func_id);
         let c_type = match var.data_type {
             DataType::Unknown => CType::Unknown,
             DataType::Int => CType::Int32,
@@ -50,38 +56,28 @@ pub fn generate_c(data: &MergedIr) -> CAst {
             DataType::Address => CType::Pointer(Box::new(CType::Void)),
         };
         locals.insert(
-            i as u32,
+            var_id,
             Variable {
-                name: None,
-                id: i as u32,
+                name: var_id.get_default_name(),
+                id: var_id,
                 var_type: c_type,
                 is_const: false,
             },
         );
-    }
-
-    let mut func = Function {
-        name: None,
-        id: data
-            .get_ir()
-            .first()
-            .map(|ir| ir.address.get_virtual_address())
-            .unwrap_or(0),
-        return_type: CType::Void,
-        parameters: Vec::new(),
-        variables: locals,
-        body: Vec::new(),
-    };
-
-    let mut var_map: HashMap<Aos<IrData>, u32> = HashMap::new();
-    for (var_id, mvar) in data.get_variables().iter().enumerate() {
-        for (_key, accesses) in mvar.get_data_accesses().iter() {
+        for accesses in var.get_data_accesses().values() {
             for da in accesses.iter() {
-                var_map.insert(da.location().clone(), var_id as u32);
+                var_map.insert(da.location().clone(), var_id);
             }
         }
     }
+    ast.functions
+        .write()
+        .unwrap()
+        .get_mut(&func_id)
+        .unwrap()
+        .variables = Arc::new(RwLock::new(locals));
 
+    let mut func_body = Vec::new();
     for (ir_index, (ir, instruction)) in data
         .get_ir()
         .iter()
@@ -89,7 +85,7 @@ pub fn generate_c(data: &MergedIr) -> CAst {
         .enumerate()
     {
         let ir_index = ir_index as u32;
-        func.body.push(ws(
+        func_body.push(ws(
             Statement::Comment(instruction.to_string()),
             IrStatementDescriptor::new(ir_index, None),
         ));
@@ -98,9 +94,10 @@ pub fn generate_c(data: &MergedIr) -> CAst {
             for (stmt_index, stmt) in stmts.iter().enumerate() {
                 let stmt_index = stmt_index as u8;
                 let stmt_position = IrStatementDescriptor::new(ir_index, Some(stmt_index));
-                func.body
-                    .push(ws(Statement::Comment(stmt.to_string()), stmt_position));
-                func.body.push(convert_stmt(
+                func_body.push(ws(Statement::Comment(stmt.to_string()), stmt_position));
+                func_body.push(convert_stmt(
+                    &mut ast,
+                    func_id,
                     stmt,
                     &stmt_position,
                     &var_map,
@@ -108,25 +105,38 @@ pub fn generate_c(data: &MergedIr) -> CAst {
                 ));
             }
         } else {
-            func.body.push(ws(
+            func_body.push(ws(
                 Statement::Assembly(instruction.inner.to_string()),
                 IrStatementDescriptor::new(ir_index, None),
             ));
         }
     }
+    ast.functions
+        .write()
+        .unwrap()
+        .get_mut(&func_id)
+        .unwrap()
+        .body = func_body;
 
-    ast.functions.push(func);
     ast
 }
 
-fn convert_expr(data: &Aos<IrData>, var_map: &HashMap<Aos<IrData>, u32>) -> Expression {
+fn convert_expr(
+    ast: &mut CAst,
+    function_id: FunctionId,
+    data: &Aos<IrData>,
+    var_map: &HashMap<Aos<IrData>, VariableId>,
+) -> Expression {
     if let Some(&vid) = var_map.get(data) {
-        return Expression::Variable(vid);
+        let vars = ast.get_variables(&function_id).unwrap();
+        return Expression::Variable(vars, vid);
     }
 
     match data.as_ref() {
         IrData::Constant(c) => Expression::Literal(Literal::Int(*c as i64)),
-        IrData::Dereference(inner) => Expression::Deref(Box::new(convert_expr(inner, var_map))),
+        IrData::Dereference(inner) => {
+            Expression::Deref(Box::new(convert_expr(ast, function_id, inner, var_map)))
+        }
         IrData::Intrinsic(intr) => match intr {
             IrIntrinsic::ArchitectureByteSize => Expression::ArchitectureByteSize,
             IrIntrinsic::ArchitectureBitSize => Expression::ArchitectureBitSize,
@@ -136,15 +146,17 @@ fn convert_expr(data: &Aos<IrData>, var_map: &HashMap<Aos<IrData>, u32>) -> Expr
             IrIntrinsic::InstructionByteSize => {
                 Expression::Call("INSTRUCTION_BYTE_SIZE".into(), vec![])
             }
-            IrIntrinsic::ByteSizeOf(inner) => {
-                Expression::Call("byte_size_of".into(), vec![convert_expr(inner, var_map)])
-            }
-            IrIntrinsic::BitSizeOf(inner) => {
-                Expression::Call("bit_size_of".into(), vec![convert_expr(inner, var_map)])
-            }
+            IrIntrinsic::ByteSizeOf(inner) => Expression::Call(
+                "byte_size_of".into(),
+                vec![convert_expr(ast, function_id, inner, var_map)],
+            ),
+            IrIntrinsic::BitSizeOf(inner) => Expression::Call(
+                "bit_size_of".into(),
+                vec![convert_expr(ast, function_id, inner, var_map)],
+            ),
             IrIntrinsic::Sized(inner, size) => {
-                let arg = convert_expr(inner, var_map);
-                let sz = convert_size(size, var_map);
+                let arg = convert_expr(ast, function_id, inner, var_map);
+                let sz = convert_size(ast, function_id, size, var_map);
                 Expression::Call("sized".into(), vec![arg, sz])
             }
             IrIntrinsic::OperandExists(n) => Expression::Call(
@@ -153,66 +165,93 @@ fn convert_expr(data: &Aos<IrData>, var_map: &HashMap<Aos<IrData>, u32>) -> Expr
             ),
             IrIntrinsic::Unknown => Expression::Unknown,
             IrIntrinsic::Undefined => Expression::Undefined,
-            IrIntrinsic::SignedMax(size) => {
-                Expression::Call("signed_max".into(), vec![convert_size(size, var_map)])
-            }
-            IrIntrinsic::SignedMin(size) => {
-                Expression::Call("signed_min".into(), vec![convert_size(size, var_map)])
-            }
-            IrIntrinsic::UnsignedMax(size) => {
-                Expression::Call("unsigned_max".into(), vec![convert_size(size, var_map)])
-            }
-            IrIntrinsic::UnsignedMin(size) => {
-                Expression::Call("unsigned_min".into(), vec![convert_size(size, var_map)])
-            }
-            IrIntrinsic::BitOnes(size) => {
-                Expression::Call("bit_ones".into(), vec![convert_size(size, var_map)])
-            }
-            IrIntrinsic::BitZeros(size) => {
-                Expression::Call("bit_zeros".into(), vec![convert_size(size, var_map)])
-            }
+            IrIntrinsic::SignedMax(size) => Expression::Call(
+                "signed_max".into(),
+                vec![convert_size(ast, function_id, size, var_map)],
+            ),
+            IrIntrinsic::SignedMin(size) => Expression::Call(
+                "signed_min".into(),
+                vec![convert_size(ast, function_id, size, var_map)],
+            ),
+            IrIntrinsic::UnsignedMax(size) => Expression::Call(
+                "unsigned_max".into(),
+                vec![convert_size(ast, function_id, size, var_map)],
+            ),
+            IrIntrinsic::UnsignedMin(size) => Expression::Call(
+                "unsigned_min".into(),
+                vec![convert_size(ast, function_id, size, var_map)],
+            ),
+            IrIntrinsic::BitOnes(size) => Expression::Call(
+                "bit_ones".into(),
+                vec![convert_size(ast, function_id, size, var_map)],
+            ),
+            IrIntrinsic::BitZeros(size) => Expression::Call(
+                "bit_zeros".into(),
+                vec![convert_size(ast, function_id, size, var_map)],
+            ),
         },
         IrData::Operation(op) => match op {
-            IrDataOperation::Unary { operator, arg } => convert_unary(operator, arg, var_map),
+            IrDataOperation::Unary { operator, arg } => {
+                convert_unary(ast, function_id, operator, arg, var_map)
+            }
             IrDataOperation::Binary {
                 operator,
                 arg1,
                 arg2,
-            } => convert_binary(operator, arg1, arg2, var_map),
+            } => convert_binary(ast, function_id, operator, arg1, arg2, var_map),
         },
         IrData::Register(_) | IrData::Operand(_) => unreachable!("Should not be here"),
     }
 }
 
 fn convert_stmt(
+    ast: &mut CAst,
+    function_id: FunctionId,
     stmt: &IrStatement,
     stmt_position: &IrStatementDescriptor,
-    var_map: &HashMap<Aos<IrData>, u32>,
+    var_map: &HashMap<Aos<IrData>, VariableId>,
     instruction_args: &[iceball::Argument],
 ) -> WrappedStatement {
     let result = match stmt {
         IrStatement::Assignment { from, to, .. } => {
             let from = &resolve_operand(from, instruction_args);
             let to = &resolve_operand(to, instruction_args);
-            Statement::Assignment(convert_expr(to, var_map), convert_expr(from, var_map))
+            Statement::Assignment(
+                convert_expr(ast, function_id, to, var_map),
+                convert_expr(ast, function_id, from, var_map),
+            )
         }
         IrStatement::JumpByCall { target } => {
             let target = &resolve_operand(target, instruction_args);
-            let e = convert_expr(target, var_map);
+            let e = convert_expr(ast, function_id, target, var_map);
             let name = match e {
-                Expression::Variable(id) => format!("v{}", id),
-                _ => e.to_string(),
+                Expression::Variable(vars, id) => {
+                    let vars = vars.read().unwrap();
+                    let var = vars.get(&id).unwrap();
+                    var.name.to_string()
+                }
+                _ => {
+                    warn!("Uncovered call target");
+                    e.to_string()
+                }
             };
-            Statement::Call(name, Vec::new())
+            Statement::Call(JumpTarget::Unknown(name), Vec::new())
         }
         IrStatement::Jump { target } => {
             let target = &resolve_operand(target, instruction_args);
-            let e = convert_expr(target, var_map);
+            let e = convert_expr(ast, function_id, target, var_map);
             let label = match e {
-                Expression::Variable(id) => format!("L{}", id),
-                _ => e.to_string(),
+                Expression::Variable(vars, id) => {
+                    let vars = vars.read().unwrap();
+                    let var = vars.get(&id).unwrap();
+                    var.name.to_string()
+                }
+                _ => {
+                    warn!("Uncovered jump target");
+                    e.to_string()
+                }
             };
-            Statement::Goto(label)
+            Statement::Goto(JumpTarget::Unknown(label))
         }
         IrStatement::Condition {
             condition,
@@ -220,14 +259,32 @@ fn convert_stmt(
             false_branch,
         } => {
             let condition = &resolve_operand(condition, instruction_args);
-            let cond = convert_expr(condition, var_map);
+            let cond = convert_expr(ast, function_id, condition, var_map);
             let then_b = true_branch
                 .iter()
-                .map(|s| convert_stmt(s, stmt_position, var_map, instruction_args))
+                .map(|s| {
+                    convert_stmt(
+                        ast,
+                        function_id,
+                        s,
+                        stmt_position,
+                        var_map,
+                        instruction_args,
+                    )
+                })
                 .collect();
             let else_b = false_branch
                 .iter()
-                .map(|s| convert_stmt(s, stmt_position, var_map, instruction_args))
+                .map(|s| {
+                    convert_stmt(
+                        ast,
+                        function_id,
+                        s,
+                        stmt_position,
+                        var_map,
+                        instruction_args,
+                    )
+                })
                 .collect();
             Statement::If(cond, then_b, Some(else_b))
         }
@@ -306,11 +363,29 @@ fn convert_stmt(
                 };
                 let tb = true_branch
                     .iter()
-                    .map(|s| convert_stmt(s, stmt_position, var_map, instruction_args))
+                    .map(|s| {
+                        convert_stmt(
+                            ast,
+                            function_id,
+                            s,
+                            stmt_position,
+                            var_map,
+                            instruction_args,
+                        )
+                    })
                     .collect();
                 let fb = false_branch
                     .iter()
-                    .map(|s| convert_stmt(s, stmt_position, var_map, instruction_args))
+                    .map(|s| {
+                        convert_stmt(
+                            ast,
+                            function_id,
+                            s,
+                            stmt_position,
+                            var_map,
+                            instruction_args,
+                        )
+                    })
                     .collect();
                 Statement::If(cond_expr, tb, Some(fb))
             }
@@ -320,7 +395,14 @@ fn convert_stmt(
                 flags,
             } => {
                 let operation = &resolve_operand(operation, instruction_args);
-                let stmts = calc_flags_automatically(operation, stmt_position, flags, var_map);
+                let stmts = calc_flags_automatically(
+                    ast,
+                    function_id,
+                    operation,
+                    stmt_position,
+                    flags,
+                    var_map,
+                );
                 Statement::Block(stmts)
             }
             IrStatementSpecial::TypeSpecified {
@@ -334,11 +416,13 @@ fn convert_stmt(
 }
 
 fn convert_unary(
+    ast: &mut CAst,
+    function_id: FunctionId,
     operator: &IrUnaryOp,
     arg: &Aos<IrData>,
-    var_map: &HashMap<Aos<IrData>, u32>,
+    var_map: &HashMap<Aos<IrData>, VariableId>,
 ) -> Expression {
-    let expr = convert_expr(arg, var_map);
+    let expr = convert_expr(ast, function_id, arg, var_map);
     let op = match operator {
         IrUnaryOp::Not => UnaryOperator::Not,
         IrUnaryOp::Negation => UnaryOperator::Negate,
@@ -349,13 +433,15 @@ fn convert_unary(
 }
 
 fn convert_binary(
+    ast: &mut CAst,
+    function_id: FunctionId,
     operator: &IrBinaryOp,
     arg1: &Aos<IrData>,
     arg2: &Aos<IrData>,
-    var_map: &HashMap<Aos<IrData>, u32>,
+    var_map: &HashMap<Aos<IrData>, VariableId>,
 ) -> Expression {
-    let lhs = convert_expr(arg1, var_map);
-    let rhs = convert_expr(arg2, var_map);
+    let lhs = convert_expr(ast, function_id, arg1, var_map);
+    let rhs = convert_expr(ast, function_id, arg2, var_map);
 
     match operator {
         IrBinaryOp::Add => Expression::BinaryOp(BinaryOperator::Add, Box::new(lhs), Box::new(rhs)),
@@ -407,32 +493,32 @@ fn convert_binary(
             Expression::BinaryOp(BinaryOperator::RightShift, Box::new(lhs), Box::new(rhs))
         }
         IrBinaryOp::Equal(size) => {
-            let sz = convert_size(size, var_map);
+            let sz = convert_size(ast, function_id, size, var_map);
             let lhs_s = Expression::Call("sized".into(), vec![lhs.clone(), sz.clone()]);
             let rhs_s = Expression::Call("sized".into(), vec![rhs.clone(), sz]);
             Expression::BinaryOp(BinaryOperator::Equal, Box::new(lhs_s), Box::new(rhs_s))
         }
         IrBinaryOp::SignedLess(size) => {
-            let sz = convert_size(size, var_map);
+            let sz = convert_size(ast, function_id, size, var_map);
             let lhs_s = Expression::Call("sized".into(), vec![lhs.clone(), sz.clone()]); // TODO does lhs need to be sized?
             let rhs_s = Expression::Call("sized".into(), vec![rhs.clone(), sz]);
             Expression::BinaryOp(BinaryOperator::Less, Box::new(lhs_s), Box::new(rhs_s))
         }
         IrBinaryOp::UnsignedLess(size) => {
-            let sz = convert_size(size, var_map);
+            let sz = convert_size(ast, function_id, size, var_map);
             let lhs_s = Expression::Call("sized".into(), vec![lhs.clone(), sz.clone()]);
             let rhs_s = Expression::Call("sized".into(), vec![rhs.clone(), sz]);
             let rhs_c = Expression::UnaryOp(UnaryOperator::CastUnsigned, Box::new(rhs_s));
             Expression::BinaryOp(BinaryOperator::Less, Box::new(lhs_s), Box::new(rhs_c))
         }
         IrBinaryOp::SignedLessOrEqual(size) => {
-            let sz = convert_size(size, var_map);
+            let sz = convert_size(ast, function_id, size, var_map);
             let lhs_s = Expression::Call("sized".into(), vec![lhs.clone(), sz.clone()]);
             let rhs_s = Expression::Call("sized".into(), vec![rhs.clone(), sz]);
             Expression::BinaryOp(BinaryOperator::LessEqual, Box::new(lhs_s), Box::new(rhs_s))
         }
         IrBinaryOp::UnsignedLessOrEqual(size) => {
-            let sz = convert_size(size, var_map);
+            let sz = convert_size(ast, function_id, size, var_map);
             let lhs_s = Expression::Call("sized".into(), vec![lhs.clone(), sz.clone()]);
             let rhs_s = Expression::Call("sized".into(), vec![rhs.clone(), sz]);
             let rhs_c = Expression::UnaryOp(UnaryOperator::CastUnsigned, Box::new(rhs_s));
@@ -441,10 +527,15 @@ fn convert_binary(
     }
 }
 
-fn convert_size(size: &AccessSize, var_map: &HashMap<Aos<IrData>, u32>) -> Expression {
+fn convert_size(
+    ast: &mut CAst,
+    function_id: FunctionId,
+    size: &AccessSize,
+    var_map: &HashMap<Aos<IrData>, VariableId>,
+) -> Expression {
     match size {
         AccessSize::ResultOfBit(d) | AccessSize::ResultOfByte(d) | AccessSize::RelativeWith(d) => {
-            convert_expr(d, var_map)
+            convert_expr(ast, function_id, d, var_map)
         }
         AccessSize::ArchitectureSize => Expression::ArchitectureByteSize,
         AccessSize::Unlimited => Expression::Unknown,
@@ -452,19 +543,22 @@ fn convert_size(size: &AccessSize, var_map: &HashMap<Aos<IrData>, u32>) -> Expre
 }
 
 fn calc_flags_automatically(
+    ast: &mut CAst,
+    function_id: FunctionId,
     operation: &Aos<IrData>,
     stmt_position: &IrStatementDescriptor,
     affected_registers: &[Aos<IrData>],
-    var_map: &HashMap<Aos<IrData>, u32>,
+    var_map: &HashMap<Aos<IrData>, VariableId>,
 ) -> Vec<WrappedStatement> {
     // TODO INVALID
-    let val = convert_expr(operation, var_map);
+    let val = convert_expr(ast, function_id, operation, var_map);
+    let vars = ast.get_variables(&function_id).unwrap();
     affected_registers
         .iter()
         .filter_map(|reg| {
-            var_map
-                .get(reg)
-                .map(|&vid| Statement::Assignment(Expression::Variable(vid), val.clone()))
+            var_map.get(reg).map(|&vid| {
+                Statement::Assignment(Expression::Variable(vars.clone(), vid), val.clone())
+            })
         })
         .map(|stmt| ws(stmt, *stmt_position))
         .collect()
