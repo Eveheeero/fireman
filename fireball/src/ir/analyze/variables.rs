@@ -45,7 +45,12 @@ mod private {
             self.accesses
         }
         #[inline]
-        pub fn add_data_access(&mut self, ir_index: u32, statement_index: u8, access: DataAccess) {
+        pub fn add_data_access(
+            &mut self,
+            ir_index: u32,
+            statement_index: impl Into<Option<u8>>,
+            access: DataAccess,
+        ) {
             let key = IrStatementDescriptor::new(ir_index, statement_index);
             self.accesses.insert_checked(key, Vec::new());
             self.accesses.get_mut(key).unwrap().push(access);
@@ -244,7 +249,7 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
                 if !variables[var_id].shown_in.contains(&ir_index) {
                     variables[var_id].shown_in.push(ir_index);
                 }
-                variables[var_id].add_data_access(ir_index, da.0.statement_index(), da.1.clone());
+                variables[var_id].add_data_access(ir_index, *da.0.statement_index(), da.1.clone());
 
                 if *access_type == DataAccessType::Read
                     && variables[var_id].live_out == Some(ir_index)
