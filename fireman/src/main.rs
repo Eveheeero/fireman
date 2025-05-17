@@ -81,11 +81,11 @@ fn main() {
         let reader = now.get_ir();
         let ir_block = reader.as_ref().unwrap();
         println!();
-        for ir in ir_block.ir().iter() {
+        for (ir, instruction) in ir_block.ir().iter().zip(ir_block.instructions().iter()) {
             println!();
-            println!("{:?}", ir.instruction);
+            println!("{}", instruction);
             ir.statements.as_ref().unwrap().iter().for_each(|x| {
-                println!("{:?}", x);
+                println!("{}", x);
             });
         }
         println!();

@@ -21,7 +21,10 @@ use crate::{
 };
 pub use register::Register;
 use statements::IrStatement;
-use std::{cell::UnsafeCell, sync::LazyLock};
+use std::{
+    cell::UnsafeCell,
+    sync::{Arc, LazyLock},
+};
 use utils::IrStatementDescriptorMap;
 
 /// A structure to simulate the computer's behavior
@@ -49,6 +52,7 @@ impl VirtualMachine {
 #[derive(Debug, Clone)]
 pub struct IrBlock {
     ir: Box<[Ir]>,
+    instructions: Arc<[Instruction]>,
     pub data_access: Option<IrStatementDescriptorMap<Vec<DataAccess>>>,
     /// Analyzed Datatypes.
     pub known_datatypes: Option<IrStatementDescriptorMap<Vec<KnownDataType>>>,
@@ -57,9 +61,10 @@ pub struct IrBlock {
 }
 
 impl IrBlock {
-    pub fn new(data: Vec<Ir>) -> Self {
+    pub fn new(data: Vec<Ir>, instructions: Arc<[Instruction]>) -> Self {
         Self {
             ir: data.into_boxed_slice(),
+            instructions,
             data_access: None,
             known_datatypes: None,
             variables: None,
@@ -67,6 +72,9 @@ impl IrBlock {
     }
     pub fn ir(&self) -> &[Ir] {
         &self.ir
+    }
+    pub fn instructions(&self) -> &Arc<[Instruction]> {
+        &self.instructions
     }
 
     pub fn analyze_data_access(&mut self) {
@@ -153,8 +161,6 @@ impl IrBlock {
 pub struct Ir {
     /// Address of the instruction
     pub address: Address,
-    /// Parsed instruction structure for this instruction
-    pub instruction: Box<Instruction>,
     /// Executed statements
     pub statements: Option<&'static [IrStatement]>,
 }

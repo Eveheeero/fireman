@@ -1,6 +1,8 @@
 //! Module defining a structure that collects "Block"s resulting from program analysis
 
-use crate::core::{relation::DestinationType, Address, Block, Relation, RelationType, Relations};
+use crate::core::{
+    relation::DestinationType, Address, Block, Instruction, Relation, RelationType, Relations,
+};
 use std::sync::Arc;
 
 /// A structure that manages IR-level blocks
@@ -42,6 +44,7 @@ impl Blocks {
     /// - `block_size: Option<u64>`: The size of the block
     /// - `connected_to: &[BlockRelationInformation]`: the relations to other blocks
     /// - `name: Option<String>`: The name of the block
+    /// - `instructions: Arc<[Instruction]>`: The instructions of the block
     ///
     /// ### Returns
     /// - `Arc<Block>`: The generated block
@@ -51,6 +54,7 @@ impl Blocks {
         block_size: Option<u64>,
         connected_to: &[BlockRelationInformation],
         name: Option<String>,
+        instructions: Arc<[Instruction]>,
     ) -> Arc<Block> {
         /* Before acquiring the lock, check relations targeting this block */
         let connected_from: Vec<_> = {
@@ -79,7 +83,13 @@ impl Blocks {
         let blocks_writer = &mut self.data.write().unwrap();
 
         /* Create the new block with the provided information */
-        let new_block = Block::new(blocks_writer.len(), name, start_address, block_size);
+        let new_block = Block::new(
+            blocks_writer.len(),
+            name,
+            start_address,
+            block_size,
+            instructions,
+        );
 
         for connected_from in connected_from {
             new_block.add_connected_from(connected_from);
