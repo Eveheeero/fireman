@@ -22,7 +22,7 @@ pub fn generate_c(data: &MergedIr) -> CAst {
     let mut ast = CAst::new();
 
     let mut locals = HashMap::new();
-    for (i, var) in data.variables.iter().enumerate() {
+    for (i, var) in data.get_variables().iter().enumerate() {
         let c_type = match var.data_type {
             DataType::Unknown => CType::Unknown,
             DataType::Int => CType::Int32,
@@ -45,7 +45,7 @@ pub fn generate_c(data: &MergedIr) -> CAst {
     let mut func = Function {
         name: None,
         id: data
-            .ir
+            .get_ir()
             .first()
             .map(|ir| ir.address.get_virtual_address())
             .unwrap_or(0),
@@ -56,15 +56,15 @@ pub fn generate_c(data: &MergedIr) -> CAst {
     };
 
     let mut var_map: HashMap<Aos<IrData>, u32> = HashMap::new();
-    for (var_id, mvar) in data.variables.iter().enumerate() {
-        for (_key, accesses) in mvar.accesses.iter() {
+    for (var_id, mvar) in data.get_variables().iter().enumerate() {
+        for (_key, accesses) in mvar.get_data_accesses().iter() {
             for da in accesses.iter() {
                 var_map.insert(da.location().clone(), var_id as u32);
             }
         }
     }
 
-    for (ir, instruction) in data.ir.iter().zip(data.instructions.iter()) {
+    for (ir, instruction) in data.get_ir().iter().zip(data.get_instructions().iter()) {
         func.body.push(Statement::Comment(instruction.to_string()));
         if let Some(stmts) = ir.statements {
             let instruction_args = instruction.inner.arguments.as_ref();

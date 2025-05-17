@@ -38,7 +38,7 @@ pub fn merge_blocks(blocks: &[Arc<Block>]) -> MergedIr {
         .into_iter()
         .map(|v| MergedIrVariable {
             data_type: v.data_type,
-            accesses: v.into_data_accesses(),
+            data_accesses: v.into_data_accesses(),
         })
         .collect();
 
@@ -50,13 +50,44 @@ pub fn merge_blocks(blocks: &[Arc<Block>]) -> MergedIr {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct MergedIr {
-    pub instructions: Arc<[Instruction]>,
-    pub ir: Vec<Ir>,
-    pub variables: Vec<MergedIrVariable>,
+    instructions: Arc<[Instruction]>,
+    ir: Vec<Ir>,
+    variables: Vec<MergedIrVariable>,
 }
 
+impl MergedIr {
+    pub fn new(
+        instructions: Arc<[Instruction]>,
+        ir: Vec<Ir>,
+        variables: Vec<MergedIrVariable>,
+    ) -> Self {
+        Self {
+            instructions,
+            ir,
+            variables,
+        }
+    }
+    pub fn get_ir(&self) -> &Vec<Ir> {
+        &self.ir
+    }
+    pub fn get_instructions(&self) -> &Arc<[Instruction]> {
+        &self.instructions
+    }
+    pub fn get_variables(&self) -> &Vec<MergedIrVariable> {
+        &self.variables
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct MergedIrVariable {
-    pub accesses: IrStatementDescriptorMap<Vec<DataAccess>>,
+    data_accesses: IrStatementDescriptorMap<Vec<DataAccess>>,
     pub data_type: DataType,
+}
+
+impl MergedIrVariable {
+    pub fn get_data_accesses(&self) -> &IrStatementDescriptorMap<Vec<DataAccess>> {
+        &self.data_accesses
+    }
 }
