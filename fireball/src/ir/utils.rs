@@ -1,17 +1,22 @@
 use hashbrown::HashMap;
 
+///
+///
+/// |--ir_index---|---empty--|-1 if stmt empty-|--stmt_index--|
+/// |  32 bits    |  23 bit  | 1 bit           |  8 bits      |
+/// | 0x00000000  |                            |  0x00        |
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IrStatementDescriptor {
     ir_index: u32,
-    statement_index: u8,
+    statement_index: Option<u8>,
 }
 
 impl IrStatementDescriptor {
     #[inline]
-    pub fn new(ir_index: u32, statement_index: u8) -> Self {
+    pub fn new(ir_index: u32, statement_index: impl Into<Option<u8>>) -> Self {
         Self {
             ir_index,
-            statement_index,
+            statement_index: statement_index.into(),
         }
     }
     #[inline]
@@ -19,19 +24,30 @@ impl IrStatementDescriptor {
         self.ir_index
     }
     #[inline]
-    pub fn statement_index(&self) -> u8 {
-        self.statement_index
+    pub fn statement_index(&self) -> &Option<u8> {
+        &self.statement_index
     }
     #[inline]
     pub fn from_u64(value: u64) -> Self {
+        let stmt_is_empty = (value & 0x100) == 0x100;
         Self {
             ir_index: (value >> 32) as u32,
-            statement_index: (value & 0xffffffff) as u8,
+            statement_index: if stmt_is_empty {
+                None
+            } else {
+                Some((value & 0xFF) as u8)
+            },
         }
     }
     #[inline]
     pub fn to_u64(&self) -> u64 {
-        ((self.ir_index as u64) << 32) | (self.statement_index as u64)
+        ((self.ir_index as u64) << 32)
+            | (if self.statement_index.is_none() {
+                0x100
+            } else {
+                0
+            })
+            | (self.statement_index.unwrap_or_default() as u64)
     }
 }
 

@@ -1,51 +1,65 @@
 //! Unusued are for optimization process
 
 use crate::{
+    core::Address,
     ir::{data::IrData, utils::IrStatementDescriptor},
+    prelude::*,
     utils::Aos,
 };
 use hashbrown::HashMap;
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone)]
 pub struct CAst {
-    pub static_variables: HashMap<VariableId, Variable>,
-    pub functions: Vec<Function>,
+    pub static_variables: ArcVariableMap,
+    pub functions: ArcFunctionMap,
+    pub last_variable_id: HashMap<FunctionId, u32>,
 }
+
+pub type ArcFunctionMap = Arc<RwLock<HashMap<FunctionId, Function>>>;
+pub type ArcVariableMap = Arc<RwLock<HashMap<VariableId, Variable>>>;
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub name: Option<String>,
+    pub name: String,
     pub id: FunctionId,
     pub return_type: CType,
     pub parameters: Vec<Variable>,
-    pub variables: HashMap<VariableId, Variable>,
-    pub body: Vec<Statement>,
+    pub variables: ArcVariableMap,
+    pub body: Vec<WrappedStatement>,
 }
 
 #[derive(Debug, Clone)]
-pub enum WrappedItem<T> {
-    FromIrData {
-        item: T,
-        from: Aos<IrData>,
-        comment: String,
-    },
-    FromIrStatement {
-        item: T,
-        from: IrStatementDescriptor,
-        comment: String,
-    },
+pub struct WrappedStatement {
+    pub statement: Statement,
+    pub from: Option<IrStatementDescriptor>,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WrappedData<T> {
+    pub item: T,
+    pub from: Option<Aos<IrData>>,
+    pub comment: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variable {
-    pub name: Option<String>,
+    pub name: String,
     pub id: VariableId,
     pub var_type: CType,
     pub is_const: bool,
 }
 
-pub type VariableId = u32;
-pub type FunctionId = u64;
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy, Hash)]
+pub struct VariableId {
+    index: u32,
+    parent: Option<FunctionId>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy, Hash)]
+pub struct FunctionId {
+    address: u64,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CType {
@@ -72,19 +86,35 @@ pub enum CType {
 pub enum Statement {
     Declaration(Variable, Option<Expression>),
     Assignment(Expression, Expression),
-    If(Expression, Vec<Statement>, Option<Vec<Statement>>),
-    While(Expression, Vec<Statement>),
-    For(Box<Statement>, Expression, Box<Statement>, Vec<Statement>),
+    If(
+        Expression,
+        Vec<WrappedStatement>,
+        Option<Vec<WrappedStatement>>,
+    ),
+    While(Expression, Vec<WrappedStatement>),
+    For(
+        Box<WrappedStatement>,
+        Expression,
+        Box<WrappedStatement>,
+        Vec<WrappedStatement>,
+    ),
     Return(Option<Expression>),
-    Call(String, Vec<Expression>),
-    Label(String),
-    Goto(String),
-    Block(Vec<Statement>),
+    Call(JumpTarget, Vec<Expression>),
+    Label(String /* TODO need to change */),
+    Goto(JumpTarget),
+    Block(Vec<WrappedStatement>),
     Assembly(String),
     Undefined,
     Exception(&'static str),
     Comment(String),
     Empty,
+}
+#[derive(Debug, Clone)]
+pub enum JumpTarget {
+    Variable { scope: FunctionId, id: VariableId },
+    Function { target: FunctionId },
+    Instruction { target: IrStatementDescriptor },
+    Unknown(String),
 }
 
 #[derive(Debug, Clone)]
@@ -94,7 +124,7 @@ pub enum Expression {
     ArchitectureBitSize,
     ArchitectureByteSize,
     Literal(Literal),
-    Variable(VariableId),
+    Variable(ArcVariableMap, VariableId),
     UnaryOp(UnaryOperator, Box<Expression>),
     BinaryOp(BinaryOperator, Box<Expression>, Box<Expression>),
     Call(String, Vec<Expression>),
@@ -153,8 +183,50 @@ pub enum BinaryOperator {
 impl CAst {
     pub fn new() -> Self {
         Self {
-            functions: Vec::new(),
-            static_variables: HashMap::new(),
+            functions: Arc::new(RwLock::new(HashMap::new())),
+            static_variables: Arc::new(RwLock::new(HashMap::new())),
+            last_variable_id: HashMap::new(),
+        }
+    }
+
+    pub fn generate_default_function(&mut self, start_address: &Address) -> FunctionId {
+        let id = FunctionId {
+            address: start_address.get_virtual_address(),
+        };
+        let name = id.get_default_name();
+        let func = Function {
+            name,
+            id,
+            return_type: CType::Void,
+            parameters: Vec::new(),
+            variables: Arc::new(RwLock::new(HashMap::new())),
+            body: Vec::new(),
+        };
+        self.functions.write().unwrap().insert(id, func.clone());
+        id
+    }
+    pub fn new_variable_id(&mut self, current_function: &FunctionId) -> VariableId {
+        let last_index = self.last_variable_id.entry(*current_function).or_insert(0);
+        *last_index += 1;
+        VariableId {
+            index: *last_index,
+            parent: Some(*current_function),
+        }
+    }
+    pub fn get_variables(
+        &self,
+        function_id: &FunctionId,
+    ) -> Result<ArcVariableMap, DecompileError> {
+        if let Some(func) = self.functions.read().unwrap().get(function_id) {
+            Ok(func.variables.clone())
+        } else {
+            error!(
+                "Tried to get variables from a non-existing function: {:?}",
+                function_id
+            );
+            Err(DecompileError::UnknownWithMessage(
+                "Tried to get variables from a non-existing function".to_string(),
+            ))
         }
     }
 
@@ -171,20 +243,20 @@ impl CAst {
         let mut output = String::new();
 
         // Global variables
-        for (&id, var) in self.static_variables.iter() {
+        for var in self.static_variables.read().unwrap().values() {
             output.push_str(&format!(
-                "{}{} g{};\n",
+                "{}{} {};\n",
                 if var.is_const { "const " } else { "" },
                 var.var_type.to_string(),
-                id
+                var.name
             ));
         }
 
         output.push_str("\n");
 
         // Functions
-        for func in &self.functions {
-            output.push_str(&format!("{} f{:X}(", func.return_type.to_string(), func.id));
+        for func in self.functions.read().unwrap().values() {
+            output.push_str(&format!("{} {}(", func.return_type.to_string(), func.name));
 
             // Parameters
             if !func.parameters.is_empty() {
@@ -193,10 +265,10 @@ impl CAst {
                     .iter()
                     .map(|p| {
                         format!(
-                            "{}{} v{}",
+                            "{}{} {}",
                             if p.is_const { "const " } else { "" },
                             p.var_type.to_string(),
-                            p.id
+                            p.name
                         )
                     })
                     .collect();
@@ -206,12 +278,12 @@ impl CAst {
             output.push_str(") {\n");
 
             // Local variables
-            for (&id, var) in func.variables.iter() {
+            for var in func.variables.read().unwrap().values() {
                 output.push_str(&format!(
-                    "{}{} v{};\n",
+                    "{}{} {};\n",
                     if var.is_const { "const " } else { "" },
                     var.var_type.to_string(),
-                    id
+                    var.name
                 ));
             }
             output.push_str("\n");
@@ -256,9 +328,9 @@ impl std::fmt::Display for CType {
 impl std::fmt::Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Statement::Declaration(var, None) => write!(f, "{} v{};", var.var_type, var.id),
+            Statement::Declaration(var, None) => write!(f, "{} {};", var.var_type, var.name),
             Statement::Declaration(var, Some(expr)) => {
-                write!(f, "{} v{} = {};", var.var_type, var.id, expr)
+                write!(f, "{} {} = {};", var.var_type, var.name, expr)
             }
             Statement::Assignment(left, right) => write!(f, "{} = {};", left, right),
             Statement::If(cond, then_body, else_body) => {
@@ -283,13 +355,13 @@ impl std::fmt::Display for Statement {
             }
             Statement::For(init, cond, update, body) => {
                 write!(f, "for (")?;
-                if let Statement::Declaration(var, _) = &**init {
-                    write!(f, "{} v{};", var.var_type, var.id)?;
+                if let Statement::Declaration(var, _) = init.as_ref().as_ref() {
+                    write!(f, "{} {};", var.var_type, var.name)?;
                 } else {
                     write!(f, "{};", init)?;
                 }
                 write!(f, " {};", cond)?;
-                if let Statement::Assignment(left, right) = &**update {
+                if let Statement::Assignment(left, right) = update.as_ref().as_ref() {
                     write!(f, "{} = {};", left, right)?;
                 } else {
                     write!(f, "{};", update)?;
@@ -339,7 +411,11 @@ impl std::fmt::Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Expression::Literal(lit) => write!(f, "{}", lit),
-            Expression::Variable(id) => write!(f, "v{}", id),
+            Expression::Variable(var_map, id) => {
+                let var_map = var_map.read().unwrap();
+                let var = var_map.get(id).unwrap();
+                write!(f, "{}", var.name)
+            }
             Expression::UnaryOp(op, expr) => write!(f, "{}{}", op, expr),
             Expression::BinaryOp(op, left, right) => write!(f, "({} {} {})", left, op, right),
             Expression::Call(name, args) => {
@@ -419,6 +495,56 @@ impl std::fmt::Display for BinaryOperator {
 }
 impl std::fmt::Display for Variable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} v{}", self.var_type, self.id)
+        write!(f, "{} {}", self.var_type, self.name)
+    }
+}
+impl std::fmt::Display for WrappedStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(comment) = &self.comment {
+            write!(f, "/** {} */", comment)?;
+        }
+        write!(f, "{}", self.statement)
+    }
+}
+impl<T: std::fmt::Display> std::fmt::Display for WrappedData<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.comment {
+            Some(ref comment) => write!(f, "{} /* {} */", self.item, comment),
+            None => write!(f, "{}", self.item),
+        }
+    }
+}
+impl AsRef<Statement> for WrappedStatement {
+    fn as_ref(&self) -> &Statement {
+        &self.statement
+    }
+}
+impl<T> AsRef<T> for WrappedData<T> {
+    fn as_ref(&self) -> &T {
+        &self.item
+    }
+}
+impl VariableId {
+    pub fn get_default_name(&self) -> String {
+        if self.parent.is_some() {
+            format!("v{}", self.index)
+        } else {
+            format!("g{}", self.index)
+        }
+    }
+}
+impl FunctionId {
+    pub fn get_default_name(&self) -> String {
+        format!("f{}", self.address)
+    }
+}
+impl std::fmt::Display for JumpTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            JumpTarget::Variable { scope: _, id } => write!(f, "var{:?}", id),
+            JumpTarget::Function { target } => write!(f, "function{:?}", target),
+            JumpTarget::Instruction { target } => write!(f, "ir{}", target.ir_index()),
+            JumpTarget::Unknown(name) => write!(f, "{}", name),
+        }
     }
 }

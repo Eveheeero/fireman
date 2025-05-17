@@ -2,7 +2,7 @@
 pub enum DecompileError {
     #[default]
     Unknown,
-    UnknwonWithMessage(String),
+    UnknownWithMessage(String),
     HeaderParsingFailed,
     DisassembleFailed(super::disassemble_error::DisassembleError),
     EntryNotFound,
@@ -12,7 +12,7 @@ impl std::fmt::Display for DecompileError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Unknown => write!(f, "Unknown Error Occured!"),
-            Self::UnknwonWithMessage(msg) => write!(f, "Unknown Error Occured! {}", msg),
+            Self::UnknownWithMessage(msg) => write!(f, "Unknown Error Occured! {}", msg),
             Self::HeaderParsingFailed => write!(f, "Header Parsing Failed!"),
             Self::DisassembleFailed(err) => write!(f, "Fail to disassemble block! {}", err),
             Self::EntryNotFound => write!(f, "Entry Not Found!"),
@@ -28,19 +28,19 @@ impl From<goblin::error::Error> for DecompileError {
 
 impl From<String> for DecompileError {
     fn from(msg: String) -> Self {
-        Self::UnknwonWithMessage(msg)
+        Self::UnknownWithMessage(msg)
     }
 }
 
 impl From<&String> for DecompileError {
     fn from(msg: &String) -> Self {
-        Self::UnknwonWithMessage(msg.clone())
+        Self::UnknownWithMessage(msg.clone())
     }
 }
 
 impl From<&str> for DecompileError {
     fn from(msg: &str) -> Self {
-        Self::UnknwonWithMessage(msg.to_string())
+        Self::UnknownWithMessage(msg.to_string())
     }
 }
 
