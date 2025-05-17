@@ -166,9 +166,9 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
         if ir.statements.is_none() {
             continue;
         }
+        let instruction = &ir_block.instructions().as_ref()[ir_index].inner;
         let ir_index = ir_index as u32;
         let statements = ir.statements.as_ref().unwrap();
-        let instruction = &ir.instruction.as_ref().inner;
         let instruction_args = &instruction.arguments;
         let known_datatypes_at_ir_resolved = resolve_known_datatypes(
             &known_datatypes

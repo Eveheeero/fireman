@@ -18,6 +18,7 @@ impl Pe {
             return block;
         }
         debug!("Block generation started {}", address);
+        let mut instructions = Vec::new();
         let mut address = address.clone();
         let start_address = address.clone();
         let mut last_instruction_address = None;
@@ -26,11 +27,17 @@ impl Pe {
         loop {
             let inst = self.parse_assem_count(&address, 1);
             if inst.is_err() || inst.as_ref().unwrap().is_empty() {
-                warn!("Instruction parsing failed: {:#x}", address.get_virtual_address());
+                warn!(
+                    "Instruction parsing failed: {:#x}",
+                    address.get_virtual_address()
+                );
                 break;
             }
-            debug_assert_eq!(inst.as_ref().unwrap().len(), 1);
-            let inst = &inst.unwrap()[0].inner;
+            let mut inst = inst.unwrap();
+            debug_assert_eq!(inst.len(), 1);
+            let inst = inst.pop().unwrap();
+            instructions.push(inst);
+            let inst = &instructions.last().unwrap().inner;
             if let Err(e) = inst.statement {
                 error!(
                     "Instruction converting failed: {:#x} {:?}",
@@ -79,8 +86,13 @@ impl Pe {
             ?connected_to,
             "Block generation done for size {:?}", block_size
         );
-        self.blocks
-            .generate_block(start_address, block_size, &connected_to, None)
+        self.blocks.generate_block(
+            start_address,
+            block_size,
+            &connected_to,
+            None,
+            instructions.into(),
+        )
     }
 
     /// Returns the target address and relation type from the final instruction.

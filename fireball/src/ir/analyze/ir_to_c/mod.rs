@@ -64,11 +64,10 @@ pub fn generate_c(data: &MergedIr) -> CAst {
         }
     }
 
-    for ir in &data.ir {
-        func.body
-            .push(Statement::Comment(ir.instruction.to_string()));
+    for (ir, instruction) in data.ir.iter().zip(data.instructions.iter()) {
+        func.body.push(Statement::Comment(instruction.to_string()));
         if let Some(stmts) = ir.statements {
-            let instruction_args = ir.instruction.inner.arguments.as_ref();
+            let instruction_args = instruction.inner.arguments.as_ref();
             for stmt in stmts.iter() {
                 func.body.push(Statement::Comment(stmt.to_string()));
                 func.body
@@ -76,7 +75,7 @@ pub fn generate_c(data: &MergedIr) -> CAst {
             }
         } else {
             func.body
-                .push(Statement::Assembly(ir.instruction.inner.to_string()));
+                .push(Statement::Assembly(instruction.inner.to_string()));
         }
     }
 

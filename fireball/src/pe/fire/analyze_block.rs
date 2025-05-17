@@ -13,16 +13,9 @@ impl Pe {
         // Create the block
         let block = self.generate_block_from_address(address);
         debug!("Block created {}", block);
-        // Parse instructions in the block
-        let block_size = if let Some(block_size) = block.get_block_size() {
-            *block_size
-        } else {
-            warn!("Unable to determine block end location at {}", address);
-            1
-        };
 
         /* Instruction conversion */
-        let instructions = self.parse_assem_range(address, block_size)?;
+        let instructions = block.get_instructions().clone();
         let mut ir_block = Vec::new();
         let mut instruction_address = address.clone();
         debug!(
@@ -30,7 +23,7 @@ impl Pe {
             instructions.len(),
             address
         );
-        for instruction in instructions {
+        for instruction in instructions.iter() {
             let instruction_size = instruction
                 .inner
                 .bytes
@@ -46,7 +39,6 @@ impl Pe {
             };
             let ir = Ir {
                 address: instruction_address.clone(),
-                instruction: instruction.into(),
                 statements,
             };
             ir_block.push(ir);
@@ -63,7 +55,7 @@ impl Pe {
                 .map(|x| x.statements.as_ref().unwrap().len())
                 .sum::<usize>()
         );
-        let mut ir_block = IrBlock::new(ir_block);
+        let mut ir_block = IrBlock::new(ir_block, instructions);
 
         /* Analysis */
         // Data access analysis

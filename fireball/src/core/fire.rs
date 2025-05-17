@@ -21,7 +21,7 @@ pub trait Fire {
     /// - This function performs no additional computation.
     fn get_binary(&self) -> &Vec<u8>;
     /// Decompiles the entire binary.
-    ///     
+    ///
     /// ### Returns
     /// - `Result<String, DecompileError>` - the decompiled code
     fn decompile_all(&self) -> Result<String, DecompileError>;

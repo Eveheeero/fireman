@@ -1,4 +1,8 @@
-use fireball::{core::Address, ir::utils::IrStatementDescriptor, Fire, Fireball};
+use fireball::{
+    core::{Address, FireRaw},
+    ir::utils::IrStatementDescriptor,
+    Fireball,
+};
 use serde::Serialize;
 use std::sync::{Arc, LazyLock, Mutex};
 use ts_bind::TsBind;
@@ -119,8 +123,12 @@ fn ir_inspect(address: &str) -> Result<Vec<IrInspectResult>, String> {
         .as_ref()
         .ok_or("Block Not Analyzed")?;
     let mut result = Vec::new();
-    for (ir_index, ir) in ir_block.ir().iter().enumerate() {
-        let instruction = ir.instruction.as_ref();
+    for (ir_index, (ir, instruction)) in ir_block
+        .ir()
+        .iter()
+        .zip(ir_block.instructions().iter())
+        .enumerate()
+    {
         if let Some(statements) = ir.statements {
             for (statement_index, statement) in statements.iter().enumerate() {
                 let key = IrStatementDescriptor::new(ir_index as u32, statement_index as u8);

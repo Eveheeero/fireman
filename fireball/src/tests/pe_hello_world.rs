@@ -222,14 +222,10 @@ fn pe_hello_world_print_statements() {
     let ir = block.get_ir();
     assert!(ir.is_some(), "IR data not generated during decompilation");
     let ir = ir.as_ref().unwrap();
-    for ir in ir.ir() {
-        println!(
-            "{:?} {:?}",
-            ir.address.get_virtual_address(),
-            ir.instruction
-        );
+    for (ir, instruction) in ir.ir().iter().zip(ir.instructions().iter()) {
+        println!("{} {}", ir.address.get_virtual_address(), instruction);
         for statement in ir.statements.as_ref().unwrap().iter() {
-            println!("{:?}", statement);
+            println!("{}", statement);
         }
     }
 }
@@ -267,6 +263,6 @@ fn pe_hello_world_print_assem_entry() {
         mov edx, 0
         mov rcx, rax
          */
-        println!("{:?}", inst);
+        println!("{}", inst);
     }
 }
