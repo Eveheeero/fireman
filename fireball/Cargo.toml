@@ -25,6 +25,7 @@ tracing = { version = "0.1", features = [
 bitvec = "1.0.1"
 fireman_macro = { path = "../fireman_macro", version = "0.0.1" }
 hashbrown = "0.15"
+num-bigint = "0.4.6"
 
 [dev-dependencies]
 tracing-subscriber = "0.3"

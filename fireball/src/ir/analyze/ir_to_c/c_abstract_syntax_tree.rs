@@ -7,6 +7,7 @@ use crate::{
     utils::Aos,
 };
 use hashbrown::HashMap;
+use num_bigint::{BigInt, Sign};
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone)]
@@ -65,10 +66,12 @@ pub struct FunctionId {
 pub enum CType {
     Void,
     Unknown,
+    Int,
     Int8,
     Int16,
     Int32,
     Int64,
+    UInt,
     UInt8,
     UInt16,
     UInt32,
@@ -76,6 +79,7 @@ pub enum CType {
     Char,
     Float,
     Double,
+    Bool,
     Pointer(Box<CType>),
     Array(Box<CType>, usize),
     Struct(String, Vec<Variable>),
@@ -86,17 +90,13 @@ pub enum CType {
 pub enum CValue {
     Void,
     Unknown,
-    Int8(i8),
-    Int16(i16),
-    Int32(i32),
-    Int64(i64),
-    UInt8(u8),
-    UInt16(u16),
-    UInt32(u32),
-    UInt64(u64),
+    Undefined,
+    Max,
+    Min,
+    Num(BigInt),
     Char(char),
-    Float(f32),
     Double(f64),
+    Bool(bool),
     Pointer(Box<CValue>),
     Array(Vec<CValue>),
 }
@@ -337,10 +337,12 @@ impl std::fmt::Display for CType {
         match self {
             CType::Void => write!(f, "void"),
             CType::Unknown => write!(f, "unknown_t"),
+            CType::Int => write!(f, "int"),
             CType::Int8 => write!(f, "int8_t"),
             CType::Int16 => write!(f, "int16_t"),
             CType::Int32 => write!(f, "int32_t"),
             CType::Int64 => write!(f, "int64_t"),
+            CType::UInt => write!(f, "uint"),
             CType::UInt8 => write!(f, "uint8_t"),
             CType::UInt16 => write!(f, "uint16_t"),
             CType::UInt32 => write!(f, "uint32_t"),
@@ -348,6 +350,7 @@ impl std::fmt::Display for CType {
             CType::Char => write!(f, "char"),
             CType::Float => write!(f, "float"),
             CType::Double => write!(f, "double"),
+            CType::Bool => write!(f, "bool"),
             CType::Pointer(t) => write!(f, "{}*", t),
             CType::Array(t, size) => write!(f, "{}[{}]", t, size),
             CType::Struct(name, _) => write!(f, "struct {}", name),
@@ -433,7 +436,7 @@ impl std::fmt::Display for Statement {
             Statement::Undefined => write!(f, "<UNDEFINED BEHAVIOR>"),
             Statement::Exception(e) => write!(f, "<EXCEPTION: {e}>"),
             Statement::Assembly(code) => write!(f, "<ASSEMBLY: {code}>"),
-            Statement::Comment(comment) => write!(f, "// {}", comment),
+            Statement::Comment(comment) => write!(f, "/* {} */", comment),
         }
     }
 }
@@ -584,22 +587,51 @@ impl std::fmt::Display for CValue {
         match self {
             CValue::Void => write!(f, "()"),
             CValue::Unknown => write!(f, "unknown_v"),
-            CValue::Int8(i) => write!(f, "{}", i),
-            CValue::Int16(i) => write!(f, "{}", i),
-            CValue::Int32(i) => write!(f, "{}", i),
-            CValue::Int64(i) => write!(f, "{}", i),
-            CValue::UInt8(u) => write!(f, "{}", u),
-            CValue::UInt16(u) => write!(f, "{}", u),
-            CValue::UInt32(u) => write!(f, "{}", u),
-            CValue::UInt64(u) => write!(f, "{}", u),
+            CValue::Undefined => write!(f, "undefined"),
+            CValue::Max => write!(f, "max"),
+            CValue::Min => write!(f, "min"),
+            CValue::Num(i) => {
+                let i = i.to_u64_digits();
+                if i.0 == Sign::Minus {
+                    write!(f, "-0x{:X}", i.1[0])
+                } else {
+                    write!(f, "0x{:X}", i.1[0])
+                }
+            }
             CValue::Char(c) => write!(f, "'{}'", c),
-            CValue::Float(d) => write!(f, "{}", d),
             CValue::Double(d) => write!(f, "{}", d),
-            CValue::Pointer(p) => write!(f, "*{:?}", p),
+            CValue::Bool(b) => write!(f, "{}", b),
+            CValue::Pointer(p) => write!(f, "*{}", p),
             CValue::Array(arr) => {
                 let arr_str: Vec<String> = arr.iter().map(|v| v.to_string()).collect();
                 write!(f, "[{}]", arr_str.join(", "))
             }
+        }
+    }
+}
+impl CValue {
+    pub fn num(&self) -> Option<&BigInt> {
+        match self {
+            CValue::Num(i) => Some(i),
+            _ => None,
+        }
+    }
+    pub fn char(&self) -> Option<&char> {
+        match self {
+            CValue::Char(c) => Some(c),
+            _ => None,
+        }
+    }
+    pub fn double(&self) -> Option<&f64> {
+        match self {
+            CValue::Double(d) => Some(d),
+            _ => None,
+        }
+    }
+    pub fn bool(&self) -> Option<&bool> {
+        match self {
+            CValue::Bool(b) => Some(b),
+            _ => None,
         }
     }
 }

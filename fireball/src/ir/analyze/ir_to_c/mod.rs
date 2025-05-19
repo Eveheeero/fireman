@@ -1,12 +1,12 @@
 pub mod c_abstract_syntax_tree;
 
 use crate::{
-    core::Block,
+    core::{Address, Block},
     ir::{
         analyze::{
             ir_block_merger::merge_blocks,
             ir_to_c::c_abstract_syntax_tree::{
-                BinaryOperator, CAst, CType, Expression, FunctionId, JumpTarget, Literal,
+                BinaryOperator, CAst, CType, CValue, Expression, FunctionId, JumpTarget, Literal,
                 Statement, UnaryOperator, Variable, VariableId, WrappedData, WrappedStatement,
             },
             variables::resolve_operand,
@@ -21,6 +21,7 @@ use crate::{
     utils::Aos,
 };
 use hashbrown::HashMap;
+use num_bigint::BigInt;
 use std::sync::{Arc, RwLock};
 
 /// Wrap Statement
@@ -73,17 +74,34 @@ pub fn generate_c_function(ast: &mut CAst, data: &MergedIr) {
         let var_id = ast.new_variable_id(&func_id);
         let c_type = match var.data_type {
             DataType::Unknown => CType::Unknown,
-            DataType::Int => CType::Int32,
+            DataType::Int => CType::Int,
             DataType::Float => CType::Double,
             DataType::StringPointer => CType::Pointer(Box::new(CType::Char)),
             DataType::Char => CType::Char,
             DataType::Address => CType::Pointer(Box::new(CType::Void)),
         };
         let mut const_value = None;
-        for accesses in var.get_data_accesses().values() {
+        for (position, accesses) in var.get_data_accesses().iter() {
+            let instruction_arg_size = data.get_instructions()[position.ir_index() as usize]
+                .inner
+                .arguments
+                .len() as u8;
+            let position = &data.get_ir()[position.ir_index() as usize].address;
             for da in accesses.iter() {
                 var_map.insert(da.location().clone(), var_id);
-                // TODO Calc const value if exists
+                // Resolve constant value
+                if let Some(c) = resolve_constant(position, instruction_arg_size, &da.location()) {
+                    trace!("Constant value found in {}: {}", position, c);
+                    if const_value.is_some() && const_value.as_ref().unwrap() != &c {
+                        warn!(
+                            "Constant value mismatch in position {}: {} != {}",
+                            position,
+                            const_value.unwrap(),
+                            c
+                        );
+                    }
+                    const_value = Some(c);
+                }
             }
         }
         locals.insert(
@@ -586,4 +604,98 @@ fn calc_flags_automatically(
         })
         .map(|stmt| ws(stmt, *stmt_position))
         .collect()
+}
+
+/// TODO Need implement for constant access size
+fn resolve_constant(
+    position: &Address,
+    instruction_arg_size: u8,
+    data: &Aos<IrData>,
+) -> Option<CValue> {
+    match data.as_ref() {
+        IrData::Constant(c) => Some(CValue::Num(BigInt::from(*c))),
+        IrData::Intrinsic(i) => match i {
+            IrIntrinsic::Unknown => Some(CValue::Unknown),
+            IrIntrinsic::Undefined => Some(CValue::Undefined),
+            IrIntrinsic::SignedMax(..) | IrIntrinsic::UnsignedMax(..) => Some(CValue::Max),
+            IrIntrinsic::SignedMin(..) | IrIntrinsic::UnsignedMin(..) => Some(CValue::Min),
+            IrIntrinsic::OperandExists(non_zero) => {
+                Some(CValue::Bool(non_zero.get() - 1 <= instruction_arg_size))
+            }
+            IrIntrinsic::ByteSizeOf(..)
+            | IrIntrinsic::BitSizeOf(..)
+            | IrIntrinsic::Sized(..)
+            | IrIntrinsic::BitOnes(..)
+            | IrIntrinsic::BitZeros(..)
+            | IrIntrinsic::ArchitectureByteSize
+            | IrIntrinsic::ArchitectureBitSize
+            | IrIntrinsic::ArchitectureBitPerByte
+            | IrIntrinsic::InstructionByteSize => None,
+        },
+        IrData::Register(register) => match register.name() {
+            "rip" | "eip" | "ip" => Some(CValue::Num(BigInt::from(position.get_virtual_address()))),
+            _ => None,
+        },
+        IrData::Dereference(data) => {
+            let c = resolve_constant(position, instruction_arg_size, data)?;
+            Some(CValue::Pointer(Box::new(c)))
+        }
+        IrData::Operation(IrDataOperation::Unary { operator, arg }) => {
+            let arg = resolve_constant(position, instruction_arg_size, arg)?;
+            match operator {
+                IrUnaryOp::Not => Some(CValue::Bool(!*arg.bool()?)),
+                IrUnaryOp::Negation => match arg {
+                    CValue::Max => Some(CValue::Min),
+                    CValue::Min => Some(CValue::Max),
+                    CValue::Num(v) => Some(CValue::Num(-v)),
+                    CValue::Double(v) => Some(CValue::Double(-v)),
+                    CValue::Bool(v) => Some(CValue::Bool(!v)),
+                    CValue::Char(..)
+                    | CValue::Void
+                    | CValue::Unknown
+                    | CValue::Undefined
+                    | CValue::Pointer(..)
+                    | CValue::Array(..) => None,
+                },
+                IrUnaryOp::SignExtend | IrUnaryOp::ZeroExtend => None,
+            }
+        }
+        IrData::Operation(IrDataOperation::Binary {
+            operator,
+            arg1,
+            arg2,
+        }) => {
+            let arg1 = resolve_constant(position, instruction_arg_size, arg1)?;
+            let arg2 = resolve_constant(position, instruction_arg_size, arg2)?;
+            match operator {
+                IrBinaryOp::And => Some(CValue::Bool(arg1.bool()? & arg2.bool()?)),
+                IrBinaryOp::Or => Some(CValue::Bool(arg1.bool()? | arg2.bool()?)),
+                IrBinaryOp::Xor => Some(CValue::Bool(arg1.bool()? ^ arg2.bool()?)),
+                IrBinaryOp::Shl => Some(CValue::Num(
+                    arg1.num()? << arg2.num()?.to_biguint()?.to_u64_digits()[0],
+                )),
+                IrBinaryOp::Shr => Some(CValue::Num(
+                    arg1.num()? >> arg2.num()?.to_biguint()?.to_u64_digits()[0],
+                )),
+                IrBinaryOp::Sar => Some(CValue::Num(
+                    arg1.num()? >> arg2.num()?.to_biguint()?.to_u64_digits()[0],
+                )),
+                IrBinaryOp::Add => Some(CValue::Num(arg1.num()? + arg2.num()?)),
+                IrBinaryOp::Sub => Some(CValue::Num(arg1.num()? - arg2.num()?)),
+                IrBinaryOp::Mul => Some(CValue::Num(arg1.num()? * arg2.num()?)),
+                IrBinaryOp::SignedDiv => Some(CValue::Num(arg1.num()? / arg2.num()?)),
+                IrBinaryOp::SignedRem => Some(CValue::Num(arg1.num()? % arg2.num()?)),
+                IrBinaryOp::UnsignedDiv => Some(CValue::Num(arg1.num()? / arg2.num()?)),
+                IrBinaryOp::UnsignedRem => Some(CValue::Num(arg1.num()? % arg2.num()?)),
+                IrBinaryOp::Equal(..) => Some(CValue::Bool(arg1 == arg2)),
+                IrBinaryOp::SignedLess(..) => Some(CValue::Bool(arg1.num()? < arg2.num()?)),
+                IrBinaryOp::SignedLessOrEqual(..) => Some(CValue::Bool(arg1.num()? <= arg2.num()?)),
+                IrBinaryOp::UnsignedLess(..) => Some(CValue::Bool(arg1.num()? < arg2.num()?)),
+                IrBinaryOp::UnsignedLessOrEqual(..) => {
+                    Some(CValue::Bool(arg1.num()? <= arg2.num()?))
+                }
+            }
+        }
+        IrData::Operand(..) => unreachable!("With {}, {}", position, data),
+    }
 }
