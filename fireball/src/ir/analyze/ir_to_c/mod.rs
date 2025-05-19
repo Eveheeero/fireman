@@ -33,10 +33,17 @@ fn ws(statement: Statement, from: IrStatementDescriptor) -> WrappedStatement {
     }
 }
 /// Wrap Data
-fn wd<T>(item: T, from: impl Into<Option<Aos<IrData>>>) -> WrappedData<T> {
+fn wd<T>(item: T, root: &Aos<IrData>) -> WrappedData<T> {
     WrappedData {
         item,
-        from: from.into(),
+        root: Some(root.clone()),
+        comment: None,
+    }
+}
+fn wd_none<T>(item: T) -> WrappedData<T> {
+    WrappedData {
+        item,
+        root: None,
         comment: None,
     }
 }
@@ -90,7 +97,12 @@ pub fn generate_c_function(ast: &mut CAst, data: &MergedIr) {
             for da in accesses.iter() {
                 var_map.insert(da.location().clone(), var_id);
                 // Resolve constant value
-                if let Some(c) = resolve_constant(position, instruction_arg_size, &da.location()) {
+                if let Some(c) = resolve_constant(
+                    position,
+                    instruction_arg_size,
+                    &da.location(),
+                    &da.location(),
+                ) {
                     trace!("Constant value found in {}: {}", position, c);
                     if const_value.is_some() && const_value.as_ref().unwrap() != &c {
                         warn!(
@@ -610,18 +622,24 @@ fn calc_flags_automatically(
 fn resolve_constant(
     position: &Address,
     instruction_arg_size: u8,
+    root: &Aos<IrData>,
     data: &Aos<IrData>,
-) -> Option<CValue> {
+) -> Option<WrappedData<CValue>> {
     match data.as_ref() {
-        IrData::Constant(c) => Some(CValue::Num(BigInt::from(*c))),
+        IrData::Constant(c) => Some(wd(CValue::Num(BigInt::from(*c)), root)),
         IrData::Intrinsic(i) => match i {
-            IrIntrinsic::Unknown => Some(CValue::Unknown),
-            IrIntrinsic::Undefined => Some(CValue::Undefined),
-            IrIntrinsic::SignedMax(..) | IrIntrinsic::UnsignedMax(..) => Some(CValue::Max),
-            IrIntrinsic::SignedMin(..) | IrIntrinsic::UnsignedMin(..) => Some(CValue::Min),
-            IrIntrinsic::OperandExists(non_zero) => {
-                Some(CValue::Bool(non_zero.get() - 1 <= instruction_arg_size))
+            IrIntrinsic::Unknown => Some(wd(CValue::Unknown, root)),
+            IrIntrinsic::Undefined => Some(wd(CValue::Undefined, root)),
+            IrIntrinsic::SignedMax(..) | IrIntrinsic::UnsignedMax(..) => {
+                Some(wd(CValue::Max, root))
             }
+            IrIntrinsic::SignedMin(..) | IrIntrinsic::UnsignedMin(..) => {
+                Some(wd(CValue::Min, root))
+            }
+            IrIntrinsic::OperandExists(non_zero) => Some(wd(
+                CValue::Bool(non_zero.get() - 1 <= instruction_arg_size),
+                root,
+            )),
             IrIntrinsic::ByteSizeOf(..)
             | IrIntrinsic::BitSizeOf(..)
             | IrIntrinsic::Sized(..)
@@ -633,23 +651,26 @@ fn resolve_constant(
             | IrIntrinsic::InstructionByteSize => None,
         },
         IrData::Register(register) => match register.name() {
-            "rip" | "eip" | "ip" => Some(CValue::Num(BigInt::from(position.get_virtual_address()))),
+            "rip" | "eip" | "ip" => Some(wd(
+                CValue::Num(BigInt::from(position.get_virtual_address())),
+                root,
+            )),
             _ => None,
         },
         IrData::Dereference(data) => {
-            let c = resolve_constant(position, instruction_arg_size, data)?;
-            Some(CValue::Pointer(Box::new(c)))
+            let c = resolve_constant(position, instruction_arg_size, root, data)?;
+            Some(wd(CValue::Pointer(Box::new(c)), root))
         }
         IrData::Operation(IrDataOperation::Unary { operator, arg }) => {
-            let arg = resolve_constant(position, instruction_arg_size, arg)?;
+            let arg = resolve_constant(position, instruction_arg_size, root, arg)?;
             match operator {
-                IrUnaryOp::Not => Some(CValue::Bool(!*arg.bool()?)),
-                IrUnaryOp::Negation => match arg {
-                    CValue::Max => Some(CValue::Min),
-                    CValue::Min => Some(CValue::Max),
-                    CValue::Num(v) => Some(CValue::Num(-v)),
-                    CValue::Double(v) => Some(CValue::Double(-v)),
-                    CValue::Bool(v) => Some(CValue::Bool(!v)),
+                IrUnaryOp::Not => Some(wd(CValue::Bool(!*arg.bool()?), root)),
+                IrUnaryOp::Negation => match arg.item {
+                    CValue::Max => Some(wd(CValue::Min, root)),
+                    CValue::Min => Some(wd(CValue::Max, root)),
+                    CValue::Num(v) => Some(wd(CValue::Num(-v), root)),
+                    CValue::Double(v) => Some(wd(CValue::Double(-v), root)),
+                    CValue::Bool(v) => Some(wd(CValue::Bool(!v), root)),
                     CValue::Char(..)
                     | CValue::Void
                     | CValue::Unknown
@@ -665,34 +686,43 @@ fn resolve_constant(
             arg1,
             arg2,
         }) => {
-            let arg1 = resolve_constant(position, instruction_arg_size, arg1)?;
-            let arg2 = resolve_constant(position, instruction_arg_size, arg2)?;
+            let arg1 = resolve_constant(position, instruction_arg_size, root, arg1)?;
+            let arg2 = resolve_constant(position, instruction_arg_size, root, arg2)?;
             match operator {
-                IrBinaryOp::And => Some(CValue::Bool(arg1.bool()? & arg2.bool()?)),
-                IrBinaryOp::Or => Some(CValue::Bool(arg1.bool()? | arg2.bool()?)),
-                IrBinaryOp::Xor => Some(CValue::Bool(arg1.bool()? ^ arg2.bool()?)),
-                IrBinaryOp::Shl => Some(CValue::Num(
-                    arg1.num()? << arg2.num()?.to_biguint()?.to_u64_digits()[0],
+                IrBinaryOp::And => Some(wd(CValue::Bool(arg1.bool()? & arg2.bool()?), root)),
+                IrBinaryOp::Or => Some(wd(CValue::Bool(arg1.bool()? | arg2.bool()?), root)),
+                IrBinaryOp::Xor => Some(wd(CValue::Bool(arg1.bool()? ^ arg2.bool()?), root)),
+                IrBinaryOp::Shl => Some(wd(
+                    CValue::Num(arg1.num()? << arg2.num()?.to_biguint()?.to_u64_digits()[0]),
+                    root,
                 )),
-                IrBinaryOp::Shr => Some(CValue::Num(
-                    arg1.num()? >> arg2.num()?.to_biguint()?.to_u64_digits()[0],
+                IrBinaryOp::Shr => Some(wd(
+                    CValue::Num(arg1.num()? >> arg2.num()?.to_biguint()?.to_u64_digits()[0]),
+                    root,
                 )),
-                IrBinaryOp::Sar => Some(CValue::Num(
-                    arg1.num()? >> arg2.num()?.to_biguint()?.to_u64_digits()[0],
+                IrBinaryOp::Sar => Some(wd(
+                    CValue::Num(arg1.num()? >> arg2.num()?.to_biguint()?.to_u64_digits()[0]),
+                    root,
                 )),
-                IrBinaryOp::Add => Some(CValue::Num(arg1.num()? + arg2.num()?)),
-                IrBinaryOp::Sub => Some(CValue::Num(arg1.num()? - arg2.num()?)),
-                IrBinaryOp::Mul => Some(CValue::Num(arg1.num()? * arg2.num()?)),
-                IrBinaryOp::SignedDiv => Some(CValue::Num(arg1.num()? / arg2.num()?)),
-                IrBinaryOp::SignedRem => Some(CValue::Num(arg1.num()? % arg2.num()?)),
-                IrBinaryOp::UnsignedDiv => Some(CValue::Num(arg1.num()? / arg2.num()?)),
-                IrBinaryOp::UnsignedRem => Some(CValue::Num(arg1.num()? % arg2.num()?)),
-                IrBinaryOp::Equal(..) => Some(CValue::Bool(arg1 == arg2)),
-                IrBinaryOp::SignedLess(..) => Some(CValue::Bool(arg1.num()? < arg2.num()?)),
-                IrBinaryOp::SignedLessOrEqual(..) => Some(CValue::Bool(arg1.num()? <= arg2.num()?)),
-                IrBinaryOp::UnsignedLess(..) => Some(CValue::Bool(arg1.num()? < arg2.num()?)),
+                IrBinaryOp::Add => Some(wd(CValue::Num(arg1.num()? + arg2.num()?), root)),
+                IrBinaryOp::Sub => Some(wd(CValue::Num(arg1.num()? - arg2.num()?), root)),
+                IrBinaryOp::Mul => Some(wd(CValue::Num(arg1.num()? * arg2.num()?), root)),
+                IrBinaryOp::SignedDiv => Some(wd(CValue::Num(arg1.num()? / arg2.num()?), root)),
+                IrBinaryOp::SignedRem => Some(wd(CValue::Num(arg1.num()? % arg2.num()?), root)),
+                IrBinaryOp::UnsignedDiv => Some(wd(CValue::Num(arg1.num()? / arg2.num()?), root)),
+                IrBinaryOp::UnsignedRem => Some(wd(CValue::Num(arg1.num()? % arg2.num()?), root)),
+                IrBinaryOp::Equal(..) => Some(wd(CValue::Bool(arg1 == arg2), root)),
+                IrBinaryOp::SignedLess(..) => {
+                    Some(wd(CValue::Bool(arg1.num()? < arg2.num()?), root))
+                }
+                IrBinaryOp::SignedLessOrEqual(..) => {
+                    Some(wd(CValue::Bool(arg1.num()? <= arg2.num()?), root))
+                }
+                IrBinaryOp::UnsignedLess(..) => {
+                    Some(wd(CValue::Bool(arg1.num()? < arg2.num()?), root))
+                }
                 IrBinaryOp::UnsignedLessOrEqual(..) => {
-                    Some(CValue::Bool(arg1.num()? <= arg2.num()?))
+                    Some(wd(CValue::Bool(arg1.num()? <= arg2.num()?), root))
                 }
             }
         }

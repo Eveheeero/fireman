@@ -8,7 +8,10 @@ use crate::{
 };
 use hashbrown::HashMap;
 use num_bigint::{BigInt, Sign};
-use std::sync::{Arc, RwLock};
+use std::{
+    ops::Deref,
+    sync::{Arc, RwLock},
+};
 
 #[derive(Debug, Clone)]
 pub struct CAst {
@@ -37,10 +40,10 @@ pub struct WrappedStatement {
     pub comment: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct WrappedData<T> {
     pub item: T,
-    pub from: Option<Aos<IrData>>,
+    pub root: Option<Aos<IrData>>,
     pub comment: Option<String>,
 }
 
@@ -49,7 +52,7 @@ pub struct Variable {
     pub name: String,
     pub id: VariableId,
     pub var_type: CType,
-    pub const_value: Option<CValue>,
+    pub const_value: Option<WrappedData<CValue>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy, Hash)]
@@ -97,8 +100,8 @@ pub enum CValue {
     Char(char),
     Double(f64),
     Bool(bool),
-    Pointer(Box<CValue>),
-    Array(Vec<CValue>),
+    Pointer(Box<WrappedData<CValue>>),
+    Array(Vec<WrappedData<CValue>>),
 }
 
 #[derive(Debug, Clone)]
@@ -553,8 +556,22 @@ impl AsRef<Statement> for WrappedStatement {
         &self.statement
     }
 }
+impl Deref for WrappedStatement {
+    type Target = Statement;
+
+    fn deref(&self) -> &Self::Target {
+        &self.statement
+    }
+}
 impl<T> AsRef<T> for WrappedData<T> {
     fn as_ref(&self) -> &T {
+        &self.item
+    }
+}
+impl<T> Deref for WrappedData<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
         &self.item
     }
 }
