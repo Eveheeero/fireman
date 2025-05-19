@@ -79,20 +79,22 @@ pub fn generate_c_function(ast: &mut CAst, data: &MergedIr) {
             DataType::Char => CType::Char,
             DataType::Address => CType::Pointer(Box::new(CType::Void)),
         };
+        let mut const_value = None;
+        for accesses in var.get_data_accesses().values() {
+            for da in accesses.iter() {
+                var_map.insert(da.location().clone(), var_id);
+                // TODO Calc const value if exists
+            }
+        }
         locals.insert(
             var_id,
             Variable {
                 name: var_id.get_default_name(),
                 id: var_id,
                 var_type: c_type,
-                is_const: false,
+                const_value,
             },
         );
-        for accesses in var.get_data_accesses().values() {
-            for da in accesses.iter() {
-                var_map.insert(da.location().clone(), var_id);
-            }
-        }
     }
     ast.functions
         .write()

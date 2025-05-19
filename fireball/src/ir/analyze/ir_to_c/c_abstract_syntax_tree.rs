@@ -48,7 +48,7 @@ pub struct Variable {
     pub name: String,
     pub id: VariableId,
     pub var_type: CType,
-    pub is_const: bool,
+    pub const_value: Option<CValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy, Hash)]
@@ -80,6 +80,25 @@ pub enum CType {
     Array(Box<CType>, usize),
     Struct(String, Vec<Variable>),
     Union(String, Vec<Variable>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CValue {
+    Void,
+    Unknown,
+    Int8(i8),
+    Int16(i16),
+    Int32(i32),
+    Int64(i64),
+    UInt8(u8),
+    UInt16(u16),
+    UInt32(u32),
+    UInt64(u64),
+    Char(char),
+    Float(f32),
+    Double(f64),
+    Pointer(Box<CValue>),
+    Array(Vec<CValue>),
 }
 
 #[derive(Debug, Clone)]
@@ -244,12 +263,16 @@ impl CAst {
 
         // Global variables
         for var in self.static_variables.read().unwrap().values() {
-            output.push_str(&format!(
-                "{}{} {};\n",
-                if var.is_const { "const " } else { "" },
-                var.var_type.to_string(),
-                var.name
-            ));
+            if let Some(const_value) = &var.const_value {
+                output.push_str(&format!(
+                    "const {} {} = {};\n",
+                    var.var_type.to_string(),
+                    var.name,
+                    const_value
+                ));
+            } else {
+                output.push_str(&format!("{} {};\n", var.var_type.to_string(), var.name));
+            }
         }
 
         output.push_str("\n");
@@ -263,13 +286,17 @@ impl CAst {
                 let params: Vec<String> = func
                     .parameters
                     .iter()
-                    .map(|p| {
-                        format!(
-                            "{}{} {}",
-                            if p.is_const { "const " } else { "" },
-                            p.var_type.to_string(),
-                            p.name
-                        )
+                    .map(|var| {
+                        if let Some(const_value) = &var.const_value {
+                            format!(
+                                "const {} {} = {};\n",
+                                var.var_type.to_string(),
+                                var.name,
+                                const_value
+                            )
+                        } else {
+                            format!("{} {};\n", var.var_type.to_string(), var.name)
+                        }
                     })
                     .collect();
                 output.push_str(&params.join(", "));
@@ -279,12 +306,16 @@ impl CAst {
 
             // Local variables
             for var in func.variables.read().unwrap().values() {
-                output.push_str(&format!(
-                    "{}{} {};\n",
-                    if var.is_const { "const " } else { "" },
-                    var.var_type.to_string(),
-                    var.name
-                ));
+                if let Some(const_value) = &var.const_value {
+                    output.push_str(&format!(
+                        "const {} {} = {};\n",
+                        var.var_type.to_string(),
+                        var.name,
+                        const_value
+                    ));
+                } else {
+                    output.push_str(&format!("{} {};\n", var.var_type.to_string(), var.name));
+                }
             }
             output.push_str("\n");
 
@@ -545,6 +576,30 @@ impl std::fmt::Display for JumpTarget {
             JumpTarget::Function { target } => write!(f, "function{:?}", target),
             JumpTarget::Instruction { target } => write!(f, "ir{}", target.ir_index()),
             JumpTarget::Unknown(name) => write!(f, "{}", name),
+        }
+    }
+}
+impl std::fmt::Display for CValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CValue::Void => write!(f, "()"),
+            CValue::Unknown => write!(f, "unknown_v"),
+            CValue::Int8(i) => write!(f, "{}", i),
+            CValue::Int16(i) => write!(f, "{}", i),
+            CValue::Int32(i) => write!(f, "{}", i),
+            CValue::Int64(i) => write!(f, "{}", i),
+            CValue::UInt8(u) => write!(f, "{}", u),
+            CValue::UInt16(u) => write!(f, "{}", u),
+            CValue::UInt32(u) => write!(f, "{}", u),
+            CValue::UInt64(u) => write!(f, "{}", u),
+            CValue::Char(c) => write!(f, "'{}'", c),
+            CValue::Float(d) => write!(f, "{}", d),
+            CValue::Double(d) => write!(f, "{}", d),
+            CValue::Pointer(p) => write!(f, "*{:?}", p),
+            CValue::Array(arr) => {
+                let arr_str: Vec<String> = arr.iter().map(|v| v.to_string()).collect();
+                write!(f, "[{}]", arr_str.join(", "))
+            }
         }
     }
 }
