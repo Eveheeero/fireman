@@ -1,14 +1,16 @@
 pub mod c_abstract_syntax_tree;
 
 use crate::{
+    core::Block,
     ir::{
         analyze::{
+            ir_block_merger::merge_blocks,
             ir_to_c::c_abstract_syntax_tree::{
                 BinaryOperator, CAst, CType, Expression, FunctionId, JumpTarget, Literal,
                 Statement, UnaryOperator, Variable, VariableId, WrappedData, WrappedStatement,
             },
             variables::resolve_operand,
-            DataType, MergedIr,
+            ControlFlowGraphAnalyzer, DataType, MergedIr,
         },
         data::{AccessSize, IrData, IrDataOperation, IrIntrinsic},
         operator::{BinaryOperator as IrBinaryOp, UnaryOperator as IrUnaryOp},
@@ -38,9 +40,31 @@ fn wd<T>(item: T, from: impl Into<Option<Aos<IrData>>>) -> WrappedData<T> {
     }
 }
 
-pub fn generate_c(data: &MergedIr) -> CAst {
+/// Generate C AST from targets
+pub fn generate_c(targets: impl IntoIterator<Item = Arc<Block>>) -> CAst {
     let mut ast = CAst::new();
+    let mut cfg_analyzer = ControlFlowGraphAnalyzer::new();
+    cfg_analyzer.add_targets(targets);
+    let cfgs = cfg_analyzer.analyze();
+    for cfg in cfgs.into_iter() {
+        let merged = merge_blocks(&cfg.get_blocks());
+        generate_c_function(&mut ast, &merged);
+    }
+    ast
+}
 
+/// Generate C function and add it to AST
+///
+/// ```rust, ignore
+/// let mut ast = fireball::ir::analyze::ir_to_c::c_abstract_syntax_tree::CAst::new();
+/// let merged = fireball::ir::analyze::ir_block_merger::merge_blocks(want_to_merge);
+/// generate_c_function(&mut ast, &merged);
+/// ```
+///
+/// ### Arguments
+/// * `ast: &mut CAst` - The C AST to which the function will be added.
+/// * `data: &MergedIr` - The merged IR data containing the function's instructions and variables.
+pub fn generate_c_function(ast: &mut CAst, data: &MergedIr) {
     let func_id = ast.generate_default_function(data.get_ir().first().map(|x| &x.address).unwrap());
 
     let mut locals = HashMap::new();
@@ -96,7 +120,7 @@ pub fn generate_c(data: &MergedIr) -> CAst {
                 let stmt_position = IrStatementDescriptor::new(ir_index, Some(stmt_index));
                 func_body.push(ws(Statement::Comment(stmt.to_string()), stmt_position));
                 func_body.push(convert_stmt(
-                    &mut ast,
+                    ast,
                     func_id,
                     stmt,
                     &stmt_position,
@@ -117,8 +141,6 @@ pub fn generate_c(data: &MergedIr) -> CAst {
         .get_mut(&func_id)
         .unwrap()
         .body = func_body;
-
-    ast
 }
 
 fn convert_expr(
