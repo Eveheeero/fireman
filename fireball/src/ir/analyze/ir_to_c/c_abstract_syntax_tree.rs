@@ -7,7 +7,11 @@ use crate::{
     utils::Aos,
 };
 use hashbrown::HashMap;
-use std::sync::{Arc, RwLock};
+use num_bigint::{BigInt, Sign};
+use std::{
+    ops::Deref,
+    sync::{Arc, RwLock},
+};
 
 #[derive(Debug, Clone)]
 pub struct CAst {
@@ -36,10 +40,10 @@ pub struct WrappedStatement {
     pub comment: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct WrappedData<T> {
     pub item: T,
-    pub from: Option<Aos<IrData>>,
+    pub root: Option<Aos<IrData>>,
     pub comment: Option<String>,
 }
 
@@ -48,7 +52,7 @@ pub struct Variable {
     pub name: String,
     pub id: VariableId,
     pub var_type: CType,
-    pub is_const: bool,
+    pub const_value: Option<WrappedData<CValue>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy, Hash)]
@@ -65,10 +69,12 @@ pub struct FunctionId {
 pub enum CType {
     Void,
     Unknown,
+    Int,
     Int8,
     Int16,
     Int32,
     Int64,
+    UInt,
     UInt8,
     UInt16,
     UInt32,
@@ -76,10 +82,26 @@ pub enum CType {
     Char,
     Float,
     Double,
+    Bool,
     Pointer(Box<CType>),
     Array(Box<CType>, usize),
     Struct(String, Vec<Variable>),
     Union(String, Vec<Variable>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CValue {
+    Void,
+    Unknown,
+    Undefined,
+    Max,
+    Min,
+    Num(BigInt),
+    Char(char),
+    Double(f64),
+    Bool(bool),
+    Pointer(Box<WrappedData<CValue>>),
+    Array(Vec<WrappedData<CValue>>),
 }
 
 #[derive(Debug, Clone)]
@@ -244,12 +266,16 @@ impl CAst {
 
         // Global variables
         for var in self.static_variables.read().unwrap().values() {
-            output.push_str(&format!(
-                "{}{} {};\n",
-                if var.is_const { "const " } else { "" },
-                var.var_type.to_string(),
-                var.name
-            ));
+            if let Some(const_value) = &var.const_value {
+                output.push_str(&format!(
+                    "const {} {} = {};\n",
+                    var.var_type.to_string(),
+                    var.name,
+                    const_value
+                ));
+            } else {
+                output.push_str(&format!("{} {};\n", var.var_type.to_string(), var.name));
+            }
         }
 
         output.push_str("\n");
@@ -263,13 +289,17 @@ impl CAst {
                 let params: Vec<String> = func
                     .parameters
                     .iter()
-                    .map(|p| {
-                        format!(
-                            "{}{} {}",
-                            if p.is_const { "const " } else { "" },
-                            p.var_type.to_string(),
-                            p.name
-                        )
+                    .map(|var| {
+                        if let Some(const_value) = &var.const_value {
+                            format!(
+                                "const {} {} = {};\n",
+                                var.var_type.to_string(),
+                                var.name,
+                                const_value
+                            )
+                        } else {
+                            format!("{} {};\n", var.var_type.to_string(), var.name)
+                        }
                     })
                     .collect();
                 output.push_str(&params.join(", "));
@@ -279,12 +309,16 @@ impl CAst {
 
             // Local variables
             for var in func.variables.read().unwrap().values() {
-                output.push_str(&format!(
-                    "{}{} {};\n",
-                    if var.is_const { "const " } else { "" },
-                    var.var_type.to_string(),
-                    var.name
-                ));
+                if let Some(const_value) = &var.const_value {
+                    output.push_str(&format!(
+                        "const {} {} = {};\n",
+                        var.var_type.to_string(),
+                        var.name,
+                        const_value
+                    ));
+                } else {
+                    output.push_str(&format!("{} {};\n", var.var_type.to_string(), var.name));
+                }
             }
             output.push_str("\n");
 
@@ -306,10 +340,12 @@ impl std::fmt::Display for CType {
         match self {
             CType::Void => write!(f, "void"),
             CType::Unknown => write!(f, "unknown_t"),
+            CType::Int => write!(f, "int"),
             CType::Int8 => write!(f, "int8_t"),
             CType::Int16 => write!(f, "int16_t"),
             CType::Int32 => write!(f, "int32_t"),
             CType::Int64 => write!(f, "int64_t"),
+            CType::UInt => write!(f, "uint"),
             CType::UInt8 => write!(f, "uint8_t"),
             CType::UInt16 => write!(f, "uint16_t"),
             CType::UInt32 => write!(f, "uint32_t"),
@@ -317,6 +353,7 @@ impl std::fmt::Display for CType {
             CType::Char => write!(f, "char"),
             CType::Float => write!(f, "float"),
             CType::Double => write!(f, "double"),
+            CType::Bool => write!(f, "bool"),
             CType::Pointer(t) => write!(f, "{}*", t),
             CType::Array(t, size) => write!(f, "{}[{}]", t, size),
             CType::Struct(name, _) => write!(f, "struct {}", name),
@@ -402,7 +439,7 @@ impl std::fmt::Display for Statement {
             Statement::Undefined => write!(f, "<UNDEFINED BEHAVIOR>"),
             Statement::Exception(e) => write!(f, "<EXCEPTION: {e}>"),
             Statement::Assembly(code) => write!(f, "<ASSEMBLY: {code}>"),
-            Statement::Comment(comment) => write!(f, "// {}", comment),
+            Statement::Comment(comment) => write!(f, "/* {} */", comment),
         }
     }
 }
@@ -519,8 +556,22 @@ impl AsRef<Statement> for WrappedStatement {
         &self.statement
     }
 }
+impl Deref for WrappedStatement {
+    type Target = Statement;
+
+    fn deref(&self) -> &Self::Target {
+        &self.statement
+    }
+}
 impl<T> AsRef<T> for WrappedData<T> {
     fn as_ref(&self) -> &T {
+        &self.item
+    }
+}
+impl<T> Deref for WrappedData<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
         &self.item
     }
 }
@@ -545,6 +596,59 @@ impl std::fmt::Display for JumpTarget {
             JumpTarget::Function { target } => write!(f, "function{:?}", target),
             JumpTarget::Instruction { target } => write!(f, "ir{}", target.ir_index()),
             JumpTarget::Unknown(name) => write!(f, "{}", name),
+        }
+    }
+}
+impl std::fmt::Display for CValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CValue::Void => write!(f, "()"),
+            CValue::Unknown => write!(f, "unknown_v"),
+            CValue::Undefined => write!(f, "undefined"),
+            CValue::Max => write!(f, "max"),
+            CValue::Min => write!(f, "min"),
+            CValue::Num(i) => {
+                let i = i.to_u64_digits();
+                if i.0 == Sign::Minus {
+                    write!(f, "-0x{:X}", i.1[0])
+                } else {
+                    write!(f, "0x{:X}", i.1[0])
+                }
+            }
+            CValue::Char(c) => write!(f, "'{}'", c),
+            CValue::Double(d) => write!(f, "{}", d),
+            CValue::Bool(b) => write!(f, "{}", b),
+            CValue::Pointer(p) => write!(f, "*{}", p),
+            CValue::Array(arr) => {
+                let arr_str: Vec<String> = arr.iter().map(|v| v.to_string()).collect();
+                write!(f, "[{}]", arr_str.join(", "))
+            }
+        }
+    }
+}
+impl CValue {
+    pub fn num(&self) -> Option<&BigInt> {
+        match self {
+            CValue::Num(i) => Some(i),
+            _ => None,
+        }
+    }
+    pub fn char(&self) -> Option<&char> {
+        match self {
+            CValue::Char(c) => Some(c),
+            _ => None,
+        }
+    }
+    pub fn double(&self) -> Option<&f64> {
+        match self {
+            CValue::Double(d) => Some(d),
+            _ => None,
+        }
+    }
+    pub fn bool(&self) -> Option<&bool> {
+        match self {
+            CValue::Bool(b) => Some(b),
+            _ => None,
         }
     }
 }

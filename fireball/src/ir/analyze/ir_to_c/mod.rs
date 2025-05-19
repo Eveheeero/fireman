@@ -1,14 +1,16 @@
 pub mod c_abstract_syntax_tree;
 
 use crate::{
+    core::{Address, Block},
     ir::{
         analyze::{
+            ir_block_merger::merge_blocks,
             ir_to_c::c_abstract_syntax_tree::{
-                BinaryOperator, CAst, CType, Expression, FunctionId, JumpTarget, Literal,
+                BinaryOperator, CAst, CType, CValue, Expression, FunctionId, JumpTarget, Literal,
                 Statement, UnaryOperator, Variable, VariableId, WrappedData, WrappedStatement,
             },
             variables::resolve_operand,
-            DataType, MergedIr,
+            ControlFlowGraphAnalyzer, DataType, MergedIr,
         },
         data::{AccessSize, IrData, IrDataOperation, IrIntrinsic},
         operator::{BinaryOperator as IrBinaryOp, UnaryOperator as IrUnaryOp},
@@ -19,6 +21,7 @@ use crate::{
     utils::Aos,
 };
 use hashbrown::HashMap;
+use num_bigint::BigInt;
 use std::sync::{Arc, RwLock};
 
 /// Wrap Statement
@@ -30,17 +33,46 @@ fn ws(statement: Statement, from: IrStatementDescriptor) -> WrappedStatement {
     }
 }
 /// Wrap Data
-fn wd<T>(item: T, from: impl Into<Option<Aos<IrData>>>) -> WrappedData<T> {
+fn wd<T>(item: T, root: &Aos<IrData>) -> WrappedData<T> {
     WrappedData {
         item,
-        from: from.into(),
+        root: Some(root.clone()),
+        comment: None,
+    }
+}
+fn wd_none<T>(item: T) -> WrappedData<T> {
+    WrappedData {
+        item,
+        root: None,
         comment: None,
     }
 }
 
-pub fn generate_c(data: &MergedIr) -> CAst {
+/// Generate C AST from targets
+pub fn generate_c(targets: impl IntoIterator<Item = Arc<Block>>) -> CAst {
     let mut ast = CAst::new();
+    let mut cfg_analyzer = ControlFlowGraphAnalyzer::new();
+    cfg_analyzer.add_targets(targets);
+    let cfgs = cfg_analyzer.analyze();
+    for cfg in cfgs.into_iter() {
+        let merged = merge_blocks(&cfg.get_blocks());
+        generate_c_function(&mut ast, &merged);
+    }
+    ast
+}
 
+/// Generate C function and add it to AST
+///
+/// ```rust, ignore
+/// let mut ast = fireball::ir::analyze::ir_to_c::c_abstract_syntax_tree::CAst::new();
+/// let merged = fireball::ir::analyze::ir_block_merger::merge_blocks(want_to_merge);
+/// generate_c_function(&mut ast, &merged);
+/// ```
+///
+/// ### Arguments
+/// * `ast: &mut CAst` - The C AST to which the function will be added.
+/// * `data: &MergedIr` - The merged IR data containing the function's instructions and variables.
+pub fn generate_c_function(ast: &mut CAst, data: &MergedIr) {
     let func_id = ast.generate_default_function(data.get_ir().first().map(|x| &x.address).unwrap());
 
     let mut locals = HashMap::new();
@@ -49,26 +81,50 @@ pub fn generate_c(data: &MergedIr) -> CAst {
         let var_id = ast.new_variable_id(&func_id);
         let c_type = match var.data_type {
             DataType::Unknown => CType::Unknown,
-            DataType::Int => CType::Int32,
+            DataType::Int => CType::Int,
             DataType::Float => CType::Double,
             DataType::StringPointer => CType::Pointer(Box::new(CType::Char)),
             DataType::Char => CType::Char,
             DataType::Address => CType::Pointer(Box::new(CType::Void)),
         };
+        let mut const_value = None;
+        for (position, accesses) in var.get_data_accesses().iter() {
+            let instruction_arg_size = data.get_instructions()[position.ir_index() as usize]
+                .inner
+                .arguments
+                .len() as u8;
+            let position = &data.get_ir()[position.ir_index() as usize].address;
+            for da in accesses.iter() {
+                var_map.insert(da.location().clone(), var_id);
+                // Resolve constant value
+                if let Some(c) = resolve_constant(
+                    position,
+                    instruction_arg_size,
+                    &da.location(),
+                    &da.location(),
+                ) {
+                    trace!("Constant value found in {}: {}", position, c);
+                    if const_value.is_some() && const_value.as_ref().unwrap() != &c {
+                        warn!(
+                            "Constant value mismatch in position {}: {} != {}",
+                            position,
+                            const_value.unwrap(),
+                            c
+                        );
+                    }
+                    const_value = Some(c);
+                }
+            }
+        }
         locals.insert(
             var_id,
             Variable {
                 name: var_id.get_default_name(),
                 id: var_id,
                 var_type: c_type,
-                is_const: false,
+                const_value,
             },
         );
-        for accesses in var.get_data_accesses().values() {
-            for da in accesses.iter() {
-                var_map.insert(da.location().clone(), var_id);
-            }
-        }
     }
     ast.functions
         .write()
@@ -96,7 +152,7 @@ pub fn generate_c(data: &MergedIr) -> CAst {
                 let stmt_position = IrStatementDescriptor::new(ir_index, Some(stmt_index));
                 func_body.push(ws(Statement::Comment(stmt.to_string()), stmt_position));
                 func_body.push(convert_stmt(
-                    &mut ast,
+                    ast,
                     func_id,
                     stmt,
                     &stmt_position,
@@ -117,8 +173,6 @@ pub fn generate_c(data: &MergedIr) -> CAst {
         .get_mut(&func_id)
         .unwrap()
         .body = func_body;
-
-    ast
 }
 
 fn convert_expr(
@@ -562,4 +616,116 @@ fn calc_flags_automatically(
         })
         .map(|stmt| ws(stmt, *stmt_position))
         .collect()
+}
+
+/// TODO Need implement for constant access size
+fn resolve_constant(
+    position: &Address,
+    instruction_arg_size: u8,
+    root: &Aos<IrData>,
+    data: &Aos<IrData>,
+) -> Option<WrappedData<CValue>> {
+    match data.as_ref() {
+        IrData::Constant(c) => Some(wd(CValue::Num(BigInt::from(*c)), root)),
+        IrData::Intrinsic(i) => match i {
+            IrIntrinsic::Unknown => Some(wd(CValue::Unknown, root)),
+            IrIntrinsic::Undefined => Some(wd(CValue::Undefined, root)),
+            IrIntrinsic::SignedMax(..) | IrIntrinsic::UnsignedMax(..) => {
+                Some(wd(CValue::Max, root))
+            }
+            IrIntrinsic::SignedMin(..) | IrIntrinsic::UnsignedMin(..) => {
+                Some(wd(CValue::Min, root))
+            }
+            IrIntrinsic::OperandExists(non_zero) => Some(wd(
+                CValue::Bool(non_zero.get() - 1 <= instruction_arg_size),
+                root,
+            )),
+            IrIntrinsic::ByteSizeOf(..)
+            | IrIntrinsic::BitSizeOf(..)
+            | IrIntrinsic::Sized(..)
+            | IrIntrinsic::BitOnes(..)
+            | IrIntrinsic::BitZeros(..)
+            | IrIntrinsic::ArchitectureByteSize
+            | IrIntrinsic::ArchitectureBitSize
+            | IrIntrinsic::ArchitectureBitPerByte
+            | IrIntrinsic::InstructionByteSize => None,
+        },
+        IrData::Register(register) => match register.name() {
+            "rip" | "eip" | "ip" => Some(wd(
+                CValue::Num(BigInt::from(position.get_virtual_address())),
+                root,
+            )),
+            _ => None,
+        },
+        IrData::Dereference(data) => {
+            let c = resolve_constant(position, instruction_arg_size, root, data)?;
+            Some(wd(CValue::Pointer(Box::new(c)), root))
+        }
+        IrData::Operation(IrDataOperation::Unary { operator, arg }) => {
+            let arg = resolve_constant(position, instruction_arg_size, root, arg)?;
+            match operator {
+                IrUnaryOp::Not => Some(wd(CValue::Bool(!*arg.bool()?), root)),
+                IrUnaryOp::Negation => match arg.item {
+                    CValue::Max => Some(wd(CValue::Min, root)),
+                    CValue::Min => Some(wd(CValue::Max, root)),
+                    CValue::Num(v) => Some(wd(CValue::Num(-v), root)),
+                    CValue::Double(v) => Some(wd(CValue::Double(-v), root)),
+                    CValue::Bool(v) => Some(wd(CValue::Bool(!v), root)),
+                    CValue::Char(..)
+                    | CValue::Void
+                    | CValue::Unknown
+                    | CValue::Undefined
+                    | CValue::Pointer(..)
+                    | CValue::Array(..) => None,
+                },
+                IrUnaryOp::SignExtend | IrUnaryOp::ZeroExtend => None,
+            }
+        }
+        IrData::Operation(IrDataOperation::Binary {
+            operator,
+            arg1,
+            arg2,
+        }) => {
+            let arg1 = resolve_constant(position, instruction_arg_size, root, arg1)?;
+            let arg2 = resolve_constant(position, instruction_arg_size, root, arg2)?;
+            match operator {
+                IrBinaryOp::And => Some(wd(CValue::Bool(arg1.bool()? & arg2.bool()?), root)),
+                IrBinaryOp::Or => Some(wd(CValue::Bool(arg1.bool()? | arg2.bool()?), root)),
+                IrBinaryOp::Xor => Some(wd(CValue::Bool(arg1.bool()? ^ arg2.bool()?), root)),
+                IrBinaryOp::Shl => Some(wd(
+                    CValue::Num(arg1.num()? << arg2.num()?.to_biguint()?.to_u64_digits()[0]),
+                    root,
+                )),
+                IrBinaryOp::Shr => Some(wd(
+                    CValue::Num(arg1.num()? >> arg2.num()?.to_biguint()?.to_u64_digits()[0]),
+                    root,
+                )),
+                IrBinaryOp::Sar => Some(wd(
+                    CValue::Num(arg1.num()? >> arg2.num()?.to_biguint()?.to_u64_digits()[0]),
+                    root,
+                )),
+                IrBinaryOp::Add => Some(wd(CValue::Num(arg1.num()? + arg2.num()?), root)),
+                IrBinaryOp::Sub => Some(wd(CValue::Num(arg1.num()? - arg2.num()?), root)),
+                IrBinaryOp::Mul => Some(wd(CValue::Num(arg1.num()? * arg2.num()?), root)),
+                IrBinaryOp::SignedDiv => Some(wd(CValue::Num(arg1.num()? / arg2.num()?), root)),
+                IrBinaryOp::SignedRem => Some(wd(CValue::Num(arg1.num()? % arg2.num()?), root)),
+                IrBinaryOp::UnsignedDiv => Some(wd(CValue::Num(arg1.num()? / arg2.num()?), root)),
+                IrBinaryOp::UnsignedRem => Some(wd(CValue::Num(arg1.num()? % arg2.num()?), root)),
+                IrBinaryOp::Equal(..) => Some(wd(CValue::Bool(arg1 == arg2), root)),
+                IrBinaryOp::SignedLess(..) => {
+                    Some(wd(CValue::Bool(arg1.num()? < arg2.num()?), root))
+                }
+                IrBinaryOp::SignedLessOrEqual(..) => {
+                    Some(wd(CValue::Bool(arg1.num()? <= arg2.num()?), root))
+                }
+                IrBinaryOp::UnsignedLess(..) => {
+                    Some(wd(CValue::Bool(arg1.num()? < arg2.num()?), root))
+                }
+                IrBinaryOp::UnsignedLessOrEqual(..) => {
+                    Some(wd(CValue::Bool(arg1.num()? <= arg2.num()?), root))
+                }
+            }
+        }
+        IrData::Operand(..) => unreachable!("With {}, {}", position, data),
+    }
 }
