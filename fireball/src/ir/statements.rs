@@ -47,11 +47,6 @@ pub enum IrStatementSpecial {
         size: AccessSize,
         data_type: crate::ir::analyze::DataType,
     },
-    ArchitectureByteSizeCondition {
-        condition: NumCondition,
-        true_branch: Box<[IrStatement]>,
-        false_branch: Box<[IrStatement]>,
-    },
     CalcFlagsAutomatically {
         operation: Aos<IrData>,
         size: AccessSize,
@@ -60,18 +55,6 @@ pub enum IrStatementSpecial {
     Assertion {
         condition: Aos<IrData>,
     },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub enum NumCondition {
-    Higher(u16),
-    HigherOrEqual(u16),
-    Lower(u16),
-    LowerOrEqual(u16),
-    Equal(u16),
-    NotEqual(u16),
-    RangeInclusive(u16, u16),
-    ExcludesRange(u16, u16),
 }
 
 impl IrDataContainable for IrStatement {
@@ -117,14 +100,6 @@ impl IrDataContainable for IrStatementSpecial {
                 location.get_related_ir_data(v);
                 v.push(location);
                 size.get_related_ir_data(v);
-            }
-            IrStatementSpecial::ArchitectureByteSizeCondition {
-                condition: _,
-                true_branch,
-                false_branch,
-            } => {
-                true_branch.iter().for_each(|b| b.get_related_ir_data(v));
-                false_branch.iter().for_each(|b| b.get_related_ir_data(v));
             }
             IrStatementSpecial::CalcFlagsAutomatically {
                 operation, size, ..
@@ -185,23 +160,6 @@ impl std::fmt::Display for IrStatementSpecial {
                 write!(f, "type {} = {}", location, size)?;
                 write!(f, "{}", data_type)
             }
-            IrStatementSpecial::ArchitectureByteSizeCondition {
-                condition,
-                true_branch,
-                false_branch,
-            } => {
-                write!(f, "if {}", condition)?;
-                write!(f, "{{")?;
-                for statement in true_branch {
-                    write!(f, "\n    {}", statement)?;
-                }
-                write!(f, "\n}}")?;
-                write!(f, "else {{")?;
-                for statement in false_branch {
-                    write!(f, "\n    {}", statement)?;
-                }
-                write!(f, "\n}}")
-            }
             IrStatementSpecial::CalcFlagsAutomatically {
                 operation,
                 size: _,
@@ -215,24 +173,6 @@ impl std::fmt::Display for IrStatementSpecial {
                 write!(f, "calc_flags [{}] ({})", flags, operation)
             }
             IrStatementSpecial::Assertion { condition } => write!(f, "assert ({})", condition),
-        }
-    }
-}
-impl std::fmt::Display for NumCondition {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            NumCondition::Higher(value) => write!(f, "{} > {}", self, value),
-            NumCondition::HigherOrEqual(value) => write!(f, "{} >= {}", self, value),
-            NumCondition::Lower(value) => write!(f, "{} < {}", self, value),
-            NumCondition::LowerOrEqual(value) => write!(f, "{} <= {}", self, value),
-            NumCondition::Equal(value) => write!(f, "{} == {}", self, value),
-            NumCondition::NotEqual(value) => write!(f, "{} != {}", self, value),
-            NumCondition::RangeInclusive(value1, value2) => {
-                write!(f, "{} in [{}..{}]", self, value1, value2)
-            }
-            NumCondition::ExcludesRange(value1, value2) => {
-                write!(f, "{} not in [{}..{}]", self, value1, value2)
-            }
         }
     }
 }

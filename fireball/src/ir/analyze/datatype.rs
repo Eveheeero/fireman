@@ -98,15 +98,6 @@ pub fn analyze_datatype_raw(insert: &mut impl FnMut(KnownDataType), statement: &
                 data_size: size.clone(),
             });
         }
-        IrStatement::Special(IrStatementSpecial::ArchitectureByteSizeCondition {
-            condition: _,
-            true_branch,
-            false_branch,
-        }) => {
-            for statement in true_branch.iter().chain(false_branch.iter()) {
-                analyze_datatype_raw(insert, statement);
-            }
-        }
 
         IrStatement::Undefined
         | IrStatement::Exception(_)

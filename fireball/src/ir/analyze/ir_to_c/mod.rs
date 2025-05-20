@@ -12,9 +12,9 @@ use crate::{
             variables::resolve_operand,
             ControlFlowGraphAnalyzer, DataType, MergedIr,
         },
-        data::{AccessSize, IrData, IrDataOperation, IrIntrinsic},
+        data::{AccessSize, IrData, IrDataOperation, IrIntrinsic, NumCondition},
         operator::{BinaryOperator as IrBinaryOp, UnaryOperator as IrUnaryOp},
-        statements::{IrStatement, IrStatementSpecial, NumCondition},
+        statements::{IrStatement, IrStatementSpecial},
         utils::IrStatementDescriptor,
     },
     prelude::*,
@@ -251,6 +251,88 @@ fn convert_expr(
                 "bit_zeros".into(),
                 [convert_size(ast, function_id, root_expr, size, var_map)].to_vec(),
             ),
+            IrIntrinsic::ArchitectureByteSizeCondition(num_condition) => {
+                let u = |v: &u16| Expression::Literal(Literal::UInt(*v as u64));
+                let result = match num_condition {
+                    NumCondition::Higher(v) => {
+                        let op = BinaryOperator::Greater;
+                        let lhs = Expression::ArchitectureByteSize;
+                        let rhs = u(v);
+                        Expression::BinaryOp(op, Box::new(w(lhs)), Box::new(w(rhs)))
+                    }
+                    NumCondition::HigherOrEqual(v) => {
+                        let op = BinaryOperator::GreaterEqual;
+                        let lhs = Expression::ArchitectureByteSize;
+                        let rhs = u(v);
+                        Expression::BinaryOp(op, Box::new(w(lhs)), Box::new(w(rhs)))
+                    }
+                    NumCondition::Lower(v) => {
+                        let op = BinaryOperator::Less;
+                        let lhs = Expression::ArchitectureByteSize;
+                        let rhs = u(v);
+                        Expression::BinaryOp(op, Box::new(w(lhs)), Box::new(w(rhs)))
+                    }
+                    NumCondition::LowerOrEqual(v) => {
+                        let op = BinaryOperator::LessEqual;
+                        let lhs = Expression::ArchitectureByteSize;
+                        let rhs = u(v);
+                        Expression::BinaryOp(op, Box::new(w(lhs)), Box::new(w(rhs)))
+                    }
+                    NumCondition::Equal(v) => {
+                        let op = BinaryOperator::Equal;
+                        let lhs = Expression::ArchitectureByteSize;
+                        let rhs = u(v);
+                        Expression::BinaryOp(op, Box::new(w(lhs)), Box::new(w(rhs)))
+                    }
+                    NumCondition::NotEqual(v) => {
+                        let op = BinaryOperator::NotEqual;
+                        let lhs = Expression::ArchitectureByteSize;
+                        let rhs = u(v);
+                        Expression::BinaryOp(op, Box::new(w(lhs)), Box::new(w(rhs)))
+                    }
+                    NumCondition::RangeInclusive(start, end) => {
+                        let start = u(start);
+                        let end = u(end);
+                        let arch_size = w(Expression::ArchitectureByteSize);
+                        let op1 = Expression::BinaryOp(
+                            BinaryOperator::GreaterEqual,
+                            Box::new(arch_size.clone()),
+                            Box::new(w(start)),
+                        );
+                        let op2 = Expression::BinaryOp(
+                            BinaryOperator::LessEqual,
+                            Box::new(arch_size),
+                            Box::new(w(end)),
+                        );
+                        Expression::BinaryOp(
+                            BinaryOperator::LogicAnd,
+                            Box::new(w(op1)),
+                            Box::new(w(op2)),
+                        )
+                    }
+                    NumCondition::ExcludesRange(start, end) => {
+                        let start = u(start);
+                        let end = u(end);
+                        let arch_size = w(Expression::ArchitectureByteSize);
+                        let op1 = Expression::BinaryOp(
+                            BinaryOperator::Less,
+                            Box::new(arch_size.clone()),
+                            Box::new(w(start)),
+                        );
+                        let op2 = Expression::BinaryOp(
+                            BinaryOperator::Greater,
+                            Box::new(arch_size),
+                            Box::new(w(end)),
+                        );
+                        Expression::BinaryOp(
+                            BinaryOperator::LogicOr,
+                            Box::new(w(op1)),
+                            Box::new(w(op2)),
+                        )
+                    }
+                };
+                result
+            }
         },
         IrData::Operation(op) => match op {
             IrDataOperation::Unary { operator, arg } => {
@@ -377,107 +459,6 @@ fn convert_stmt(
         IrStatement::Exception(e) => Statement::Exception(e),
         IrStatement::Special(special) => match special {
             IrStatementSpecial::Assertion { .. } => Statement::Empty,
-            IrStatementSpecial::ArchitectureByteSizeCondition {
-                condition,
-                true_branch,
-                false_branch,
-            } => {
-                let cond_expr = match condition {
-                    NumCondition::Higher(v) => Expression::BinaryOp(
-                        BinaryOperator::Greater,
-                        Box::new(wdn(Expression::ArchitectureByteSize)),
-                        Box::new(wdn(Expression::Literal(Literal::UInt(*v as u64)))),
-                    ),
-                    NumCondition::HigherOrEqual(v) => Expression::BinaryOp(
-                        BinaryOperator::GreaterEqual,
-                        Box::new(wdn(Expression::ArchitectureByteSize)),
-                        Box::new(wdn(Expression::Literal(Literal::UInt(*v as u64)))),
-                    ),
-                    NumCondition::Lower(v) => Expression::BinaryOp(
-                        BinaryOperator::Less,
-                        Box::new(wdn(Expression::ArchitectureByteSize)),
-                        Box::new(wdn(Expression::Literal(Literal::UInt(*v as u64)))),
-                    ),
-                    NumCondition::LowerOrEqual(v) => Expression::BinaryOp(
-                        BinaryOperator::LessEqual,
-                        Box::new(wdn(Expression::ArchitectureByteSize)),
-                        Box::new(wdn(Expression::Literal(Literal::UInt(*v as u64)))),
-                    ),
-                    NumCondition::Equal(v) => Expression::BinaryOp(
-                        BinaryOperator::Equal,
-                        Box::new(wdn(Expression::ArchitectureByteSize)),
-                        Box::new(wdn(Expression::Literal(Literal::UInt(*v as u64)))),
-                    ),
-                    NumCondition::NotEqual(v) => Expression::BinaryOp(
-                        BinaryOperator::NotEqual,
-                        Box::new(wdn(Expression::ArchitectureByteSize)),
-                        Box::new(wdn(Expression::Literal(Literal::UInt(*v as u64)))),
-                    ),
-                    NumCondition::RangeInclusive(v1, v2) => {
-                        let ge = Expression::BinaryOp(
-                            BinaryOperator::GreaterEqual,
-                            Box::new(wdn(Expression::ArchitectureByteSize)),
-                            Box::new(wdn(Expression::Literal(Literal::UInt(*v1 as u64)))),
-                        );
-                        let le = Expression::BinaryOp(
-                            BinaryOperator::LessEqual,
-                            Box::new(wdn(Expression::ArchitectureByteSize)),
-                            Box::new(wdn(Expression::Literal(Literal::UInt(*v2 as u64)))),
-                        );
-                        let ge = wdn(ge);
-                        let le = wdn(le);
-                        Expression::BinaryOp(BinaryOperator::LogicAnd, Box::new(ge), Box::new(le))
-                    }
-                    NumCondition::ExcludesRange(v1, v2) => {
-                        let ge = Expression::BinaryOp(
-                            BinaryOperator::GreaterEqual,
-                            Box::new(wdn(Expression::ArchitectureByteSize)),
-                            Box::new(wdn(Expression::Literal(Literal::UInt(*v1 as u64)))),
-                        );
-                        let le = Expression::BinaryOp(
-                            BinaryOperator::LessEqual,
-                            Box::new(wdn(Expression::ArchitectureByteSize)),
-                            Box::new(wdn(Expression::Literal(Literal::UInt(*v2 as u64)))),
-                        );
-                        let between = Expression::BinaryOp(
-                            BinaryOperator::LogicAnd,
-                            Box::new(wdn(ge)),
-                            Box::new(wdn(le)),
-                        );
-                        Expression::UnaryOp(UnaryOperator::Not, Box::new(wdn(between)))
-                    }
-                };
-                let cond_expr = wdn(cond_expr);
-                let tb = true_branch
-                    .iter()
-                    .map(|s| {
-                        convert_stmt(
-                            ast,
-                            function_id,
-                            s,
-                            stmt_position,
-                            root_expr,
-                            var_map,
-                            instruction_args,
-                        )
-                    })
-                    .collect();
-                let fb = false_branch
-                    .iter()
-                    .map(|s| {
-                        convert_stmt(
-                            ast,
-                            function_id,
-                            s,
-                            stmt_position,
-                            root_expr,
-                            var_map,
-                            instruction_args,
-                        )
-                    })
-                    .collect();
-                Statement::If(cond_expr, tb, Some(fb))
-            }
             IrStatementSpecial::CalcFlagsAutomatically {
                 operation,
                 size: _,
@@ -707,7 +688,8 @@ fn resolve_constant(
             | IrIntrinsic::ArchitectureByteSize
             | IrIntrinsic::ArchitectureBitSize
             | IrIntrinsic::ArchitectureBitPerByte
-            | IrIntrinsic::InstructionByteSize => None,
+            | IrIntrinsic::InstructionByteSize
+            | IrIntrinsic::ArchitectureByteSizeCondition(..) => None,
         },
         IrData::Register(register) => match register.name() {
             "rip" | "eip" | "ip" => Some(CValue::Num(BigInt::from(position.get_virtual_address()))),

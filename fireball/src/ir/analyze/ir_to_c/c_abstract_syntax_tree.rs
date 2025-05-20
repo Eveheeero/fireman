@@ -105,6 +105,16 @@ pub enum CValue {
 }
 
 #[derive(Debug, Clone)]
+pub enum Literal {
+    Int(i64),
+    UInt(u64),
+    Float(f64),
+    String(String),
+    Char(char),
+    Bool(bool),
+}
+
+#[derive(Debug, Clone)]
 pub enum Statement {
     Declaration(Variable, Option<Wrapped<Expression>>),
     Assignment(Wrapped<Expression>, Wrapped<Expression>),
@@ -162,16 +172,6 @@ pub enum Expression {
 }
 
 #[derive(Debug, Clone)]
-pub enum Literal {
-    Int(i64),
-    UInt(u64),
-    Float(f64),
-    String(String),
-    Char(char),
-    Bool(bool),
-}
-
-#[derive(Debug, Clone)]
 pub enum UnaryOperator {
     Negate,  // -
     Not,     // !
@@ -198,9 +198,13 @@ pub enum BinaryOperator {
     LogicOr,
     Equal,
     NotEqual,
+    /// A < B
     Less,
+    /// A <= B
     LessEqual,
+    /// A > B
     Greater,
+    /// A >= B
     GreaterEqual,
     LeftShift,
     RightShift,

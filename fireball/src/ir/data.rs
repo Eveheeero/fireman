@@ -39,8 +39,20 @@ pub enum IrIntrinsic {
     BitSizeOf(Aos<IrData>),
     Sized(Aos<IrData>, AccessSize),
     OperandExists(NonZeroU8),
+    ArchitectureByteSizeCondition(NumCondition),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Hash)]
+pub enum NumCondition {
+    Higher(u16),
+    HigherOrEqual(u16),
+    Lower(u16),
+    LowerOrEqual(u16),
+    Equal(u16),
+    NotEqual(u16),
+    RangeInclusive(u16, u16),
+    ExcludesRange(u16, u16),
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DataAccess {
     location: Aos<IrData>,
@@ -179,7 +191,14 @@ impl IrDataContainable for IrIntrinsic {
                 v.push(aos);
                 access_size.get_related_ir_data(v);
             }
-            _ => {}
+            IrIntrinsic::Unknown
+            | IrIntrinsic::Undefined
+            | IrIntrinsic::ArchitectureByteSize
+            | IrIntrinsic::ArchitectureBitSize
+            | IrIntrinsic::ArchitectureBitPerByte
+            | IrIntrinsic::InstructionByteSize
+            | IrIntrinsic::OperandExists(..)
+            | IrIntrinsic::ArchitectureByteSizeCondition(..) => {}
         }
     }
 }
@@ -308,6 +327,9 @@ impl std::fmt::Display for IrIntrinsic {
             IrIntrinsic::BitSizeOf(aos) => write!(f, "bit_size_of({})", aos),
             IrIntrinsic::Sized(aos, access_size) => write!(f, "sized({},{})", aos, access_size),
             IrIntrinsic::OperandExists(operand) => write!(f, "operand_exists({})", operand),
+            IrIntrinsic::ArchitectureByteSizeCondition(num_condition) => {
+                write!(f, "arch_byte_size_condition({})", num_condition)
+            }
         }
     }
 }
@@ -335,6 +357,25 @@ impl std::fmt::Display for DataAccessType {
         match self {
             DataAccessType::Read => write!(f, "r"),
             DataAccessType::Write => write!(f, "w"),
+        }
+    }
+}
+
+impl std::fmt::Display for NumCondition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NumCondition::Higher(value) => write!(f, "{} > {}", self, value),
+            NumCondition::HigherOrEqual(value) => write!(f, "{} >= {}", self, value),
+            NumCondition::Lower(value) => write!(f, "{} < {}", self, value),
+            NumCondition::LowerOrEqual(value) => write!(f, "{} <= {}", self, value),
+            NumCondition::Equal(value) => write!(f, "{} == {}", self, value),
+            NumCondition::NotEqual(value) => write!(f, "{} != {}", self, value),
+            NumCondition::RangeInclusive(value1, value2) => {
+                write!(f, "{} in [{}..{}]", self, value1, value2)
+            }
+            NumCondition::ExcludesRange(value1, value2) => {
+                write!(f, "{} not in [{}..{}]", self, value1, value2)
+            }
         }
     }
 }

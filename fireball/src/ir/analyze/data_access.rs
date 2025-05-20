@@ -77,15 +77,6 @@ pub fn analyze_data_access_raw(insert: &mut impl FnMut(DataAccess), statement: &
                 analyze_data_access_raw(insert, statement);
             }
         }
-        IrStatement::Special(IrStatementSpecial::ArchitectureByteSizeCondition {
-            condition: _,
-            true_branch,
-            false_branch,
-        }) => {
-            for statement in true_branch.iter().chain(false_branch.iter()) {
-                analyze_data_access_raw(insert, statement);
-            }
-        }
 
         IrStatement::Undefined
         | IrStatement::Exception(_)

@@ -53,19 +53,6 @@ pub(in crate::arch) fn type_specified(
         data_type,
     })
 }
-#[inline]
-#[must_use]
-pub(in crate::arch) fn architecture_byte_size_condition(
-    condition: NumCondition,
-    true_branch: impl Into<Box<[IrStatement]>>,
-    false_branch: impl Into<Box<[IrStatement]>>,
-) -> IrStatement {
-    IrStatement::Special(IrStatementSpecial::ArchitectureByteSizeCondition {
-        condition,
-        true_branch: true_branch.into(),
-        false_branch: false_branch.into(),
-    })
-}
 /// calc flags should be placed before the assignment
 /// ```rust,ignore
 /// let calc_flags = calc_flags_automatically(add, size, &[&of, &sf, &zf, &af, &cf, &pf]);
