@@ -43,7 +43,7 @@ pub struct WrappedStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Wrapped<T> {
     pub item: T,
-    pub root_expr: Option<Aos<IrData>>,
+    pub origin_expr: Option<Aos<IrData>>,
     pub comment: Option<String>,
 }
 

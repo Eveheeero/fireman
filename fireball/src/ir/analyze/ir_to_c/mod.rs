@@ -33,17 +33,17 @@ fn ws(statement: Statement, from: IrStatementDescriptor) -> WrappedStatement {
     }
 }
 /// Wrap Data
-fn wd<T>(item: T, root_expr: &Aos<IrData>) -> Wrapped<T> {
+fn wd<T>(item: T, origin_expr: &Aos<IrData>) -> Wrapped<T> {
     Wrapped {
         item,
-        root_expr: Some(root_expr.clone()),
+        origin_expr: Some(origin_expr.clone()),
         comment: None,
     }
 }
 fn wdn<T>(item: T) -> Wrapped<T> {
     Wrapped {
         item,
-        root_expr: None,
+        origin_expr: None,
         comment: None,
     }
 }
@@ -183,9 +183,11 @@ fn convert_expr(
     data: &Aos<IrData>,
     var_map: &HashMap<Aos<IrData>, VariableId>,
 ) -> Wrapped<Expression> {
+    let w = |x: Expression| wd(x, root_expr);
+
     if let Some(&vid) = var_map.get(data) {
         let vars = ast.get_variables(&function_id).unwrap();
-        return wd(Expression::Variable(vars, vid), root_expr);
+        return w(Expression::Variable(vars, vid));
     }
 
     let result = match data.as_ref() {
@@ -221,11 +223,7 @@ fn convert_expr(
             }
             IrIntrinsic::OperandExists(n) => Expression::Call(
                 "operand_exists".into(),
-                [wd(
-                    Expression::Literal(Literal::UInt(n.get() as u64)),
-                    root_expr,
-                )]
-                .to_vec(),
+                [w(Expression::Literal(Literal::UInt(n.get() as u64)))].to_vec(),
             ),
             IrIntrinsic::Unknown => Expression::Unknown,
             IrIntrinsic::Undefined => Expression::Undefined,
@@ -266,7 +264,7 @@ fn convert_expr(
         },
         IrData::Register(_) | IrData::Operand(_) => unreachable!("Should not be here"),
     };
-    wd(result, root_expr)
+    w(result)
 }
 
 fn convert_stmt(
@@ -515,6 +513,8 @@ fn convert_unary(
     arg: &Aos<IrData>,
     var_map: &HashMap<Aos<IrData>, VariableId>,
 ) -> Wrapped<Expression> {
+    let w = |x: Expression| wd(x, root_expr);
+
     let expr = convert_expr(ast, function_id, root_expr, arg, var_map);
     let op = match operator {
         IrUnaryOp::Not => UnaryOperator::Not,
@@ -522,7 +522,7 @@ fn convert_unary(
         IrUnaryOp::SignExtend => UnaryOperator::CastSigned,
         IrUnaryOp::ZeroExtend => UnaryOperator::CastUnsigned,
     };
-    wd(Expression::UnaryOp(op, Box::new(expr)), root_expr)
+    w(Expression::UnaryOp(op, Box::new(expr)))
 }
 
 fn convert_binary(
@@ -534,6 +534,8 @@ fn convert_binary(
     arg2: &Aos<IrData>,
     var_map: &HashMap<Aos<IrData>, VariableId>,
 ) -> Wrapped<Expression> {
+    let w = |x: Expression| wd(x, root_expr);
+
     let lhs = convert_expr(ast, function_id, root_expr, arg1, var_map);
     let rhs = convert_expr(ast, function_id, root_expr, arg2, var_map);
 
@@ -544,34 +546,34 @@ fn convert_binary(
         IrBinaryOp::SignedDiv => Expression::BinaryOp(
             BinaryOperator::Div,
             Box::new(lhs),
-            Box::new(wd(
-                Expression::UnaryOp(UnaryOperator::CastSigned, Box::new(rhs)),
-                root_expr,
-            )),
+            Box::new(w(Expression::UnaryOp(
+                UnaryOperator::CastSigned,
+                Box::new(rhs),
+            ))),
         ),
         IrBinaryOp::UnsignedDiv => Expression::BinaryOp(
             BinaryOperator::Div,
             Box::new(lhs),
-            Box::new(wd(
-                Expression::UnaryOp(UnaryOperator::CastUnsigned, Box::new(rhs)),
-                root_expr,
-            )),
+            Box::new(w(Expression::UnaryOp(
+                UnaryOperator::CastUnsigned,
+                Box::new(rhs),
+            ))),
         ),
         IrBinaryOp::SignedRem => Expression::BinaryOp(
             BinaryOperator::Mod,
             Box::new(lhs),
-            Box::new(wd(
-                Expression::UnaryOp(UnaryOperator::CastSigned, Box::new(rhs)),
-                root_expr,
-            )),
+            Box::new(w(Expression::UnaryOp(
+                UnaryOperator::CastSigned,
+                Box::new(rhs),
+            ))),
         ),
         IrBinaryOp::UnsignedRem => Expression::BinaryOp(
             BinaryOperator::Mod,
             Box::new(lhs),
-            Box::new(wd(
-                Expression::UnaryOp(UnaryOperator::CastUnsigned, Box::new(rhs)),
-                root_expr,
-            )),
+            Box::new(w(Expression::UnaryOp(
+                UnaryOperator::CastUnsigned,
+                Box::new(rhs),
+            ))),
         ),
         IrBinaryOp::And => {
             Expression::BinaryOp(BinaryOperator::BitAnd, Box::new(lhs), Box::new(rhs))
@@ -592,31 +594,22 @@ fn convert_binary(
             let rhs_s = Expression::Call("sized".into(), [rhs.clone(), sz].to_vec());
             Expression::BinaryOp(
                 BinaryOperator::Equal,
-                Box::new(wd(lhs_s, root_expr)),
-                Box::new(wd(rhs_s, root_expr)),
+                Box::new(w(lhs_s)),
+                Box::new(w(rhs_s)),
             )
         }
         IrBinaryOp::SignedLess(size) => {
             let sz = convert_size(ast, function_id, root_expr, size, var_map);
             let lhs_s = Expression::Call("sized".into(), [lhs.clone(), sz.clone()].to_vec()); // TODO does lhs need to be sized?
             let rhs_s = Expression::Call("sized".into(), [rhs.clone(), sz].to_vec());
-            Expression::BinaryOp(
-                BinaryOperator::Less,
-                Box::new(wd(lhs_s, root_expr)),
-                Box::new(wd(rhs_s, root_expr)),
-            )
+            Expression::BinaryOp(BinaryOperator::Less, Box::new(w(lhs_s)), Box::new(w(rhs_s)))
         }
         IrBinaryOp::UnsignedLess(size) => {
             let sz = convert_size(ast, function_id, root_expr, size, var_map);
             let lhs_s = Expression::Call("sized".into(), [lhs.clone(), sz.clone()].to_vec());
             let rhs_s = Expression::Call("sized".into(), [rhs.clone(), sz].to_vec());
-            let rhs_c =
-                Expression::UnaryOp(UnaryOperator::CastUnsigned, Box::new(wd(rhs_s, root_expr)));
-            Expression::BinaryOp(
-                BinaryOperator::Less,
-                Box::new(wd(lhs_s, root_expr)),
-                Box::new(wd(rhs_c, root_expr)),
-            )
+            let rhs_c = Expression::UnaryOp(UnaryOperator::CastUnsigned, Box::new(w(rhs_s)));
+            Expression::BinaryOp(BinaryOperator::Less, Box::new(w(lhs_s)), Box::new(w(rhs_c)))
         }
         IrBinaryOp::SignedLessOrEqual(size) => {
             let sz = convert_size(ast, function_id, root_expr, size, var_map);
@@ -624,24 +617,23 @@ fn convert_binary(
             let rhs_s = Expression::Call("sized".into(), [rhs.clone(), sz].to_vec());
             Expression::BinaryOp(
                 BinaryOperator::LessEqual,
-                Box::new(wd(lhs_s, root_expr)),
-                Box::new(wd(rhs_s, root_expr)),
+                Box::new(w(lhs_s)),
+                Box::new(w(rhs_s)),
             )
         }
         IrBinaryOp::UnsignedLessOrEqual(size) => {
             let sz = convert_size(ast, function_id, root_expr, size, var_map);
             let lhs_s = Expression::Call("sized".into(), [lhs.clone(), sz.clone()].to_vec());
             let rhs_s = Expression::Call("sized".into(), [rhs.clone(), sz].to_vec());
-            let rhs_c =
-                Expression::UnaryOp(UnaryOperator::CastUnsigned, Box::new(wd(rhs_s, root_expr)));
+            let rhs_c = Expression::UnaryOp(UnaryOperator::CastUnsigned, Box::new(w(rhs_s)));
             Expression::BinaryOp(
                 BinaryOperator::LessEqual,
-                Box::new(wd(lhs_s, root_expr)),
-                Box::new(wd(rhs_c, root_expr)),
+                Box::new(w(lhs_s)),
+                Box::new(w(rhs_c)),
             )
         }
     };
-    wd(result, root_expr)
+    w(result)
 }
 
 fn convert_size(
@@ -651,13 +643,16 @@ fn convert_size(
     size: &AccessSize,
     var_map: &HashMap<Aos<IrData>, VariableId>,
 ) -> Wrapped<Expression> {
-    match size {
+    let w = |x: Expression| wd(x, root_expr);
+
+    let result = match size {
         AccessSize::ResultOfBit(d) | AccessSize::ResultOfByte(d) | AccessSize::RelativeWith(d) => {
-            convert_expr(ast, function_id, root_expr, d, var_map)
+            return convert_expr(ast, function_id, root_expr, d, var_map)
         }
-        AccessSize::ArchitectureSize => wd(Expression::ArchitectureByteSize, root_expr),
-        AccessSize::Unlimited => wd(Expression::Unknown, root_expr),
-    }
+        AccessSize::ArchitectureSize => Expression::ArchitectureByteSize,
+        AccessSize::Unlimited => Expression::Unknown,
+    };
+    w(result)
 }
 
 fn calc_flags_automatically(
@@ -669,6 +664,8 @@ fn calc_flags_automatically(
     affected_registers: &[Aos<IrData>],
     var_map: &HashMap<Aos<IrData>, VariableId>,
 ) -> Vec<WrappedStatement> {
+    let w = |x: Expression| wd(x, root_expr);
+
     // TODO INVALID
     let val = convert_expr(ast, function_id, root_expr, operation, var_map);
     let vars = ast.get_variables(&function_id).unwrap();
@@ -676,10 +673,7 @@ fn calc_flags_automatically(
         .iter()
         .filter_map(|reg| {
             var_map.get(reg).map(|&vid| {
-                Statement::Assignment(
-                    wd(Expression::Variable(vars.clone(), vid), root_expr),
-                    val.clone(),
-                )
+                Statement::Assignment(w(Expression::Variable(vars.clone(), vid)), val.clone())
             })
         })
         .map(|stmt| ws(stmt, *stmt_position))
@@ -693,6 +687,8 @@ fn resolve_constant(
     root_expr: &Aos<IrData>,
     data: &Aos<IrData>,
 ) -> Option<Wrapped<CValue>> {
+    let w = |x: CValue| wd(x, root_expr);
+
     let result = match data.as_ref() {
         IrData::Constant(c) => Some(CValue::Num(BigInt::from(*c))),
         IrData::Intrinsic(i) => match i {
@@ -779,5 +775,5 @@ fn resolve_constant(
         }
         IrData::Operand(..) => unreachable!("With {}, {}", position, data),
     };
-    result.map(|c| wd(c, root_expr))
+    result.map(w)
 }
