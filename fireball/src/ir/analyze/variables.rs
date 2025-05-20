@@ -3,7 +3,7 @@ use crate::{
         analyze::{DataType, KnownDataType},
         data::{AccessSize, DataAccess, DataAccessType, IrData, IrDataOperation, IrIntrinsic},
         operator::BinaryOperator,
-        statements::{IrStatement, IrStatementSpecial},
+        statements::IrStatement,
         utils::{IrStatementDescriptor, IrStatementDescriptorMap},
         IrBlock,
     },
@@ -90,12 +90,7 @@ fn collect_written_locations_recursive(
             true_branch,
             false_branch,
             ..
-        }
-        | IrStatement::Special(IrStatementSpecial::ArchitectureByteSizeCondition {
-            true_branch,
-            false_branch,
-            ..
-        }) => {
+        } => {
             for s in true_branch.iter().chain(false_branch.iter()) {
                 collect_written_locations_recursive(s, locations_written, instruction_args);
             }
@@ -127,12 +122,7 @@ fn update_location_mapping_recursive(
             true_branch,
             false_branch,
             ..
-        }
-        | IrStatement::Special(IrStatementSpecial::ArchitectureByteSizeCondition {
-            true_branch,
-            false_branch,
-            ..
-        }) => {
+        } => {
             let mut true_map = resolved_location_to_variable_ids.clone();
             for s in true_branch.iter() {
                 update_location_mapping_recursive(s, &mut true_map, instruction_args);
@@ -330,7 +320,8 @@ fn resolve_ir_intrinsic(
         | IrIntrinsic::ArchitectureByteSize
         | IrIntrinsic::ArchitectureBitSize
         | IrIntrinsic::ArchitectureBitPerByte
-        | IrIntrinsic::InstructionByteSize => intrinsic.clone(),
+        | IrIntrinsic::InstructionByteSize
+        | IrIntrinsic::ArchitectureByteSizeCondition(..) => intrinsic.clone(),
     }
 }
 

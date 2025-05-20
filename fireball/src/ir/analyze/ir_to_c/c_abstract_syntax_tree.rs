@@ -41,9 +41,9 @@ pub struct WrappedStatement {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct WrappedData<T> {
+pub struct Wrapped<T> {
     pub item: T,
-    pub root: Option<Aos<IrData>>,
+    pub origin_expr: Option<Aos<IrData>>,
     pub comment: Option<String>,
 }
 
@@ -52,7 +52,7 @@ pub struct Variable {
     pub name: String,
     pub id: VariableId,
     pub var_type: CType,
-    pub const_value: Option<WrappedData<CValue>>,
+    pub const_value: Option<Wrapped<CValue>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy, Hash)]
@@ -100,28 +100,38 @@ pub enum CValue {
     Char(char),
     Double(f64),
     Bool(bool),
-    Pointer(Box<WrappedData<CValue>>),
-    Array(Vec<WrappedData<CValue>>),
+    Pointer(Box<Wrapped<CValue>>),
+    Array(Vec<Wrapped<CValue>>),
+}
+
+#[derive(Debug, Clone)]
+pub enum Literal {
+    Int(i64),
+    UInt(u64),
+    Float(f64),
+    String(String),
+    Char(char),
+    Bool(bool),
 }
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    Declaration(Variable, Option<Expression>),
-    Assignment(Expression, Expression),
+    Declaration(Variable, Option<Wrapped<Expression>>),
+    Assignment(Wrapped<Expression>, Wrapped<Expression>),
     If(
-        Expression,
+        Wrapped<Expression>,
         Vec<WrappedStatement>,
         Option<Vec<WrappedStatement>>,
     ),
-    While(Expression, Vec<WrappedStatement>),
+    While(Wrapped<Expression>, Vec<WrappedStatement>),
     For(
         Box<WrappedStatement>,
-        Expression,
+        Wrapped<Expression>,
         Box<WrappedStatement>,
         Vec<WrappedStatement>,
     ),
-    Return(Option<Expression>),
-    Call(JumpTarget, Vec<Expression>),
+    Return(Option<Wrapped<Expression>>),
+    Call(JumpTarget, Vec<Wrapped<Expression>>),
     Label(String /* TODO need to change */),
     Goto(JumpTarget),
     Block(Vec<WrappedStatement>),
@@ -147,24 +157,18 @@ pub enum Expression {
     ArchitectureByteSize,
     Literal(Literal),
     Variable(ArcVariableMap, VariableId),
-    UnaryOp(UnaryOperator, Box<Expression>),
-    BinaryOp(BinaryOperator, Box<Expression>, Box<Expression>),
-    Call(String, Vec<Expression>),
-    Cast(CType, Box<Expression>),
-    Deref(Box<Expression>),
-    AddressOf(Box<Expression>),
-    ArrayAccess(Box<Expression>, Box<Expression>),
-    MemberAccess(Box<Expression>, String),
-}
-
-#[derive(Debug, Clone)]
-pub enum Literal {
-    Int(i64),
-    UInt(u64),
-    Float(f64),
-    String(String),
-    Char(char),
-    Bool(bool),
+    UnaryOp(UnaryOperator, Box<Wrapped<Expression>>),
+    BinaryOp(
+        BinaryOperator,
+        Box<Wrapped<Expression>>,
+        Box<Wrapped<Expression>>,
+    ),
+    Call(String, Vec<Wrapped<Expression>>),
+    Cast(CType, Box<Wrapped<Expression>>),
+    Deref(Box<Wrapped<Expression>>),
+    AddressOf(Box<Wrapped<Expression>>),
+    ArrayAccess(Box<Wrapped<Expression>>, Box<Wrapped<Expression>>),
+    MemberAccess(Box<Wrapped<Expression>>, String),
 }
 
 #[derive(Debug, Clone)]
@@ -194,9 +198,13 @@ pub enum BinaryOperator {
     LogicOr,
     Equal,
     NotEqual,
+    /// A < B
     Less,
+    /// A <= B
     LessEqual,
+    /// A > B
     Greater,
+    /// A >= B
     GreaterEqual,
     LeftShift,
     RightShift,
@@ -543,7 +551,7 @@ impl std::fmt::Display for WrappedStatement {
         write!(f, "{}", self.statement)
     }
 }
-impl<T: std::fmt::Display> std::fmt::Display for WrappedData<T> {
+impl<T: std::fmt::Display> std::fmt::Display for Wrapped<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.comment {
             Some(ref comment) => write!(f, "{} /* {} */", self.item, comment),
@@ -563,12 +571,12 @@ impl Deref for WrappedStatement {
         &self.statement
     }
 }
-impl<T> AsRef<T> for WrappedData<T> {
+impl<T> AsRef<T> for Wrapped<T> {
     fn as_ref(&self) -> &T {
         &self.item
     }
 }
-impl<T> Deref for WrappedData<T> {
+impl<T> Deref for Wrapped<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
