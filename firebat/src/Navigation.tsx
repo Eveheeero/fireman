@@ -53,7 +53,7 @@ function Nav() {
     });
   }
 
-  return (<nav className="navbar shadow-md mx-1 flex justify-start">
+  return (<nav className="fixed top-0 left-0 right-0 navbar shadow-md mx-1 flex justify-start">
     <div className="relative dropdown-group">
       <button onClick={(e) => openDropdown(e)} className="dft-btn mx-0.5">Files</button>
       <div className="dropdown dropdown-menu hidden">

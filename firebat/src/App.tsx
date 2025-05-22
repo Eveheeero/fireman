@@ -1,44 +1,98 @@
-import { SetStateAction, useState } from "react";
+import React, { useState } from "react";
 import logoBackgrounded from "./assets/logo colored 512.png";
-import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 import Navigation from "./Navigation";
 import LogBar from "./LogBar";
-import { log } from "./logger";
-import * as rs from "./bindings";
-import GraphView from "./GraphView";
+import { closestCenter, DndContext, DragEndEvent, DragOverlay, DragStartEvent, KeyboardSensor, PointerSensor, UniqueIdentifier, useSensor, useSensors } from "@dnd-kit/core";
+import { arrayMove, horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
+import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
+import { CSS } from '@dnd-kit/utilities';
+import AssemblyPanel from "./AssemblyPanel";
+import IRPanel from "./IRPanel";
+import ASTPanel from "./ASTPanel";
+import SectionPanel from "./SectionPanel";
+
+
+interface Panel {
+  id: string;
+  content: React.ReactNode;
+}
+
+function SortablePanel({ id, content }: Readonly<Panel>) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 1,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center h-full justify-center flex-col"
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="h-4 w-full bg-gray-500 cursor-grab rounded-t-lg"></div>
+      <div className={`w-full h-full bg-gray-900/20 rounded-lg flex flex-col items-center justify-center text-center p-4 shadow-md`}>
+        {content}
+      </div>
+    </div>
+  );
+}
 
 function App() {
-  const [decompileResult, setDecompileResult] = useState<string>("");
-  const [decompileTargetAddress, setDecompileTargetAddress] = useState<string>("");
-  const [inspectResult, setInspectResult] = useState<rs.IrInspectResult[]>([]);
+  const [panels, setPanels] = useState<Panel[]>([
+    { id: 'section-panel', content: <SectionPanel /> },
+    { id: 'asm-panel', content: <AssemblyPanel /> },
+    { id: 'ir-panel', content: <IRPanel /> },
+    { id: 'ast-panel', content: <ASTPanel /> },
+  ]);
+  const [draggingPanelId, setDraggingPanelId] = useState<UniqueIdentifier | null>(null);
 
-  async function greet() {
-    await invoke("decom_from_address", { address: decompileTargetAddress }).then((result) => {
-      log("Decompile Success", result);
-      setDecompileResult("Block's Connected Address : " + result as SetStateAction<string>);
-    }).catch((error) => {
-      log("Decompile Failed", error);
-    });
-  }
+  // dragging state
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-  async function decomFromEntry() {
-    await invoke("decom_from_entry").then((result) => {
-      log("Decompile Success", result);
-      setDecompileResult("Block's Connected Address : " + result as SetStateAction<string>);
-    }).catch((error) => {
-      log("Decompile Failed", error);
-    });
-  }
+  const handleDragStart = (event: DragStartEvent) => {
+    setDraggingPanelId(event.active.id);
+  };
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) {
+      setDraggingPanelId(null);
+      return;
+    }
 
-  async function inspect() {
-    await invoke<rs.IrInspectResult[]>("ir_inspect", { address: decompileTargetAddress }).then((result) => {
-      log("Inspect Success", result);
-      setInspectResult(result);
-    }).catch((error) => {
-      log("Inspect Failed", error);
-    });
-  }
+    if (active.id !== over.id) {
+      setPanels((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+    setDraggingPanelId(null);
+  };
+  const handleDragCancel = () => {
+    setDraggingPanelId(null);
+  };
+
+  const draggingPanel = draggingPanelId ? panels.find((panel) => panel.id === draggingPanelId) : null;
 
   return (
     <main>
@@ -47,20 +101,48 @@ function App() {
         <img src="/logo transparent.svg" className="logo" alt="transparent logo" />
         <img src={logoBackgrounded} className="logo" alt="backgrounded logo" />
       </div> */}
-      <input
-        onChange={(e) => setDecompileTargetAddress(e.currentTarget.value)}
-        autoComplete="off"
-        placeholder="Enter Position to Decompile"
-      />
-      <button onClick={greet} className="dft-btn">Decompile From Address</button>
-      <button onClick={inspect} className="dft-btn">Inspect Address</button>
-      <button onClick={decomFromEntry} className="dft-btn">decom from entry</button>
-      <p>{decompileResult}</p>
+      <div className="min-h-screen flex items-center justify-center p-4 text-black">
+        <DndContext sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}>
+          <SortableContext
+            items={panels.map((p) => p.id)}
+            strategy={horizontalListSortingStrategy}
+          >
+            <PanelGroup direction="horizontal" className="h-full">
+              {panels.map((content, index) => (
+                <React.Fragment key={content.id}>
+                  <Panel defaultSize={100 / panels.length} className="flex items-center justify-center">
+                    <SortablePanel
+                      id={content.id}
+                      content={content.content}
+                    />
+                  </Panel>
+                  {index < panels.length - 1 && (
+                    <PanelResizeHandle className="w-1 bg-gray-300 hover:bg-blue-500 transition-colors duration-200 cursor-ew-resize flex items-center justify-center">
+                      <div className="w-1 h-10 bg-gray-500 rounded-full"></div>
+                    </PanelResizeHandle>
+                  )}
+                </React.Fragment>
+              ))}
+            </PanelGroup>
+          </SortableContext>
 
-      {inspectResult.length > 0 && <GraphView data={inspectResult} />}
+          <DragOverlay>
+            {draggingPanel ? (
+              <SortablePanel
+                id={draggingPanel.id}
+                content={draggingPanel.content}
+              />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      </div>
 
       <LogBar />
-    </main>
+    </main >
   );
 }
 
