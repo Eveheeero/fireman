@@ -9,6 +9,10 @@ function SectionPanel() {
   const { knownSections, setKnownSections } = useContext(Context);
 
   async function analyzeSectionFromAddress(startAddress: string) {
+    if (knownSections.some(section => section.startAddress === Number(startAddress))) {
+      log("Section already known", startAddress);
+      return;
+    }
     await invoke("analyze_section", { address: startAddress }).then((result) => {
       log("Section Analyzation Success", result);
       const newSections = result as rs.KnownSection[];
