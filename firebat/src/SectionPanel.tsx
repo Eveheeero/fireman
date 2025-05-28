@@ -9,14 +9,17 @@ function SectionPanel() {
   const { knownSections, setKnownSections } = useContext(Context);
 
   async function analyzeSectionFromAddress(startAddress: string) {
-    if (knownSections.some(section => section.startAddress === Number(startAddress))) {
+    if (knownSections.some(section => section.data.startAddress === Number(startAddress))) {
       log("Section already known", startAddress);
       return;
     }
     await invoke("analyze_section", { address: startAddress }).then((result) => {
       log("Section Analyzation Success", result);
       const newSections = result as rs.KnownSection[];
-      setKnownSections(prev => [...prev.filter(section => !newSections.some(newSection => newSection.startAddress === section.startAddress)), ...newSections]);
+      setKnownSections(prev => [
+        ...prev.filter(section => !newSections.some(newSection => newSection.startAddress === section.data.startAddress)),
+        ...newSections.map(section => ({ selected: false, data: section }))
+      ]);
     }).catch((error) => {
       log("Section Analyzation Failed", error);
     });
@@ -47,13 +50,24 @@ function SectionPanel() {
             {knownSections.map((section, index) => (
               <li key={index} className="p-2 border rounded bg-gray-500">
                 <div className="flex justify-between items-start">
-                  <p>
-                    0x{section.startAddress.toString(16)}..{section.endAddress?.toString(16)}
+                  <p className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={section.selected}
+                      onChange={() => {
+                        setKnownSections(prev => prev.map((s, i) => i === index ? { ...s, selected: !s.selected } : s));
+                      }}
+                      disabled={!section.data.analyzed}
+                      className="mr-2"
+                    />
+                    <p>
+                      0x{section.data.startAddress.toString(16)}..{section.data.endAddress?.toString(16)}
+                    </p>
                   </p>
                   <span>
-                    {section.analyzed ? "Analyzed" : (
+                    {section.data.analyzed ? "Analyzed" : (
                       <button
-                        onClick={() => analyzeSectionFromAddress(section.startAddress.toString())}
+                        onClick={() => analyzeSectionFromAddress(section.data.startAddress.toString())}
                         className="dft-btn"
                       >
                         Analyze Section

@@ -1,9 +1,14 @@
 import React, { useState, createContext, useMemo } from 'react';
 import * as rs from "./bindings";
 
+export interface KnownSection {
+  selected: boolean;
+  data: rs.KnownSection;
+}
+
 interface ContextData {
-  knownSections: rs.KnownSection[];
-  setKnownSections: React.Dispatch<React.SetStateAction<rs.KnownSection[]>>;
+  knownSections: KnownSection[];
+  setKnownSections: React.Dispatch<React.SetStateAction<KnownSection[]>>;
 }
 export const Context = createContext<ContextData>({
   knownSections: [],
@@ -11,7 +16,7 @@ export const Context = createContext<ContextData>({
 });
 
 export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [knownSections, setKnownSections] = useState<rs.KnownSection[]>([]);
+  const [knownSections, setKnownSections] = useState<KnownSection[]>([]);
 
   const obj = useMemo(() => ({
     knownSections,
