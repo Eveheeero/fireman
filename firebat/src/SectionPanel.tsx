@@ -1,11 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
-import { SetStateAction, useState } from "react";
+import { useContext, useState } from "react";
 import { log } from "./logger";
 import * as rs from "./bindings";
+import { Context } from "./context";
 
 function SectionPanel() {
   const [analyzeTargetAddress, setAnalyzeTargetAddress] = useState<string>("");
-  const [knownSections, setKnownSections] = useState<rs.KnownSection[]>([]);
+  const { knownSections, setKnownSections } = useContext(Context);
 
   async function analyzeSectionFromAddress(startAddress: string) {
     await invoke("analyze_section", { address: startAddress }).then((result) => {
