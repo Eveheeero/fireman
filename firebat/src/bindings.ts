@@ -7,6 +7,12 @@ export interface IrInspectResult {
 
 export interface IrInspectResultSingle {
    statement: string;
-   data_accesses: (string)[];
-   data_access_per_ir: (string)[];
+   dataAccesses: (string)[];
+   dataAccessPerIr: (string)[];
+}
+
+export interface KnownSection {
+   startAddress: number;
+   endAddress: number | null;
+   analyzed: boolean;
 }
