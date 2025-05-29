@@ -13,7 +13,7 @@ export interface DecompileResult {
 
 export const getColorForIndex = (index: number): string => {
   const colors = [
-    'bg-red-100', 'bg-blue-100', 'bg-green-100', 'bg-yellow-100', 
+    'bg-red-100', 'bg-blue-100', 'bg-green-100', 'bg-yellow-100',
     'bg-purple-100', 'bg-pink-100', 'bg-indigo-100', 'bg-orange-100',
     'bg-teal-100', 'bg-cyan-100'
   ];
@@ -25,24 +25,31 @@ interface ContextData {
   setKnownSections: React.Dispatch<React.SetStateAction<KnownSection[]>>;
   decompileResult: DecompileResult | null;
   setDecompileResult: React.Dispatch<React.SetStateAction<DecompileResult | null>>;
+  hoveredAssemblyIndex: number | null;
+  setHoveredAssemblyIndex: React.Dispatch<React.SetStateAction<number | null>>;
 }
 export const Context = createContext<ContextData>({
   knownSections: [],
   setKnownSections: () => { },
   decompileResult: null,
   setDecompileResult: () => { },
+  hoveredAssemblyIndex: null,
+  setHoveredAssemblyIndex: () => { },
 });
 
 export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [knownSections, setKnownSections] = useState<KnownSection[]>([]);
   const [decompileResult, setDecompileResult] = useState<DecompileResult | null>(null);
+  const [hoveredAssemblyIndex, setHoveredAssemblyIndex] = useState<number | null>(null);
 
   const obj = useMemo(() => ({
     knownSections,
     setKnownSections,
     decompileResult,
-    setDecompileResult
-  }), [knownSections, setKnownSections, decompileResult, setDecompileResult]);
+    setDecompileResult,
+    hoveredAssemblyIndex,
+    setHoveredAssemblyIndex
+  }), [knownSections, setKnownSections, decompileResult, setDecompileResult, hoveredAssemblyIndex, setHoveredAssemblyIndex]);
   return (
     <Context.Provider value={obj}>
       {children}

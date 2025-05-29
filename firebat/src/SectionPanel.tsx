@@ -6,7 +6,7 @@ import { Context, getColorForIndex } from "./context";
 
 function SectionPanel() {
   const [analyzeTargetAddress, setAnalyzeTargetAddress] = useState<string>("");
-  const { knownSections, setKnownSections, setDecompileResult } = useContext(Context);
+  const { knownSections, setKnownSections, setDecompileResult, decompileResult, hoveredAssemblyIndex, setHoveredAssemblyIndex } = useContext(Context);
 
   async function analyzeSectionFromAddress(startAddress: string) {
     if (knownSections.some(section => section.data.analyzed && section.data.startAddress === Number(startAddress))) {
@@ -100,36 +100,55 @@ function SectionPanel() {
         <div className="p-4">
           <h2 className="text-lg font-bold">Known Sections</h2>
           <ul className="mt-2 space-y-2">
-            {knownSections.map((section, index) => (
-              <li key={index} className="p-2 border rounded bg-gray-500">
-                <div className="flex justify-between items-start">
-                  <p className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={section.selected}
-                      onChange={() => {
-                        setKnownSections(prev => prev.map((s, i) => i === index ? { ...s, selected: !s.selected } : s));
-                      }}
-                      disabled={!section.data.analyzed}
-                      className="mr-2"
-                    />
-                    <p>
-                      0x{section.data.startAddress.toString(16)}..{section.data.endAddress?.toString(16)}
+            {knownSections.map((section, index) => {
+              const relatedAssemblies = decompileResult?.data.assembly.filter(
+                assembly => assembly.parentsStartAddress === section.data.startAddress
+              ) || [];
+              const isRelatedHovered = relatedAssemblies.some(
+                assembly => hoveredAssemblyIndex === assembly.index
+              );
+              const hoverColor = isRelatedHovered ? 'ring-2 ring-blue-500 shadow-md' : '';
+
+              return (
+                <li
+                  key={index}
+                  className={`p-2 border rounded bg-gray-500 ${hoverColor} transition-all`}
+                  onMouseEnter={() => {
+                    if (relatedAssemblies.length > 0) {
+                      setHoveredAssemblyIndex(relatedAssemblies[0].index);
+                    }
+                  }}
+                  onMouseLeave={() => setHoveredAssemblyIndex(null)}
+                >
+                  <div className="flex justify-between items-start">
+                    <p className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={section.selected}
+                        onChange={() => {
+                          setKnownSections(prev => prev.map((s, i) => i === index ? { ...s, selected: !s.selected } : s));
+                        }}
+                        disabled={!section.data.analyzed}
+                        className="mr-2"
+                      />
+                      <span>
+                        0x{section.data.startAddress.toString(16)}..{section.data.endAddress?.toString(16)}
+                      </span>
                     </p>
-                  </p>
-                  <span>
-                    {section.data.analyzed ? "Analyzed" : (
-                      <button
-                        onClick={() => analyzeSectionFromAddress(section.data.startAddress.toString())}
-                        className="dft-btn"
-                      >
-                        Analyze Section
-                      </button>
-                    )}
-                  </span>
-                </div>
-              </li>
-            ))}
+                    <span>
+                      {section.data.analyzed ? "Analyzed" : (
+                        <button
+                          onClick={() => analyzeSectionFromAddress(section.data.startAddress.toString())}
+                          className="dft-btn"
+                        >
+                          Analyze Section
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </div>
