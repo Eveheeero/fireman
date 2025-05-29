@@ -13,9 +13,9 @@ export interface DecompileResult {
 
 export const getColorForIndex = (index: number): string => {
   const colors = [
-    'bg-red-100', 'bg-blue-100', 'bg-green-100', 'bg-yellow-100',
-    'bg-purple-100', 'bg-pink-100', 'bg-indigo-100', 'bg-orange-100',
-    'bg-teal-100', 'bg-cyan-100'
+    'bg-red-900', 'bg-blue-900', 'bg-green-900', 'bg-yellow-800',
+    'bg-purple-900', 'bg-pink-900', 'bg-indigo-900', 'bg-orange-900',
+    'bg-teal-900', 'bg-cyan-900'
   ];
   return colors[index % colors.length];
 };
