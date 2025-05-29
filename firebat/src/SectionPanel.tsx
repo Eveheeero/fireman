@@ -76,7 +76,7 @@ function SectionPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex flex-col gap-1 p-2 border-b">
+      <div className="flex flex-col gap-1 p-2 border-b flex-shrink-0">
         <div className="flex items-center gap-1">
           <input
             type="text"
@@ -113,10 +113,12 @@ function SectionPanel() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
-        <div className="p-4">
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="p-4 flex-shrink-0">
           <h2 className="text-lg font-bold">Known Sections</h2>
-          <ul className="mt-2 space-y-2">
+        </div>
+        <div className="flex-1 overflow-auto px-4 pb-4">
+          <ul className="space-y-2">
             {knownSections.map((section, index) => {
               const relatedAssemblies = decompileResult?.data.assembly.filter(
                 assembly => assembly.parentsStartAddress === section.data.startAddress

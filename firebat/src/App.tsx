@@ -39,13 +39,14 @@ function SortablePanel({ id, content }: Readonly<Panel>) {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center h-full justify-center flex-col"
+      className="h-full w-full flex flex-col"
     >
       <div
         {...attributes}
         {...listeners}
-        className="h-4 w-full bg-gray-500 cursor-grab rounded-t-lg"></div>
-      <div className={`w-full h-full bg-gray-900/20 rounded-lg flex flex-col items-center justify-center text-center p-4 shadow-md`}>
+        className="h-4 w-full bg-gray-500 cursor-grab rounded-t-lg flex-shrink-0 z-10"
+      ></div>
+      <div className="flex-1 bg-gray-900/20 rounded-b-lg overflow-hidden">
         {content}
       </div>
     </div>
@@ -95,13 +96,12 @@ function App() {
   const draggingPanel = draggingPanelId ? panels.find((panel) => panel.id === draggingPanelId) : null;
 
   return (
-    <main>
-      <Navigation />
-      {/* <div className="row">
+    <main className="h-screen overflow-hidden flex flex-col">
+      <Navigation />{/* <div className="row">
         <img src="/logo transparent.svg" className="logo" alt="transparent logo" />
         <img src={logoBackgrounded} className="logo" alt="backgrounded logo" />
       </div> */}
-      <div className="min-h-screen flex items-center justify-center p-4 text-black">
+      <div className="flex-1 flex items-center justify-center p-4 text-black overflow-hidden">
         <DndContext sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
@@ -111,10 +111,10 @@ function App() {
             items={panels.map((p) => p.id)}
             strategy={horizontalListSortingStrategy}
           >
-            <PanelGroup direction="horizontal" className="h-full">
+            <PanelGroup direction="horizontal" className="w-full h-full">
               {panels.map((content, index) => (
                 <React.Fragment key={content.id}>
-                  <Panel defaultSize={100 / panels.length} className="flex items-center justify-center">
+                  <Panel defaultSize={100 / panels.length} className="h-full">
                     <SortablePanel
                       id={content.id}
                       content={content.content}
