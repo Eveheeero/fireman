@@ -1,10 +1,9 @@
 use fireball::{
-    core::{Address, FireRaw},
-    ir::utils::IrStatementDescriptor,
+    core::{Address, Block, FireRaw},
     Fireball,
 };
 use serde::Serialize;
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, RwLock};
 use ts_bind::TsBind;
 
 struct Firebat {
@@ -12,6 +11,7 @@ struct Firebat {
     fireball: Option<Fireball>,
 }
 unsafe impl Send for Firebat {}
+unsafe impl Sync for Firebat {}
 impl Firebat {
     fn new() -> Self {
         Self {
@@ -28,21 +28,60 @@ impl Firebat {
     }
 }
 
-static APP: LazyLock<Arc<Mutex<Firebat>>> = LazyLock::new(|| Arc::new(Mutex::new(Firebat::new())));
+static APP: LazyLock<Arc<RwLock<Firebat>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(Firebat::new())));
 
-fn parse_address(address: &str) -> Result<u64, String> {
-    if let Ok(address) = address.parse::<u64>() {
-        Ok(address)
-    } else if let Ok(address) = u64::from_str_radix(address, 16) {
-        Ok(address)
-    } else {
-        return Err("Invalid Address".to_string());
-    }
+#[derive(Serialize, TsBind)]
+#[ts_bind(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+struct KnownSection {
+    start_address: u64,
+    end_address: Option<u64>,
+    analyzed: bool,
+}
+#[derive(Serialize, TsBind)]
+#[ts_bind(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+struct DecompileResult {
+    assembly: Vec<Assembly>,
+    ir: Vec<Ir>,
+    decompiled: String,
+}
+#[derive(Serialize, TsBind)]
+#[ts_bind(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+struct Assembly {
+    index: usize,
+    parents_start_address: u64,
+    data: String,
+}
+#[derive(Serialize, TsBind)]
+#[ts_bind(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+struct Ir {
+    parents_assembly_index: usize,
+    data: String,
 }
 
-#[tauri::command]
+fn parse_address(address: &str) -> Result<u64, String> {
+    let address = address.trim();
+    if let Ok(address) = address.parse::<u64>() {
+        return Ok(address);
+    }
+    let address = if address.starts_with("0x") || address.starts_with("0X") {
+        &address[2..]
+    } else {
+        address
+    };
+    if let Ok(address) = u64::from_str_radix(address, 16) {
+        return Ok(address);
+    }
+    Err("Invalid Address".to_string())
+}
+
+#[tauri::command(rename_all = "snake_case")]
 fn open_file(path: &str) -> Result<(), String> {
-    let mut app = APP.lock().unwrap();
+    let mut app = APP.write().unwrap();
     app.path = Some(path.to_owned());
     let fireball = Fireball::from_path(path);
     if let Err(e) = fireball {
@@ -52,108 +91,113 @@ fn open_file(path: &str) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-fn decom_from_entry() -> Result<Vec<u64>, String> {
-    let app = APP.lock().unwrap();
+#[tauri::command(rename_all = "snake_case")]
+fn analyze_section(address: &str) -> Result<Vec<KnownSection>, String> {
+    if address.is_empty() {
+        return analyze_section_from_entry();
+    }
+    let address = parse_address(address)?;
+    analyze_section_from_address(address)
+}
+#[tauri::command(rename_all = "snake_case")]
+fn analyze_all_sections() -> Result<Vec<KnownSection>, String> {
+    let app = APP.read().unwrap();
     let fireball = app.fireball()?;
-    let result = fireball.analyze_from_entry();
-    if let Err(e) = result {
-        return Err(e.to_string());
-    }
-    let result = result.unwrap();
-    let reader = result.get_connected_to();
-    let mut connected_to = Vec::new();
-    connected_to.push(result.get_start_address().get_virtual_address());
-    for i in reader.iter() {
-        let Some(to) = i.to() else {
-            continue;
-        };
-        connected_to.push(to.get_virtual_address());
-    }
-    Ok(connected_to)
+    let analyzed = fireball.analyze_all().map_err(|x| x.to_string())?;
+    Ok(block_to_result(analyzed))
 }
 
-#[tauri::command]
-fn decom_from_address(address: &str) -> Result<Vec<u64>, String> {
-    let app = APP.lock().unwrap();
+fn analyze_section_from_address(address: u64) -> Result<Vec<KnownSection>, String> {
+    let app = APP.read().unwrap();
     let fireball = app.fireball()?;
-    let address = parse_address(address)?;
-    let result = fireball.analyze_from_virtual_address(address);
-    if let Err(e) = result {
-        return Err(e.to_string());
-    }
-    let result = result.unwrap();
-    let reader = result.get_connected_to();
-    let mut connected_to = Vec::new();
-    connected_to.push(result.get_start_address().get_virtual_address());
-    for i in reader.iter() {
-        let Some(to) = i.to() else {
-            continue;
-        };
-        connected_to.push(to.get_virtual_address());
-    }
-    Ok(connected_to)
+    let result = fireball
+        .analyze_from_virtual_address(address)
+        .map_err(|x| x.to_string())?;
+    Ok(block_to_result([result]))
 }
-
-#[derive(Serialize, TsBind)]
-struct IrInspectResult {
-    instruction: String,
-    statements: Vec<IrInspectResultSingle>,
-}
-#[derive(Serialize, TsBind)]
-struct IrInspectResultSingle {
-    statement: String,
-    data_accesses: Vec<String>,
-    data_access_per_ir: Vec<String>,
-}
-#[tauri::command]
-fn ir_inspect(address: &str) -> Result<Vec<IrInspectResult>, String> {
-    let app = APP.lock().unwrap();
+fn analyze_section_from_entry() -> Result<Vec<KnownSection>, String> {
+    let app = APP.read().unwrap();
     let fireball = app.fireball()?;
-    let address = parse_address(address)?;
-    let sections = fireball.get_sections();
-    let address = Address::from_virtual_address(&sections, address);
-    let block = fireball.get_blocks().get_by_containing_address(&address);
-    let block = &block.get(0).ok_or("Block Not Analyzed")?;
-    let ir_block = block.get_ir();
-    let ir_block = ir_block.as_ref().ok_or("Block Not Analyzed")?;
-    let data_access = ir_block.data_access.as_ref().ok_or("Block Not Analyzed")?;
-    let known_datatypes = ir_block
-        .known_datatypes
-        .as_ref()
-        .ok_or("Block Not Analyzed")?;
+    let result = fireball.analyze_from_entry().map_err(|x| x.to_string())?;
+    Ok(block_to_result([result]))
+}
+fn block_to_result(blocks: impl IntoIterator<Item = Arc<Block>>) -> Vec<KnownSection> {
     let mut result = Vec::new();
-    for (ir_index, (ir, instruction)) in ir_block
-        .ir()
-        .iter()
-        .zip(ir_block.instructions().iter())
-        .enumerate()
-    {
-        if let Some(statements) = ir.statements {
-            for (statement_index, statement) in statements.iter().enumerate() {
-                let key = IrStatementDescriptor::new(ir_index as u32, statement_index as u8);
-                let data_access = data_access.get(key).unwrap();
-                let known_datatypes = known_datatypes.get(key).unwrap();
-                result.push(IrInspectResult {
-                    instruction: format!("{}", instruction),
-                    statements: vec![IrInspectResultSingle {
-                        statement: format!("{}", statement),
-                        data_accesses: data_access.iter().map(|s| format!("{}", s)).collect(),
-                        data_access_per_ir: known_datatypes
-                            .iter()
-                            .map(|s| format!("{}", s))
-                            .collect(),
-                    }],
-                });
+    for block in blocks {
+        let start_address = block.get_start_address().get_virtual_address();
+        let o = KnownSection {
+            end_address: block.get_block_size().map(|a| start_address + a),
+            start_address,
+            analyzed: true,
+        };
+        result.retain(|x: &KnownSection| x.start_address != o.start_address);
+        result.push(o);
+
+        let reader = block.get_connected_to();
+        for i in reader.iter() {
+            let Some(to) = i.to() else {
+                continue;
+            };
+            if result
+                .iter()
+                .any(|x| x.start_address == to.get_virtual_address())
+            {
+                continue;
             }
-        } else {
-            result.push(IrInspectResult {
-                instruction: format!("{}", instruction),
-                statements: vec![],
+            result.push(KnownSection {
+                start_address: to.get_virtual_address(),
+                end_address: None,
+                analyzed: false,
             });
         }
     }
-    Ok(result)
+    result
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn decompile_sections(start_addresses: Vec<u64>) -> Result<DecompileResult, String> {
+    let mut assembly = Vec::new();
+    let mut irs = Vec::new();
+    let app = APP.read().unwrap();
+    let fireball = app.fireball()?;
+    let blocks = fireball.get_blocks();
+    let sections = fireball.get_sections();
+    let target_blocks = start_addresses
+        .iter()
+        .map(|&addr| Address::from_virtual_address(&sections, addr))
+        .filter_map(|addr| blocks.get_by_start_address(&addr))
+        .collect::<Vec<_>>();
+    let mut assembly_index = 0;
+    for target_block in &target_blocks {
+        let start_address = target_block.get_start_address().get_virtual_address();
+        let ir = target_block.get_ir();
+        let Some(ir) = ir.as_ref() else {
+            continue;
+        };
+        for (instruction, ir) in ir.instructions().iter().zip(ir.ir()) {
+            assembly_index += 1;
+            assembly.push(Assembly {
+                index: assembly_index,
+                parents_start_address: start_address,
+                data: instruction.to_string(),
+            });
+            let Some(statements) = ir.statements.as_ref() else {
+                continue;
+            };
+            for statement in statements.iter() {
+                irs.push(Ir {
+                    parents_assembly_index: assembly_index,
+                    data: statement.to_string(),
+                });
+            }
+        }
+    }
+    let decompiled = fireball::ir::analyze::generate_c(target_blocks).to_c_code();
+    Ok(DecompileResult {
+        assembly,
+        ir: irs,
+        decompiled,
+    })
 }
 
 pub fn run() {
@@ -161,10 +205,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
-            decom_from_address,
+            analyze_section,
+            analyze_all_sections,
             open_file,
-            decom_from_entry,
-            ir_inspect
+            decompile_sections
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
