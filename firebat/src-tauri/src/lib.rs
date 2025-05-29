@@ -1,6 +1,5 @@
 use fireball::{
     core::{Address, Block, FireRaw},
-    ir::utils::IrStatementDescriptor,
     Fireball,
 };
 use serde::Serialize;
@@ -43,17 +42,25 @@ struct KnownSection {
 #[derive(Serialize, TsBind)]
 #[ts_bind(rename_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
-struct IrInspectResult {
-    instruction: String,
-    statements: Vec<IrInspectResultSingle>,
+struct DecompileResult {
+    assembly: Vec<Assembly>,
+    ir: Vec<Ir>,
+    decompiled: String,
 }
 #[derive(Serialize, TsBind)]
 #[ts_bind(rename_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
-struct IrInspectResultSingle {
-    statement: String,
-    data_accesses: Vec<String>,
-    data_access_per_ir: Vec<String>,
+struct Assembly {
+    index: usize,
+    parents_start_address: u64,
+    data: String,
+}
+#[derive(Serialize, TsBind)]
+#[ts_bind(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+struct Ir {
+    parents_assembly_index: usize,
+    data: String,
 }
 
 fn parse_address(address: &str) -> Result<u64, String> {
@@ -72,7 +79,7 @@ fn parse_address(address: &str) -> Result<u64, String> {
     Err("Invalid Address".to_string())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 fn open_file(path: &str) -> Result<(), String> {
     let mut app = APP.write().unwrap();
     app.path = Some(path.to_owned());
@@ -84,7 +91,7 @@ fn open_file(path: &str) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 fn analyze_section(address: &str) -> Result<Vec<KnownSection>, String> {
     if address.is_empty() {
         return analyze_section_from_entry();
@@ -137,54 +144,50 @@ fn block_to_result(block: Arc<Block>) -> Vec<KnownSection> {
     result
 }
 
-#[tauri::command]
-fn ir_inspect(address: &str) -> Result<Vec<IrInspectResult>, String> {
+#[tauri::command(rename_all = "snake_case")]
+fn decompile_sections(start_addresses: Vec<u64>) -> Result<DecompileResult, String> {
+    let mut assembly = Vec::new();
+    let mut irs = Vec::new();
     let app = APP.read().unwrap();
     let fireball = app.fireball()?;
-    let address = parse_address(address)?;
+    let blocks = fireball.get_blocks();
     let sections = fireball.get_sections();
-    let address = Address::from_virtual_address(&sections, address);
-    let block = fireball.get_blocks().get_by_containing_address(&address);
-    let block = &block.get(0).ok_or("Block Not Analyzed")?;
-    let ir_block = block.get_ir();
-    let ir_block = ir_block.as_ref().ok_or("Block Not Analyzed")?;
-    let data_access = ir_block.data_access.as_ref().ok_or("Block Not Analyzed")?;
-    let known_datatypes = ir_block
-        .known_datatypes
-        .as_ref()
-        .ok_or("Block Not Analyzed")?;
-    let mut result = Vec::new();
-    for (ir_index, (ir, instruction)) in ir_block
-        .ir()
+    let target_blocks = start_addresses
         .iter()
-        .zip(ir_block.instructions().iter())
-        .enumerate()
-    {
-        if let Some(statements) = ir.statements {
-            for (statement_index, statement) in statements.iter().enumerate() {
-                let key = IrStatementDescriptor::new(ir_index as u32, statement_index as u8);
-                let data_access = data_access.get(key).unwrap();
-                let known_datatypes = known_datatypes.get(key).unwrap();
-                result.push(IrInspectResult {
-                    instruction: format!("{}", instruction),
-                    statements: vec![IrInspectResultSingle {
-                        statement: format!("{}", statement),
-                        data_accesses: data_access.iter().map(|s| format!("{}", s)).collect(),
-                        data_access_per_ir: known_datatypes
-                            .iter()
-                            .map(|s| format!("{}", s))
-                            .collect(),
-                    }],
+        .map(|&addr| Address::from_virtual_address(&sections, addr))
+        .filter_map(|addr| blocks.get_by_start_address(&addr))
+        .collect::<Vec<_>>();
+    let mut assembly_index = 0;
+    for target_block in &target_blocks {
+        let start_address = target_block.get_start_address().get_virtual_address();
+        let ir = target_block.get_ir();
+        let Some(ir) = ir.as_ref() else {
+            continue;
+        };
+        for (instruction, ir) in ir.instructions().iter().zip(ir.ir()) {
+            assembly_index += 1;
+            assembly.push(Assembly {
+                index: assembly_index,
+                parents_start_address: start_address,
+                data: instruction.to_string(),
+            });
+            let Some(statements) = ir.statements.as_ref() else {
+                continue;
+            };
+            for statement in statements.iter() {
+                irs.push(Ir {
+                    parents_assembly_index: assembly_index,
+                    data: statement.to_string(),
                 });
             }
-        } else {
-            result.push(IrInspectResult {
-                instruction: format!("{}", instruction),
-                statements: vec![],
-            });
         }
     }
-    Ok(result)
+    let decompiled = fireball::ir::analyze::generate_c(target_blocks).to_c_code();
+    Ok(DecompileResult {
+        assembly,
+        ir: irs,
+        decompiled,
+    })
 }
 
 pub fn run() {
@@ -194,7 +197,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             analyze_section,
             open_file,
-            ir_inspect
+            decompile_sections
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

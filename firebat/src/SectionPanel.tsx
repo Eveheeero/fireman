@@ -6,10 +6,10 @@ import { Context } from "./context";
 
 function SectionPanel() {
   const [analyzeTargetAddress, setAnalyzeTargetAddress] = useState<string>("");
-  const { knownSections, setKnownSections } = useContext(Context);
+  const { knownSections, setKnownSections, setDecompileResult } = useContext(Context);
 
   async function analyzeSectionFromAddress(startAddress: string) {
-    if (knownSections.some(section => section.data.startAddress === Number(startAddress))) {
+    if (knownSections.some(section => section.data.analyzed && section.data.startAddress === Number(startAddress))) {
       log("Section already known", startAddress);
       return;
     }
@@ -25,22 +25,68 @@ function SectionPanel() {
     });
   }
 
+  function selectAll() {
+    const analyzedSections = knownSections.filter(section => section.data.analyzed);
+    const allSelected = analyzedSections.every(section => section.selected);
+
+    setKnownSections(prev => prev.map(section =>
+      section.data.analyzed
+        ? { ...section, selected: !allSelected }
+        : section
+    ));
+  }
+
+  async function decompileSelected() {
+    const selectedSections = knownSections.filter(section => section.selected);
+    if (selectedSections.length === 0) {
+      log("No sections selected for decompilation");
+      return;
+    }
+
+    // generate list of startAddress
+    let startAddresses = selectedSections.map(section => section.data.startAddress);
+    log("Decompiling sections", startAddresses);
+    await invoke("decompile_sections", { start_addresses: startAddresses }).then((result) => {
+      const decompiledResult = result as rs.DecompileResult;
+      setDecompileResult(decompiledResult);
+      log("Decompilation Success");
+    }).catch((error) => {
+      log("Decompilation Failed", error);
+    });
+  }
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-1 p-2 border-b">
-        <input
-          type="text"
-          value={analyzeTargetAddress}
-          onChange={(e) => setAnalyzeTargetAddress(e.target.value)}
-          placeholder="Empty if you want to decompile from entry"
-          className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-        <button
-          onClick={(_e) => analyzeSectionFromAddress(analyzeTargetAddress)}
-          className="dft-btn"
-        >
-          Analyze Address
-        </button>
+      <div className="flex flex-col gap-1 p-2 border-b">
+        <div className="flex items-center gap-1">
+          <input
+            type="text"
+            value={analyzeTargetAddress}
+            onChange={(e) => setAnalyzeTargetAddress(e.target.value)}
+            placeholder="Empty if you want to decompile from entry"
+            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <button
+            onClick={(_e) => analyzeSectionFromAddress(analyzeTargetAddress)}
+            className="dft-btn"
+          >
+            Analyze Address
+          </button>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={selectAll}
+            className="dft-btn flex-1"
+          >
+            Select All
+          </button>
+          <button
+            onClick={decompileSelected}
+            className="dft-btn flex-1"
+          >
+            Decompile Selected
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto">
