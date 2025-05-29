@@ -36,6 +36,19 @@ function SectionPanel() {
     ));
   }
 
+  async function analyzeAll() {
+    await invoke("analyze_all_sections").then((result) => {
+      log("All Sections Analyzed", result);
+      const newSections = result as rs.KnownSection[];
+      setKnownSections(prev => [
+        ...prev.filter(section => !newSections.some(newSection => newSection.startAddress === section.data.startAddress)),
+        ...newSections.map(section => ({ selected: false, data: section }))
+      ]);
+    }).catch((error) => {
+      log("All Sections Analyzation Failed", error);
+    });
+  }
+
   async function decompileSelected() {
     const selectedSections = knownSections.filter(section => section.selected);
     if (selectedSections.length === 0) {
@@ -49,7 +62,6 @@ function SectionPanel() {
     await invoke("decompile_sections", { start_addresses: startAddresses }).then((result) => {
       const decompiledResult = result as rs.DecompileResult;
 
-      // 색상 맵 생성
       const colorMap = new Map<number, string>();
       decompiledResult.assembly.forEach(assembly => {
         colorMap.set(assembly.index, getColorForIndex(assembly.index));
@@ -80,7 +92,12 @@ function SectionPanel() {
             Analyze Address
           </button>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1"><button
+          onClick={analyzeAll}
+          className="dft-btn flex-1"
+        >
+          Analyze All
+        </button>
           <button
             onClick={selectAll}
             className="dft-btn flex-1"

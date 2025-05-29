@@ -99,47 +99,57 @@ fn analyze_section(address: &str) -> Result<Vec<KnownSection>, String> {
     let address = parse_address(address)?;
     analyze_section_from_address(address)
 }
+#[tauri::command(rename_all = "snake_case")]
+fn analyze_all_sections() -> Result<Vec<KnownSection>, String> {
+    let app = APP.read().unwrap();
+    let fireball = app.fireball()?;
+    let analyzed = fireball.analyze_all().map_err(|x| x.to_string())?;
+    Ok(block_to_result(analyzed))
+}
 
 fn analyze_section_from_address(address: u64) -> Result<Vec<KnownSection>, String> {
     let app = APP.read().unwrap();
     let fireball = app.fireball()?;
-    let result = fireball.analyze_from_virtual_address(address);
-    if let Err(e) = result {
-        return Err(e.to_string());
-    }
-    let result = result.unwrap();
-    Ok(block_to_result(result))
+    let result = fireball
+        .analyze_from_virtual_address(address)
+        .map_err(|x| x.to_string())?;
+    Ok(block_to_result([result]))
 }
 fn analyze_section_from_entry() -> Result<Vec<KnownSection>, String> {
     let app = APP.read().unwrap();
     let fireball = app.fireball()?;
-    let result = fireball.analyze_from_entry();
-    if let Err(e) = result {
-        return Err(e.to_string());
-    }
-    let result = result.unwrap();
-    Ok(block_to_result(result))
+    let result = fireball.analyze_from_entry().map_err(|x| x.to_string())?;
+    Ok(block_to_result([result]))
 }
-fn block_to_result(block: Arc<Block>) -> Vec<KnownSection> {
-    let reader = block.get_connected_to();
+fn block_to_result(blocks: impl IntoIterator<Item = Arc<Block>>) -> Vec<KnownSection> {
     let mut result = Vec::new();
-    let start_address = block.get_start_address().get_virtual_address();
-    let o = KnownSection {
-        end_address: block.get_block_size().map(|a| start_address + a),
-        start_address,
-        analyzed: true,
-    };
-    result.push(o);
-
-    for i in reader.iter() {
-        let Some(to) = i.to() else {
-            continue;
+    for block in blocks {
+        let start_address = block.get_start_address().get_virtual_address();
+        let o = KnownSection {
+            end_address: block.get_block_size().map(|a| start_address + a),
+            start_address,
+            analyzed: true,
         };
-        result.push(KnownSection {
-            start_address: to.get_virtual_address(),
-            end_address: None,
-            analyzed: false,
-        });
+        result.retain(|x: &KnownSection| x.start_address != o.start_address);
+        result.push(o);
+
+        let reader = block.get_connected_to();
+        for i in reader.iter() {
+            let Some(to) = i.to() else {
+                continue;
+            };
+            if result
+                .iter()
+                .any(|x| x.start_address == to.get_virtual_address())
+            {
+                continue;
+            }
+            result.push(KnownSection {
+                start_address: to.get_virtual_address(),
+                end_address: None,
+                analyzed: false,
+            });
+        }
     }
     result
 }
@@ -196,6 +206,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             analyze_section,
+            analyze_all_sections,
             open_file,
             decompile_sections
         ])
