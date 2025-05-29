@@ -97,7 +97,9 @@ function App() {
 
   return (
     <main className="h-screen overflow-hidden flex flex-col">
-      <Navigation />{/* <div className="row">
+      <div className="relative z-50">
+        <Navigation />
+      </div>{/* <div className="row">
         <img src="/logo transparent.svg" className="logo" alt="transparent logo" />
         <img src={logoBackgrounded} className="logo" alt="backgrounded logo" />
       </div> */}
@@ -141,7 +143,9 @@ function App() {
         </DndContext>
       </div>
 
-      <LogBar />
+      <div className="relative z-50">
+        <LogBar />
+      </div>
     </main >
   );
 }
