@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useContext, useState } from "react";
 import { log } from "./logger";
 import * as rs from "./bindings";
-import { Context } from "./context";
+import { Context, getColorForIndex } from "./context";
 
 function SectionPanel() {
   const [analyzeTargetAddress, setAnalyzeTargetAddress] = useState<string>("");
@@ -48,7 +48,14 @@ function SectionPanel() {
     log("Decompiling sections", startAddresses);
     await invoke("decompile_sections", { start_addresses: startAddresses }).then((result) => {
       const decompiledResult = result as rs.DecompileResult;
-      setDecompileResult(decompiledResult);
+
+      // 색상 맵 생성
+      const colorMap = new Map<number, string>();
+      decompiledResult.assembly.forEach(assembly => {
+        colorMap.set(assembly.index, getColorForIndex(assembly.index));
+      });
+
+      setDecompileResult({ colors: colorMap, data: decompiledResult });
       log("Decompilation Success");
     }).catch((error) => {
       log("Decompilation Failed", error);
