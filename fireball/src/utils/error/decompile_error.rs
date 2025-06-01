@@ -1,21 +1,32 @@
-#[derive(Debug, Clone, Default, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DecompileError {
-    #[default]
-    Unknown,
-    UnknownWithMessage(String),
+    Unknown(Option<String>),
     HeaderParsingFailed,
     DisassembleFailed(super::disassemble_error::DisassembleError),
     EntryNotFound,
+    CASTGenerationFailed(Option<String>),
+}
+
+impl Default for DecompileError {
+    fn default() -> Self {
+        Self::Unknown(None)
+    }
 }
 
 impl std::fmt::Display for DecompileError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Unknown => write!(f, "Unknown Error Occured!"),
-            Self::UnknownWithMessage(msg) => write!(f, "Unknown Error Occured! {}", msg),
+            Self::Unknown(msg) => {
+                write!(f, "Unknown Error Occured! {}", msg.as_deref().unwrap_or(""))
+            }
             Self::HeaderParsingFailed => write!(f, "Header Parsing Failed!"),
             Self::DisassembleFailed(err) => write!(f, "Fail to disassemble block! {}", err),
             Self::EntryNotFound => write!(f, "Entry Not Found!"),
+            Self::CASTGenerationFailed(msg) => write!(
+                f,
+                "C-AST Generation Failed! {}",
+                msg.as_deref().unwrap_or("")
+            ),
         }
     }
 }
@@ -28,19 +39,19 @@ impl From<goblin::error::Error> for DecompileError {
 
 impl From<String> for DecompileError {
     fn from(msg: String) -> Self {
-        Self::UnknownWithMessage(msg)
+        Self::Unknown(Some(msg))
     }
 }
 
 impl From<&String> for DecompileError {
     fn from(msg: &String) -> Self {
-        Self::UnknownWithMessage(msg.clone())
+        Self::Unknown(Some(msg.clone()))
     }
 }
 
 impl From<&str> for DecompileError {
     fn from(msg: &str) -> Self {
-        Self::UnknownWithMessage(msg.to_string())
+        Self::Unknown(Some(msg.to_string()))
     }
 }
 
