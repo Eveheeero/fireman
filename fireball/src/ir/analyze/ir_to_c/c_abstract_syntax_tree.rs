@@ -254,9 +254,9 @@ impl CAst {
                 "Tried to get variables from a non-existing function: {:?}",
                 function_id
             );
-            Err(DecompileError::UnknownWithMessage(
+            Err(DecompileError::Unknown(Some(
                 "Tried to get variables from a non-existing function".to_string(),
-            ))
+            )))
         }
     }
 

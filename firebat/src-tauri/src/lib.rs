@@ -192,7 +192,9 @@ fn decompile_sections(start_addresses: Vec<u64>) -> Result<DecompileResult, Stri
             }
         }
     }
-    let decompiled = fireball::ir::analyze::generate_c(target_blocks).to_c_code();
+    let decompiled = fireball::ir::analyze::generate_c_ast(target_blocks)
+        .map_err(|x| x.to_string())?
+        .to_c_code();
     Ok(DecompileResult {
         assembly,
         ir: irs,
