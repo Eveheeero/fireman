@@ -9,5 +9,5 @@ pub use control_flow_graph::{ControlFlowGraph, ControlFlowGraphAnalyzer};
 pub use data_access::analyze_data_access;
 pub use datatype::{analyze_datatype, DataType, KnownDataType};
 pub use ir_block_merger::MergedIr;
-pub use ir_to_c::generate_c;
+pub use ir_to_c::generate_c_ast;
 pub use variables::{analyze_variables, IrVariable};

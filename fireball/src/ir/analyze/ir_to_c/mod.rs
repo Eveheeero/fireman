@@ -49,16 +49,18 @@ fn wdn<T>(item: T) -> Wrapped<T> {
 }
 
 /// Generate C AST from targets
-pub fn generate_c(targets: impl IntoIterator<Item = Arc<Block>>) -> CAst {
+pub fn generate_c_ast(
+    targets: impl IntoIterator<Item = Arc<Block>>,
+) -> Result<CAst, DecompileError> {
     let mut ast = CAst::new();
     let mut cfg_analyzer = ControlFlowGraphAnalyzer::new();
     cfg_analyzer.add_targets(targets);
     let cfgs = cfg_analyzer.analyze();
     for cfg in cfgs.into_iter() {
         let merged = merge_blocks(&cfg.get_blocks());
-        generate_c_function(&mut ast, &merged);
+        generate_c_ast_function(&mut ast, &merged)?;
     }
-    ast
+    Ok(ast)
 }
 
 /// Generate C function and add it to AST
@@ -72,7 +74,7 @@ pub fn generate_c(targets: impl IntoIterator<Item = Arc<Block>>) -> CAst {
 /// ### Arguments
 /// * `ast: &mut CAst` - The C AST to which the function will be added.
 /// * `data: &MergedIr` - The merged IR data containing the function's instructions and variables.
-pub fn generate_c_function(ast: &mut CAst, data: &MergedIr) {
+pub fn generate_c_ast_function(ast: &mut CAst, data: &MergedIr) -> Result<(), DecompileError> {
     let func_id = ast.generate_default_function(data.get_ir().first().map(|x| &x.address).unwrap());
 
     let mut locals = HashMap::new();
@@ -102,7 +104,7 @@ pub fn generate_c_function(ast: &mut CAst, data: &MergedIr) {
                     instruction_arg_size,
                     &da.location(),
                     &da.location(),
-                ) {
+                )? {
                     trace!("Constant value found in {}: {}", position, c);
                     if const_value.is_some() && const_value.as_ref().unwrap() != &c {
                         warn!(
@@ -159,7 +161,7 @@ pub fn generate_c_function(ast: &mut CAst, data: &MergedIr) {
                     None,
                     &var_map,
                     instruction_args,
-                ));
+                )?);
             }
         } else {
             func_body.push(ws(
@@ -174,6 +176,8 @@ pub fn generate_c_function(ast: &mut CAst, data: &MergedIr) {
         .get_mut(&func_id)
         .unwrap()
         .body = func_body;
+
+    Ok(())
 }
 
 fn convert_expr(
@@ -182,12 +186,12 @@ fn convert_expr(
     root_expr: &Aos<IrData>,
     data: &Aos<IrData>,
     var_map: &HashMap<Aos<IrData>, VariableId>,
-) -> Wrapped<Expression> {
+) -> Result<Wrapped<Expression>, DecompileError> {
     let w = |x: Expression| wd(x, root_expr);
 
     if let Some(&vid) = var_map.get(data) {
         let vars = ast.get_variables(&function_id).unwrap();
-        return w(Expression::Variable(vars, vid));
+        return Ok(w(Expression::Variable(vars, vid)));
     }
 
     let result = match data.as_ref() {
@@ -198,7 +202,7 @@ fn convert_expr(
             root_expr,
             inner,
             var_map,
-        ))),
+        )?)),
         IrData::Intrinsic(intr) => match intr {
             IrIntrinsic::ArchitectureByteSize => Expression::ArchitectureByteSize,
             IrIntrinsic::ArchitectureBitSize => Expression::ArchitectureBitSize,
@@ -210,15 +214,15 @@ fn convert_expr(
             }
             IrIntrinsic::ByteSizeOf(inner) => Expression::Call(
                 "byte_size_of".into(),
-                [convert_expr(ast, function_id, root_expr, inner, var_map)].to_vec(),
+                [convert_expr(ast, function_id, root_expr, inner, var_map)?].to_vec(),
             ),
             IrIntrinsic::BitSizeOf(inner) => Expression::Call(
                 "bit_size_of".into(),
-                [convert_expr(ast, function_id, root_expr, inner, var_map)].to_vec(),
+                [convert_expr(ast, function_id, root_expr, inner, var_map)?].to_vec(),
             ),
             IrIntrinsic::Sized(inner, size) => {
-                let arg = convert_expr(ast, function_id, root_expr, inner, var_map);
-                let sz = convert_size(ast, function_id, root_expr, size, var_map);
+                let arg = convert_expr(ast, function_id, root_expr, inner, var_map)?;
+                let sz = convert_size(ast, function_id, root_expr, size, var_map)?;
                 Expression::Call("sized".into(), [arg, sz].to_vec())
             }
             IrIntrinsic::OperandExists(n) => Expression::Call(
@@ -229,27 +233,27 @@ fn convert_expr(
             IrIntrinsic::Undefined => Expression::Undefined,
             IrIntrinsic::SignedMax(size) => Expression::Call(
                 "signed_max".into(),
-                [convert_size(ast, function_id, root_expr, size, var_map)].to_vec(),
+                [convert_size(ast, function_id, root_expr, size, var_map)?].to_vec(),
             ),
             IrIntrinsic::SignedMin(size) => Expression::Call(
                 "signed_min".into(),
-                [convert_size(ast, function_id, root_expr, size, var_map)].to_vec(),
+                [convert_size(ast, function_id, root_expr, size, var_map)?].to_vec(),
             ),
             IrIntrinsic::UnsignedMax(size) => Expression::Call(
                 "unsigned_max".into(),
-                [convert_size(ast, function_id, root_expr, size, var_map)].to_vec(),
+                [convert_size(ast, function_id, root_expr, size, var_map)?].to_vec(),
             ),
             IrIntrinsic::UnsignedMin(size) => Expression::Call(
                 "unsigned_min".into(),
-                [convert_size(ast, function_id, root_expr, size, var_map)].to_vec(),
+                [convert_size(ast, function_id, root_expr, size, var_map)?].to_vec(),
             ),
             IrIntrinsic::BitOnes(size) => Expression::Call(
                 "bit_ones".into(),
-                [convert_size(ast, function_id, root_expr, size, var_map)].to_vec(),
+                [convert_size(ast, function_id, root_expr, size, var_map)?].to_vec(),
             ),
             IrIntrinsic::BitZeros(size) => Expression::Call(
                 "bit_zeros".into(),
-                [convert_size(ast, function_id, root_expr, size, var_map)].to_vec(),
+                [convert_size(ast, function_id, root_expr, size, var_map)?].to_vec(),
             ),
             IrIntrinsic::ArchitectureByteSizeCondition(num_condition) => {
                 let u = |v: &u16| Expression::Literal(Literal::UInt(*v as u64));
@@ -346,7 +350,7 @@ fn convert_expr(
         },
         IrData::Register(_) | IrData::Operand(_) => unreachable!("Should not be here"),
     };
-    w(result)
+    Ok(w(result))
 }
 
 fn convert_stmt(
@@ -357,14 +361,14 @@ fn convert_stmt(
     root_expr: Option<&Aos<IrData>>,
     var_map: &HashMap<Aos<IrData>, VariableId>,
     instruction_args: &[iceball::Argument],
-) -> WrappedStatement {
+) -> Result<WrappedStatement, DecompileError> {
     let result = match stmt {
         IrStatement::Assignment { from, to, .. } => {
             let from = &resolve_operand(from, instruction_args);
             let to = &resolve_operand(to, instruction_args);
             Statement::Assignment(
-                convert_expr(ast, function_id, root_expr.unwrap_or(to), to, var_map),
-                convert_expr(ast, function_id, root_expr.unwrap_or(to), from, var_map),
+                convert_expr(ast, function_id, root_expr.unwrap_or(to), to, var_map)?,
+                convert_expr(ast, function_id, root_expr.unwrap_or(to), from, var_map)?,
             )
         }
         IrStatement::JumpByCall { target } => {
@@ -375,7 +379,7 @@ fn convert_stmt(
                 root_expr.unwrap_or(target),
                 target,
                 var_map,
-            );
+            )?;
             let name = match e.as_ref() {
                 Expression::Variable(vars, id) => {
                     let vars = vars.read().unwrap();
@@ -397,7 +401,7 @@ fn convert_stmt(
                 root_expr.unwrap_or(target),
                 target,
                 var_map,
-            );
+            )?;
             let label = match e.as_ref() {
                 Expression::Variable(vars, id) => {
                     let vars = vars.read().unwrap();
@@ -423,7 +427,7 @@ fn convert_stmt(
                 root_expr.unwrap_or(condition),
                 condition,
                 var_map,
-            );
+            )?;
             let then_b = true_branch
                 .iter()
                 .map(|s| {
@@ -437,7 +441,7 @@ fn convert_stmt(
                         instruction_args,
                     )
                 })
-                .collect();
+                .collect::<Result<_, _>>()?;
             let else_b = false_branch
                 .iter()
                 .map(|s| {
@@ -451,7 +455,7 @@ fn convert_stmt(
                         instruction_args,
                     )
                 })
-                .collect();
+                .collect::<Result<_, _>>()?;
             Statement::If(cond, then_b, Some(else_b))
         }
         IrStatement::Halt => Statement::Return(None),
@@ -473,7 +477,7 @@ fn convert_stmt(
                     root_expr.unwrap_or(operation),
                     flags,
                     var_map,
-                );
+                )?;
                 Statement::Block(stmts)
             }
             IrStatementSpecial::TypeSpecified {
@@ -483,7 +487,7 @@ fn convert_stmt(
             } => Statement::Empty, // Used to detect types
         },
     };
-    ws(result, *stmt_position)
+    Ok(ws(result, *stmt_position))
 }
 
 fn convert_unary(
@@ -493,17 +497,17 @@ fn convert_unary(
     operator: &IrUnaryOp,
     arg: &Aos<IrData>,
     var_map: &HashMap<Aos<IrData>, VariableId>,
-) -> Wrapped<Expression> {
+) -> Result<Wrapped<Expression>, DecompileError> {
     let w = |x: Expression| wd(x, root_expr);
 
-    let expr = convert_expr(ast, function_id, root_expr, arg, var_map);
+    let expr = convert_expr(ast, function_id, root_expr, arg, var_map)?;
     let op = match operator {
         IrUnaryOp::Not => UnaryOperator::Not,
         IrUnaryOp::Negation => UnaryOperator::Negate,
         IrUnaryOp::SignExtend => UnaryOperator::CastSigned,
         IrUnaryOp::ZeroExtend => UnaryOperator::CastUnsigned,
     };
-    w(Expression::UnaryOp(op, Box::new(expr)))
+    Ok(w(Expression::UnaryOp(op, Box::new(expr))))
 }
 
 fn convert_binary(
@@ -514,11 +518,11 @@ fn convert_binary(
     arg1: &Aos<IrData>,
     arg2: &Aos<IrData>,
     var_map: &HashMap<Aos<IrData>, VariableId>,
-) -> Wrapped<Expression> {
+) -> Result<Wrapped<Expression>, DecompileError> {
     let w = |x: Expression| wd(x, root_expr);
 
-    let lhs = convert_expr(ast, function_id, root_expr, arg1, var_map);
-    let rhs = convert_expr(ast, function_id, root_expr, arg2, var_map);
+    let lhs = convert_expr(ast, function_id, root_expr, arg1, var_map)?;
+    let rhs = convert_expr(ast, function_id, root_expr, arg2, var_map)?;
 
     let result = match operator {
         IrBinaryOp::Add => Expression::BinaryOp(BinaryOperator::Add, Box::new(lhs), Box::new(rhs)),
@@ -570,7 +574,7 @@ fn convert_binary(
             Expression::BinaryOp(BinaryOperator::RightShift, Box::new(lhs), Box::new(rhs))
         }
         IrBinaryOp::Equal(size) => {
-            let sz = convert_size(ast, function_id, root_expr, size, var_map);
+            let sz = convert_size(ast, function_id, root_expr, size, var_map)?;
             let lhs_s = Expression::Call("sized".into(), [lhs.clone(), sz.clone()].to_vec());
             let rhs_s = Expression::Call("sized".into(), [rhs.clone(), sz].to_vec());
             Expression::BinaryOp(
@@ -580,20 +584,20 @@ fn convert_binary(
             )
         }
         IrBinaryOp::SignedLess(size) => {
-            let sz = convert_size(ast, function_id, root_expr, size, var_map);
+            let sz = convert_size(ast, function_id, root_expr, size, var_map)?;
             let lhs_s = Expression::Call("sized".into(), [lhs.clone(), sz.clone()].to_vec()); // TODO does lhs need to be sized?
             let rhs_s = Expression::Call("sized".into(), [rhs.clone(), sz].to_vec());
             Expression::BinaryOp(BinaryOperator::Less, Box::new(w(lhs_s)), Box::new(w(rhs_s)))
         }
         IrBinaryOp::UnsignedLess(size) => {
-            let sz = convert_size(ast, function_id, root_expr, size, var_map);
+            let sz = convert_size(ast, function_id, root_expr, size, var_map)?;
             let lhs_s = Expression::Call("sized".into(), [lhs.clone(), sz.clone()].to_vec());
             let rhs_s = Expression::Call("sized".into(), [rhs.clone(), sz].to_vec());
             let rhs_c = Expression::UnaryOp(UnaryOperator::CastUnsigned, Box::new(w(rhs_s)));
             Expression::BinaryOp(BinaryOperator::Less, Box::new(w(lhs_s)), Box::new(w(rhs_c)))
         }
         IrBinaryOp::SignedLessOrEqual(size) => {
-            let sz = convert_size(ast, function_id, root_expr, size, var_map);
+            let sz = convert_size(ast, function_id, root_expr, size, var_map)?;
             let lhs_s = Expression::Call("sized".into(), [lhs.clone(), sz.clone()].to_vec());
             let rhs_s = Expression::Call("sized".into(), [rhs.clone(), sz].to_vec());
             Expression::BinaryOp(
@@ -603,7 +607,7 @@ fn convert_binary(
             )
         }
         IrBinaryOp::UnsignedLessOrEqual(size) => {
-            let sz = convert_size(ast, function_id, root_expr, size, var_map);
+            let sz = convert_size(ast, function_id, root_expr, size, var_map)?;
             let lhs_s = Expression::Call("sized".into(), [lhs.clone(), sz.clone()].to_vec());
             let rhs_s = Expression::Call("sized".into(), [rhs.clone(), sz].to_vec());
             let rhs_c = Expression::UnaryOp(UnaryOperator::CastUnsigned, Box::new(w(rhs_s)));
@@ -614,7 +618,7 @@ fn convert_binary(
             )
         }
     };
-    w(result)
+    Ok(w(result))
 }
 
 fn convert_size(
@@ -623,7 +627,7 @@ fn convert_size(
     root_expr: &Aos<IrData>,
     size: &AccessSize,
     var_map: &HashMap<Aos<IrData>, VariableId>,
-) -> Wrapped<Expression> {
+) -> Result<Wrapped<Expression>, DecompileError> {
     let w = |x: Expression| wd(x, root_expr);
 
     let result = match size {
@@ -633,7 +637,7 @@ fn convert_size(
         AccessSize::ArchitectureSize => Expression::ArchitectureByteSize,
         AccessSize::Unlimited => Expression::Unknown,
     };
-    w(result)
+    Ok(w(result))
 }
 
 fn calc_flags_automatically(
@@ -644,13 +648,13 @@ fn calc_flags_automatically(
     root_expr: &Aos<IrData>,
     affected_registers: &[Aos<IrData>],
     var_map: &HashMap<Aos<IrData>, VariableId>,
-) -> Vec<WrappedStatement> {
+) -> Result<Vec<WrappedStatement>, DecompileError> {
     let w = |x: Expression| wd(x, root_expr);
 
     // TODO INVALID
-    let val = convert_expr(ast, function_id, root_expr, operation, var_map);
+    let val = convert_expr(ast, function_id, root_expr, operation, var_map)?;
     let vars = ast.get_variables(&function_id).unwrap();
-    affected_registers
+    let result = affected_registers
         .iter()
         .filter_map(|reg| {
             var_map.get(reg).map(|&vid| {
@@ -658,7 +662,8 @@ fn calc_flags_automatically(
             })
         })
         .map(|stmt| ws(stmt, *stmt_position))
-        .collect()
+        .collect();
+    Ok(result)
 }
 
 /// TODO Need implement for constant access size
@@ -667,7 +672,7 @@ fn resolve_constant(
     instruction_arg_size: u8,
     root_expr: &Aos<IrData>,
     data: &Aos<IrData>,
-) -> Option<Wrapped<CValue>> {
+) -> Result<Option<Wrapped<CValue>>, DecompileError> {
     let w = |x: CValue| wd(x, root_expr);
 
     let result = match data.as_ref() {
@@ -696,13 +701,23 @@ fn resolve_constant(
             _ => None,
         },
         IrData::Dereference(data) => {
-            let c = resolve_constant(position, instruction_arg_size, root_expr, data)?;
+            let Some(c) = resolve_constant(position, instruction_arg_size, root_expr, data)? else {
+                return Ok(None);
+            };
             Some(CValue::Pointer(Box::new(c)))
         }
         IrData::Operation(IrDataOperation::Unary { operator, arg }) => {
-            let arg = resolve_constant(position, instruction_arg_size, root_expr, arg)?;
+            let Some(arg) = resolve_constant(position, instruction_arg_size, root_expr, arg)?
+            else {
+                return Ok(None);
+            };
             match operator {
-                IrUnaryOp::Not => Some(CValue::Bool(!*arg.bool()?)),
+                IrUnaryOp::Not => {
+                    let Some(arg) = arg.bool() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Bool(!*arg))
+                }
                 IrUnaryOp::Negation => match arg.item {
                     CValue::Max => Some(CValue::Min),
                     CValue::Min => Some(CValue::Max),
@@ -724,38 +739,172 @@ fn resolve_constant(
             arg1,
             arg2,
         }) => {
-            let arg1 = resolve_constant(position, instruction_arg_size, root_expr, arg1)?;
-            let arg2 = resolve_constant(position, instruction_arg_size, root_expr, arg2)?;
+            let Some(arg1) = resolve_constant(position, instruction_arg_size, root_expr, arg1)?
+            else {
+                return Ok(None);
+            };
+            let Some(arg2) = resolve_constant(position, instruction_arg_size, root_expr, arg2)?
+            else {
+                return Ok(None);
+            };
             match operator {
-                IrBinaryOp::And => Some(CValue::Bool(arg1.bool()? & arg2.bool()?)),
-                IrBinaryOp::Or => Some(CValue::Bool(arg1.bool()? | arg2.bool()?)),
-                IrBinaryOp::Xor => Some(CValue::Bool(arg1.bool()? ^ arg2.bool()?)),
-                IrBinaryOp::Shl => Some(CValue::Num(
-                    arg1.num()? << arg2.num()?.to_biguint()?.to_u64_digits()[0],
-                )),
-                IrBinaryOp::Shr => Some(CValue::Num(
-                    arg1.num()? >> arg2.num()?.to_biguint()?.to_u64_digits()[0],
-                )),
-                IrBinaryOp::Sar => Some(CValue::Num(
-                    arg1.num()? >> arg2.num()?.to_biguint()?.to_u64_digits()[0],
-                )),
-                IrBinaryOp::Add => Some(CValue::Num(arg1.num()? + arg2.num()?)),
-                IrBinaryOp::Sub => Some(CValue::Num(arg1.num()? - arg2.num()?)),
-                IrBinaryOp::Mul => Some(CValue::Num(arg1.num()? * arg2.num()?)),
-                IrBinaryOp::SignedDiv => Some(CValue::Num(arg1.num()? / arg2.num()?)),
-                IrBinaryOp::SignedRem => Some(CValue::Num(arg1.num()? % arg2.num()?)),
-                IrBinaryOp::UnsignedDiv => Some(CValue::Num(arg1.num()? / arg2.num()?)),
-                IrBinaryOp::UnsignedRem => Some(CValue::Num(arg1.num()? % arg2.num()?)),
+                IrBinaryOp::And => {
+                    let Some(arg1) = arg1.bool() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.bool() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Bool(arg1 & arg2))
+                }
+                IrBinaryOp::Or => {
+                    let Some(arg1) = arg1.bool() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.bool() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Bool(arg1 | arg2))
+                }
+                IrBinaryOp::Xor => {
+                    let Some(arg1) = arg1.bool() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.bool() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Bool(arg1 ^ arg2))
+                }
+                IrBinaryOp::Shl => {
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num().and_then(|x| x.to_biguint()) else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Num(arg1 << arg2.to_u64_digits()[0]))
+                }
+                IrBinaryOp::Shr => {
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num().and_then(|x| x.to_biguint()) else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Num(arg1 >> arg2.to_u64_digits()[0]))
+                }
+                IrBinaryOp::Sar => {
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num().and_then(|x| x.to_biguint()) else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Num(arg1 >> arg2.to_u64_digits()[0]))
+                }
+                IrBinaryOp::Add => {
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Num(arg1 + arg2))
+                }
+                IrBinaryOp::Sub => {
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Num(arg1 - arg2))
+                }
+                IrBinaryOp::Mul => {
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Num(arg1 * arg2))
+                }
+                IrBinaryOp::SignedDiv => {
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Num(arg1 / arg2))
+                }
+                IrBinaryOp::SignedRem => {
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Num(arg1 % arg2))
+                }
+                IrBinaryOp::UnsignedDiv => {
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Num(arg1 / arg2))
+                }
+                IrBinaryOp::UnsignedRem => {
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Num(arg1 % arg2))
+                }
                 IrBinaryOp::Equal(..) => Some(CValue::Bool(arg1 == arg2)),
-                IrBinaryOp::SignedLess(..) => Some(CValue::Bool(arg1.num()? < arg2.num()?)),
-                IrBinaryOp::SignedLessOrEqual(..) => Some(CValue::Bool(arg1.num()? <= arg2.num()?)),
-                IrBinaryOp::UnsignedLess(..) => Some(CValue::Bool(arg1.num()? < arg2.num()?)),
+                IrBinaryOp::SignedLess(..) => {
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Bool(arg1 < arg2))
+                }
+                IrBinaryOp::SignedLessOrEqual(..) => {
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Bool(arg1 <= arg2))
+                }
+                IrBinaryOp::UnsignedLess(..) => {
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Bool(arg1 < arg2))
+                }
                 IrBinaryOp::UnsignedLessOrEqual(..) => {
-                    Some(CValue::Bool(arg1.num()? <= arg2.num()?))
+                    let Some(arg1) = arg1.num() else {
+                        return Ok(None);
+                    };
+                    let Some(arg2) = arg2.num() else {
+                        return Ok(None);
+                    };
+                    Some(CValue::Bool(arg1 <= arg2))
                 }
             }
         }
         IrData::Operand(..) => unreachable!("With {}, {}", position, data),
     };
-    result.map(w)
+    Ok(result.map(w))
 }
