@@ -2,7 +2,7 @@
 
 ![Logo](firebat/src-tauri/icons/icon.png)
 
-Working In Progress (2025.05 Updated)
+Working In Progress (2025.06 Updated)
 
 ## Features & Plans
 
@@ -15,26 +15,26 @@ Working In Progress (2025.05 Updated)
     - [X] Complete Instruction Parsing Function
   - [ ] ARM
   - [ ] ...
-- [ ] IR Based Analyzed Routine
+- [X] IR Based Analyzed Routine
   - [X] Single Block Variable Analysis (aka Data Flow Analysis)
     - [X] Reaching Definitions Analysis
     - [X] Liveness Analysis
   - [X] Control Flow Analysis
     - [ ] Complex Loop Analysis
-  - [ ] Merged Block Variable Analysis
+  - [X] Merged Block Variable Analysis
 - [ ] Simulation Routine
-- [ ] Generate C Code
+- [X] Generate C like Code
+  - [ ] Optimization
 - [ ] GUI decompiler
-  - [ ] Inspect IR
+  - [X] Inspect IR
   - [ ] Modify IR or Instruction
-  - [ ] Generate C Code
+  - [X] Generate C like Code
   - [ ] Simulate With Memory / Register
-  - [ ] Graph
 - [ ] TUI decompiler
 - [ ] CLI decompiler
 - [ ] IR Pattern Matching Routine (to detect well-known library's function like msvc's memcpy)
 - [ ] Optimizer
-- [ ] Obfucasioner (possible?)
+- [ ] Deobfucasioner (possible?)
 
 ## Code style
 
@@ -44,18 +44,3 @@ Working In Progress (2025.05 Updated)
 - \#\#\# Returns
 - \#\#\# Note
 - \#\#\# Todo
-
-## Source file order
-
-### Module definition file
-
-- submod declares
-- submod use declares
-- use declares
-
-### Main source file order
-
-- use declares
-- source code
-- impl block (when impl block is small)
-- impl block declared mod declares (when impl block is large)
