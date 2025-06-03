@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 
 mod a;
+mod b;
 mod c;
 mod d;
 mod i;
@@ -53,8 +54,24 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Adc => a::adc(),
         X64Statement::Add => a::add(),
         X64Statement::And => a::and(),
+        X64Statement::Bswap => b::bswap(),
+        X64Statement::Bt => b::bt(),
         X64Statement::Call => c::call(),
         X64Statement::Cmp => c::cmp(),
+        X64Statement::Clc => None?,
+        X64Statement::Cmc => None?,
+        X64Statement::Cbw => None?,
+        X64Statement::Cwde => None?,
+        X64Statement::Cdqe => None?,
+        X64Statement::Cqo => None?,
+        X64Statement::Cld => None?,
+        X64Statement::Cmpxchg => None?,
+        X64Statement::Cpuid => None?,
+        X64Statement::Cmovcc => None?,
+        X64Statement::Cmpsb => None?,
+        X64Statement::Cmpsw => None?,
+        X64Statement::Cmpsd => None?,
+        X64Statement::Cmpsq => None?,
         X64Statement::Dec => d::dec(),
         X64Statement::Div => d::div(),
         X64Statement::Imul => i::imul(),
@@ -71,20 +88,9 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Shr => s::shr(),
         X64Statement::Sub => s::sub(),
 
-        X64Statement::Clc
-        | X64Statement::Cmc
-        | X64Statement::Stc
+        X64Statement::Stc
         | X64Statement::Sahf
         | X64Statement::Fnstsw
-        | X64Statement::Bswap
-        | X64Statement::Bt
-        | X64Statement::Cbw
-        | X64Statement::Cwde
-        | X64Statement::Cdqe
-        | X64Statement::Cqo
-        | X64Statement::Cld
-        | X64Statement::Cmpxchg
-        | X64Statement::Cpuid
         | X64Statement::Hlt
         | X64Statement::Idiv
         | X64Statement::Int
@@ -128,11 +134,6 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         | X64Statement::Test
         | X64Statement::Xchg
         | X64Statement::Xor
-        | X64Statement::Cmovcc
-        | X64Statement::Cmpsb
-        | X64Statement::Cmpsw
-        | X64Statement::Cmpsd
-        | X64Statement::Cmpsq
         | X64Statement::Movsb
         | X64Statement::Movsw
         | X64Statement::Movsd
