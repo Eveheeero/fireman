@@ -13,6 +13,8 @@ mod o;
 mod p;
 mod r;
 mod s;
+mod t;
+mod x;
 
 #[path = "instruction_analyze_shortcuts"]
 mod shortcuts {
@@ -117,7 +119,7 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Movsd => None?,
         X64Statement::Movsq => None?,
         X64Statement::Neg => None?,
-        X64Statement::Nop => None?,
+        X64Statement::Nop => &[],
         X64Statement::Not => None?,
         X64Statement::Or => o::or(),
         X64Statement::Pop => p::pop(),
@@ -145,9 +147,9 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Stosw => None?,
         X64Statement::Stosd => None?,
         X64Statement::Stosq => None?,
-        X64Statement::Test => None?,
-        X64Statement::Xchg => None?,
-        X64Statement::Xor => None?,
+        X64Statement::Test => t::test(),
+        X64Statement::Xchg => x::xchg(),
+        X64Statement::Xor => x::xor(),
 
         _ => None?,
     })
