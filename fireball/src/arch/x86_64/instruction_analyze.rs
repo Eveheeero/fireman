@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 
 mod a;
+mod b;
 mod c;
 mod d;
 mod i;
@@ -12,6 +13,8 @@ mod o;
 mod p;
 mod r;
 mod s;
+mod t;
+mod x;
 
 #[path = "instruction_analyze_shortcuts"]
 mod shortcuts {
@@ -21,6 +24,7 @@ mod shortcuts {
     mod macros;
     mod statements;
 
+    pub(in crate::arch) use crate::ir::analyze::DataType;
     pub(in crate::arch) use crate::ir::{data::*, operator::*, statements::*};
     use crate::utils::Aos;
     pub(in crate::arch) use data::*;
@@ -53,98 +57,102 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Adc => a::adc(),
         X64Statement::Add => a::add(),
         X64Statement::And => a::and(),
+        X64Statement::Bswap => b::bswap(),
+        X64Statement::Bt => b::bt(),
         X64Statement::Call => c::call(),
         X64Statement::Cmp => c::cmp(),
+        X64Statement::Clc => c::clc(),
+        X64Statement::Cmc => c::cmc(),
+        X64Statement::Cbw => c::cbw(),
+        X64Statement::Cwde => c::cwde(),
+        X64Statement::Cdqe => c::cdqe(),
+        X64Statement::Cwd => c::cwd(),
+        X64Statement::Cdq => c::cdq(),
+        X64Statement::Cqo => c::cqo(),
+        X64Statement::Cld => c::cld(),
+        X64Statement::Cmpxchg => c::cmpxchg(),
+        X64Statement::Cpuid => None?,
+        X64Statement::Cmovcc => None?,
+        X64Statement::Cmps => c::cmps(),
+        X64Statement::Cmpsb => c::cmpsb(),
+        X64Statement::Cmpsw => c::cmpsw(),
+        X64Statement::Cmpsd => c::cmpsd(),
+        X64Statement::Cmpsq => c::cmpsq(),
         X64Statement::Dec => d::dec(),
         X64Statement::Div => d::div(),
+        X64Statement::Fnstsw => None?,
+        X64Statement::Hlt => None?,
         X64Statement::Imul => i::imul(),
         X64Statement::Inc => i::inc(),
+        X64Statement::Idiv => None?,
+        X64Statement::Int | X64Statement::Into => None?, // INLINE ASSEMBLY
+        X64Statement::Int1 | X64Statement::Int3 => &[],
         X64Statement::Jmp => j::jmp(),
+        X64Statement::Ja => None?,
+        X64Statement::Jae => None?,
+        X64Statement::Jb => None?,
+        X64Statement::Jbe => None?,
+        X64Statement::Jcxz => None?,
+        X64Statement::Jecxz => None?,
+        X64Statement::Jrcxz => None?,
+        X64Statement::Jz => None?,
+        X64Statement::Jg => None?,
+        X64Statement::Jge => None?,
+        X64Statement::Jl => None?,
+        X64Statement::Jle => None?,
+        X64Statement::Jnz => None?,
+        X64Statement::Jno => None?,
+        X64Statement::Jnp => None?,
+        X64Statement::Jns => None?,
+        X64Statement::Jo => None?,
+        X64Statement::Jp => None?,
+        X64Statement::Js => None?,
         X64Statement::Lea => l::lea(),
+        X64Statement::Leave => None?,
+        X64Statement::Loop => None?,
+        X64Statement::Loopcc => None?,
         X64Statement::Mov => m::mov(),
         X64Statement::Mul => m::mul(),
+        X64Statement::Movsx => None?,
+        X64Statement::Movsxd => None?,
+        X64Statement::Movzx => None?,
+        X64Statement::Movsb => None?,
+        X64Statement::Movsw => None?,
+        X64Statement::Movsd => None?,
+        X64Statement::Movsq => None?,
+        X64Statement::Neg => None?,
+        X64Statement::Nop => &[],
+        X64Statement::Not => None?,
         X64Statement::Or => o::or(),
         X64Statement::Pop => p::pop(),
         X64Statement::Push => p::push(),
+        X64Statement::Popf => None?,
+        X64Statement::Popfd => None?,
+        X64Statement::Popfq => None?,
+        X64Statement::Pushf => None?,
+        X64Statement::Pushfq => None?,
         X64Statement::Ret => r::ret(),
         X64Statement::Shl => s::shl(),
         X64Statement::Shr => s::shr(),
         X64Statement::Sub => s::sub(),
+        X64Statement::Stc => None?,
+        X64Statement::Sahf => None?,
+        X64Statement::Sar => None?,
+        X64Statement::Sbb => None?,
+        X64Statement::Setcc => None?,
+        X64Statement::Std => None?,
+        X64Statement::Scasb => None?,
+        X64Statement::Scasw => None?,
+        X64Statement::Scasd => None?,
+        X64Statement::Scas => None?,
+        X64Statement::Stosb => None?,
+        X64Statement::Stosw => None?,
+        X64Statement::Stosd => None?,
+        X64Statement::Stosq => None?,
+        X64Statement::Test => t::test(),
+        X64Statement::Xchg => x::xchg(),
+        X64Statement::Xor => x::xor(),
 
-        X64Statement::Clc
-        | X64Statement::Cmc
-        | X64Statement::Stc
-        | X64Statement::Sahf
-        | X64Statement::Fnstsw
-        | X64Statement::Bswap
-        | X64Statement::Bt
-        | X64Statement::Cbw
-        | X64Statement::Cwde
-        | X64Statement::Cdqe
-        | X64Statement::Cqo
-        | X64Statement::Cld
-        | X64Statement::Cmpxchg
-        | X64Statement::Cpuid
-        | X64Statement::Hlt
-        | X64Statement::Idiv
-        | X64Statement::Int
-        | X64Statement::Ja
-        | X64Statement::Jae
-        | X64Statement::Jb
-        | X64Statement::Jbe
-        | X64Statement::Jcxz
-        | X64Statement::Jecxz
-        | X64Statement::Jrcxz
-        | X64Statement::Jz
-        | X64Statement::Jg
-        | X64Statement::Jge
-        | X64Statement::Jl
-        | X64Statement::Jle
-        | X64Statement::Jnz
-        | X64Statement::Jno
-        | X64Statement::Jnp
-        | X64Statement::Jns
-        | X64Statement::Jo
-        | X64Statement::Jp
-        | X64Statement::Js
-        | X64Statement::Leave
-        | X64Statement::Loop
-        | X64Statement::Loopcc
-        | X64Statement::Movsx
-        | X64Statement::Movsxd
-        | X64Statement::Movzx
-        | X64Statement::Neg
-        | X64Statement::Nop
-        | X64Statement::Not
-        | X64Statement::Popf
-        | X64Statement::Popfd
-        | X64Statement::Popfq
-        | X64Statement::Pushf
-        | X64Statement::Pushfq
-        | X64Statement::Sar
-        | X64Statement::Sbb
-        | X64Statement::Setcc
-        | X64Statement::Std
-        | X64Statement::Test
-        | X64Statement::Xchg
-        | X64Statement::Xor
-        | X64Statement::Cmovcc
-        | X64Statement::Cmpsb
-        | X64Statement::Cmpsw
-        | X64Statement::Cmpsd
-        | X64Statement::Cmpsq
-        | X64Statement::Movsb
-        | X64Statement::Movsw
-        | X64Statement::Movsd
-        | X64Statement::Movsq
-        | X64Statement::Scasb
-        | X64Statement::Scasw
-        | X64Statement::Scasd
-        | X64Statement::Scas
-        | X64Statement::Stosb
-        | X64Statement::Stosw
-        | X64Statement::Stosd
-        | X64Statement::Stosq
-        | _ => None?,
+        _ => None?,
     })
 }

@@ -19,6 +19,7 @@ pub struct KnownDataType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DataType {
     Unknown,
+    Bool,
     Int,
     Float,
     StringPointer,
@@ -125,6 +126,7 @@ impl std::fmt::Display for DataType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DataType::Unknown => write!(f, "u"),
+            DataType::Bool => write!(f, "b"),
             DataType::Int => write!(f, "i"),
             DataType::Float => write!(f, "f"),
             DataType::StringPointer => write!(f, "*c"),

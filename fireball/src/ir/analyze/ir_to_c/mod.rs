@@ -54,6 +54,7 @@ pub fn generate_c_ast_function(ast: &mut CAst, data: &MergedIr) -> Result<(), De
         let var_id = ast.new_variable_id(&func_id);
         let c_type = match var.data_type {
             DataType::Unknown => CType::Unknown,
+            DataType::Bool => CType::Bool,
             DataType::Int => CType::Int,
             DataType::Float => CType::Double,
             DataType::StringPointer => CType::Pointer(Box::new(CType::Char)),
