@@ -618,9 +618,9 @@ impl std::fmt::Display for CValue {
             CValue::Num(i) => {
                 let i = i.to_u64_digits();
                 if i.0 == Sign::Minus {
-                    write!(f, "-0x{:X}", i.1[0])
+                    write!(f, "-0x{:X}", i.1.get(0).unwrap_or(&0))
                 } else {
-                    write!(f, "0x{:X}", i.1[0])
+                    write!(f, "0x{:X}", i.1.get(0).unwrap_or(&0))
                 }
             }
             CValue::Char(c) => write!(f, "'{}'", c),
