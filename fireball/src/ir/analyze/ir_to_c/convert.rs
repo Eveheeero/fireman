@@ -4,7 +4,7 @@ use crate::{
         analyze::{
             ir_to_c::c_abstract_syntax_tree::{
                 BinaryOperator, CAst, CValue, Expression, FunctionId, JumpTarget, Literal,
-                Statement, UnaryOperator, VariableId, Wrapped, WrappedStatement,
+                PrintWithConfig, Statement, UnaryOperator, VariableId, Wrapped, WrappedStatement,
             },
             variables::resolve_operand,
         },
@@ -251,7 +251,7 @@ pub(super) fn convert_stmt(
                 }
                 _ => {
                     warn!("Uncovered call target");
-                    e.to_string()
+                    e.to_string_with_config(None)
                 }
             };
             Statement::Call(JumpTarget::Unknown(name), Vec::new())
@@ -273,7 +273,7 @@ pub(super) fn convert_stmt(
                 }
                 _ => {
                     warn!("Uncovered jump target");
-                    e.to_string()
+                    e.to_string_with_config(None)
                 }
             };
             Statement::Goto(JumpTarget::Unknown(label))
