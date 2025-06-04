@@ -404,7 +404,9 @@ impl PrintWithConfig for JumpTarget {
         match self {
             JumpTarget::Variable { scope: _, id } => write!(f, "var{:?}", id),
             JumpTarget::Function { target } => write!(f, "function{:?}", target),
-            JumpTarget::Instruction { target } => write!(f, "ir{}", target.ir_index()),
+            JumpTarget::Instruction { target } => {
+                write!(f, "ir{}", target.descriptor().ir_index())
+            }
             JumpTarget::Unknown(name) => write!(f, "{}", name),
         }
     }

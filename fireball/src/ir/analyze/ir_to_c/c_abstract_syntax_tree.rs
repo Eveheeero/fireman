@@ -1,10 +1,12 @@
 //! Unusued are for optimization process
 
 mod display;
+mod optimize;
+mod to_c_code;
 
 use crate::{
     core::Address,
-    ir::{data::IrData, utils::IrStatementDescriptor},
+    ir::{analyze::MergedIr, data::IrData, utils::IrStatementDescriptor},
     prelude::*,
     utils::Aos,
 };
@@ -50,6 +52,11 @@ pub type ArcFunctionMap = Arc<RwLock<HashMap<FunctionId, Function>>>;
 pub type ArcVariableMap = Arc<RwLock<HashMap<VariableId, Variable>>>;
 
 #[derive(Debug, Clone)]
+pub struct AstDescriptor {
+    ir: Arc<MergedIr>,
+    descriptor: IrStatementDescriptor,
+}
+#[derive(Debug, Clone)]
 pub struct Function {
     pub name: String,
     pub id: FunctionId,
@@ -62,7 +69,7 @@ pub struct Function {
 #[derive(Debug, Clone)]
 pub struct WrappedStatement {
     pub statement: Statement,
-    pub from: Option<IrStatementDescriptor>,
+    pub from: Option<AstDescriptor>,
     pub comment: Option<String>,
 }
 
@@ -171,7 +178,7 @@ pub enum Statement {
 pub enum JumpTarget {
     Variable { scope: FunctionId, id: VariableId },
     Function { target: FunctionId },
-    Instruction { target: IrStatementDescriptor },
+    Instruction { target: AstDescriptor },
     Unknown(String),
 }
 
@@ -285,107 +292,6 @@ impl CAst {
             )))
         }
     }
-
-    pub fn optimize(&mut self) {
-        // TODO: Implement optimization passes:
-        // 1. Dead code elimination
-        // 2. Constant folding
-        // 3. Common subexpression elimination
-        // 4. Loop optimization
-        // 5. Function inlining
-    }
-
-    pub fn to_c_code(&self, config: Option<CAstPrintConfig>) -> String {
-        let config = config.unwrap_or_default();
-        let mut output = String::new();
-
-        // Global variables
-        for var in self.static_variables.read().unwrap().values() {
-            if let Some(const_value) = &var.const_value {
-                output.push_str(&format!(
-                    "const {} {} = {};\n",
-                    var.var_type.to_string_with_config(Some(config)),
-                    var.name,
-                    const_value.to_string_with_config(Some(config))
-                ));
-            } else {
-                output.push_str(&format!(
-                    "{} {};\n",
-                    var.var_type.to_string_with_config(Some(config)),
-                    var.name
-                ));
-            }
-        }
-
-        output.push_str("\n");
-
-        // Functions
-        for func in self.functions.read().unwrap().values() {
-            output.push_str(&format!(
-                "{} {}(",
-                func.return_type.to_string_with_config(Some(config)),
-                func.name
-            ));
-
-            // Parameters
-            if !func.parameters.is_empty() {
-                let params: Vec<String> = func
-                    .parameters
-                    .iter()
-                    .map(|var| {
-                        if let Some(const_value) = &var.const_value {
-                            format!(
-                                "const {} {} = {};\n",
-                                var.var_type.to_string_with_config(Some(config)),
-                                var.name,
-                                const_value.to_string_with_config(Some(config))
-                            )
-                        } else {
-                            format!(
-                                "{} {};\n",
-                                var.var_type.to_string_with_config(Some(config)),
-                                var.name
-                            )
-                        }
-                    })
-                    .collect();
-                output.push_str(&params.join(", "));
-            }
-
-            output.push_str(") {\n");
-
-            // Local variables
-            for var in func.variables.read().unwrap().values() {
-                if let Some(const_value) = &var.const_value {
-                    output.push_str(&format!(
-                        "const {} {} = {};\n",
-                        var.var_type.to_string_with_config(Some(config)),
-                        var.name,
-                        const_value.to_string_with_config(Some(config))
-                    ));
-                } else {
-                    output.push_str(&format!(
-                        "{} {};\n",
-                        var.var_type.to_string_with_config(Some(config)),
-                        var.name
-                    ));
-                }
-            }
-            output.push_str("\n");
-
-            // Function body
-            for stmt in &func.body {
-                output.push_str(&format!(
-                    "    {}\n",
-                    stmt.to_string_with_config(Some(config))
-                ));
-            }
-
-            output.push_str("}\n\n");
-        }
-
-        output
-    }
 }
 
 impl CValue {
@@ -450,5 +356,17 @@ impl VariableId {
 impl FunctionId {
     pub fn get_default_name(&self) -> String {
         format!("f{}", self.address)
+    }
+}
+
+impl AstDescriptor {
+    pub fn new(ir: Arc<MergedIr>, descriptor: IrStatementDescriptor) -> Self {
+        Self { ir, descriptor }
+    }
+    pub fn ir(&self) -> &Arc<MergedIr> {
+        &self.ir
+    }
+    pub fn descriptor(&self) -> &IrStatementDescriptor {
+        &self.descriptor
     }
 }
