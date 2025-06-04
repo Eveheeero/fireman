@@ -47,7 +47,8 @@ pub(super) fn bswap() -> &'static [IrStatement] {
         swap_32,
         swap_64,
     );
-    [bswap].into()
+    let type1 = type_specified(o1(), o1_size(), DataType::Int);
+    [bswap, type1].into()
 }
 
 #[box_to_static_reference]
@@ -55,5 +56,7 @@ pub(super) fn bt() -> &'static [IrStatement] {
     let size = size_relative(cf.clone());
     let shr = b::shr(o1(), o2());
     let assignment = assign(shr.clone(), cf.clone(), &size);
-    extend_undefined_flags(&[assignment], &[&of, &sf, &af, &pf])
+    let type1 = type_specified(o1(), o1_size(), DataType::Int);
+    let type2 = type_specified(o2(), o2_size(), DataType::Int);
+    extend_undefined_flags(&[assignment, type1, type2], &[&of, &sf, &af, &pf])
 }
