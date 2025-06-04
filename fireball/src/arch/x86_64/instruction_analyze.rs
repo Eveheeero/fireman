@@ -84,7 +84,8 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Imul => i::imul(),
         X64Statement::Inc => i::inc(),
         X64Statement::Idiv => None?,
-        X64Statement::Int => None?,
+        X64Statement::Int | X64Statement::Into => None?, // INLINE ASSEMBLY
+        X64Statement::Int1 | X64Statement::Int3 => &[],
         X64Statement::Jmp => j::jmp(),
         X64Statement::Ja => None?,
         X64Statement::Jae => None?,
