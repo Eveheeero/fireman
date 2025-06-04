@@ -6,7 +6,10 @@ use crate::{
     ir::{
         analyze::{
             ir_block_merger::merge_blocks,
-            ir_to_c::c_abstract_syntax_tree::{CAst, CType, Statement, Variable, VariableId},
+            ir_to_c::c_abstract_syntax_tree::{
+                AstDescriptor, CAst, CType, CValue, PrintWithConfig, Statement, Variable,
+                VariableId, Wrapped,
+            },
             ControlFlowGraphAnalyzer, DataType, MergedIr,
         },
         data::IrData,
@@ -29,7 +32,7 @@ pub fn generate_c_ast(
     let cfgs = cfg_analyzer.analyze();
     for cfg in cfgs.into_iter() {
         let merged = merge_blocks(&cfg.get_blocks());
-        generate_c_ast_function(&mut ast, &merged)?;
+        generate_c_ast_function(&mut ast, merged)?;
     }
     Ok(ast)
 }
@@ -44,8 +47,9 @@ pub fn generate_c_ast(
 ///
 /// ### Arguments
 /// * `ast: &mut CAst` - The C AST to which the function will be added.
-/// * `data: &MergedIr` - The merged IR data containing the function's instructions and variables.
-pub fn generate_c_ast_function(ast: &mut CAst, data: &MergedIr) -> Result<(), DecompileError> {
+/// * `data: MergedIr` - The merged IR data containing the function's instructions and variables.
+pub fn generate_c_ast_function(ast: &mut CAst, data: MergedIr) -> Result<(), DecompileError> {
+    let data = Arc::new(data);
     let func_id = ast.generate_default_function(data.get_ir().first().map(|x| &x.address).unwrap());
 
     let mut locals = HashMap::new();
@@ -61,7 +65,7 @@ pub fn generate_c_ast_function(ast: &mut CAst, data: &MergedIr) -> Result<(), De
             DataType::Char => CType::Char,
             DataType::Address => CType::Pointer(Box::new(CType::Void)),
         };
-        let mut const_value = None;
+        let mut const_value: Option<Wrapped<CValue>> = None;
         for (position, accesses) in var.get_data_accesses().iter() {
             let instruction_arg_size = data.get_instructions()[position.ir_index() as usize]
                 .inner
@@ -77,13 +81,17 @@ pub fn generate_c_ast_function(ast: &mut CAst, data: &MergedIr) -> Result<(), De
                     &da.location(),
                     &da.location(),
                 )? {
-                    trace!("Constant value found in {}: {}", position, c);
+                    trace!(
+                        "Constant value found in {}: {}",
+                        position,
+                        c.to_string_with_config(None)
+                    );
                     if const_value.is_some() && const_value.as_ref().unwrap() != &c {
                         warn!(
                             "Constant value mismatch in position {}: {} != {}",
                             position,
-                            const_value.unwrap(),
-                            c
+                            const_value.unwrap().to_string_with_config(None),
+                            c.to_string_with_config(None)
                         );
                     }
                     const_value = Some(c);
@@ -115,16 +123,14 @@ pub fn generate_c_ast_function(ast: &mut CAst, data: &MergedIr) -> Result<(), De
         .enumerate()
     {
         let ir_index = ir_index as u32;
-        func_body.push(ws(
-            Statement::Comment(instruction.to_string()),
-            IrStatementDescriptor::new(ir_index, None),
-        ));
         if let Some(stmts) = ir.statements {
             let instruction_args = instruction.inner.arguments.as_ref();
             for (stmt_index, stmt) in stmts.iter().enumerate() {
                 let stmt_index = stmt_index as u8;
-                let stmt_position = IrStatementDescriptor::new(ir_index, Some(stmt_index));
-                func_body.push(ws(Statement::Comment(stmt.to_string()), stmt_position));
+                let stmt_position = AstDescriptor::new(
+                    data.clone(),
+                    IrStatementDescriptor::new(ir_index, Some(stmt_index)),
+                );
                 func_body.push(convert_stmt(
                     ast,
                     func_id,
@@ -138,7 +144,7 @@ pub fn generate_c_ast_function(ast: &mut CAst, data: &MergedIr) -> Result<(), De
         } else {
             func_body.push(ws(
                 Statement::Assembly(instruction.inner.to_string()),
-                IrStatementDescriptor::new(ir_index, None),
+                AstDescriptor::new(data.clone(), IrStatementDescriptor::new(ir_index, None)),
             ));
         }
     }

@@ -3,15 +3,15 @@ use crate::{
     ir::{
         analyze::{
             ir_to_c::c_abstract_syntax_tree::{
-                BinaryOperator, CAst, CValue, Expression, FunctionId, JumpTarget, Literal,
-                Statement, UnaryOperator, VariableId, Wrapped, WrappedStatement,
+                AstDescriptor, BinaryOperator, CAst, CValue, Expression, FunctionId, JumpTarget,
+                Literal, PrintWithConfig, Statement, UnaryOperator, VariableId, Wrapped,
+                WrappedStatement,
             },
             variables::resolve_operand,
         },
         data::{AccessSize, IrData, IrDataOperation, IrIntrinsic, NumCondition},
         operator::{BinaryOperator as IrBinaryOp, UnaryOperator as IrUnaryOp},
         statements::{IrStatement, IrStatementSpecial},
-        utils::IrStatementDescriptor,
     },
     prelude::*,
     utils::Aos,
@@ -20,7 +20,7 @@ use hashbrown::HashMap;
 use num_bigint::BigInt;
 
 /// Wrap Statement
-pub(super) fn ws(statement: Statement, from: IrStatementDescriptor) -> WrappedStatement {
+pub(super) fn ws(statement: Statement, from: AstDescriptor) -> WrappedStatement {
     WrappedStatement {
         statement,
         from: Some(from),
@@ -220,7 +220,7 @@ pub(super) fn convert_stmt(
     ast: &mut CAst,
     function_id: FunctionId,
     stmt: &IrStatement,
-    stmt_position: &IrStatementDescriptor,
+    stmt_position: &AstDescriptor,
     root_expr: Option<&Aos<IrData>>,
     var_map: &HashMap<Aos<IrData>, VariableId>,
     instruction_args: &[iceball::Argument],
@@ -251,7 +251,7 @@ pub(super) fn convert_stmt(
                 }
                 _ => {
                     warn!("Uncovered call target");
-                    e.to_string()
+                    e.to_string_with_config(None)
                 }
             };
             Statement::Call(JumpTarget::Unknown(name), Vec::new())
@@ -273,7 +273,7 @@ pub(super) fn convert_stmt(
                 }
                 _ => {
                     warn!("Uncovered jump target");
-                    e.to_string()
+                    e.to_string_with_config(None)
                 }
             };
             Statement::Goto(JumpTarget::Unknown(label))
@@ -350,7 +350,7 @@ pub(super) fn convert_stmt(
             } => Statement::Empty, // Used to detect types
         },
     };
-    Ok(ws(result, *stmt_position))
+    Ok(ws(result, stmt_position.clone()))
 }
 
 pub(super) fn convert_unary(
@@ -507,7 +507,7 @@ pub(super) fn calc_flags_automatically(
     ast: &mut CAst,
     function_id: FunctionId,
     operation: &Aos<IrData>,
-    stmt_position: &IrStatementDescriptor,
+    stmt_position: &AstDescriptor,
     root_expr: &Aos<IrData>,
     affected_registers: &[Aos<IrData>],
     var_map: &HashMap<Aos<IrData>, VariableId>,
@@ -524,7 +524,7 @@ pub(super) fn calc_flags_automatically(
                 Statement::Assignment(w(Expression::Variable(vars.clone(), vid)), val.clone())
             })
         })
-        .map(|stmt| ws(stmt, *stmt_position))
+        .map(|stmt| ws(stmt, stmt_position.clone()))
         .collect();
     Ok(result)
 }
