@@ -1,3 +1,5 @@
+mod tui;
+
 use fireball::{core::FireRaw, Fireball};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -60,7 +62,9 @@ fn main() {
     }
 
     if *tui {
-        todo!("tui mode, reads inputs or json too")
+        // tui mode, reads inputs or json too
+        tui::main();
+        return;
     }
 
     let input = input.unwrap();
