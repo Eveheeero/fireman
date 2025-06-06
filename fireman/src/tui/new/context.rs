@@ -47,7 +47,8 @@ impl Context {
             return;
         }
 
-        let path = PathBuf::from(&self.path);
+        // Convert to absolute path for consistent handling
+        let path = self.resolve_path(&self.path);
 
         // If path's filename is ., highlight files
         // Pathbuf doesn't treat . as a filename
@@ -56,6 +57,7 @@ impl Context {
             self.clamp_selected_index();
             return;
         }
+
         // Try to find the best directory to show
         let (dir_to_show, input_filename) = if path.exists() {
             // If path exists, show its contents if it's a directory, or parent if it's a file
@@ -87,9 +89,11 @@ impl Context {
                 }
                 current = parent;
             }
-            // Fallback to parent directory
+            // Fallback to current directory for relative paths
+            let current_dir =
+                std::env::current_dir().unwrap_or_else(|_| Path::new(".").to_path_buf());
             (
-                current.parent().map(|x| x.to_path_buf()),
+                Some(current_dir),
                 path.file_name()
                     .and_then(|name| name.to_str())
                     .unwrap_or(""),
@@ -100,6 +104,23 @@ impl Context {
             self.show_directory_with_filter(&dir, input_filename);
         }
         self.clamp_selected_index();
+    }
+
+    fn resolve_path(&self, input_path: &str) -> PathBuf {
+        let path = PathBuf::from(input_path);
+
+        // If it's already an absolute path, return as is
+        if path.is_absolute() {
+            return path;
+        }
+
+        // For relative paths, resolve against current directory
+        if let Ok(current_dir) = std::env::current_dir() {
+            current_dir.join(path)
+        } else {
+            // Fallback if current_dir fails
+            path
+        }
     }
 
     fn show_directory_with_filter(&mut self, dir: &Path, filter: &str) {
