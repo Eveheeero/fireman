@@ -2,13 +2,17 @@ mod main;
 mod new;
 
 use ratatui::{
+    crossterm::event,
     prelude::{
         Constraint::{Length, Min},
         *,
     },
     widgets, Frame,
 };
-use std::sync::RwLock;
+use std::{
+    collections::VecDeque,
+    sync::{Arc, RwLock},
+};
 
 pub(super) fn main() {
     let mut terminal = ratatui::init();
@@ -18,7 +22,8 @@ pub(super) fn main() {
     result.unwrap();
 }
 
-pub struct MutexCtx(pub RwLock<FiremanCtx>);
+#[derive(Clone)]
+pub struct MutexCtx(pub Arc<RwLock<FiremanCtx>>);
 unsafe impl Send for MutexCtx {}
 unsafe impl Sync for MutexCtx {}
 impl std::ops::Deref for MutexCtx {
@@ -32,17 +37,19 @@ pub struct FiremanCtx {
     worker: Option<std::thread::JoinHandle<()>>,
     fireball: Option<fireball::Fireball>,
     scope: FiremanScope,
+    redraw_queue: VecDeque<()>,
 
     new_context: new::Context,
 }
 impl FiremanCtx {
     pub fn new() -> MutexCtx {
-        MutexCtx(RwLock::new(FiremanCtx {
+        MutexCtx(Arc::new(RwLock::new(FiremanCtx {
             worker: None,
             fireball: None,
             scope: FiremanScope::New,
+            redraw_queue: VecDeque::new(),
             new_context: new::Context::new(),
-        }))
+        })))
     }
 }
 #[derive(PartialEq, Clone, Copy)]
@@ -51,8 +58,17 @@ pub enum FiremanScope {
 }
 
 fn run(terminal: &mut ratatui::DefaultTerminal, ctx: &MutexCtx) -> std::io::Result<()> {
-    loop {
+    'a: loop {
         terminal.draw(|frame| draw(frame, ctx))?;
+        'b: loop {
+            if event::poll(std::time::Duration::from_millis(100))? {
+                break 'b;
+            }
+            let mut ctx = ctx.write().unwrap();
+            if let Some(_) = ctx.redraw_queue.pop_front() {
+                continue 'a;
+            }
+        }
         if main::handle_events(ctx)? {
             break Ok(());
         }
