@@ -20,6 +20,26 @@ pub fn handle_events(ctx_: &MutexCtx) -> std::io::Result<bool> {
                 ctx.new_context.move_selection_down();
                 Ok(false)
             }
+            KeyCode::Home => {
+                let mut ctx = ctx_.write().unwrap();
+                ctx.new_context.move_to_first();
+                Ok(false)
+            }
+            KeyCode::End => {
+                let mut ctx = ctx_.write().unwrap();
+                ctx.new_context.move_to_last();
+                Ok(false)
+            }
+            KeyCode::PageUp => {
+                let mut ctx = ctx_.write().unwrap();
+                ctx.new_context.move_page_up();
+                Ok(false)
+            }
+            KeyCode::PageDown => {
+                let mut ctx = ctx_.write().unwrap();
+                ctx.new_context.move_page_down();
+                Ok(false)
+            }
             KeyCode::Char(c) => {
                 handle_char_input(ctx_, c);
                 Ok(false)
@@ -45,7 +65,7 @@ pub fn handle_events(ctx_: &MutexCtx) -> std::io::Result<bool> {
 fn handle_char_input(ctx_: &MutexCtx, c: char) {
     let mut ctx = ctx_.write().unwrap();
     ctx.new_context.path.push(c);
-    ctx.new_context.error_message = None;
+    ctx.new_context.message = None;
     ctx.new_context.update_file_tree();
 
     // 문자 입력 후 첫 번째 매칭 항목으로 선택 인덱스 이동
@@ -63,7 +83,7 @@ fn handle_char_input(ctx_: &MutexCtx, c: char) {
 fn handle_backspace(ctx_: &MutexCtx) {
     let mut ctx = ctx_.write().unwrap();
     ctx.new_context.path.pop();
-    ctx.new_context.error_message = None;
+    ctx.new_context.message = None;
     ctx.new_context.update_file_tree();
 }
 
@@ -72,14 +92,14 @@ fn handle_enter(ctx_: &MutexCtx) {
     let path = ctx.new_context.path.clone();
 
     if path.is_empty() {
-        ctx.new_context.error_message = Some("Please enter a file path".to_string());
+        ctx.new_context.message = Some("Please enter a file path".to_string());
     } else {
         match fs::File::open(&path) {
             Ok(_) => {
-                ctx.new_context.error_message = Some(format!("File opened: {}", path));
+                ctx.new_context.message = Some(format!("File opened: {}", path));
             }
             Err(e) => {
-                ctx.new_context.error_message = Some(format!("Failed to open file: {}", e));
+                ctx.new_context.message = Some(format!("Failed to open file: {}", e));
             }
         }
     }
@@ -117,7 +137,7 @@ fn handle_tab_completion(ctx_: &MutexCtx) {
     }
 
     ctx.new_context.update_file_tree();
-    ctx.new_context.error_message = None;
+    ctx.new_context.message = None;
 }
 
 fn complete_first_item(ctx: &mut crate::tui::FiremanCtx, current_path: &Path) {
@@ -224,7 +244,7 @@ fn build_completion_path(current_path: &Path, clean_name: &str, is_dir: bool) ->
 
 pub fn get_keybinding(_ctx: &FiremanCtx) -> &'static [(&'static str, &'static str)] {
     &[
-        ("↑↓", "Navigate"),
+        ("↑↓/Home/End/Pu/Pd", "Navigate"),
         ("type", "Enter path"),
         ("enter", "Open File"),
         ("tab", "Autocomplete"),

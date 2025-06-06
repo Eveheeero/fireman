@@ -1,4 +1,6 @@
+pub mod prelude;
 mod tui;
+pub mod utils;
 
 use fireball::{core::FireRaw, Fireball};
 

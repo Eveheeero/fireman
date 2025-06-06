@@ -3,21 +3,26 @@ use std::{
     path::{Path, PathBuf},
 };
 
+pub const PREFIX_DIR: &str = "📁 ";
+pub const PREFIX_FILE: &str = "📄 ";
+
 pub struct Context {
     pub path: String,
-    pub error_message: Option<String>,
+    pub message: Option<String>,
     pub file_tree: Vec<String>,
     pub selected_index: usize,
 }
 
 impl Context {
     pub fn new() -> Self {
-        Context {
+        let mut ctx = Context {
             path: String::new(),
-            error_message: None,
+            message: None,
             file_tree: Vec::new(),
             selected_index: 0,
-        }
+        };
+        ctx.update_file_tree();
+        ctx
     }
 
     pub fn update_file_tree(&mut self) {
@@ -29,9 +34,9 @@ impl Context {
                     for entry in entries.flatten() {
                         if let Some(name) = entry.file_name().to_str() {
                             let prefix = if entry.path().is_dir() {
-                                "📁 "
+                                PREFIX_DIR
                             } else {
-                                "📄 "
+                                PREFIX_FILE
                             };
                             self.file_tree.push(format!("{}{}", prefix, name));
                         }
@@ -44,6 +49,13 @@ impl Context {
 
         let path = PathBuf::from(&self.path);
 
+        // If path's filename is ., highlight files
+        // Pathbuf doesn't treat . as a filename
+        if self.path.ends_with(".") && !self.path.ends_with("..") {
+            self.show_directory_with_filter(&path, ".");
+            self.clamp_selected_index();
+            return;
+        }
         // Try to find the best directory to show
         let (dir_to_show, input_filename) = if path.exists() {
             // If path exists, show its contents if it's a directory, or parent if it's a file
@@ -95,15 +107,15 @@ impl Context {
             for entry in entries.flatten() {
                 if let Some(name) = entry.file_name().to_str() {
                     let prefix = if entry.path().is_dir() {
-                        "📁 "
+                        PREFIX_DIR
                     } else {
-                        "📄 "
+                        PREFIX_FILE
                     };
                     let display_name = format!("{}{}", prefix, name);
 
                     // Highlight files that match the current input
                     if !filter.is_empty() && name.starts_with(filter) {
-                        self.file_tree.push(format!(">>> {}", display_name));
+                        self.file_tree.push(format!(">> {}", display_name));
                     } else {
                         self.file_tree.push(display_name);
                     }
@@ -112,8 +124,8 @@ impl Context {
 
             // Sort so highlighted items appear first
             self.file_tree.sort_by(|a, b| {
-                let a_highlighted = a.starts_with(">>>");
-                let b_highlighted = b.starts_with(">>>");
+                let a_highlighted = a.starts_with(">>");
+                let b_highlighted = b.starts_with(">>");
                 match (a_highlighted, b_highlighted) {
                     (true, false) => std::cmp::Ordering::Less,
                     (false, true) => std::cmp::Ordering::Greater,
@@ -140,6 +152,34 @@ impl Context {
     pub fn move_selection_down(&mut self) {
         if self.selected_index + 1 < self.file_tree.len() {
             self.selected_index += 1;
+        }
+    }
+
+    pub fn move_to_first(&mut self) {
+        self.selected_index = 0;
+    }
+
+    pub fn move_to_last(&mut self) {
+        if !self.file_tree.is_empty() {
+            self.selected_index = self.file_tree.len() - 1;
+        }
+    }
+
+    pub fn move_page_up(&mut self) {
+        const PAGE_SIZE: usize = 10;
+        if self.selected_index >= PAGE_SIZE {
+            self.selected_index -= PAGE_SIZE;
+        } else {
+            self.selected_index = 0;
+        }
+    }
+
+    pub fn move_page_down(&mut self) {
+        const PAGE_SIZE: usize = 10;
+        if self.selected_index + PAGE_SIZE < self.file_tree.len() {
+            self.selected_index += PAGE_SIZE;
+        } else if !self.file_tree.is_empty() {
+            self.selected_index = self.file_tree.len() - 1;
         }
     }
 }

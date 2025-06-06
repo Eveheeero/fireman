@@ -1,6 +1,7 @@
 mod main;
 mod new;
 
+use crate::utils::log::init_log;
 use ratatui::{
     crossterm::event,
     prelude::{
@@ -15,6 +16,7 @@ use std::{
 };
 
 pub(super) fn main() {
+    init_log();
     let mut terminal = ratatui::init();
     let ctx = FiremanCtx::new();
     let result = run(&mut terminal, &ctx);

@@ -20,7 +20,7 @@ pdb = "0.8.0"
 tracing = { version = "0.1", features = [
   "log",
   "max_level_trace",
-  "release_max_level_off",
+  "release_max_level_debug",
 ] }
 bitvec = "1.0.1"
 fireman_macro = { path = "../fireman_macro", version = "0.0.1" }

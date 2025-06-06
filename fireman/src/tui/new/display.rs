@@ -33,7 +33,7 @@ fn render_file_tree(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
         .block(widgets::Block::bordered().title("File Tree"))
         .style(Style::default().fg(Color::White))
         .highlight_style(Style::default().fg(Color::LightBlue).add_modifier(Modifier::BOLD))
-        .highlight_symbol(">> ");
+        .highlight_symbol("* ");
 
     frame.render_stateful_widget(file_list, area, &mut state);
 }
@@ -46,7 +46,7 @@ fn render_input_box(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
 }
 
 fn render_error_message(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
-    if let Some(ref error) = ctx.new_context.error_message {
+    if let Some(ref error) = ctx.new_context.message {
         let error_widget = Paragraph::new(error.as_str())
             .block(widgets::Block::bordered().title("Status"))
             .style(Style::default().fg(Color::Red));
