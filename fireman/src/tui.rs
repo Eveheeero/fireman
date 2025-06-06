@@ -1,5 +1,5 @@
-mod keybinding;
 mod main;
+mod new;
 
 use ratatui::{
     prelude::{
@@ -8,16 +8,49 @@ use ratatui::{
     },
     widgets, Frame,
 };
+use std::sync::RwLock;
 
 pub(super) fn main() {
     let mut terminal = ratatui::init();
-    let ctx = main::FiremanCtx::new();
+    let ctx = FiremanCtx::new();
     let result = run(&mut terminal, &ctx);
     ratatui::restore();
     result.unwrap();
 }
 
-fn run(terminal: &mut ratatui::DefaultTerminal, ctx: &main::MutexCtx) -> std::io::Result<()> {
+pub struct MutexCtx(pub RwLock<FiremanCtx>);
+unsafe impl Send for MutexCtx {}
+unsafe impl Sync for MutexCtx {}
+impl std::ops::Deref for MutexCtx {
+    type Target = RwLock<FiremanCtx>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+pub struct FiremanCtx {
+    /// If not none, fireball is busy
+    worker: Option<std::thread::JoinHandle<()>>,
+    fireball: Option<fireball::Fireball>,
+    scope: FiremanScope,
+
+    new_context: new::Context,
+}
+impl FiremanCtx {
+    pub fn new() -> MutexCtx {
+        MutexCtx(RwLock::new(FiremanCtx {
+            worker: None,
+            fireball: None,
+            scope: FiremanScope::New,
+            new_context: new::Context::new(),
+        }))
+    }
+}
+#[derive(PartialEq, Clone, Copy)]
+pub enum FiremanScope {
+    New,
+}
+
+fn run(terminal: &mut ratatui::DefaultTerminal, ctx: &MutexCtx) -> std::io::Result<()> {
     loop {
         terminal.draw(|frame| draw(frame, ctx))?;
         if main::handle_events(ctx)? {
@@ -25,26 +58,27 @@ fn run(terminal: &mut ratatui::DefaultTerminal, ctx: &main::MutexCtx) -> std::io
         }
     }
 }
-fn draw(frame: &mut Frame, ctx: &main::MutexCtx) {
+fn draw(frame: &mut Frame, ctx: &MutexCtx) {
     let [title_area, main_area, status_area] =
         Layout::vertical([Length(1), Min(0), Length(1)]).areas(frame.area());
-    display_title(frame, title_area, ctx);
-    display_keybindings(frame, status_area, ctx);
-    main::display_main(frame, main_area, ctx);
+    let ctx = ctx.read().unwrap();
+    display_title(frame, title_area, &ctx);
+    display_keybindings(frame, status_area, &ctx);
+    main::display_main(frame, main_area, &ctx);
 }
 
-fn display_title(frame: &mut Frame, area: Rect, _ctx: &main::MutexCtx) {
+fn display_title(frame: &mut Frame, area: Rect, _ctx: &FiremanCtx) {
     let widgets = widgets::Block::new()
         .borders(widgets::Borders::TOP)
         .title("Fireball TUI");
     // TODO Display scope
     frame.render_widget(widgets, area);
 }
-fn display_keybindings(frame: &mut Frame, area: Rect, ctx: &main::MutexCtx) {
+fn display_keybindings(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     let mut widgets = widgets::Block::new()
         .borders(widgets::Borders::TOP)
         .title("Keys");
-    let keybindings = keybinding::get_keybinding(ctx);
+    let keybindings = main::get_keybinding(ctx);
     for (k, v) in keybindings {
         let mut sb = String::new();
         sb.push('[');
