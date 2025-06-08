@@ -1,4 +1,3 @@
-mod main;
 mod new;
 
 use crate::utils::log::init_log;
@@ -71,7 +70,7 @@ fn run(terminal: &mut ratatui::DefaultTerminal, ctx: &MutexCtx) -> std::io::Resu
                 continue 'a;
             }
         }
-        if main::handle_events(ctx)? {
+        if handle_events(ctx)? {
             break Ok(());
         }
     }
@@ -82,7 +81,10 @@ fn draw(frame: &mut Frame, ctx: &MutexCtx) {
     let ctx = ctx.read().unwrap();
     display_title(frame, title_area, &ctx);
     display_keybindings(frame, status_area, &ctx);
-    main::display_main(frame, main_area, &ctx);
+
+    match ctx.scope {
+        FiremanScope::New => new::display(frame, main_area, &ctx),
+    }
 }
 
 fn display_title(frame: &mut Frame, area: Rect, _ctx: &FiremanCtx) {
@@ -96,7 +98,11 @@ fn display_keybindings(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     let mut widgets = widgets::Block::new()
         .borders(widgets::Borders::TOP)
         .title("Keys");
-    let keybindings = main::get_keybinding(ctx);
+    let keybindings = {
+        match ctx.scope {
+            FiremanScope::New => new::get_keybinding(ctx),
+        }
+    };
     for (k, v) in keybindings {
         let mut sb = String::new();
         sb.push('[');
@@ -107,4 +113,12 @@ fn display_keybindings(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
         widgets = widgets.title(sb);
     }
     frame.render_widget(widgets, area);
+}
+pub fn handle_events(ctx_: &MutexCtx) -> std::io::Result<bool> {
+    let ctx = ctx_.read().unwrap();
+    let scope = ctx.scope;
+    drop(ctx);
+    match scope {
+        FiremanScope::New => new::handle_events(ctx_),
+    }
 }
