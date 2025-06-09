@@ -36,3 +36,96 @@ pub(super) fn sub() -> &'static [IrStatement] {
     let calc_flags = calc_flags_automatically(sub, o1_size(), &[&of, &sf, &zf, &af, &cf, &pf]);
     [calc_flags, assignment].into()
 }
+
+#[box_to_static_reference]
+pub(super) fn subps() -> &'static [IrStatement] {
+    // SUBPS subtracts four single-precision floating-point values from source to destination
+    let size = o1_size();
+    let sub = b::sub(o1(), o2());
+    let assignment = assign(sub, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn subpd() -> &'static [IrStatement] {
+    // SUBPD subtracts two double-precision floating-point values from source to destination
+    let size = o1_size();
+    let sub = b::sub(o1(), o2());
+    let assignment = assign(sub, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn subss() -> &'static [IrStatement] {
+    // SUBSS subtracts the low single-precision floating-point values from source to destination
+    let size = o1_size();
+    let sub = b::sub(o1(), o2());
+    let assignment = assign(sub, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn subsd() -> &'static [IrStatement] {
+    // SUBSD subtracts the low double-precision floating-point values from source to destination
+    let size = o1_size();
+    let sub = b::sub(o1(), o2());
+    let assignment = assign(sub, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn sqrtps() -> &'static [IrStatement] {
+    // SQRTPS computes square root of four single-precision floating-point values
+    // TODO: Implement square root unary operator in IR
+    // For now, mark as unknown operation
+    let size = o1_size();
+    let sqrt = unknown_data();
+    let assignment = assign(sqrt, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn sqrtpd() -> &'static [IrStatement] {
+    // SQRTPD computes square root of two double-precision floating-point values
+    // TODO: Implement square root unary operator in IR
+    let size = o1_size();
+    let sqrt = unknown_data();
+    let assignment = assign(sqrt, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn sqrtss() -> &'static [IrStatement] {
+    // SQRTSS computes square root of the low single-precision floating-point value
+    // TODO: Implement square root unary operator in IR
+    let size = o1_size();
+    let sqrt = unknown_data();
+    let assignment = assign(sqrt, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn sqrtsd() -> &'static [IrStatement] {
+    // SQRTSD computes square root of the low double-precision floating-point value
+    // TODO: Implement square root unary operator in IR
+    let size = o1_size();
+    let sqrt = unknown_data();
+    let assignment = assign(sqrt, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}

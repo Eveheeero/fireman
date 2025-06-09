@@ -29,3 +29,25 @@ pub(super) fn xor() -> &'static [IrStatement] {
     let set_cf = assign(c(0), cf.clone(), size_relative(cf.clone()));
     extend_undefined_flags(&[xor, set_of, set_cf], &[&af])
 }
+
+#[box_to_static_reference]
+pub(super) fn xorps() -> &'static [IrStatement] {
+    // XORPS performs bitwise logical XOR of packed single-precision floating-point values
+    let size = o1_size();
+    let xor = b::xor(o1(), o2());
+    let assignment = assign(xor, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn xorpd() -> &'static [IrStatement] {
+    // XORPD performs bitwise logical XOR of packed double-precision floating-point values
+    let size = o1_size();
+    let xor = b::xor(o1(), o2());
+    let assignment = assign(xor, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}

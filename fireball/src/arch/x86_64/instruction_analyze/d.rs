@@ -31,3 +31,49 @@ pub(super) fn div() -> &'static [IrStatement] {
     );
     extend_undefined_flags(&[div], &[&of, &sf, &zf, &af, &cf, &pf])
 }
+
+#[box_to_static_reference]
+pub(super) fn divps() -> &'static [IrStatement] {
+    // DIVPS divides four single-precision floating-point values from source to destination
+    let size = o1_size();
+    // For floating-point division, we should use the regular div operator
+    // The IR analysis will handle the float-specific semantics
+    let div = b::unsigned_div(o1(), o2());
+    let assignment = assign(div, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn divpd() -> &'static [IrStatement] {
+    // DIVPD divides two double-precision floating-point values from source to destination
+    let size = o1_size();
+    let div = b::unsigned_div(o1(), o2());
+    let assignment = assign(div, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn divss() -> &'static [IrStatement] {
+    // DIVSS divides the low single-precision floating-point values from source to destination
+    let size = o1_size();
+    let div = b::unsigned_div(o1(), o2());
+    let assignment = assign(div, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn divsd() -> &'static [IrStatement] {
+    // DIVSD divides the low double-precision floating-point values from source to destination
+    let size = o1_size();
+    let div = b::unsigned_div(o1(), o2());
+    let assignment = assign(div, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}
