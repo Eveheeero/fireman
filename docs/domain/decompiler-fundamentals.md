@@ -2,19 +2,34 @@
 
 ## Core Concepts
 
-### Binary Analysis Pipeline
+### Fireman Decompilation Pipeline
 
 ```mermaid
 graph TD
-    A[Binary File] --> B[Loader]
-    B --> C[Disassembler]
-    C --> D[IR Generation]
-    D --> E[Dataflow Analysis]
-    E --> F[Type Reconstruction]
-    F --> G[CFG Builder]
-    G --> H[Optimization]
-    H --> I[High-Level Code]
+    A[Binary File] --> B[Memory-Mapped Loading]
+    B --> C[Parallel Disassembly]
+    C --> D[Low IR Generation]
+    D --> E[Medium IR + Pattern Recognition]
+    E --> F[High IR + Type Recovery]
+    F --> G[ML Enhancement Layer]
+    G --> H[Enhanced C Output]
+    
+    style B fill:#f9f,stroke:#333,stroke-width:2px
+    style D fill:#bbf,stroke:#333,stroke-width:2px
+    style E fill:#bbf,stroke:#333,stroke-width:2px
+    style F fill:#bbf,stroke:#333,stroke-width:2px
+    style G fill:#fbf,stroke:#333,stroke-width:2px
 ```
+
+### Multi-Level IR Architecture
+
+The Fireman decompiler uses a progressive three-level IR design:
+
+1. **Low IR**: Direct instruction translation, preserves all semantics
+2. **Medium IR**: Pattern recognition, basic optimizations, confidence tracking
+3. **High IR**: Near-source representation with recovered types and structures
+
+Each level maintains **absolute determinism** - the same binary input ALWAYS produces identical output.
 
 ### 1. Binary File Formats
 

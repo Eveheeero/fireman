@@ -95,16 +95,79 @@ impl AnalysisCache {
 }
 ```
 
-### 3. Type-Safe IR with GATs
+### 3. Type-Safe Multi-Level IR Architecture
 
 ```rust
-/// Type-safe IR with Generic Associated Types
-pub trait IRNode: Sized {
-    type Operand: OperandType;
-    type Result: ResultType;
+/// Three-level IR with progressive refinement
+pub struct MultiLevelIR<'a> {
+    /// Low IR - direct instruction translation
+    low: LowIR<'a>,
     
-    /// Type-safe operation execution
-    fn execute(&self, operands: &[Self::Operand]) -> Self::Result;
+    /// Medium IR - pattern recognition
+    medium: MediumIR<'a>,
+    
+    /// High IR - source-like representation  
+    high: HighIR<'a>,
+}
+
+/// Type-safe Low IR with zero-copy views
+pub struct LowIR<'a> {
+    /// Direct mapping to assembly
+    instructions: Vec<LowInstruction<'a>>,
+    
+    /// Original bytes for verification
+    source_bytes: &'a [u8],
+}
+
+/// Pattern-enhanced Medium IR
+pub struct MediumIR<'a> {
+    /// Pattern-matched blocks
+    blocks: Vec<MediumBlock<'a>>,
+    
+    /// Confidence tracking
+    confidence: BTreeMap<BlockId, f32>,
+    
+    /// Pattern database references
+    patterns: &'a PatternDatabase,
+}
+
+/// High-level IR with GATs for type safety
+pub trait HighIRNode: Sized {
+    type Type: TypeSystem;
+    type Pattern: PatternMatch;
+    
+    /// Type-safe transformation
+    fn transform(&self) -> Result<CStatement, IRError>;
+}
+
+impl MultiLevelIR<'_> {
+    /// Progressive transformation with zero allocation
+    pub fn transform_progressive(&mut self) -> Result<(), IRError> {
+        // Low → Medium (parallel, lock-free)
+        self.low_to_medium_parallel()?;
+        
+        // Medium → High (type recovery)
+        self.medium_to_high_typed()?;
+        
+        Ok(())
+    }
+}
+```
+
+### 4. Type-Safe IR Builder with GATs
+
+```rust
+/// Type-safe IR builder using Generic Associated Types
+pub trait IRBuilder<Level: IRLevel> {
+    type Operand: OperandType<Level>;
+    type Result: ResultType<Level>;
+    
+    /// Build with compile-time type checking
+    fn build<Op: Operation<Level>>(
+        &mut self,
+        op: Op,
+        operands: Op::Operands,
+    ) -> Op::Result;
 }
 
 /// Phantom types for compile-time guarantees
@@ -113,31 +176,22 @@ pub struct Typed<T, V> {
     _phantom: PhantomData<T>,
 }
 
-/// Type-safe IR builder
-pub struct IRBuilder<'a> {
-    current_block: &'a mut BasicBlock,
-    type_env: TypeEnvironment,
-}
-
-impl<'a> IRBuilder<'a> {
-    /// Build with type checking
-    pub fn build_add<T: Numeric>(
+impl<'a> IRBuilder<LowLevel> for LowIRBuilder<'a> {
+    type Operand = LowOperand;
+    type Result = LowValue;
+    
+    fn build<Op: Operation<LowLevel>>(
         &mut self,
-        lhs: Typed<T, Operand>,
-        rhs: Typed<T, Operand>,
-    ) -> Typed<T, Value> {
-        let result = self.current_block.push(IR::Add {
-            lhs: lhs.value,
-            rhs: rhs.value,
-            ty: T::ir_type(),
-        });
-        
-        Typed::new(result)
+        op: Op,
+        operands: Op::Operands,
+    ) -> Op::Result {
+        // Type-safe low-level IR construction
+        let result = self.current_block.push(op.lower(operands));
+        Op::lift_result(result)
     }
 }
-```
 
-### 4. Arena-Based Memory Management
+### 5. Arena-Based Memory Management
 
 ```rust
 use typed_arena::Arena;

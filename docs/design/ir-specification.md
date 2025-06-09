@@ -20,6 +20,244 @@
 - All operations must have defined, stable ordering
 - Testing must verify exact binary equality of IR output
 
+## Multi-Level IR Architecture
+
+### Overview
+
+The Fireman decompiler uses a progressive three-level IR design that gradually transforms low-level assembly into
+high-level constructs while maintaining absolute determinism at every stage.
+
+### Low IR (Direct Translation Layer)
+
+**Purpose**: Preserve all assembly semantics with 100% fidelity
+
+**Characteristics**:
+
+- One-to-one mapping with assembly instructions
+- All CPU flags and side effects explicitly represented
+- No simplification or optimization
+- Confidence: Always 100% (direct translation)
+
+**Example**:
+
+```rust
+// x86_64: mov rax, [rbp-8]
+%addr.401000.0 = sub i64 %rbp.401000.0, 8
+%load.401000.0 = load i64* %addr.401000.0
+%rax.401003.0 = copy %load.401000.0
+%flags.401003.0 = flags_unchanged  // mov doesn't affect flags
+```
+
+### Medium IR (Pattern Recognition Layer)
+
+**Purpose**: Identify patterns and abstract common idioms
+
+**Characteristics**:
+
+- Pattern-based abstractions (loops, function calls, switches)
+- Basic type inference and propagation
+- Dead code and unreachable path identification
+- Confidence tracking per pattern (0.0 - 1.0)
+- ML Enhancement: XGBoost models for pattern detection
+
+**Pattern Database Integration**:
+
+```rust
+struct PatternMatch {
+    pattern_id: PatternId,        // Deterministic pattern ID
+    confidence: f32,              // Pattern match confidence
+    library: Option<String>,      // e.g., "glibc", "msvcrt"
+    function: Option<String>,     // e.g., "malloc", "printf"
+    source_hash: [u8; 32],       // For cache validation
+}
+```
+
+**Example**:
+
+```rust
+// Recognized as function prologue
+%prologue.401000 = pattern:function_entry {
+    saved_regs: [rbp, rbx],
+    frame_size: 32,
+    confidence: 0.95
+}
+
+// Recognized as loop header
+%loop.401100 = pattern:counted_loop {
+    counter: %rcx.401100.0,
+    limit: %rax.401100.0,
+    confidence: 0.87
+}
+```
+
+### High IR (Source-Like Representation)
+
+**Purpose**: Generate near-source code representation
+
+**Characteristics**:
+
+- High-level constructs (if/while/for/switch/struct)
+- Recovered types with confidence scores
+- ML-suggested variable names (optional, cached)
+- Source-like expressions and idioms
+- Function signatures with calling conventions
+
+**ML Enhancement Points**:
+
+- **CodeLlama 7B**: Variable naming, comment generation (optional)
+- **Cloud LLMs**: Complex pattern analysis (on-demand, fully cached)
+- **Pattern DB**: Pre-analyzed library function signatures
+
+**Example**:
+
+```rust
+// High-level struct recovery
+struct Point {              // confidence: 0.92
+    int32_t x;             // offset 0, confidence: 0.95
+    int32_t y;             // offset 4, confidence: 0.95
+}
+
+// Function with recovered signature
+int32_t calculate_distance(Point* p1, Point* p2) {  // confidence: 0.88
+    int32_t dx = p1->x - p2->x;  // ML suggested: "dx" (confidence: 0.75)
+    int32_t dy = p1->y - p2->y;  // ML suggested: "dy" (confidence: 0.75)
+    return dx * dx + dy * dy;
+}
+```
+
+### IR Level Transitions
+
+```rust
+/// Low → Medium IR transformation
+pub struct LowToMediumTransform {
+    pattern_db: PatternDatabase,
+    ml_models: Option<MLModels>,
+}
+
+impl LowToMediumTransform {
+    pub fn transform(&mut self, low_ir: &LowIRModule) -> MediumIRModule {
+        let mut medium = MediumIRModule::new();
+        
+        // Phase 1: Pattern detection (deterministic)
+        for (addr, func) in &low_ir.functions {
+            let patterns = self.detect_patterns(func);
+            medium.add_function(addr, self.apply_patterns(func, patterns));
+        }
+        
+        // Phase 2: ML enhancement (optional, cached)
+        if let Some(ml) = &self.ml_models {
+            medium = ml.enhance_medium_ir(medium);
+        }
+        
+        medium
+    }
+}
+
+/// Medium → High IR transformation
+pub struct MediumToHighTransform {
+    type_recovery: TypeRecoveryEngine,
+    ml_naming: Option<MLNamingEngine>,
+}
+
+impl MediumToHighTransform {
+    pub fn transform(&mut self, medium_ir: &MediumIRModule) -> HighIRModule {
+        let mut high = HighIRModule::new();
+        
+        // Phase 1: Structure recovery
+        let structures = self.type_recovery.recover_types(medium_ir);
+        
+        // Phase 2: Control flow recovery
+        for (addr, func) in &medium_ir.functions {
+            let high_func = self.recover_control_flow(func, &structures);
+            high.add_function(addr, high_func);
+        }
+        
+        // Phase 3: ML naming (optional, cached)
+        if let Some(naming) = &self.ml_naming {
+            high = naming.suggest_names(high);
+        }
+        
+        high
+    }
+}
+```
+
+### ML Integration Layer
+
+All ML operations maintain determinism through:
+
+1. **Fixed Seeds**: All models use deterministic initialization
+2. **Content Hashing**: Cache keys based on input content hash
+3. **Fallback Logic**: Graceful degradation when ML unavailable
+4. **Version Tracking**: Model versions in output metadata
+
+```rust
+pub struct MLEnhancement {
+    // Local models (always available)
+    xgboost: XGBoostModels,
+    
+    // Optional models (cached)
+    llm_cache: BTreeMap<ContentHash, LLMResult>,
+    
+    // Pattern database
+    pattern_db: PatternDatabase,
+}
+
+impl MLEnhancement {
+    /// Deterministic enhancement with caching
+    pub fn enhance(&mut self, ir: IRLevel, content: &[u8]) -> EnhancedIR {
+        let content_hash = self.hash_content(content);
+        
+        // Check cache first
+        if let Some(cached) = self.llm_cache.get(&content_hash) {
+            return cached.clone();
+        }
+        
+        // Run enhancement
+        let enhanced = match ir {
+            IRLevel::Low => self.enhance_low(content),
+            IRLevel::Medium => self.enhance_medium(content),
+            IRLevel::High => self.enhance_high(content),
+        };
+        
+        // Cache result
+        self.llm_cache.insert(content_hash, enhanced.clone());
+        enhanced
+    }
+}
+```
+
+### Confidence Tracking
+
+Every transformation tracks confidence scores:
+
+```rust
+pub struct ConfidenceInfo {
+    /// Overall confidence (0.0 - 1.0)
+    pub overall: f32,
+    
+    /// Per-component confidence
+    pub components: BTreeMap<String, f32>,
+    
+    /// Source of confidence assessment
+    pub source: ConfidenceSource,
+}
+
+pub enum ConfidenceSource {
+    /// Direct translation (always 1.0)
+    Direct,
+    
+    /// Pattern matching with score
+    Pattern { pattern_id: PatternId, score: f32 },
+    
+    /// ML model prediction
+    MLModel { model: String, version: String, score: f32 },
+    
+    /// Heuristic analysis
+    Heuristic { rule: String, score: f32 },
+}
+```
+
 ## IR Structure
 
 ### Core Types

@@ -21,15 +21,15 @@ Working In Progress (2025.06 Updated)
         - [ ] Complex Loop Analysis
     - [X] Merged Block Variable Analysis
 - [ ] Simulation Routine
-- [X] Generate C like Code
+- [X] Generate Enhanced C Code
     - [ ] Optimization
 - [ ] GUI decompiler
     - [X] Inspect IR
     - [ ] Modify IR or Instruction
-    - [X] Generate C like Code
+  - [X] Generate Enhanced C Code
     - [ ] Simulate With Memory / Register
 - [ ] TUI decompiler
 - [ ] CLI decompiler
 - [ ] IR Pattern Matching Routine (to detect well-known library's function like msvc's memcpy)
 - [ ] Optimizer
-- [ ] Deobfucasioner (possible?)
+- [ ] Deobfucasioner

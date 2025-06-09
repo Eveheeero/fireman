@@ -455,23 +455,3 @@ class CostAwareMLDecompiler:
 
 **Problem**: Updated models break existing pipelines  
 **Solution**: Semantic versioning and compatibility layers
-
-## Future Directions
-
-### Near-term (2024-2025)
-
-- Integration with IDE plugins for real-time decompilation
-- Specialized models for specific architectures (ARM, RISC-V)
-- Federated learning for privacy-preserving pattern sharing
-
-### Medium-term (2025-2027)
-
-- Multi-modal models combining assembly + binary + debug info
-- Automated vulnerability detection using decompilation
-- Real-time decompilation of JIT code
-
-### Long-term (2027+)
-
-- Full program synthesis from binary
-- Cross-architecture decompilation
-- Semantic-preserving optimization suggestions

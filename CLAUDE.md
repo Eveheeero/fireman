@@ -13,8 +13,7 @@ Analysis → Enhanced C Output.
 1. **Absolute Determinism**: Same binary input ALWAYS produces identical output
 2. **Zero-Copy Performance**: Memory-mapped files, arena allocation, streaming analysis
 3. **Accuracy First**: Never guess - mark uncertainty explicitly
-4. **ML-Enhanced**: Traditional analysis enhanced (not replaced) by ML
-5. **Human Readability**: Output optimized for human understanding
+4. **Human Readability**: Output optimized for human understanding
 
 ### Workspace Structure
 
@@ -89,13 +88,9 @@ npm run tauri build
 
 The decompilation process follows a sophisticated multi-stage pipeline:
 ```
-Binary File → Memory-Mapped Loading → Parallel Disassembly → Multi-Level IR
-     ↓                                                           ↓
-Zero-Copy Views                                        Low IR → Medium IR → High IR
-     ↓                                                           ↓
-Pattern Database → ML Enhancement → Type Recovery → Enhanced C Generation
-                                                           ↓
-                                                    GUI Visualization
+Binary File → PE Parser → Disassembler → IR Generation → Analysis → C Generation
+                                              ↓
+                                        GUI Visualization
 ```
 
 ### Multi-Level IR Design
@@ -103,13 +98,6 @@ Pattern Database → ML Enhancement → Type Recovery → Enhanced C Generation
 1. **Low IR**: Direct instruction translation, preserves all semantics
 2. **Medium IR**: Pattern recognition, basic optimizations, confidence tracking
 3. **High IR**: Near-source representation with recovered types and structures
-
-### ML Integration (Enhancement Layer)
-
-- **Local Models**: XGBoost for function boundaries (always available)
-- **Small LLMs**: CodeLlama 7B for variable naming (optional, cached)
-- **Cloud LLMs**: Complex pattern analysis (on-demand, fully cached)
-- **Pattern DB**: Pre-analyzed common libraries for instant recognition
 
 ### Key Components in fireball/
 
@@ -230,8 +218,7 @@ cargo test --package fireball --test determinism -- --nocapture
 
 - **docs/design/deterministic-architecture.md**: CRITICAL - Determinism requirements and implementation
 - **docs/design/ir-specification.md**: Multi-level IR design and semantics
-- **docs/design/decompiler-enhanced-c-output.md**: Enhanced C output specification
-- **docs/design/c-output-generation.md**: Enhanced C generation pipeline
+- **docs/design/enhanced-c-output.md**: Enhanced C output specification and generation pipeline
 - **docs/design/rust-optimized-architecture.md**: Zero-copy performance design
 
 ### Research Documents
