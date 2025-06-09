@@ -2,6 +2,18 @@
 
 ## Core Invariants
 
+### CRITICAL: Same Assembly → Same IR (Always!)
+
+**The Golden Rule**: Given identical assembly bytes at identical addresses, the IR output must be byte-for-byte
+identical, regardless of:
+
+- Machine architecture running the decompiler
+- Available memory or CPU cores
+- Previous decompilation runs
+- Time of day or system load
+- Random number generator state
+- Hash table implementation details
+
 ### 1. Instruction Address Mapping
 
 **Invariant**: Every IR instruction traces back to exactly one source instruction address.
@@ -38,23 +50,22 @@ fn validate_mapping(mapping: &[InstructionMapping]) -> Result<()> {
 **Invariant**: Temporary names are fully determined by their creation context.
 
 ```rust
-/// Temporary naming scheme
+/// Temporary naming scheme - MUST be deterministic
 pub struct TempNamer {
-    /// Counters per address
-    counters: BTreeMap<Address, BTreeMap<&'static str, u32>>,
+    /// Counters per (address, purpose) pair
+    counters: BTreeMap<(Address, &'static str), u32>,
 }
 
 impl TempNamer {
     /// Generate deterministic temporary name
     pub fn new_temp(&mut self, addr: Address, purpose: &'static str) -> LocalId {
-        let counter = self.counters
-            .entry(addr)
-            .or_default()
-            .entry(purpose)
-            .or_insert(0);
-        
-        let name = format!("{}.{:x}.{}", purpose, addr, counter);
+        let key = (addr, purpose);
+        let counter = self.counters.entry(key).or_insert(0);
+        let current = *counter;
         *counter += 1;
+        
+        // Fixed format: purpose.address.counter
+        let name = format!("{}.{:016x}.{}", purpose, addr, current);
         
         LocalId {
             name,
@@ -62,12 +73,17 @@ impl TempNamer {
             source: addr,
         }
     }
+    
+    /// CRITICAL: Reset for each function
+    pub fn reset(&mut self) {
+        self.counters.clear();
+    }
 }
 
-// Examples:
-// load.1000.0  - first load temp at 0x1000
-// load.1000.1  - second load temp at 0x1000  
-// add.1003.0   - first add temp at 0x1003
+// Examples (note: fixed-width hex addresses):
+// load.0000000000401000.0  - first load temp at 0x401000
+// load.0000000000401000.1  - second load temp at 0x401000  
+// add.0000000000401003.0   - first add temp at 0x401003
 ```
 
 ### 3. Canonical Operand Ordering
@@ -188,21 +204,33 @@ pub struct TypeChecker {
 }
 ```
 
-## Determinism Rules
+## Strict Determinism Rules
 
-### Rule 1: No Implementation-Defined Behavior
+### Rule 1: No Implementation-Defined Behavior (EVER!)
 
 ```rust
-// BAD: Depends on HashMap iteration order
+// FATAL BUG: HashMap iteration
 let mut ops = HashMap::new();
-for (k, v) in ops.iter() {  // Non-deterministic!
+for (k, v) in ops.iter() {  // THIS IS A CRITICAL BUG!
     process(k, v);
 }
 
-// GOOD: Use BTreeMap or sort
+// REQUIRED: Always use BTreeMap
 let mut ops = BTreeMap::new();
-for (k, v) in ops.iter() {  // Deterministic!
+for (k, v) in ops.iter() {  // Deterministic iteration order
     process(k, v);
+}
+
+// ALSO BAD: HashSet for any ordered operation
+let blocks: HashSet<BlockId> = discover_blocks();
+for block in blocks {  // WRONG! Order varies
+    analyze(block);
+}
+
+// REQUIRED: BTreeSet or sort first
+let blocks: BTreeSet<BlockId> = discover_blocks();
+for block in blocks {  // Always same order
+    analyze(block);
 }
 ```
 
@@ -224,11 +252,44 @@ fn lift_uninitialized_read(addr: Address, ty: Type) -> Instruction {
 ### Rule 3: Consistent Block Ordering
 
 ```rust
-/// Always process blocks in address order
-fn order_blocks(blocks: &HashMap<BlockId, BasicBlock>) -> Vec<BlockId> {
-    let mut ids: Vec<_> = blocks.keys().copied().collect();
-    ids.sort_by_key(|id| id.0);  // BlockId(Address)
-    ids
+/// CRITICAL: Blocks must always be processed in same order
+fn order_blocks(blocks: &BTreeMap<BlockId, BasicBlock>) -> Vec<BlockId> {
+    // Already sorted by BTreeMap!
+    blocks.keys().copied().collect()
+}
+
+/// When discovering blocks dynamically
+struct DeterministicBlockDiscovery {
+    /// Use BTreeSet for work queue
+    work_queue: BTreeSet<Address>,
+    seen: BTreeSet<Address>,
+}
+
+impl DeterministicBlockDiscovery {
+    fn discover(&mut self, entry: Address) -> Vec<BasicBlock> {
+        self.work_queue.insert(entry);
+        let mut blocks = Vec::new();
+        
+        // ALWAYS take minimum address first
+        while let Some(addr) = self.work_queue.pop_first() {
+            if self.seen.contains(&addr) {
+                continue;
+            }
+            self.seen.insert(addr);
+            
+            let block = self.analyze_block(addr);
+            
+            // Add successors in deterministic order
+            for succ in block.successors() {
+                self.work_queue.insert(succ);
+            }
+            
+            blocks.push(block);
+        }
+        
+        // Blocks are naturally in address order
+        blocks
+    }
 }
 ```
 
@@ -257,40 +318,140 @@ fn normalize_constant(c: Constant) -> Constant {
 ### Rule 5: Stable Phi Node Ordering
 
 ```rust
-/// Phi nodes ordered by predecessor block
-fn create_phi(predecessors: &[BlockId], values: &[Value], ty: Type) -> Instruction {
-    let mut incoming = BTreeMap::new();
+/// Phi nodes MUST have deterministic predecessor ordering
+fn create_phi(block_addr: Address, preds_and_values: Vec<(BlockId, Value)>, ty: Type) -> Instruction {
+    // CRITICAL: Sort by block ID to ensure consistent ordering
+    let mut sorted = preds_and_values;
+    sorted.sort_by_key(|(pred, _)| *pred);
     
-    for (pred, val) in predecessors.iter().zip(values) {
-        incoming.insert(*pred, val.clone());
+    let mut incoming = BTreeMap::new();
+    for (pred, val) in sorted {
+        incoming.insert(pred, val);
     }
     
     Instruction::Phi {
-        dst: new_temp(addr, ty, "phi"),
-        incoming,  // BTreeMap ensures deterministic iteration
+        dst: new_temp(block_addr, ty, "phi"),
+        incoming,  // BTreeMap maintains order
         ty,
+    }
+}
+
+/// SSA construction must be deterministic
+impl SSABuilder {
+    fn place_phi_functions(&mut self, cfg: &CFG) -> PhiPlacements {
+        let mut placements = BTreeMap::new();
+        
+        // Process variables in sorted order
+        let vars: BTreeSet<_> = self.all_variables.iter().cloned().collect();
+        
+        for var in vars {
+            // Get definition sites in sorted order
+            let def_sites: BTreeSet<_> = self.def_sites[&var].iter().cloned().collect();
+            
+            // Compute dominance frontier deterministically
+            let mut work_list = def_sites;
+            let mut phi_sites = BTreeSet::new();
+            
+            while let Some(site) = work_list.pop_first() {
+                // Process frontiers in sorted order
+                let frontiers: BTreeSet<_> = self.dominance_frontiers[&site]
+                    .iter()
+                    .cloned()
+                    .collect();
+                    
+                for frontier in frontiers {
+                    if phi_sites.insert(frontier) {
+                        work_list.insert(frontier);
+                    }
+                }
+            }
+            
+            placements.insert(var, phi_sites);
+        }
+        
+        PhiPlacements(placements)
     }
 }
 ```
 
 ## Testing Determinism
 
-### Property-Based Tests
+### Comprehensive Determinism Tests
 
 ```rust
 #[test]
-fn prop_deterministic_lifting() {
-    proptest!(|(bytes in vec(any::<u8>(), 1..100))| {
-        // Lift same bytes multiple times
-        let results: Vec<_> = (0..10)
-            .map(|_| lift_bytes(&bytes))
-            .collect();
+fn test_absolute_determinism() {
+    let test_binaries = vec![
+        include_bytes!("../testdata/simple.bin"),
+        include_bytes!("../testdata/complex.bin"),
+        include_bytes!("../testdata/obfuscated.bin"),
+    ];
+    
+    for binary in test_binaries {
+        // Generate IR 100 times under different conditions
+        let mut ir_hashes = Vec::new();
         
-        // All results must be identical
-        for i in 1..results.len() {
-            prop_assert_eq!(&results[0], &results[i]);
+        for i in 0..100 {
+            // Pollute memory state differently each time
+            let _garbage: Vec<_> = (0..i*1000)
+                .map(|x| vec![x as u8; (x * 7) % 1000])
+                .collect();
+            
+            // Create fresh lifter
+            let lifter = IRLifter::new();
+            
+            // Generate IR
+            let ir = lifter.lift(binary);
+            
+            // Serialize to bytes for exact comparison
+            let ir_bytes = bincode::serialize(&ir).unwrap();
+            
+            // Hash the bytes
+            use sha2::{Sha256, Digest};
+            let mut hasher = Sha256::new();
+            hasher.update(&ir_bytes);
+            let hash = hasher.finalize();
+            
+            ir_hashes.push(hash);
         }
-    });
+        
+        // ALL hashes must be EXACTLY identical
+        let first = &ir_hashes[0];
+        for (i, hash) in ir_hashes.iter().enumerate() {
+            assert_eq!(first, hash, 
+                "Run {} produced different IR! This is a CRITICAL BUG!", i);
+        }
+    }
+}
+
+#[test]
+fn test_determinism_across_threads() {
+    use std::sync::Arc;
+    use std::thread;
+    
+    let binary = Arc::new(include_bytes!("../testdata/multithread.bin").to_vec());
+    
+    // Lift in parallel from multiple threads
+    let handles: Vec<_> = (0..10)
+        .map(|_| {
+            let bin = binary.clone();
+            thread::spawn(move || {
+                let lifter = IRLifter::new();
+                lifter.lift(&bin)
+            })
+        })
+        .collect();
+    
+    // Collect results
+    let results: Vec<_> = handles.into_iter()
+        .map(|h| h.join().unwrap())
+        .collect();
+    
+    // All must be identical
+    for i in 1..results.len() {
+        assert_eq!(results[0], results[i],
+            "Thread {} produced different IR!", i);
+    }
 }
 ```
 
@@ -337,16 +498,20 @@ fn test_determinism_under_memory_pressure() {
 }
 ```
 
-## Common Pitfalls
+## Common Pitfalls That Break Determinism
 
-### 1. Address Truncation
+### 1. Address Representation
 
 ```rust
-// BAD: Loses high bits on 32-bit systems
-let addr = ptr as usize;
+// BUG: Platform-dependent size
+let addr = ptr as usize;  // 32 or 64 bits!
 
-// GOOD: Use proper address type
-let addr = Address::from_ptr(ptr);
+// BUG: Formatting without width
+format!("{:x}", addr)  // "1000" vs "401000"
+
+// CORRECT: Fixed representation
+let addr = Address(ptr as u64);
+format!("{:016x}", addr.0)  // Always "0000000000401000"
 ```
 
 ### 2. Floating Point in Analysis
@@ -359,39 +524,129 @@ let score = complexity as f64 / size as f64;
 let score = (complexity * 1000) / size;  // Fixed-point
 ```
 
-### 3. Random Number Generation
+### 3. Hidden Non-Determinism
 
 ```rust
-// BAD: Non-deterministic
-let temp_id = rand::random::<u32>();
+// BUG: Thread ID in names
+let name = format!("temp_{:?}", thread::current().id());
 
-// GOOD: Deterministic from context
-let temp_id = hash_combine(addr, counter);
+// BUG: Timestamp in output
+let comment = format!("Generated at {}", Utc::now());
+
+// BUG: Random for "unique" IDs
+let id = Uuid::new_v4();
+
+// BUG: Pointer address in debug output
+let debug = format!("{:p}", &some_struct);
+
+// CORRECT: Only use deterministic inputs
+let name = format!("temp_{:016x}_{}", inst_addr, counter);
+let comment = format!("Generated from {:016x}", source_addr);
+let id = DeterministicId::from_address(addr);
+let debug = format!("{:#?}", some_struct);  // No addresses
 ```
 
-### 4. Time-Based Decisions
+### 4. Collection Pitfalls
 
 ```rust
-// BAD: Time-dependent
-if elapsed > Duration::from_secs(1) {
-    use_fast_path();
+// BUG: Vec order depends on insertion order
+let mut funcs = Vec::new();
+for f in discover_functions() {  // Random order!
+    funcs.push(f);
 }
 
-// GOOD: Complexity-based
-if complexity > THRESHOLD {
-    use_fast_path();
+// BUG: Collecting from HashMap
+let items: Vec<_> = map.into_iter().collect();  // Random order!
+
+// BUG: Using HashSet for work queue
+let mut work = HashSet::new();
+while let Some(item) = work.iter().next() {  // Random choice!
+    process(item);
+}
+
+// CORRECT: Always maintain order
+let mut funcs = BTreeSet::new();
+for f in discover_functions() {
+    funcs.insert(f);
+}
+let funcs: Vec<_> = funcs.into_iter().collect();  // Sorted!
+
+// CORRECT: Sorted iteration
+let mut items: Vec<_> = map.into_iter().collect();
+items.sort_by_key(|(k, _)| k.clone());
+
+// CORRECT: BTreeSet for deterministic work queue
+let mut work = BTreeSet::new();
+while let Some(item) = work.pop_first() {  // Always minimum
+    process(item);
 }
 ```
 
-## Verification Checklist
+## Determinism Verification Checklist
 
-- [ ] All collections use deterministic types (BTreeMap, IndexMap)
-- [ ] No floating-point arithmetic in core logic
-- [ ] All temporaries named by address + counter
-- [ ] Commutative operations canonicalized
-- [ ] Block processing in address order
-- [ ] No system-dependent behavior (time, random, allocation)
-- [ ] Explicit handling of undefined values
-- [ ] All source addresses preserved in IR
-- [ ] SSA versions assigned deterministically
-- [ ] Constants normalized to canonical form
+### Data Structures
+
+- [ ] **NO HashMap/HashSet** - Only BTreeMap/BTreeSet
+- [ ] **NO Vec for unordered data** - Use BTreeSet
+- [ ] **NO FxHashMap/AHashMap** - Still non-deterministic!
+- [ ] **IndexMap only with sort** - Insertion order isn't enough
+
+### Algorithms
+
+- [ ] **All iterations sorted** - No "order doesn't matter"
+- [ ] **Work queues deterministic** - BTreeSet, not Vec/VecDeque
+- [ ] **Fixed processing order** - Entry points, blocks, edges
+- [ ] **Stable sorts only** - sort_by_key, not sort_unstable
+
+### Temporaries & Names
+
+- [ ] **Address-based names** - temp_401000_0, not temp_0
+- [ ] **Fixed-width formatting** - {:016x}, not {:x}
+- [ ] **Counter reset per function** - No global counters
+- [ ] **No pointer-based names** - No format!("{:p}", ptr)
+
+### Constants & Values
+
+- [ ] **Canonical integers** - Sign-extend consistently
+- [ ] **No floating point** - Not even for "scores"
+- [ ] **Normalized addresses** - 64-bit zero-extended
+- [ ] **Fixed enum discriminants** - Not #[repr(C)]
+
+### Control Flow
+
+- [ ] **Sorted successor order** - Even for CFG edges
+- [ ] **Deterministic work queue** - Pop minimum, not any
+- [ ] **Fixed phi operand order** - Sort by predecessor
+- [ ] **Stable block numbering** - Based on address
+
+### Testing
+
+- [ ] **Hash-based comparison** - Serialize and SHA256
+- [ ] **1000x repetition test** - Same binary, same IR
+- [ ] **Cross-platform test** - Linux/Windows/Mac identical
+- [ ] **Parallel execution test** - Thread count doesn't matter
+- [ ] **Memory pressure test** - Low memory = same IR
+
+### Common Fixes
+
+```rust
+// Before (BUG)
+let mut map = HashMap::new();
+
+// After (FIXED)  
+let mut map = BTreeMap::new();
+
+// Before (BUG)
+for func in functions {  // Random order
+
+// After (FIXED)
+for func in functions.iter().sorted_by_key(|f| f.address) {
+
+// Before (BUG)
+format!("t{}", counter++)
+
+// After (FIXED)
+format!("t_{:016x}_{}", inst_addr, local_counter++)
+```
+
+Remember: **Determinism is not optional - it's a CORE REQUIREMENT!**

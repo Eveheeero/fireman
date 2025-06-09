@@ -2,60 +2,94 @@
 
 ## State-of-the-Art Techniques
 
-### 1. Neural Decompilation
+### 1. Neural Decompilation with Practical ML
 
-#### Transformer-Based Decompilation
+#### Using Language Models for Code Understanding
 ```python
-# Architecture for seq2seq decompilation
-class NeuralDecompiler(nn.Module):
+# Practical approach using pre-trained models
+class PracticalNeuralDecompiler:
     def __init__(self):
-        self.instruction_encoder = InstructionEncoder()
-        self.ast_decoder = ASTDecoder()
-        self.attention = MultiHeadAttention()
-    
-    def forward(self, assembly):
-        # Encode assembly to embeddings
-        embeddings = self.instruction_encoder(assembly)
+        # Use existing code LLMs like CodeBERT, GraphCodeBERT
+        self.encoder = AutoModel.from_pretrained("microsoft/codebert-base")
+        self.decoder = CodeGenerator()
         
-        # Apply attention mechanisms
-        context = self.attention(embeddings)
+    def decompile_with_context(self, assembly_code):
+        # Step 1: Convert assembly to embeddings
+        embeddings = self.encode_assembly(assembly_code)
         
-        # Decode to AST
-        ast = self.ast_decoder(context)
-        return ast
+        # Step 2: Match against known patterns
+        pattern_matches = self.pattern_database.find_similar(embeddings)
+        
+        # Step 3: Generate high-level code
+        return self.decoder.generate(embeddings, pattern_matches)
 ```
 
-#### Graph Neural Networks for CFG
+**Industry Practice**: Companies like Hex-Rays use pattern databases built from millions of compiled functions to
+improve decompilation accuracy.
+
+#### Practical ML for Control Flow Analysis
 ```rust
-struct GNNDecompiler {
-    node_embedder: NodeEmbedding,
-    edge_embedder: EdgeEmbedding,
-    gnn_layers: Vec<GNNLayer>,
-    decoder: HighLevelDecoder,
+// Industry-standard approach: Combine ML with traditional analysis
+struct HybridCFGAnalyzer {
+    // Traditional CFG builder
+    cfg_builder: ControlFlowBuilder,
+    
+    // ML for pattern recognition
+    pattern_classifier: PatternClassifier,
+    
+    // Confidence scoring
+    confidence_scorer: ConfidenceModel,
 }
 
-// CFG as graph input
-struct CFGGraph {
-    nodes: Vec<BasicBlock>,
-    edges: Vec<ControlFlowEdge>,
-    node_features: Tensor,
-    edge_features: Tensor,
+impl HybridCFGAnalyzer {
+    fn analyze(&self, binary: &[u8]) -> AnalysisResult {
+        // Step 1: Traditional CFG construction
+        let cfg = self.cfg_builder.build(binary);
+        
+        // Step 2: ML-enhanced pattern detection
+        let patterns = self.pattern_classifier.detect_patterns(&cfg);
+        
+        // Step 3: Confidence-based refinement
+        let refined = self.refine_with_confidence(&cfg, &patterns);
+        
+        AnalysisResult { cfg: refined, patterns }
+    }
 }
 ```
 
-### 2. Probabilistic Type Inference
+**Industry Secret**: Most commercial decompilers use ML as a refinement step, not as the primary analysis method.
 
-#### Bayesian Type Reconstruction
+### 2. Practical Type Recovery with ML
+
+#### Industry-Standard Type Inference
 ```rust
-struct BayesianTypeInference {
-    // Prior distributions
-    type_priors: HashMap<TypeClass, f64>,
+// Combine static analysis with ML predictions
+struct PracticalTypeInference {
+    // Traditional constraint-based typing
+    constraint_solver: ConstraintSolver,
     
-    // Likelihood functions
-    instruction_likelihoods: HashMap<Instruction, TypeLikelihood>,
+    // ML model trained on real codebases
+    type_predictor: TypePredictionModel,
     
-    // Posterior computation
-    compute_posterior: Box<dyn Fn(&Evidence) -> TypeDistribution>,
+    // Heuristics from industry experience
+    heuristics: TypeHeuristics,
+}
+
+impl PracticalTypeInference {
+    fn infer_types(&self, function: &Function) -> TypeMap {
+        // Step 1: Collect constraints from instructions
+        let constraints = self.collect_constraints(function);
+        
+        // Step 2: Get ML predictions for ambiguous cases
+        let ml_hints = self.type_predictor.predict(function);
+        
+        // Step 3: Apply industry heuristics
+        // Example: Functions calling malloc likely return pointers
+        let heuristic_hints = self.heuristics.apply(function);
+        
+        // Step 4: Solve with all information
+        self.constraint_solver.solve(constraints, ml_hints, heuristic_hints)
+    }
 }
 
 // Evidence from binary
@@ -188,74 +222,241 @@ struct GoDecompiler {
 }
 ```
 
-### 7. Fuzzing-Guided Decompilation
+### 3. ML-Enhanced Pattern Recognition
 
-#### Dynamic Analysis Integration
+#### Using Embeddings for Code Similarity
+
 ```rust
-struct FuzzingDecompiler {
-    // Fuzzer integration
-    fuzzer: AFLPlusPlus,
+// Industry practice: Code embeddings for pattern matching
+struct CodeEmbeddingEngine {
+    // Pre-trained on millions of functions
+    embedding_model: CodeBERT,
     
-    // Coverage tracking
-    coverage_map: CoverageMap,
+    // Vector database for fast similarity search
+    vector_db: FaissIndex,
     
-    // Path constraints
-    path_constraints: Vec<PathConstraint>,
-    
-    // Concrete execution
-    executor: ConcreteExecutor,
-}
-```
-
-### 8. Compiler-Decompiler Co-Design
-
-#### Decompilation-Aware Compilation
-```rust
-struct DecompilationMetadata {
-    // Embedded type information
-    type_hints: Vec<TypeHint>,
-    
-    // Control flow hints
-    cfg_hints: Vec<CFGHint>,
-    
-    // Optimization decisions
-    opt_log: Vec<OptimizationDecision>,
+    // Pattern templates from real software
+    pattern_library: PatternLibrary,
 }
 
-// Compiler plugin
-impl CompilerPlugin for DecompilationHelper {
-    fn on_emit(&self, binary: &mut Binary) {
-        binary.embed_metadata(self.generate_metadata());
+impl CodeEmbeddingEngine {
+    fn find_similar_code(&self, assembly: &[Instruction]) -> Vec<SimilarFunction> {
+        // Convert assembly to embedding
+        let embedding = self.embedding_model.encode(assembly);
+        
+        // Search in vector database
+        let similar = self.vector_db.search(embedding, k=10);
+        
+        // Return with confidence scores
+        similar.into_iter()
+            .map(|(func, score)| SimilarFunction {
+                name: func.name,
+                source: func.source,
+                confidence: score,
+            })
+            .collect()
     }
 }
 ```
 
-## Research Directions
+**Industry Know-how**: Companies maintain proprietary databases of code patterns from popular libraries (OpenSSL, zlib,
+etc.) for instant recognition.
 
-### 1. Large Language Models for Decompilation
-- **Code-trained transformers**: GPT for assembly
-- **Instruction embeddings**: Semantic representations
-- **Few-shot decompilation**: Learning from examples
+### 4. Leveraging LLMs for Decompilation
 
-### 2. Verified Decompilation
-- **Formal semantics**: Proving correctness
-- **Bisimulation**: Behavioral equivalence
-- **Certified decompilers**: Coq/Lean proofs
+#### Practical LLM Integration
 
-### 3. Hardware-Accelerated Analysis
-- **GPU decompilation**: Parallel CFG analysis
-- **FPGA acceleration**: Custom analysis circuits
-- **TPU integration**: Neural decompilation
+```rust
+// Modern approach: Use LLMs for code understanding
+struct LLMDecompilationAssistant {
+    // Local SLM for fast inference
+    local_model: CodeLlama7B,
+    
+    // API fallback for complex cases
+    api_client: Option<OpenAIClient>,
+    
+    // Prompt templates
+    prompts: PromptLibrary,
+}
 
-### 4. Cross-Language Decompilation
-- **Universal IR**: Language-agnostic representation
-- **Polyglot binaries**: Mixed-language analysis
-- **FFI reconstruction**: Foreign function interfaces
+impl LLMDecompilationAssistant {
+    async fn improve_decompilation(&self, initial: &DecompiledCode) -> ImprovedCode {
+        // Step 1: Prepare context
+        let context = self.prepare_context(initial);
+        
+        // Step 2: Generate improvements locally
+        let local_result = self.local_model.generate(
+            &self.prompts.code_improvement_prompt(&context)
+        );
+        
+        // Step 3: For complex cases, use API
+        if local_result.confidence < 0.8 {
+            if let Some(api) = &self.api_client {
+                return api.improve_code(initial).await;
+            }
+        }
+        
+        local_result.improved_code
+    }
+}
+```
 
-### 5. Adversarial Decompilation
-- **GAN-based obfuscation**: Adversarial examples
-- **Decompilation resistance**: Theoretical limits
-- **Arms race dynamics**: Attack-defense evolution
+**Industry Practice**: Modern decompilers increasingly use LLMs for:
+
+- Variable name suggestions
+- Function purpose identification
+- Comment generation
+- Code structure improvement
+
+## Practical ML/AI Integration Strategies
+
+### 1. Building a Production ML Pipeline
+
+```rust
+// Real-world ML pipeline for decompilation
+struct MLDecompilationPipeline {
+    // Feature extraction
+    feature_extractor: FeatureExtractor,
+    
+    // Multiple specialized models
+    models: ModelEnsemble,
+    
+    // Result aggregation
+    aggregator: ResultAggregator,
+}
+
+// Feature extraction from binary
+enum BinaryFeatures {
+    // Instruction n-grams
+    InstructionSequences(Vec<Vec<u8>>),
+    
+    // Function call patterns
+    CallGraphFeatures(CallGraph),
+    
+    // String and constant analysis
+    DataFeatures(DataAnalysis),
+    
+    // Statistical features
+    Statistics(BinaryStats),
+}
+```
+
+### 2. Industry Best Practices
+
+#### Pattern Database Construction
+```rust
+// How companies build pattern databases
+struct PatternDatabaseBuilder {
+    fn build_from_opensource(&self) -> PatternDB {
+        // Step 1: Compile popular libraries with symbols
+        let compiled = self.compile_libraries([
+            "openssl", "zlib", "libpng", "sqlite",
+            "boost", "opencv", "ffmpeg"
+        ]);
+        
+        // Step 2: Extract patterns with ground truth
+        let patterns = self.extract_patterns(compiled);
+        
+        // Step 3: Create searchable index
+        PatternDB::new(patterns)
+    }
+}
+```
+
+#### Embedding-Based Code Search
+
+```python
+# Industry-standard code search implementation
+class CodeSearchEngine:
+    def __init__(self):
+        # Use specialized code embedding models
+        self.encoder = SentenceTransformer('code-search-net')
+        
+        # Approximate nearest neighbor search
+        self.index = faiss.IndexIVFPQ(
+            d=768,  # embedding dimension
+            nlist=1000,  # number of clusters
+            m=64,  # number of subquantizers
+            nbits=8  # bits per subquantizer
+        )
+    
+    def add_known_functions(self, functions):
+        embeddings = self.encoder.encode(functions)
+        self.index.add(embeddings)
+    
+    def search(self, assembly, k=5):
+        query_embedding = self.encoder.encode([assembly])
+        distances, indices = self.index.search(query_embedding, k)
+        return self.get_results(indices, distances)
+```
+
+### 3. Practical LLM Prompting for Decompilation
+
+```python
+# Effective prompts for code improvement
+class DecompilationPrompts:
+    @staticmethod
+    def improve_readability(code):
+        return f"""Given this decompiled C code, improve its readability:
+        
+{code}
+
+Rules:
+1. Suggest meaningful variable names based on usage
+2. Identify common patterns (loops, error handling)
+3. Add helpful comments
+4. Maintain exact functionality
+
+Improved version:"""
+    
+    @staticmethod
+    def identify_algorithm(assembly):
+        return f"""Analyze this assembly code and identify the algorithm:
+        
+{assembly}
+
+Consider:
+- Common algorithms (sort, search, crypto)
+- Data structure operations
+- Mathematical computations
+
+Algorithm identification:"""
+```
+
+### 4. Cost-Effective ML Deployment
+
+```rust
+// Tiered approach for production
+struct TieredMLDecompiler {
+    // Tier 1: Fast local models
+    local_classifier: RandomForest,
+    
+    // Tier 2: Medium SLMs
+    slm_model: CodeLlama7B,
+    
+    // Tier 3: Large cloud models
+    cloud_api: Option<AnthropicAPI>,
+    
+    fn decompile(&self, binary: &[u8]) -> Result<Code> {
+        // Start with cheap, fast analysis
+        let initial = self.local_classifier.analyze(binary);
+        
+        // Use SLM for refinement if needed
+        if initial.confidence < 0.7 {
+            let refined = self.slm_model.refine(initial)?;
+            
+            // Only use expensive API for critical code
+            if refined.is_security_critical() {
+                return self.cloud_api.deep_analysis(binary);
+            }
+            
+            return Ok(refined);
+        }
+        
+        Ok(initial)
+    }
+}
+```
 
 ## Performance Benchmarks
 

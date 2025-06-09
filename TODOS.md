@@ -14,7 +14,6 @@
 - [ ] Implement remaining SSE/AVX instructions
 - [ ] Add support for rare/undocumented instructions
 - [ ] Handle instruction prefixes properly (REX, VEX, EVEX)
-- [ ] Test against real-world binaries (malware, games, drivers)
 
 #### ARM Architecture Support
 - [ ] Research ARM64 instruction set
@@ -227,26 +226,6 @@
 - Build TUI prototype
 - Add IR modification support
 - Create pattern matching framework
-
-## Success Metrics
-
-### Code Metrics
-- [ ] Test coverage >80%
-- [ ] Build time <2 minutes
-- [ ] Zero security warnings
-- [ ] Documentation coverage >90%
-
-### User Metrics
-- [ ] <5s to decompile average binary
-- [ ] >90% instruction coverage
-- [ ] <10 critical bugs per release
-- [ ] >95% user satisfaction
-
-### Community Metrics
-- [ ] >50 contributors
-- [ ] >1000 GitHub stars
-- [ ] >100 daily active users
-- [ ] >10 third-party plugins
 
 ## Remember
 

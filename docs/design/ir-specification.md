@@ -2,11 +2,20 @@
 
 ## Design Goals
 
-1. **Deterministic**: Same input always produces same IR
+1. **ABSOLUTELY DETERMINISTIC**: Same assembly bytes at same addresses MUST produce byte-for-byte identical IR
 2. **Type-Safe**: Strongly typed with explicit casts
 3. **SSA-Based**: Static Single Assignment for analysis
 4. **Architecture-Neutral**: Abstract away ISA details
 5. **Analysis-Friendly**: Easy to pattern match and transform
+
+### Determinism is Non-Negotiable
+
+**Critical Requirement**: The IR generation process must be 100% deterministic. This means:
+
+- Same input bytes → Same IR output (byte-for-byte)
+- No dependence on: system time, memory state, thread scheduling, hash functions
+- All operations must have defined, stable ordering
+- Testing must verify exact binary equality of IR output
 
 ## IR Structure
 
@@ -77,16 +86,16 @@ impl Type {
 ### Values
 
 ```rust
-/// IR values (operands)
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// IR values (operands) - with deterministic ordering
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Value {
-    /// Constant values
+    /// Constant values (always ordered first)
     Constant(Constant),
     
     /// Global variable
     Global(GlobalId),
     
-    /// Local SSA variable
+    /// Local SSA variable  
     Local(LocalId),
     
     /// Function reference
@@ -94,6 +103,43 @@ pub enum Value {
     
     /// Basic block label
     Label(BlockId),
+}
+
+/// CRITICAL: Deterministic ordering for canonical forms
+impl Ord for Value {
+    fn cmp(&self, other: &Self) -> Ordering {
+        use Value::*;
+        match (self, other) {
+            // Constants always come first
+            (Constant(a), Constant(b)) => a.cmp(b),
+            (Constant(_), _) => Ordering::Less,
+            (_, Constant(_)) => Ordering::Greater,
+            
+            // Then globals (by ID)
+            (Global(a), Global(b)) => a.cmp(b),
+            (Global(_), _) => Ordering::Less,
+            (_, Global(_)) => Ordering::Greater,
+            
+            // Then functions (by address)
+            (Function(a), Function(b)) => a.cmp(b),
+            (Function(_), _) => Ordering::Less,
+            (_, Function(_)) => Ordering::Greater,
+            
+            // Then locals (by source addr, name, version)
+            (Local(a), Local(b)) => a.cmp(b),
+            (Local(_), Label(_)) => Ordering::Less,
+            (Label(_), Local(_)) => Ordering::Greater,
+            
+            // Finally labels (by block address)
+            (Label(a), Label(b)) => a.cmp(b),
+        }
+    }
+}
+
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -114,26 +160,76 @@ pub enum Constant {
     Aggregate(Vec<Constant>),
 }
 
-/// Local SSA variable
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// Local SSA variable - deterministic naming
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LocalId {
-    /// Base name (e.g., "rax", "temp")
-    pub name: String,
-    
-    /// SSA version (0 for non-SSA)
-    pub version: u32,
-    
-    /// Source instruction address
+    /// Source instruction address (primary key)
     pub source: Address,
+    
+    /// Purpose/type (e.g., "load", "addr", "result")
+    pub purpose: &'static str,
+    
+    /// Index for same purpose at same address
+    pub index: u32,
+    
+    /// SSA version (assigned during SSA construction)
+    pub version: u32,
+}
+
+/// Deterministic ordering: by address, then purpose, then index
+impl Ord for LocalId {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.source.cmp(&other.source)
+            .then_with(|| self.purpose.cmp(&other.purpose))
+            .then_with(|| self.index.cmp(&other.index))
+            .then_with(|| self.version.cmp(&other.version))
+    }
+}
+
+impl PartialOrd for LocalId {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl Display for LocalId {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        // Deterministic format: %purpose_address_index.version
         if self.version == 0 {
-            write!(f, "%{}", self.name)
+            write!(f, "%{}_{:016x}_{}", self.purpose, self.source, self.index)
         } else {
-            write!(f, "%{}.{}", self.name, self.version)
+            write!(f, "%{}_{:016x}_{}.{}", self.purpose, self.source, self.index, self.version)
         }
+    }
+}
+
+/// Helper for creating temporaries deterministically
+pub struct TempAllocator {
+    counters: BTreeMap<(Address, &'static str), u32>,
+}
+
+impl TempAllocator {
+    pub fn new() -> Self {
+        Self { counters: BTreeMap::new() }
+    }
+    
+    pub fn new_temp(&mut self, addr: Address, purpose: &'static str) -> LocalId {
+        let key = (addr, purpose);
+        let index = self.counters.entry(key).or_insert(0);
+        let current = *index;
+        *index += 1;
+        
+        LocalId {
+            source: addr,
+            purpose,
+            index: current,
+            version: 0,  // Will be set during SSA
+        }
+    }
+    
+    /// MUST reset between functions
+    pub fn reset(&mut self) {
+        self.counters.clear();
     }
 }
 ```
@@ -302,14 +398,50 @@ pub struct BasicBlock {
     /// Block identifier (address-based)
     pub id: BlockId,
     
-    /// PHI nodes (must come first)
+    /// PHI nodes (MUST be sorted by destination variable)
     pub phis: Vec<Instruction>,
     
-    /// Regular instructions (deterministic order)
+    /// Regular instructions (in address order)
     pub instructions: Vec<Instruction>,
     
     /// Block terminator
     pub terminator: Terminator,
+}
+
+impl BasicBlock {
+    /// Ensure deterministic PHI ordering
+    pub fn sort_phis(&mut self) {
+        self.phis.sort_by_key(|phi| {
+            match phi {
+                Instruction::Phi { dst, .. } => dst.clone(),
+                _ => panic!("Non-PHI in PHI list"),
+            }
+        });
+    }
+    
+    /// Verify block is in canonical form
+    pub fn verify_determinism(&self) -> Result<(), String> {
+        // Check PHIs are sorted
+        for window in self.phis.windows(2) {
+            if let (Instruction::Phi { dst: dst1, .. }, Instruction::Phi { dst: dst2, .. }) = (&window[0], &window[1]) {
+                if dst1 >= dst2 {
+                    return Err(format!("PHIs not sorted: {:?} >= {:?}", dst1, dst2));
+                }
+            }
+        }
+        
+        // Check instructions are in address order
+        let mut last_addr = Address(0);
+        for inst in &self.instructions {
+            let addr = inst.source_address();
+            if addr < last_addr {
+                return Err(format!("Instructions not in address order"));
+            }
+            last_addr = addr;
+        }
+        
+        Ok(())
+    }
 }
 
 /// Function representation
@@ -348,21 +480,87 @@ pub struct Module {
 }
 ```
 
-## Lifting Rules
+## Lifting Rules - Deterministic Implementation
 
 ### x86_64 to IR
 
 ```rust
-/// Deterministic x86_64 instruction lifting
-impl X86Lifter {
-    /// MOV instruction
-    fn lift_mov(&mut self, dst: &Operand, src: &Operand, addr: Address) -> Vec<Instruction> {
-        let (src_val, mut pre) = self.operand_to_value(src, addr);
-        let (dst_loc, mut post) = self.location_to_lvalue(dst, addr);
+/// CRITICAL: Every lift operation must be deterministic
+pub struct DeterministicX86Lifter {
+    temp_alloc: TempAllocator,
+    
+    /// Fixed patterns for each instruction
+    patterns: BTreeMap<OpcodeClass, LiftPattern>,
+}
+
+impl DeterministicX86Lifter {
+    /// MOV instruction - fully deterministic
+    fn lift_mov(&mut self, inst: &X86Inst, addr: Address) -> Vec<Instruction> {
+        let mut result = Vec::new();
         
-        pre.append(&mut post);
-        pre.push(self.create_store(dst_loc, src_val, addr));
-        pre
+        match (&inst.operands[0], &inst.operands[1]) {
+            // Pattern: MOV reg, reg
+            (Operand::Reg(dst), Operand::Reg(src)) => {
+                result.push(Instruction::Assign {
+                    dst: self.reg_to_local(dst, addr),
+                    value: Value::Local(self.reg_to_local(src, addr)),
+                    source_addr: addr,
+                });
+            }
+            
+            // Pattern: MOV reg, imm
+            (Operand::Reg(dst), Operand::Imm(imm)) => {
+                result.push(Instruction::Assign {
+                    dst: self.reg_to_local(dst, addr),
+                    value: Value::Constant(self.normalize_immediate(*imm, inst.size)),
+                    source_addr: addr,
+                });
+            }
+            
+            // Pattern: MOV reg, [mem]
+            (Operand::Reg(dst), Operand::Mem(mem)) => {
+                // Step 1: Calculate address (deterministic)
+                let addr_temp = self.temp_alloc.new_temp(addr, "addr");
+                result.extend(self.calc_mem_address(mem, addr_temp.clone(), addr));
+                
+                // Step 2: Load from memory
+                let load_temp = self.temp_alloc.new_temp(addr, "load");
+                result.push(Instruction::Load {
+                    dst: load_temp.clone(),
+                    ptr: Value::Local(addr_temp),
+                    ty: self.size_to_type(inst.size),
+                    align: None,
+                    volatile: false,
+                });
+                
+                // Step 3: Move to register
+                result.push(Instruction::Assign {
+                    dst: self.reg_to_local(dst, addr),
+                    value: Value::Local(load_temp),
+                    source_addr: addr,
+                });
+            }
+            
+            // Pattern: MOV [mem], reg
+            (Operand::Mem(mem), Operand::Reg(src)) => {
+                // Step 1: Calculate address
+                let addr_temp = self.temp_alloc.new_temp(addr, "addr");
+                result.extend(self.calc_mem_address(mem, addr_temp.clone(), addr));
+                
+                // Step 2: Store to memory
+                result.push(Instruction::Store {
+                    val: Value::Local(self.reg_to_local(src, addr)),
+                    ptr: Value::Local(addr_temp),
+                    ty: self.size_to_type(inst.size),
+                    align: None,
+                    volatile: false,
+                });
+            }
+            
+            _ => panic!("Unhandled MOV at {:016x}: {:?}", addr, inst),
+        }
+        
+        result
     }
     
     /// ADD instruction (canonicalized)
@@ -424,11 +622,14 @@ impl X86Lifter {
 %t2 = add i32 10, %t1    // already canonical
 ```
 
-## Validation
+## Validation and Determinism Verification
 
 ```rust
 pub struct IRValidator {
     pub fn validate_module(&self, module: &Module) -> Result<(), ValidationError> {
+        // Check determinism first
+        self.validate_determinism(module)?;
+        
         // Check all functions
         for (id, func) in &module.functions {
             self.validate_function(func)?;
@@ -436,6 +637,39 @@ pub struct IRValidator {
         
         // Check all references resolve
         self.validate_references(module)?;
+        
+        Ok(())
+    }
+    
+    fn validate_determinism(&self, module: &Module) -> Result<(), ValidationError> {
+        // Verify functions are in address order
+        let addresses: Vec<_> = module.functions.keys().map(|f| f.address).collect();
+        for window in addresses.windows(2) {
+            if window[0] >= window[1] {
+                return Err(ValidationError::NonDeterministicOrder(
+                    "Functions not in address order".into()
+                ));
+            }
+        }
+        
+        // Verify each function
+        for (_, func) in &module.functions {
+            // Blocks in address order
+            let block_addrs: Vec<_> = func.blocks.keys().map(|b| b.0).collect();
+            for window in block_addrs.windows(2) {
+                if window[0] >= window[1] {
+                    return Err(ValidationError::NonDeterministicOrder(
+                        format!("Blocks not in order in function {:?}", func.id)
+                    ));
+                }
+            }
+            
+            // Verify each block
+            for (_, block) in &func.blocks {
+                block.verify_determinism()
+                    .map_err(|e| ValidationError::NonDeterministicBlock(e))?;
+            }
+        }
         
         Ok(())
     }
@@ -488,12 +722,69 @@ let generator = CCodeGenerator::new();
 let c_code = generator.generate(&optimized);
 ```
 
-## Determinism Guarantees
+## Absolute Determinism Guarantees
 
-1. **No HashMaps in IR**: Only BTreeMap, IndexMap
-2. **Address-based IDs**: All identifiers derived from addresses
-3. **Canonical operand ordering**: Consistent for commutative ops
-4. **Deterministic temp names**: Based on source address + counter
-5. **Sorted collections**: All iterations in defined order
-6. **No floating-point arithmetic**: During IR construction
-7. **Explicit undefined behavior**: Mark as Unknown/Undef
+### Core Requirements
+
+1. **NO HashMaps/HashSets**: Only BTreeMap, BTreeSet everywhere
+2. **Address-based everything**: All IDs, names, ordering based on instruction addresses
+3. **Canonical operand ordering**: Commutative ops always order operands the same way
+4. **Deterministic temp names**: Format: `purpose_address_index`
+5. **Sorted EVERYTHING**: Every iteration, every collection, every operation
+6. **No floating-point**: Not even for "scores" or "metrics"
+7. **No system dependencies**: No time, thread IDs, random numbers, pointer addresses
+
+### Verification
+
+```rust
+/// Test that IR generation is deterministic
+#[test]
+fn test_ir_determinism() {
+    let binary = include_bytes!("../tests/sample.bin");
+    
+    // Generate 1000 times
+    let results: Vec<_> = (0..1000).map(|i| {
+        // Different memory pressure each time
+        let _mem: Vec<_> = (0..i*1000).map(|x| vec![x as u8; x % 1000]).collect();
+        
+        // Fresh lifter each time
+        let mut lifter = create_lifter();
+        let ir = lifter.lift(binary);
+        
+        // Serialize for byte comparison
+        bincode::serialize(&ir).unwrap()
+    }).collect();
+    
+    // All must be IDENTICAL
+    let first = &results[0];
+    for (i, result) in results.iter().enumerate() {
+        assert_eq!(first.len(), result.len(), "Different sizes at iteration {}", i);
+        assert_eq!(first, result, "Different IR at iteration {}", i);
+    }
+}
+```
+
+### Common Violations
+
+```rust
+// WRONG: HashMap iteration
+for (k, v) in hashmap { }  // Order varies!
+
+// RIGHT: BTreeMap or sort
+for (k, v) in btreemap { }  // Always same order
+
+// WRONG: Counter without context
+static COUNTER: AtomicU32 = AtomicU32::new(0);
+let id = COUNTER.fetch_add(1);  // Non-deterministic!
+
+// RIGHT: Address-based counter
+let id = format!("{}_{:016x}_{}", purpose, addr, local_counter);
+
+// WRONG: Time or random
+let seed = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+
+// RIGHT: Deterministic seed
+let seed = hash_of_input_bytes;
+```
+
+Remember: **If the same assembly produces different IR, it's a CRITICAL BUG!**
