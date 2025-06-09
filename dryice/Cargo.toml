@@ -1,10 +1,10 @@
 [package]
 name = "dryice"
-version = "0.0.1"
-edition = "2021"
-authors = ["Eveheeero <xhve00000@gmail.com>"]
-repository = "https://github.com/Eveheeero/fireman"
-license = "GPL-2.0"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
 description = "IR Pattern Matching Framework used in fireball. (Reserved)"
 homepage = "https://crates.io/crates/dryice"
 

@@ -1,10 +1,10 @@
 [package]
 name = "iceball"
-version = "0.0.1"
-edition = "2021"
-authors = ["Eveheeero <xhve00000@gmail.com>"]
-repository = "https://github.com/Eveheeero/fireman"
-license = "GPL-2.0"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
 description = "Disassemble library used in fireball. (Reserved)"
 homepage = "https://crates.io/crates/iceball"
 
@@ -12,8 +12,8 @@ homepage = "https://crates.io/crates/iceball"
 crate-type = ["cdylib", "rlib", "staticlib"]
 
 [dependencies]
-fireman_macro = { path = "../fireman_macro", version = "0.0.1" }
-serde = { version = "1", optional = true, features = ["derive"] }
+fireman_macro.workspace = true
+serde = { workspace = true, optional = true }
 
 [features]
 serde = ["dep:serde"]

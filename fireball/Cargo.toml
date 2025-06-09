@@ -1,10 +1,10 @@
 [package]
 name = "fireball"
-version = "0.0.1"
-edition = "2021"
-authors = ["Eveheeero <xhve00000@gmail.com>"]
-repository = "https://github.com/Eveheeero/fireman"
-license = "GPL-2.0"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
 description = "Decompiler library inspired by snowman"
 homepage = "https://crates.io/crates/fireball"
 
@@ -12,20 +12,20 @@ homepage = "https://crates.io/crates/fireball"
 crate-type = ["cdylib", "rlib", "staticlib"]
 
 [dependencies]
-iceball = { path = "../iceball", version = "0.0.1" }
-goblin = "0.9"
-cpp_demangle = "0.4.0"
-capstone = "0.13"
-pdb = "0.8.0"
-tracing = { version = "0.1", features = [
+iceball.workspace = true
+goblin.workspace = true
+cpp_demangle.workspace = true
+capstone.workspace = true
+pdb.workspace = true
+tracing = { workspace = true, features = [
   "log",
   "max_level_trace",
   "release_max_level_off",
 ] }
-bitvec = "1.0.1"
-fireman_macro = { path = "../fireman_macro", version = "0.0.1" }
-hashbrown = "0.15"
-num-bigint = "0.4.6"
+bitvec.workspace = true
+fireman_macro.workspace = true
+hashbrown.workspace = true
+num-bigint.workspace = true
 
 [dev-dependencies]
-tracing-subscriber = "0.3"
+tracing-subscriber.workspace = true
