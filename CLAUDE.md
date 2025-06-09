@@ -164,12 +164,6 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → C 
 3. **Parallel execution tests**: Same output with 1-32 threads
 4. **Memory pressure tests**: Behavior under constrained resources
 
-Run determinism tests:
-
-```bash
-cargo test --package fireball --test determinism -- --nocapture
-```
-
 ### When implementing new instructions:
 1. Add instruction parsing in `arch/x86_64/instruction_analyze/`
 2. Implement IR generation with deterministic temporary naming
@@ -184,36 +178,3 @@ cargo test --package fireball --test determinism -- --nocapture
 3. Ensure all iterations use sorted collections
 4. Update Enhanced C generation in `ir/analyze/ir_to_c/`
 5. Add confidence tracking for uncertain transformations
-
-### When working on GUI:
-1. Tauri backend code is in `firebat/src-tauri/`
-2. React frontend is in `firebat/src/`
-3. Use TypeScript with strict mode
-4. Test with `npm run tauri dev`
-5. Ensure UI updates don't affect core determinism
-
-## Project Documentation
-
-### Planning Documents
-- **PLANS.md**: Development roadmap and technical strategy
-- **TODOS.md**: Feature implementation status
-- **STRUCTURES.md**: Architecture diagrams and component relationships
-
-### Design Documents
-
-- **docs/design/deterministic-architecture.md**: CRITICAL - Determinism requirements and implementation
-- **docs/design/ir-specification.md**: Multi-level IR design and semantics
-- **docs/design/enhanced-c-output.md**: Enhanced C output specification and generation pipeline
-- **docs/design/rust-optimized-architecture.md**: Zero-copy performance design
-
-### Research Documents
-
-- **docs/research/modern-decompilation-2025.md**: Industry best practices
-- **docs/research/ml-powered-decompilation.md**: ML integration strategies
-- **docs/research/decompilation-readability.md**: Human-friendly output techniques
-
-### Domain Knowledge
-
-- **docs/domain/decompiler-fundamentals.md**: Core concepts and algorithms
-- **docs/domain/ir-invariants.md**: Determinism rules and invariants
-- **docs/domain/advanced-binary-analysis.md**: Modern analysis techniques

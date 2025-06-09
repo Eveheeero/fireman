@@ -1,7 +1,3 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 Fireman is a high-performance, deterministic decompiler framework written in Rust. It transforms binary executables into
@@ -164,12 +160,6 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → C 
 2. **Cross-platform tests**: Ensure same output on Linux/Windows/Mac
 3. **Parallel execution tests**: Same output with 1-32 threads
 4. **Memory pressure tests**: Behavior under constrained resources
-
-Run determinism tests:
-
-```bash
-cargo test --package fireball --test determinism -- --nocapture
-```
 
 ### When implementing new instructions:
 1. Add instruction parsing in `arch/x86_64/instruction_analyze/`
