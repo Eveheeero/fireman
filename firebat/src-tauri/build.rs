@@ -12,8 +12,8 @@ fn main() {
                 if line.starts_with("//") || line.starts_with("import") {
                     continue;
                 }
-                result.push_str(&line);
-                result.push_str("\n");
+                result.push_str(line);
+                result.push('\n');
             }
         }
         std::fs::write("../../firebat/src/bindings.ts", result).unwrap();
