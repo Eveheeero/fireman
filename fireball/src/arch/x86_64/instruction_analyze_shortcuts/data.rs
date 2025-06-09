@@ -48,7 +48,7 @@ pub(in crate::arch) fn size_result_byte(data: impl Into<Aos<IrData>>) -> AccessS
 #[test]
 fn size_result_singleton_test() {
     let extract_arc = |x: AccessSize| match x {
-        AccessSize::RelativeWith(ir_data) => return ir_data,
+        AccessSize::RelativeWith(ir_data) => ir_data,
         _ => unreachable!(),
     };
 

@@ -364,17 +364,17 @@ impl std::fmt::Display for DataAccessType {
 impl std::fmt::Display for NumCondition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NumCondition::Higher(value) => write!(f, "{} > {}", self, value),
-            NumCondition::HigherOrEqual(value) => write!(f, "{} >= {}", self, value),
-            NumCondition::Lower(value) => write!(f, "{} < {}", self, value),
-            NumCondition::LowerOrEqual(value) => write!(f, "{} <= {}", self, value),
-            NumCondition::Equal(value) => write!(f, "{} == {}", self, value),
-            NumCondition::NotEqual(value) => write!(f, "{} != {}", self, value),
+            NumCondition::Higher(value) => write!(f, "> {}", value),
+            NumCondition::HigherOrEqual(value) => write!(f, ">= {}", value),
+            NumCondition::Lower(value) => write!(f, "< {}", value),
+            NumCondition::LowerOrEqual(value) => write!(f, "<= {}", value),
+            NumCondition::Equal(value) => write!(f, "== {}", value),
+            NumCondition::NotEqual(value) => write!(f, "!= {}", value),
             NumCondition::RangeInclusive(value1, value2) => {
-                write!(f, "{} in [{}..{}]", self, value1, value2)
+                write!(f, "in [{}..{}]", value1, value2)
             }
             NumCondition::ExcludesRange(value1, value2) => {
-                write!(f, "{} not in [{}..{}]", self, value1, value2)
+                write!(f, "not in [{}..{}]", value1, value2)
             }
         }
     }

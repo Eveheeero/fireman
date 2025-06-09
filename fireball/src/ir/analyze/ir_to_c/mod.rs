@@ -5,12 +5,12 @@ use crate::{
     core::Block,
     ir::{
         analyze::{
+            ControlFlowGraphAnalyzer, DataType, MergedIr,
             ir_block_merger::merge_blocks,
             ir_to_c::c_abstract_syntax_tree::{
                 AstDescriptor, CAst, CType, CValue, PrintWithConfig, Statement, Variable,
                 VariableId, Wrapped,
             },
-            ControlFlowGraphAnalyzer, DataType, MergedIr,
         },
         data::IrData,
         utils::IrStatementDescriptor,
@@ -30,8 +30,8 @@ pub fn generate_c_ast(
     let mut cfg_analyzer = ControlFlowGraphAnalyzer::new();
     cfg_analyzer.add_targets(targets);
     let cfgs = cfg_analyzer.analyze();
-    for cfg in cfgs.into_iter() {
-        let merged = merge_blocks(&cfg.get_blocks());
+    for cfg in cfgs.iter() {
+        let merged = merge_blocks(cfg.get_blocks());
         generate_c_ast_function(&mut ast, merged)?;
     }
     Ok(ast)
@@ -75,12 +75,9 @@ pub fn generate_c_ast_function(ast: &mut CAst, data: MergedIr) -> Result<(), Dec
             for da in accesses.iter() {
                 var_map.insert(da.location().clone(), var_id);
                 // Resolve constant value
-                if let Some(c) = resolve_constant(
-                    position,
-                    instruction_arg_size,
-                    &da.location(),
-                    &da.location(),
-                )? {
+                if let Some(c) =
+                    resolve_constant(position, instruction_arg_size, da.location(), da.location())?
+                {
                     trace!(
                         "Constant value found in {}: {}",
                         position,

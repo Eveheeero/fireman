@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
 };
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     sync::Arc,
 };
 
@@ -12,6 +12,12 @@ pub struct ControlFlowGraphAnalyzer {
     targets: Vec<Arc<Block>>,
     relations: Vec<Relation>,
     analyzed: Option<Vec<ControlFlowGraph>>,
+}
+
+impl Default for ControlFlowGraphAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ControlFlowGraphAnalyzer {
@@ -85,6 +91,8 @@ pub struct LoopInfo {
 pub struct ControlFlowGraph {
     blocks: Vec<Arc<Block>>,
     loops: Vec<LoopInfo>,
+    /// Detailed loop analysis (populated on demand)
+    detailed_loops: Option<BTreeMap<usize, super::loop_analysis::LoopAnalysis>>,
 }
 
 impl ControlFlowGraph {
@@ -93,6 +101,19 @@ impl ControlFlowGraph {
     }
     pub fn get_loops(&self) -> &Vec<LoopInfo> {
         &self.loops
+    }
+
+    /// Get detailed loop analysis
+    pub fn get_detailed_loops(&mut self) -> &BTreeMap<usize, super::loop_analysis::LoopAnalysis> {
+        if self.detailed_loops.is_none() {
+            self.analyze_loops();
+        }
+        self.detailed_loops.as_ref().unwrap()
+    }
+
+    /// Analyze loops in the control flow graph
+    pub fn analyze_loops(&mut self) {
+        self.detailed_loops = Some(super::loop_analysis::analyze_loops(self));
     }
 }
 
@@ -240,6 +261,7 @@ pub fn analyze_control_flow_graph(
             cfgs.push(ControlFlowGraph {
                 blocks: component_blocks,
                 loops: component_loops,
+                detailed_loops: None,
             });
         }
     }

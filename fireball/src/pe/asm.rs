@@ -25,7 +25,7 @@ impl Pe {
         let virtual_offset = offset.get_virtual_address();
         let insns = match self.capstone.disasm_all(
             &self.binary[file_offset as usize..(file_offset + size) as usize],
-            virtual_offset as u64,
+            virtual_offset,
         ) {
             Ok(insts) => insts,
             Err(e) => {
@@ -59,7 +59,7 @@ impl Pe {
         let virtual_offset = offset.get_virtual_address();
         let insns = match self.capstone.disasm_count(
             &self.binary[file_offset as usize..],
-            virtual_offset as u64,
+            virtual_offset,
             count,
         ) {
             Ok(insts) => insts,

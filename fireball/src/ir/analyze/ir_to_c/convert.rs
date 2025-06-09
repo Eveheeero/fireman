@@ -120,7 +120,8 @@ pub(super) fn convert_expr(
             ),
             IrIntrinsic::ArchitectureByteSizeCondition(num_condition) => {
                 let u = |v: &u16| Expression::Literal(Literal::UInt(*v as u64));
-                let result = match num_condition {
+
+                match num_condition {
                     NumCondition::Higher(v) => {
                         let op = BinaryOperator::Greater;
                         let lhs = Expression::ArchitectureByteSize;
@@ -197,13 +198,12 @@ pub(super) fn convert_expr(
                             Box::new(w(op2)),
                         )
                     }
-                };
-                result
+                }
             }
         },
         IrData::Operation(op) => match op {
             IrDataOperation::Unary { operator, arg } => {
-                return convert_unary(ast, function_id, root_expr, operator, arg, var_map)
+                return convert_unary(ast, function_id, root_expr, operator, arg, var_map);
             }
             IrDataOperation::Binary {
                 operator,
@@ -495,7 +495,7 @@ pub(super) fn convert_size(
 
     let result = match size {
         AccessSize::ResultOfBit(d) | AccessSize::ResultOfByte(d) | AccessSize::RelativeWith(d) => {
-            return convert_expr(ast, function_id, root_expr, d, var_map)
+            return convert_expr(ast, function_id, root_expr, d, var_map);
         }
         AccessSize::ArchitectureSize => Expression::ArchitectureByteSize,
         AccessSize::Unlimited => Expression::Unknown,

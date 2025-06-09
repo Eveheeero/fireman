@@ -1,11 +1,11 @@
 use crate::{
     ir::{
+        IrBlock,
         analyze::{DataType, KnownDataType},
         data::{AccessSize, DataAccess, DataAccessType, IrData, IrDataOperation, IrIntrinsic},
         operator::BinaryOperator,
         statements::IrStatement,
         utils::{IrStatementDescriptor, IrStatementDescriptorMap},
-        IrBlock,
     },
     utils::Aos,
 };
@@ -360,18 +360,15 @@ fn resolve_binary_operator(
 }
 
 pub fn resolve_operand(data: &Aos<IrData>, instruction_args: &[iceball::Argument]) -> Aos<IrData> {
-    match data.as_ref() {
-        IrData::Operand(op_num) => {
-            if instruction_args.len() < op_num.get() as usize {
-                /* Fallback if `operand_exists` based routine */
-                static UNDEFINED: LazyLock<Aos<IrData>> =
-                    LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::Undefined)));
-                return UNDEFINED.clone();
-            }
-            let result = (&instruction_args[op_num.get() as usize - 1]).into();
-            return result;
+    if let IrData::Operand(op_num) = data.as_ref() {
+        if instruction_args.len() < op_num.get() as usize {
+            /* Fallback if `operand_exists` based routine */
+            static UNDEFINED: LazyLock<Aos<IrData>> =
+                LazyLock::new(|| Aos::new_static(IrData::Intrinsic(IrIntrinsic::Undefined)));
+            return UNDEFINED.clone();
         }
-        _ => {}
+        let result = (&instruction_args[op_num.get() as usize - 1]).into();
+        return result;
     }
 
     match data.as_ref() {

@@ -56,6 +56,12 @@ pub struct IrStatementDescriptorMap<T> {
     inner: HashMap<u64, T>,
 }
 
+impl<T> Default for IrStatementDescriptorMap<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> IrStatementDescriptorMap<T> {
     #[inline]
     pub fn new() -> Self {

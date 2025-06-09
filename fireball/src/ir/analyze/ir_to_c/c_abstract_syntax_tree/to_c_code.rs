@@ -24,7 +24,7 @@ impl CAst {
             }
         }
 
-        output.push_str("\n");
+        output.push('\n');
 
         // Functions
         for func in self.functions.read().unwrap().values() {
@@ -78,7 +78,7 @@ impl CAst {
                     ));
                 }
             }
-            output.push_str("\n");
+            output.push('\n');
 
             // Function body
             let mut visited_ir = HashSet::new();

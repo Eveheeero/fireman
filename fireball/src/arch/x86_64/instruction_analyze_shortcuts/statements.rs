@@ -64,14 +64,10 @@ pub(in crate::arch) fn calc_flags_automatically(
     size: impl Into<AccessSize>,
     affected_registers: &[&Aos<IrData>],
 ) -> IrStatement {
-    use crate::arch::x86_64::static_register::*;
     IrStatement::Special(IrStatementSpecial::CalcFlagsAutomatically {
         operation: operation.into(),
         size: size.into(),
-        flags: affected_registers
-            .into_iter()
-            .map(|x| (*x).clone())
-            .collect(),
+        flags: affected_registers.iter().map(|x| (*x).clone()).collect(),
     })
 }
 #[inline]
