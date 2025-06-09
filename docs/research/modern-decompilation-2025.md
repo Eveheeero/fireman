@@ -145,23 +145,7 @@ impl RewriteEngine {
 }
 ```
 
-### 5. Quantum-Classical Hybrid Analysis
-
-#### Quantum Algorithms for Pattern Matching
-```rust
-struct QuantumPatternMatcher {
-    // Grover's algorithm for pattern search
-    quantum_search: GroverSearch,
-    
-    // Quantum approximate optimization
-    qaoa: QAOA,
-    
-    // Classical preprocessing
-    pattern_encoder: PatternEncoder,
-}
-```
-
-### 6. Advanced Language Recovery
+### 5. Advanced Language Recovery
 
 #### Rust-Specific Decompilation
 ```rust
@@ -204,33 +188,7 @@ struct GoDecompiler {
 }
 ```
 
-### 7. Real-Time Decompilation
-
-#### Streaming Decompilation
-```rust
-struct StreamingDecompiler {
-    // Process binary in chunks
-    chunk_size: usize,
-    
-    // Incremental CFG builder
-    incremental_cfg: IncrementalCFG,
-    
-    // Progressive refinement
-    refinement_queue: PriorityQueue<RefinementTask>,
-}
-
-impl StreamingDecompiler {
-    async fn decompile_stream(&mut self, binary_stream: impl Stream<Item = Chunk>) {
-        while let Some(chunk) = binary_stream.next().await {
-            self.process_chunk(chunk);
-            self.refine_analysis();
-            yield self.current_results();
-        }
-    }
-}
-```
-
-### 8. Fuzzing-Guided Decompilation
+### 7. Fuzzing-Guided Decompilation
 
 #### Dynamic Analysis Integration
 ```rust
@@ -249,23 +207,7 @@ struct FuzzingDecompiler {
 }
 ```
 
-### 9. Homomorphic Decompilation
-
-#### Privacy-Preserving Analysis
-```rust
-struct HomomorphicDecompiler {
-    // Analyze encrypted binaries
-    fhe_scheme: FullyHomomorphicEncryption,
-    
-    // Encrypted CFG operations
-    encrypted_cfg_ops: EncryptedOps,
-    
-    // Result decryption
-    decryptor: Decryptor,
-}
-```
-
-### 10. Compiler-Decompiler Co-Design
+### 8. Compiler-Decompiler Co-Design
 
 #### Decompilation-Aware Compilation
 ```rust

@@ -49,3 +49,5 @@ bindings
 .idea/
 .serena/
 **/Cargo.lock
+
+iceball/architecture_doc_extractor/
