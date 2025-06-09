@@ -211,3 +211,166 @@ pub(super) fn cqo() -> &'static [IrStatement] {
     let type2 = type_specified(rdx.clone(), size_relative(rdx.clone()), DataType::Int);
     [set_tmp, set_dx, set_ax, type1, type2].into()
 }
+
+// CMOVcc - Generic conditional move handler
+// Since we cannot determine the specific condition from the enum variant,
+// we create a generic handler that represents any conditional move
+#[box_to_static_reference]
+pub(super) fn cmovcc() -> &'static [IrStatement] {
+    // CMOVcc - Generic conditional move
+    // The condition is not known at this level, so we use unknown_data()
+    // In a real implementation, this would need additional context
+    let cond = unknown_data();
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+// Individual CMOVcc instructions for completeness
+// These can be used if we have more context about the specific instruction
+
+#[box_to_static_reference]
+pub(super) fn cmova() -> &'static [IrStatement] {
+    // CMOVA/CMOVNBE - Move if above (CF=0 and ZF=0)
+    let cond = b::and(u::not(cf.clone()), u::not(zf.clone()));
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovae() -> &'static [IrStatement] {
+    // CMOVAE/CMOVNB/CMOVNC - Move if above or equal (CF=0)
+    let cond = u::not(cf.clone());
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovb() -> &'static [IrStatement] {
+    // CMOVB/CMOVNAE/CMOVC - Move if below (CF=1)
+    let cond = cf.clone();
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovbe() -> &'static [IrStatement] {
+    // CMOVBE/CMOVNA - Move if below or equal (CF=1 or ZF=1)
+    let cond = b::or(cf.clone(), zf.clone());
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmove() -> &'static [IrStatement] {
+    // CMOVE/CMOVZ - Move if equal/zero (ZF=1)
+    let cond = zf.clone();
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovg() -> &'static [IrStatement] {
+    // CMOVG/CMOVNLE - Move if greater (ZF=0 and SF=OF)
+    let sf_eq_of = b::equal(sf.clone(), of.clone(), size_result_bit(c(1)));
+    let cond = b::and(u::not(zf.clone()), sf_eq_of);
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovge() -> &'static [IrStatement] {
+    // CMOVGE/CMOVNL - Move if greater or equal (SF=OF)
+    let cond = b::equal(sf.clone(), of.clone(), size_result_bit(c(1)));
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovl() -> &'static [IrStatement] {
+    // CMOVL/CMOVNGE - Move if less (SF≠OF)
+    let cond = u::not(b::equal(sf.clone(), of.clone(), size_result_bit(c(1))));
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovle() -> &'static [IrStatement] {
+    // CMOVLE/CMOVNG - Move if less or equal (ZF=1 or SF≠OF)
+    let sf_neq_of = u::not(b::equal(sf.clone(), of.clone(), size_result_bit(c(1))));
+    let cond = b::or(zf.clone(), sf_neq_of);
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovne() -> &'static [IrStatement] {
+    // CMOVNE/CMOVNZ - Move if not equal/not zero (ZF=0)
+    let cond = u::not(zf.clone());
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovno() -> &'static [IrStatement] {
+    // CMOVNO - Move if not overflow (OF=0)
+    let cond = u::not(of.clone());
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovnp() -> &'static [IrStatement] {
+    // CMOVNP/CMOVPO - Move if not parity/parity odd (PF=0)
+    let cond = u::not(pf.clone());
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovns() -> &'static [IrStatement] {
+    // CMOVNS - Move if not sign (SF=0)
+    let cond = u::not(sf.clone());
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovo() -> &'static [IrStatement] {
+    // CMOVO - Move if overflow (OF=1)
+    let cond = of.clone();
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovp() -> &'static [IrStatement] {
+    // CMOVP/CMOVPE - Move if parity/parity even (PF=1)
+    let cond = pf.clone();
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovs() -> &'static [IrStatement] {
+    // CMOVS - Move if sign (SF=1)
+    let cond = sf.clone();
+    let mov = assign(o2(), o1(), o1_size());
+    let conditional_move = condition(cond, [mov], []);
+    [conditional_move].into()
+}

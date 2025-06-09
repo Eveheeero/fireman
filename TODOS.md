@@ -18,7 +18,7 @@ Working In Progress (2025.06 Updated)
         - [X] Reaching Definitions Analysis
         - [X] Liveness Analysis
     - [X] Control Flow Analysis
-        - [ ] Complex Loop Analysis
+        - [X] Complex Loop Analysis
     - [X] Merged Block Variable Analysis
 - [ ] Simulation Routine
 - [X] Generate Enhanced C Code
@@ -41,8 +41,10 @@ Working In Progress (2025.06 Updated)
 
 #### Complete x64 Instruction Coverage
 
-- [x] Implement basic SSE/AVX instructions (MOVAPS, ADDPS, MULPS)
-- [ ] Implement remaining SSE/AVX instructions
+- [x] Implement basic SSE/AVX instructions (MOVAPS, ADDPS, MULPS, etc.)
+- [x] Implement remaining common instructions (MOVSX/MOVZX, NEG/NOT, CMOVcc, etc.)
+- [x] Implement string operations (MOVS*, STOS*)
+- [x] Implement flag operations (SAHF, STC, STD, SAR, SBB)
 - [ ] Add support for rare/undocumented instructions
 - [ ] Handle instruction prefixes properly (REX, VEX, EVEX)
 
@@ -55,13 +57,13 @@ Working In Progress (2025.06 Updated)
 ### 🟠 P1: Core Decompilation
 
 #### Complex Loop Analysis
-- [ ] Implement loop pattern recognition (for, while, do-while)
-- [ ] Handle nested loops correctly
-- [ ] Detect loop invariants
-- [ ] Identify iterator variables
+- [x] Implement loop pattern recognition (for, while, do-while)
+- [x] Handle nested loops correctly
+- [x] Detect loop invariants
+- [x] Identify iterator variables
 - [ ] Support range-based loops (C++11)
 
-#### C Code Generation Optimization
+#### ENHANCED C Code Generation Optimization
 - [ ] Implement expression simplification
 - [ ] Add dead code elimination
 - [ ] Optimize redundant casts

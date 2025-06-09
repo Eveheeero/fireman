@@ -219,3 +219,118 @@ pub(super) fn maxsd() -> &'static [IrStatement] {
     let type2 = type_specified(o2(), o2_size(), DataType::Float);
     [assignment, type1, type2].into()
 }
+
+#[box_to_static_reference]
+pub(super) fn movsx() -> &'static [IrStatement] {
+    let size = o1_size();
+    // Sign extend from source size to destination size
+    let extended = u::sign_extend(o2());
+    let assignment = assign(extended, o1(), &size);
+    [assignment].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn movsxd() -> &'static [IrStatement] {
+    // MOVSXD is specific for 32->64 bit sign extension
+    let size = o1_size();
+    let extended = u::sign_extend(o2());
+    let assignment = assign(extended, o1(), &size);
+    [assignment].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn movzx() -> &'static [IrStatement] {
+    let size = o1_size();
+    // Zero extend from source size to destination size
+    let extended = u::zero_extend(o2());
+    let assignment = assign(extended, o1(), &size);
+    [assignment].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn movsb() -> &'static [IrStatement] {
+    // MOVSB moves byte from [RSI] to [RDI] and updates pointers
+    let size = size_result_byte(c(1));
+    let src_val = d(rsi.clone());
+    let dst = d(rdi.clone());
+
+    let move_stmt = assign(src_val, dst, &size);
+    let inc_rsi = assign(
+        b::add(rsi.clone(), c(1)),
+        rsi.clone(),
+        &size_relative(rsi.clone()),
+    );
+    let inc_rdi = assign(
+        b::add(rdi.clone(), c(1)),
+        rdi.clone(),
+        &size_relative(rdi.clone()),
+    );
+
+    [move_stmt, inc_rsi, inc_rdi].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn movsw() -> &'static [IrStatement] {
+    // MOVSW moves word from [RSI] to [RDI] and updates pointers
+    let size = size_result_byte(c(2));
+    let src_val = d(rsi.clone());
+    let dst = d(rdi.clone());
+
+    let move_stmt = assign(src_val, dst, &size);
+    let inc_rsi = assign(
+        b::add(rsi.clone(), c(2)),
+        rsi.clone(),
+        &size_relative(rsi.clone()),
+    );
+    let inc_rdi = assign(
+        b::add(rdi.clone(), c(2)),
+        rdi.clone(),
+        &size_relative(rdi.clone()),
+    );
+
+    [move_stmt, inc_rsi, inc_rdi].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn movsd() -> &'static [IrStatement] {
+    // MOVSD (string) moves dword from [RSI] to [RDI] and updates pointers
+    let size = size_result_byte(c(4));
+    let src_val = d(rsi.clone());
+    let dst = d(rdi.clone());
+
+    let move_stmt = assign(src_val, dst, &size);
+    let inc_rsi = assign(
+        b::add(rsi.clone(), c(4)),
+        rsi.clone(),
+        &size_relative(rsi.clone()),
+    );
+    let inc_rdi = assign(
+        b::add(rdi.clone(), c(4)),
+        rdi.clone(),
+        &size_relative(rdi.clone()),
+    );
+
+    [move_stmt, inc_rsi, inc_rdi].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn movsq() -> &'static [IrStatement] {
+    // MOVSQ moves qword from [RSI] to [RDI] and updates pointers
+    let size = size_result_byte(c(8));
+    let src_val = d(rsi.clone());
+    let dst = d(rdi.clone());
+
+    let move_stmt = assign(src_val, dst, &size);
+    let inc_rsi = assign(
+        b::add(rsi.clone(), c(8)),
+        rsi.clone(),
+        &size_relative(rsi.clone()),
+    );
+    let inc_rdi = assign(
+        b::add(rdi.clone(), c(8)),
+        rdi.clone(),
+        &size_relative(rdi.clone()),
+    );
+
+    [move_stmt, inc_rsi, inc_rdi].into()
+}
