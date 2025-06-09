@@ -1,12 +1,15 @@
-# Fireman IR Specification
+# Fireman Multi-Level IR Specification
 
 ## Design Goals
 
-1. **ABSOLUTELY DETERMINISTIC**: Same assembly bytes at same addresses MUST produce byte-for-byte identical IR
+1. **ABSOLUTELY DETERMINISTIC**: Same assembly bytes at same addresses MUST produce byte-for-byte identical IR at all
+   levels
 2. **Type-Safe**: Strongly typed with explicit casts
 3. **SSA-Based**: Static Single Assignment for analysis
 4. **Architecture-Neutral**: Abstract away ISA details
 5. **Analysis-Friendly**: Easy to pattern match and transform
+6. **Progressive Refinement**: Three-level IR (Low → Medium → High) with increasing semantic understanding
+7. **ML-Enhanced**: Integrates confidence scores and ML suggestions without breaking determinism
 
 ### Determinism is Non-Negotiable
 
