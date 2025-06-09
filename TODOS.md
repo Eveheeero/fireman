@@ -166,22 +166,6 @@
 - [ ] Study memory usage patterns
 - [ ] Analyze cache behavior
 
-## Community Tasks
-
-### Open Source
-- [ ] Write contribution guidelines
-- [ ] Create issue templates
-- [ ] Set up Discord/Matrix server
-- [ ] Plan first release
-- [ ] Design logo and branding
-
-### Outreach
-- [ ] Write blog posts
-- [ ] Give conference talks
-- [ ] Create YouTube tutorials
-- [ ] Engage with RE community
-- [ ] Partner with CTF teams
-
 ## Implementation Notes
 
 ### Dependencies to Evaluate
