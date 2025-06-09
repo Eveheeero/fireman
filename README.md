@@ -26,7 +26,7 @@ cargo build -r
 
 ## Features & Roadmap
 
-See [README-TODOS.md](README-TODOS.md) for the detailed features list and development roadmap.
+See [TODOS.md](TODOS.md) for the detailed features list and development roadmap.
 
 ## Code style
 
