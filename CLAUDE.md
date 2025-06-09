@@ -20,6 +20,9 @@ fireman/                 # Workspace root
 
 The project uses Cargo workspace features with centralized dependency management. All common dependencies are defined in the root `Cargo.toml` and inherited by subcrates using `.workspace = true`.
 
+Note: The `iceball/architecture_doc_extractor` subcrate is excluded from the workspace as it has special dependency
+requirements.
+
 ## Development Commands
 
 ### Building

@@ -48,3 +48,4 @@ bindings
 *.log
 .idea/
 .serena/
+**/Cargo.lock
