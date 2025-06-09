@@ -1,0 +1,47 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        description: Format files with cargo fmt.
+        entry: cargo fmt --all
+        language: system
+        types: [ rust ]
+        pass_filenames: false
+
+      - id: cargo-clippy
+        name: cargo clippy
+        description: Run cargo clippy on files.
+        entry: cargo clippy --workspace --tests
+        language: system
+        types: [ rust ]
+        pass_filenames: false
+
+      - id: cargo-check
+        name: cargo check
+        description: Check the package for errors.
+        entry: cargo check --workspace --tests
+        language: system
+        types: [ rust ]
+        pass_filenames: false
+
+#      - id: check-determinism-patterns
+#        name: check determinism patterns
+#        description: Check for common non-deterministic code patterns.
+#        entry: |
+#          bash -c '
+#          if grep -r "HashMap\\|HashSet\\|IndexMap" --include="*.rs" fireball/src/ir/ fireball/src/core/; then
+#            echo "Error: Found HashMap/HashSet/IndexMap usage in critical paths. Use BTreeMap/BTreeSet instead for determinism."
+#            exit 1
+#          fi
+#          '
+#        language: system
+#        pass_filenames: false
