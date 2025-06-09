@@ -83,7 +83,7 @@ Instead of complex academic approaches, we use:
 #### Month 1: Control Flow Recovery
 - **Loops**: Detect common patterns (for, while, do-while)
 - **Switches**: Both jump tables and if-else chains
-- **Exceptions**: Try-catch detection for C++ and SEH
+- **Exceptions**: Try-catch detection for Enhanced C and SEH
 
 Real innovation: Use compiler fingerprinting to guide recovery
 

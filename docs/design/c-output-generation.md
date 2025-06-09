@@ -1,8 +1,9 @@
-# C Output Generation Strategy
+# Enhanced C Output Generation Strategy
 
 ## Overview
 
-This document describes how to generate readable C-like code from the decompiler's IR, focusing on producing output that is both accurate and human-friendly.
+This document describes how to generate readable Enhanced C code from the decompiler's IR. The output uses C11 as a base
+with minimal modern features, focusing on clarity and familiarity while preserving decompilation accuracy.
 
 ## Output Generation Pipeline
 
@@ -139,9 +140,11 @@ pub enum CType {
     /// Basic types
     Void,
     Bool,
+    // Fixed-width types only
     Int8, Int16, Int32, Int64,
     UInt8, UInt16, UInt32, UInt64,
-    Float, Double,
+    Float32,
+    Float64,
     
     /// Pointer
     Pointer(Box<CType>),
@@ -158,11 +161,11 @@ pub enum CType {
         param_types: Vec<CType>,
         convention: CallingConvention,
     },
-    
-    /// Unknown types
-    Unknown,
-    UnknownSized(usize),
-    Probable(Box<CType>),
+
+    /// Decompiler-specific types (Enhanced C)
+    Unknown,                    // __unknown_t
+    UnknownSized(usize),       // __unknown(size)
+    Partial(Box<CType>),       // Partially known type
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -449,9 +452,11 @@ impl CCodeFormatter {
                 self.write_type(inner);
                 self.write("*");
             }
+            // Enhanced C types
             CType::Unknown => self.write("__unknown_t"),
-            CType::Probable(inner) => {
-                self.write("__probable ");
+            CType::UnknownSized(size) => self.write(&format!("__unknown({})", size)),
+            CType::Partial(inner) => {
+                self.write("__partial ");
                 self.write_type(inner);
             }
             _ => { /* Other types */ }

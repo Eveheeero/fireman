@@ -4,7 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Fireman is a decompiler framework written in Rust, inspired by Snowman. It analyzes and decompiles binary executables (currently focusing on PE files) by transforming machine code → IR (Intermediate Representation) → C-like code.
+Fireman is a high-performance, deterministic decompiler framework written in Rust. It transforms binary executables into
+readable, enhanced C code through a sophisticated multi-stage pipeline: Binary → Disassembly → Multi-Level IR →
+Analysis → Enhanced C Output.
+
+**Core Design Principles**:
+
+1. **Absolute Determinism**: Same binary input ALWAYS produces identical output
+2. **Zero-Copy Performance**: Memory-mapped files, arena allocation, streaming analysis
+3. **Accuracy First**: Never guess - mark uncertainty explicitly
+4. **ML-Enhanced**: Traditional analysis enhanced (not replaced) by ML
+5. **Human Readability**: Output optimized for human understanding
 
 ### Workspace Structure
 
@@ -77,12 +87,29 @@ npm run tauri build
 
 ## Architecture Overview
 
-The decompilation process follows this flow:
+The decompilation process follows a sophisticated multi-stage pipeline:
 ```
-Binary File → PE Parser → Disassembler → IR Generation → Analysis → C Generation
-                                              ↓
-                                        GUI Visualization
+Binary File → Memory-Mapped Loading → Parallel Disassembly → Multi-Level IR
+     ↓                                                           ↓
+Zero-Copy Views                                        Low IR → Medium IR → High IR
+     ↓                                                           ↓
+Pattern Database → ML Enhancement → Type Recovery → Enhanced C Generation
+                                                           ↓
+                                                    GUI Visualization
 ```
+
+### Multi-Level IR Design
+
+1. **Low IR**: Direct instruction translation, preserves all semantics
+2. **Medium IR**: Pattern recognition, basic optimizations, confidence tracking
+3. **High IR**: Near-source representation with recovered types and structures
+
+### ML Integration (Enhancement Layer)
+
+- **Local Models**: XGBoost for function boundaries (always available)
+- **Small LLMs**: CodeLlama 7B for variable naming (optional, cached)
+- **Cloud LLMs**: Complex pattern analysis (on-demand, fully cached)
+- **Pattern DB**: Pre-analyzed common libraries for instant recognition
 
 ### Key Components in fireball/
 
@@ -120,6 +147,30 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → C 
 - Advanced decompilation patterns
 - Code simulation capabilities
 
+## Critical: Determinism Requirements
+
+**ABSOLUTE RULE**: The decompiler MUST produce byte-for-byte identical output for identical input, regardless of:
+
+- Machine architecture, available memory, CPU cores
+- Previous runs, system load, time of day
+- Thread scheduling, hash function seeds
+
+### Mandatory Practices
+
+1. **Data Structures**:
+   ```rust
+   // ❌ NEVER use
+   HashMap, HashSet, FxHashMap, AHashMap, IndexMap (without sorting)
+   
+   // ✅ ALWAYS use  
+   BTreeMap, BTreeSet, Vec (for ordered data)
+   ```
+
+2. **Address Format**: Always use 16-digit hex: `{:016x}`
+3. **Deterministic Naming**: `purpose.address.counter` format
+4. **Processing Order**: Always sort by address before processing
+5. **No Floating Point**: Use fixed-point arithmetic instead
+
 ## Code Style Guidelines
 
 - Follow Rust naming conventions (snake_case for functions/variables, CamelCase for types)
@@ -127,28 +178,70 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → C 
 - Document public APIs with `///` doc comments
 - Use custom error types defined in `utils/error.rs`
 - Keep modules focused and well-organized
+- **CRITICAL**: Validate determinism in all code changes
 
 ## Working with the Codebase
 
-When implementing new instructions:
+### Testing Requirements
+
+**Every change MUST include**:
+
+1. **Determinism tests**: Verify identical output across 1000+ runs
+2. **Cross-platform tests**: Ensure same output on Linux/Windows/Mac
+3. **Parallel execution tests**: Same output with 1-32 threads
+4. **Memory pressure tests**: Behavior under constrained resources
+
+Run determinism tests:
+
+```bash
+cargo test --package fireball --test determinism -- --nocapture
+```
+
+### When implementing new instructions:
 1. Add instruction parsing in `arch/x86_64/instruction_analyze/`
-2. Implement IR generation in the corresponding module
-3. Add tests for the new instruction
-4. Update the instruction coverage if needed
+2. Implement IR generation with deterministic temporary naming
+3. Add comprehensive tests including edge cases
+4. Verify determinism with repetition tests
+5. Update the instruction coverage
 
-When modifying IR:
-1. Update `ir/statements.rs` for new statement types
+### When modifying IR:
+
+1. Update `ir/statements.rs` maintaining `Ord` implementations
 2. Implement analysis passes in `ir/analyze/`
-3. Update C generation in `ir/analyze/ir_to_c/`
+3. Ensure all iterations use sorted collections
+4. Update Enhanced C generation in `ir/analyze/ir_to_c/`
+5. Add confidence tracking for uncertain transformations
 
-When working on GUI:
+### When working on GUI:
 1. Tauri backend code is in `firebat/src-tauri/`
 2. React frontend is in `firebat/src/`
 3. Use TypeScript with strict mode
 4. Test with `npm run tauri dev`
+5. Ensure UI updates don't affect core determinism
 
 ## Project Documentation
 
+### Planning Documents
 - **PLANS.md**: Development roadmap and technical strategy
-- **TODOS.md**: Detailed task list with priorities
+- **README-TODOS.md**: Feature implementation status
 - **STRUCTURES.md**: Architecture diagrams and component relationships
+
+### Design Documents
+
+- **docs/design/deterministic-architecture.md**: CRITICAL - Determinism requirements and implementation
+- **docs/design/ir-specification.md**: Multi-level IR design and semantics
+- **docs/design/decompiler-enhanced-c-output.md**: Enhanced C output specification
+- **docs/design/c-output-generation.md**: Enhanced C generation pipeline
+- **docs/design/rust-optimized-architecture.md**: Zero-copy performance design
+
+### Research Documents
+
+- **docs/research/modern-decompilation-2025.md**: Industry best practices
+- **docs/research/ml-powered-decompilation.md**: ML integration strategies
+- **docs/research/decompilation-readability.md**: Human-friendly output techniques
+
+### Domain Knowledge
+
+- **docs/domain/decompiler-fundamentals.md**: Core concepts and algorithms
+- **docs/domain/ir-invariants.md**: Determinism rules and invariants
+- **docs/domain/advanced-binary-analysis.md**: Modern analysis techniques
