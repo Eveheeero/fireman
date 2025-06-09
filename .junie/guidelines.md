@@ -212,7 +212,7 @@ cargo test --package fireball --test determinism -- --nocapture
 
 ### Planning Documents
 - **PLANS.md**: Development roadmap and technical strategy
-- **README-TODOS.md**: Feature implementation status
+- **TODOS.md**: Feature implementation status
 - **STRUCTURES.md**: Architecture diagrams and component relationships
 
 ### Design Documents

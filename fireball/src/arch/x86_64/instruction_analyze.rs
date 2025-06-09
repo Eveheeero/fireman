@@ -31,7 +31,7 @@ mod shortcuts {
     pub(in crate::arch) use fireman_macro::box_to_static_reference;
     pub(in crate::arch) use macros::*;
     pub(in crate::arch) use statements::*;
-    use std::num::{NonZeroU16, NonZeroU8};
+    use std::num::NonZeroU8;
 }
 
 use crate::{core::Instruction, ir::statements::*};
@@ -56,6 +56,7 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
     Some(match op {
         X64Statement::Adc => a::adc(),
         X64Statement::Add => a::add(),
+        X64Statement::Addps => a::addps(),
         X64Statement::And => a::and(),
         X64Statement::Bswap => b::bswap(),
         X64Statement::Bt => b::bt(),
@@ -112,7 +113,9 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Loop => None?,
         X64Statement::Loopcc => None?,
         X64Statement::Mov => m::mov(),
+        X64Statement::Movaps => m::movaps(),
         X64Statement::Mul => m::mul(),
+        X64Statement::Mulps => m::mulps(),
         X64Statement::Movsx => None?,
         X64Statement::Movsxd => None?,
         X64Statement::Movzx => None?,

@@ -40,6 +40,8 @@ Working In Progress (2025.06 Updated)
 ### 🔴 P0: Critical Foundation
 
 #### Complete x64 Instruction Coverage
+
+- [x] Implement basic SSE/AVX instructions (MOVAPS, ADDPS, MULPS)
 - [ ] Implement remaining SSE/AVX instructions
 - [ ] Add support for rare/undocumented instructions
 - [ ] Handle instruction prefixes properly (REX, VEX, EVEX)

@@ -26,6 +26,17 @@ pub(super) fn add() -> &'static [IrStatement] {
 }
 
 #[box_to_static_reference]
+pub(super) fn addps() -> &'static [IrStatement] {
+    // ADDPS adds four single-precision floating-point values from source to destination
+    let size = o1_size();
+    let add = b::add(o1(), o2());
+    let assignment = assign(add, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
+}
+
+#[box_to_static_reference]
 pub(super) fn and() -> &'static [IrStatement] {
     let size = o1_size();
     let and = b::and(o1(), o2());

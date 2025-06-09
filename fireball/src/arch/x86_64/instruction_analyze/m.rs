@@ -8,6 +8,14 @@ pub(super) fn mov() -> &'static [IrStatement] {
 }
 
 #[box_to_static_reference]
+pub(super) fn movaps() -> &'static [IrStatement] {
+    // MOVAPS moves 128 bits (4 single-precision floating-point values) from source to destination
+    // Both operands must be 16-byte aligned
+    let assignment = assign(o2(), o1(), o1_size());
+    [assignment].into()
+}
+
+#[box_to_static_reference]
 pub(super) fn mul() -> &'static [IrStatement] {
     let assertion = assertion(u::not(is_o2_exists()));
 
@@ -36,4 +44,15 @@ pub(super) fn mul() -> &'static [IrStatement] {
         mul_etc,
     );
     extend_undefined_flags(&[assertion, mul], &[&sf, &zf, &af, &pf])
+}
+
+#[box_to_static_reference]
+pub(super) fn mulps() -> &'static [IrStatement] {
+    // MULPS multiplies four single-precision floating-point values from source to destination
+    let size = o1_size();
+    let mul = b::mul(o1(), o2());
+    let assignment = assign(mul, o1(), &size);
+    let type1 = type_specified(o1(), o1_size(), DataType::Float);
+    let type2 = type_specified(o2(), o2_size(), DataType::Float);
+    [assignment, type1, type2].into()
 }
