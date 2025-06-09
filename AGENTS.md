@@ -35,24 +35,7 @@ requirements.
 
 ## Development Commands
 
-### Building
-
-```bash
-# Build entire workspace
-cargo build
-
-# Build with optimizations
-cargo build --release
-
-# Build specific component
-cargo build -p fireball
-
-# Note: When using the Agent tool, avoid running build commands
-# as they consume significant resources. Use `cargo check` instead.
-```
-
 ### Testing
-
 ```bash
 # Run all tests in workspace
 cargo test --workspace
@@ -65,7 +48,6 @@ cargo test --workspace -- --nocapture
 ```
 
 ### Code Quality
-
 ```bash
 # Format code (required before commits)
 cargo fmt --all
@@ -78,7 +60,6 @@ cargo check --workspace --tests
 ```
 
 ### GUI Development
-
 ```bash
 # Run GUI in development mode
 cd firebat
@@ -92,7 +73,6 @@ npm run tauri build
 ## Architecture Overview
 
 The decompilation process follows a sophisticated multi-stage pipeline:
-
 ```
 Binary File → PE Parser → Disassembler → IR Generation → Analysis → C Generation
                                               ↓
@@ -122,7 +102,6 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → C 
 ## Current Implementation Status
 
 ✅ Implemented:
-
 - x86_64 instruction parsing
 - Basic block detection
 - Control flow graph construction
@@ -132,13 +111,11 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → C 
 - GUI for visualizing assembly and IR
 
 🚧 In Progress:
-
 - Complete x86_64 instruction coverage
 - Advanced IR optimizations
 - Symbol resolution
 
 📋 Planned:
-
 - ARM architecture support
 - ELF file format support
 - Advanced decompilation patterns
@@ -195,7 +172,6 @@ cargo test --package fireball --test determinism -- --nocapture
 ```
 
 ### When implementing new instructions:
-
 1. Add instruction parsing in `arch/x86_64/instruction_analyze/`
 2. Implement IR generation with deterministic temporary naming
 3. Add comprehensive tests including edge cases
@@ -211,7 +187,6 @@ cargo test --package fireball --test determinism -- --nocapture
 5. Add confidence tracking for uncertain transformations
 
 ### When working on GUI:
-
 1. Tauri backend code is in `firebat/src-tauri/`
 2. React frontend is in `firebat/src/`
 3. Use TypeScript with strict mode
@@ -221,7 +196,6 @@ cargo test --package fireball --test determinism -- --nocapture
 ## Project Documentation
 
 ### Planning Documents
-
 - **PLANS.md**: Development roadmap and technical strategy
 - **TODOS.md**: Feature implementation status
 - **STRUCTURES.md**: Architecture diagrams and component relationships

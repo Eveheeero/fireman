@@ -35,21 +35,6 @@ requirements.
 
 ## Development Commands
 
-### Building
-```bash
-# Build entire workspace
-cargo build
-
-# Build with optimizations
-cargo build --release
-
-# Build specific component
-cargo build -p fireball
-
-# Note: When using the Agent tool, avoid running build commands
-# as they consume significant resources. Use `cargo check` instead.
-```
-
 ### Testing
 ```bash
 # Run all tests in workspace
@@ -150,8 +135,8 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → C 
    ```rust
    // ❌ NEVER use
    HashMap, HashSet, FxHashMap, AHashMap, IndexMap (without sorting)
-   
-   // ✅ ALWAYS use  
+
+   // ✅ ALWAYS use
    BTreeMap, BTreeSet, Vec (for ordered data)
    ```
 
