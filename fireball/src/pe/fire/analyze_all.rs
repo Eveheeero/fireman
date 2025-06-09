@@ -1,5 +1,5 @@
 use super::Pe;
-use crate::{core::Block, prelude::DecompileError, FireRaw};
+use crate::{FireRaw, core::Block, prelude::DecompileError};
 use std::sync::Arc;
 
 impl Pe {

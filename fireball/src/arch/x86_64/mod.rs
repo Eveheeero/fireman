@@ -5,7 +5,7 @@ pub mod instruction_analyze;
 mod static_register {
     #![allow(non_upper_case_globals, unused)]
     use crate::{
-        ir::{data::IrData, x86_64::X64Range as X64, Register, VirtualMachine},
+        ir::{VirtualMachine, data::IrData, x86_64::X64Range as X64},
         utils::Aos,
     };
     use std::sync::LazyLock;

@@ -1,6 +1,6 @@
 use fireball::{
-    core::{Address, Block, FireRaw},
     Fireball,
+    core::{Address, Block, FireRaw},
 };
 use serde::Serialize;
 use std::sync::{Arc, LazyLock, RwLock};

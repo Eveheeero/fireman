@@ -7,7 +7,7 @@ pub mod variables;
 
 pub use control_flow_graph::{ControlFlowGraph, ControlFlowGraphAnalyzer};
 pub use data_access::analyze_data_access;
-pub use datatype::{analyze_datatype, DataType, KnownDataType};
+pub use datatype::{DataType, KnownDataType, analyze_datatype};
 pub use ir_block_merger::MergedIr;
 pub use ir_to_c::generate_c_ast;
-pub use variables::{analyze_variables, IrVariable};
+pub use variables::{IrVariable, analyze_variables};
