@@ -140,11 +140,11 @@ classDiagram
 graph TD
     subgraph "Function CFG"
         ENTRY[Entry Block]
-        BB1[Basic Block 1<br/>mov eax, [ebp+8]<br/>test eax, eax]
-        BB2[Basic Block 2<br/>je .error]
-        BB3[Basic Block 3<br/>call validate<br/>test eax, eax]
-        BB4[Basic Block 4<br/>mov eax, 1<br/>ret]
-        ERROR[Error Block<br/>xor eax, eax<br/>ret]
+        BB1["Basic Block 1<br/>mov eax, [ebp+8]<br/>test eax, eax"]
+        BB2["Basic Block 2<br/>je .error"]
+        BB3["Basic Block 3<br/>call validate<br/>test eax, eax"]
+        BB4["Basic Block 4<br/>mov eax, 1<br/>ret"]
+        ERROR["Error Block<br/>xor eax, eax<br/>ret"]
         EXIT[Exit Block]
     end
 
