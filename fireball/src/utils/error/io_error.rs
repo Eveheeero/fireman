@@ -4,6 +4,7 @@ pub enum IoError {
     Unknown,
     UnknwonWithMessage(String),
     FileCannotRead,
+    StdIoError(String),
 }
 
 impl std::fmt::Display for IoError {
@@ -12,13 +13,14 @@ impl std::fmt::Display for IoError {
             Self::Unknown => write!(f, "Unknown Error Occured!"),
             Self::UnknwonWithMessage(msg) => write!(f, "Unknown Error Occured! {}", msg),
             Self::FileCannotRead => write!(f, "File Cannot Read!"),
+            Self::StdIoError(msg) => write!(f, "IO Error: {}", msg),
         }
     }
 }
 
 impl From<std::io::Error> for IoError {
-    fn from(_: std::io::Error) -> Self {
-        Self::FileCannotRead
+    fn from(err: std::io::Error) -> Self {
+        Self::StdIoError(err.to_string())
     }
 }
 

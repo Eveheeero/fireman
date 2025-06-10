@@ -3,21 +3,37 @@ pub mod disassemble_error;
 pub mod io_error;
 pub mod ir_analyze_assertion_error;
 
+// Re-export DecompileError for convenience
+pub use decompile_error::DecompileError;
+
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
 pub enum FireballError {
     #[default]
     Unknown,
     IoError(io_error::IoError),
+    InvalidBinary(String),
+    Unimplemented(String),
 }
 
 impl std::fmt::Display for FireballError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Some Error Occured!")
+        match self {
+            FireballError::Unknown => write!(f, "Unknown error occurred"),
+            FireballError::IoError(e) => write!(f, "IO error: {}", e),
+            FireballError::InvalidBinary(msg) => write!(f, "Invalid binary: {}", msg),
+            FireballError::Unimplemented(feature) => write!(f, "Unimplemented: {}", feature),
+        }
     }
 }
 
 impl From<io_error::IoError> for FireballError {
     fn from(err: io_error::IoError) -> Self {
         Self::IoError(err)
+    }
+}
+
+impl From<std::io::Error> for FireballError {
+    fn from(err: std::io::Error) -> Self {
+        Self::IoError(io_error::IoError::StdIoError(err.to_string()))
     }
 }

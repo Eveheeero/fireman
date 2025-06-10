@@ -103,6 +103,14 @@ impl Sections {
         }
         None
     }
+
+    /// Add a section to the sections collection
+    pub fn add_section(&self, section: Section) -> usize {
+        let mut section_writer = self.data.write().unwrap();
+        let id = section_writer.len();
+        section_writer.insert(Arc::new(section));
+        id
+    }
 }
 
 impl Default for Sections {

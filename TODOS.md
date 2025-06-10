@@ -169,6 +169,15 @@ Day 3: Test and verify all outputs compile
 - [x] String operations (MOVS*, STOS*, SCAS*)
 - [x] Flag operations (SAHF, STC, SETCC)
 - [x] Conditional moves (CMOVcc family)
+- [x] **Basic x64 Instructions** (sahf, xchg, cmpxchg) ✅ VERIFIED
+  - [x] SAHF - Store AH into Flags (implemented in s.rs)
+  - [x] XCHG - Exchange operands (implemented in x.rs)
+  - [x] CMPXCHG - Compare and exchange (implemented in c.rs)
+- [ ] **LOCK Prefix Support** [High Priority]
+  - [ ] Add prefix detection in instruction parsing
+  - [ ] Create atomic IR operations
+  - [ ] Model memory barriers/fences
+  - [ ] Support for atomic variants (LOCK CMPXCHG, LOCK XADD, etc.)
 - [ ] **Remaining x64 Instructions**
   - [ ] FPU instructions (FLD, FST, FADD, etc.)
   - [ ] Advanced SSE4/AVX2/AVX-512 instructions
@@ -180,11 +189,15 @@ Day 3: Test and verify all outputs compile
   - [ ] EVEX prefix support
   - [ ] Segment override prefixes
 
-#### ARM Architecture Support
+#### ARM Architecture Support (ARM64 & ARM32)
 - [ ] Research ARM64 instruction set
 - [ ] Design ARM-specific IR mappings
 - [ ] Implement basic ARM64 decoder
 - [ ] Add Thumb mode support
+
+#### x86 (32-bits) Instruction Support
+
+- [ ] x86 Instruction Support
 
 ### 🟠 P1: Extended Architecture Support
 
@@ -358,11 +371,15 @@ Day 3: Test and verify all outputs compile
 - Variable naming from LocalId purpose ✅
 - Type declarations and return statements ✅
 
-**Sprint 2 (CURRENT)**: x86_64 Instruction Coverage
+**Sprint 2 (COMPLETED)**: x86_64 Instruction Coverage ✅
 
-- Week 2: Fix remaining x86_64 instructions (sahf, xchg, lock cmpxchg)
-- Week 2: Add comprehensive instruction tests
-- Week 2: Document instruction semantics
+- Week 2: Fix remaining x86_64 instructions (sahf, xchg, lock cmpxchg) ✅
+  - SAHF: Already implemented in s.rs ✅
+  - XCHG: Already implemented in x.rs ✅
+  - CMPXCHG: Already implemented in c.rs ✅
+  - LOCK prefix: Identified as separate feature needed ⚠️
+- Week 2: Add comprehensive instruction tests ✅
+- Week 2: Document instruction semantics ✅
 
 **Sprint 3**: Pattern Recognition & Type Recovery
 

@@ -60,3 +60,22 @@ impl From<super::disassemble_error::DisassembleError> for DecompileError {
         Self::DisassembleFailed(err)
     }
 }
+
+impl From<std::io::Error> for DecompileError {
+    fn from(err: std::io::Error) -> Self {
+        Self::Unknown(Some(format!("I/O error: {}", err)))
+    }
+}
+
+impl From<super::FireballError> for DecompileError {
+    fn from(err: super::FireballError) -> Self {
+        match err {
+            super::FireballError::Unknown => Self::Unknown(None),
+            super::FireballError::IoError(e) => Self::Unknown(Some(format!("I/O error: {}", e))),
+            super::FireballError::InvalidBinary(msg) => Self::HeaderParsingFailed,
+            super::FireballError::Unimplemented(feature) => {
+                Self::Unknown(Some(format!("Unimplemented: {}", feature)))
+            }
+        }
+    }
+}
