@@ -20,7 +20,7 @@ Working In Progress (2025.06 Updated)
     - [X] Control Flow Analysis
         - [X] Complex Loop Analysis
     - [X] Merged Block Variable Analysis
-- [ ] Simulation Routine
+- [X] Simulation Routine
 - [X] Generate Enhanced C Code
     - [ ] Optimization
 - [ ] GUI decompiler
@@ -43,7 +43,7 @@ Working In Progress (2025.06 Updated)
 
 - [x] Implement basic SSE/AVX instructions (MOVAPS, ADDPS, MULPS, etc.)
 - [x] Implement remaining common instructions (MOVSX/MOVZX, NEG/NOT, CMOVcc, etc.)
-- [x] Implement string operations (MOVS*, STOS*)
+- [x] Implement string operations (MOVS*, STOS*, SCAS*)
 - [x] Implement flag operations (SAHF, STC, STD, SAR, SBB)
 - [ ] Add support for rare/undocumented instructions
 - [ ] Handle instruction prefixes properly (REX, VEX, EVEX)
@@ -71,11 +71,12 @@ Working In Progress (2025.06 Updated)
 - [ ] Generate idiomatic C patterns
 
 #### Simulation Routine
-- [ ] Design simulation framework
-- [ ] Implement x64 CPU state emulation
-- [ ] Add memory management simulation
-- [ ] Create symbolic execution engine
-- [ ] Build constraint solver integration
+
+- [X] Design simulation framework
+- [X] Implement x64 CPU state emulation
+- [X] Add memory management simulation
+- [X] Create symbolic execution engine
+- [ ] Build constraint solver integration (future enhancement)
 
 ### 🟡 P2: User Interface
 
@@ -140,7 +141,8 @@ Working In Progress (2025.06 Updated)
 - [ ] Create video tutorials
 
 ### 🟡 Testing
-- [ ] Achieve 80% test coverage
+
+- [ ] Achieve 80%>= test coverage
 - [ ] Add integration tests
 - [ ] Create regression test suite
 - [ ] Implement differential testing

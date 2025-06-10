@@ -5,6 +5,7 @@ pub mod core;
 pub mod ir;
 pub mod pe;
 pub mod prelude;
+pub mod simulation;
 #[cfg(test)]
 pub mod tests;
 pub mod utils;

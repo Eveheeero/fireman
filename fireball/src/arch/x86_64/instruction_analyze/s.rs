@@ -264,3 +264,123 @@ pub(super) fn stosq() -> &'static [IrStatement] {
 
     [store, inc_rdi].into()
 }
+
+#[box_to_static_reference]
+pub(super) fn scasb() -> &'static [IrStatement] {
+    // SCASB compares AL with byte at [RDI] and sets flags, then increments/decrements RDI
+    let size = size_result_byte(c(1));
+    let src = d(rdi.clone());
+
+    // Compare AL with [RDI]
+    let cmp = b::sub(al.clone(), src);
+    let calc_flags = calc_flags_automatically(cmp, &size, &[&of, &sf, &zf, &af, &cf, &pf]);
+
+    // Update RDI based on DF flag
+    let inc_rdi = assign(
+        b::add(rdi.clone(), c(1)),
+        rdi.clone(),
+        &size_relative(rdi.clone()),
+    );
+    let dec_rdi = assign(
+        b::sub(rdi.clone(), c(1)),
+        rdi.clone(),
+        &size_relative(rdi.clone()),
+    );
+    let update_rdi = condition(
+        b::equal(df.clone(), c(0), &size_result_bit(c(1))),
+        [inc_rdi],
+        [dec_rdi],
+    );
+
+    [calc_flags, update_rdi].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn scasw() -> &'static [IrStatement] {
+    // SCASW compares AX with word at [RDI] and sets flags, then increments/decrements RDI
+    let size = size_result_byte(c(2));
+    let src = d(rdi.clone());
+
+    // Compare AX with [RDI]
+    let cmp = b::sub(ax.clone(), src);
+    let calc_flags = calc_flags_automatically(cmp, &size, &[&of, &sf, &zf, &af, &cf, &pf]);
+
+    // Update RDI based on DF flag
+    let inc_rdi = assign(
+        b::add(rdi.clone(), c(2)),
+        rdi.clone(),
+        &size_relative(rdi.clone()),
+    );
+    let dec_rdi = assign(
+        b::sub(rdi.clone(), c(2)),
+        rdi.clone(),
+        &size_relative(rdi.clone()),
+    );
+    let update_rdi = condition(
+        b::equal(df.clone(), c(0), &size_result_bit(c(1))),
+        [inc_rdi],
+        [dec_rdi],
+    );
+
+    [calc_flags, update_rdi].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn scasd() -> &'static [IrStatement] {
+    // SCASD compares EAX with dword at [RDI] and sets flags, then increments/decrements RDI
+    let size = size_result_byte(c(4));
+    let src = d(rdi.clone());
+
+    // Compare EAX with [RDI]
+    let cmp = b::sub(eax.clone(), src);
+    let calc_flags = calc_flags_automatically(cmp, &size, &[&of, &sf, &zf, &af, &cf, &pf]);
+
+    // Update RDI based on DF flag
+    let inc_rdi = assign(
+        b::add(rdi.clone(), c(4)),
+        rdi.clone(),
+        &size_relative(rdi.clone()),
+    );
+    let dec_rdi = assign(
+        b::sub(rdi.clone(), c(4)),
+        rdi.clone(),
+        &size_relative(rdi.clone()),
+    );
+    let update_rdi = condition(
+        b::equal(df.clone(), c(0), &size_result_bit(c(1))),
+        [inc_rdi],
+        [dec_rdi],
+    );
+
+    [calc_flags, update_rdi].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn scasq() -> &'static [IrStatement] {
+    // SCASQ compares RAX with qword at [RDI] and sets flags, then increments/decrements RDI
+    let size = size_result_byte(c(8));
+    let src = d(rdi.clone());
+
+    // Compare RAX with [RDI]
+    let cmp = b::sub(rax.clone(), src);
+    let calc_flags = calc_flags_automatically(cmp, &size, &[&of, &sf, &zf, &af, &cf, &pf]);
+
+    // Update RDI based on DF flag
+    let inc_rdi = assign(
+        b::add(rdi.clone(), c(8)),
+        rdi.clone(),
+        &size_relative(rdi.clone()),
+    );
+    let dec_rdi = assign(
+        b::sub(rdi.clone(), c(8)),
+        rdi.clone(),
+        &size_relative(rdi.clone()),
+    );
+    let update_rdi = condition(
+        b::equal(df.clone(), c(0), &size_result_bit(c(1))),
+        [inc_rdi],
+        [dec_rdi],
+    );
+
+    [calc_flags, update_rdi].into()
+}
