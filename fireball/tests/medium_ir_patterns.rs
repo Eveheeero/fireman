@@ -136,6 +136,8 @@ fn test_confidence_scoring() {
     // Test LowIR pattern (should have high confidence)
     let low_ir_pattern = Pattern::LowIR {
         instructions: vec![],
+        terminator: None,
+        source_block: BlockId(0),
         confidence: Confidence::CERTAIN,
     };
     let confidence = calc.calculate(&low_ir_pattern);

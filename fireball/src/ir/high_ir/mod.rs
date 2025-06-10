@@ -496,10 +496,15 @@ impl HighIRGenerator {
             .iter()
             .enumerate()
             .map(|(i, (hint, ty))| {
-                let name = if hint.is_empty() {
-                    format!("arg{}", i)
-                } else {
-                    hint.clone()
+                // Generate better parameter names
+                let name = match (i, hint.as_str()) {
+                    (_, h) if !h.is_empty() && h != "param" => h.to_string(),
+                    (0, _) => "a".to_string(),
+                    (1, _) => "b".to_string(),
+                    (2, _) => "c".to_string(),
+                    (3, _) => "d".to_string(),
+                    (4, _) => "e".to_string(),
+                    _ => format!("arg{}", i),
                 };
                 Parameter {
                     name,
@@ -728,9 +733,22 @@ impl HighIRGenerator {
                 vec![Statement::Expression(expr)]
             }
 
-            Pattern::LowIR { instructions, .. } => {
+            Pattern::LowIR {
+                instructions,
+                terminator,
+                ..
+            } => {
                 // Fallback: convert low IR instructions directly
-                self.convert_low_ir_instructions(instructions)
+                let mut stmts = self.convert_low_ir_instructions(instructions);
+
+                // Handle terminator if present
+                if let Some(term) = terminator {
+                    if let Some(term_stmt) = self.convert_terminator(term) {
+                        stmts.push(term_stmt);
+                    }
+                }
+
+                stmts
             }
 
             _ => {
@@ -884,6 +902,35 @@ impl HighIRGenerator {
         statements
     }
 
+    /// Convert Low IR terminator to High IR statement
+    fn convert_terminator(&mut self, terminator: &low_ir::Terminator) -> Option<Statement> {
+        match terminator {
+            low_ir::Terminator::Return(None) => Some(Statement::Return(None)),
+            low_ir::Terminator::Return(Some((value, _ty))) => {
+                let expr = self.convert_low_ir_value(value);
+                Some(Statement::Return(Some(expr)))
+            }
+            low_ir::Terminator::Branch(target) => {
+                Some(Statement::Goto(format!("L_{:x}", target.0)))
+            }
+            low_ir::Terminator::CondBranch {
+                cond,
+                true_dest,
+                false_dest,
+            } => {
+                // For now, generate if-goto pattern
+                // TODO: Optimize to structured control flow
+                let cond_expr = self.convert_low_ir_value(cond);
+                Some(Statement::If {
+                    condition: cond_expr,
+                    then_branch: Box::new(Statement::Goto(format!("L_{:x}", true_dest.0))),
+                    else_branch: Some(Box::new(Statement::Goto(format!("L_{:x}", false_dest.0)))),
+                })
+            }
+            _ => None, // Handle other terminators later
+        }
+    }
+
     /// Convert Low IR value to High IR expression
     fn convert_low_ir_value(&mut self, value: &low_ir::Value) -> Expression {
         match value {
@@ -908,12 +955,20 @@ impl HighIRGenerator {
 
     /// Convert LocalId to variable name
     fn convert_local_id_to_name(&mut self, local_id: &low_ir::LocalId) -> String {
-        // Use the purpose field if available, otherwise generate a name
-        if !local_id.purpose.is_empty() {
-            format!("{}_{}", local_id.purpose, local_id.index)
-        } else {
-            self.name_gen.generate_temp_name()
+        // Use the purpose field directly for cleaner names
+        if !local_id.purpose.is_empty() && local_id.purpose != "temp" {
+            // For version 0, use the purpose directly (no suffix)
+            if local_id.version == 0 {
+                return local_id.purpose.to_string();
+            } else {
+                // For SSA versions, use underscore notation
+                return format!("{}_{}", local_id.purpose, local_id.version);
+            }
         }
+
+        // Generate semantic names based on common patterns
+        // For now, fallback to temp name
+        self.name_gen.generate_temp_name()
     }
 
     /// Convert Low IR binary operation to High IR

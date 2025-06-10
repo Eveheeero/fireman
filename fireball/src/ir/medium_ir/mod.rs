@@ -121,6 +121,8 @@ pub enum Pattern {
     /// Direct Low IR reference (no pattern matched)
     LowIR {
         instructions: Vec<low_ir::Instruction>,
+        terminator: Option<low_ir::Terminator>,
+        source_block: low_ir::BlockId,
         confidence: Confidence,
     },
 }

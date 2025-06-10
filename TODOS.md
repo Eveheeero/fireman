@@ -25,11 +25,14 @@ Working In Progress (2025.01 Updated)
 **Goal**: Produce compilable, readable C code from binaries
 
 1. **Fix C Code Generation Issues** [High Priority]
-  - [ ] Handle return statements from Low IR patterns
-  - [ ] Fix variable name mapping (currently showing as `result_0`, `a_1`, etc.)
-  - [ ] Generate proper parameter names (not `param_0`, `param_1`)
-  - [ ] Handle terminator instructions in pattern conversion
-  - [ ] Add missing semicolons and braces
+
+- [x] Handle return statements from Low IR patterns ✅ DONE
+- [x] Fix variable name mapping (currently showing as `result_0`, `a_1`, etc.) ✅ DONE
+- [x] Generate proper parameter names (not `param_0`, `param_1`) ✅ DONE
+- [x] Handle terminator instructions in pattern conversion ✅ DONE
+- [ ] Add missing semicolons and braces
+- [ ] Add variable type declarations (int result = ... instead of result = ...)
+- [ ] Fix conditional branch code generation
 
 2. **Variable Naming & Type Recovery** [High Priority]
   - [ ] Implement smart variable naming heuristics

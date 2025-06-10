@@ -91,9 +91,13 @@ impl MediumIRAnalyzer {
         }
 
         // Check for conditional patterns
-        if let Some(cond_pattern) =
-            self.detect_conditional_pattern(&block.terminator, store, &block.instructions, func)
-        {
+        if let Some(cond_pattern) = self.detect_conditional_pattern(
+            &block.terminator,
+            store,
+            &block.instructions,
+            func,
+            &block.id,
+        ) {
             patterns.push(cond_pattern);
         }
 
@@ -108,6 +112,8 @@ impl MediumIRAnalyzer {
         if patterns.is_empty() {
             let low_ir_pattern = Pattern::LowIR {
                 instructions: block.instructions.clone(),
+                terminator: Some(block.terminator.clone()),
+                source_block: block.id.clone(),
                 confidence: Confidence::CERTAIN,
             };
             patterns.push(store.insert(low_ir_pattern));
@@ -149,6 +155,8 @@ impl MediumIRAnalyzer {
 
                     let cond_pattern = Pattern::LowIR {
                         instructions: cond_instructions.clone(),
+                        terminator: None,
+                        source_block: block.id.clone(),
                         confidence: if cond_instructions.is_empty() {
                             Confidence::LOW
                         } else {
@@ -189,6 +197,8 @@ impl MediumIRAnalyzer {
 
             let body = Pattern::LowIR {
                 instructions: body_instructions,
+                terminator: None,
+                source_block: block.id.clone(),
                 confidence: if body_blocks.is_empty() {
                     Confidence::LOW
                 } else {
@@ -236,6 +246,8 @@ impl MediumIRAnalyzer {
                         has_init = true;
                         let init = Pattern::LowIR {
                             instructions: pred_block.instructions.clone(),
+                            terminator: None,
+                            source_block: pred_id.clone(),
                             confidence: Confidence::MEDIUM,
                         };
                         init_ref = Some(store.insert(init));
@@ -274,6 +286,8 @@ impl MediumIRAnalyzer {
                                 has_increment = true;
                                 let inc = Pattern::LowIR {
                                     instructions: vec![inst.clone()],
+                                    terminator: None,
+                                    source_block: other_id.clone(),
                                     confidence: Confidence::MEDIUM,
                                 };
                                 increment_ref = Some(store.insert(inc));
@@ -344,6 +358,7 @@ impl MediumIRAnalyzer {
         store: &mut PatternStore,
         block_instructions: &[low_ir::Instruction],
         func: &low_ir::Function,
+        block_id: &low_ir::BlockId,
     ) -> Option<PatternRef> {
         match terminator {
             low_ir::Terminator::CondBranch {
@@ -368,6 +383,8 @@ impl MediumIRAnalyzer {
 
                 let condition = Pattern::LowIR {
                     instructions: cond_instructions,
+                    terminator: None,
+                    source_block: block_id.clone(),
                     confidence: Confidence::HIGH,
                 };
                 let cond_ref = store.insert(condition);
@@ -379,8 +396,16 @@ impl MediumIRAnalyzer {
                     vec![]
                 };
 
+                let then_terminator = if let Some(then_block) = func.blocks.get(true_dest) {
+                    Some(then_block.terminator.clone())
+                } else {
+                    None
+                };
+
                 let then_pattern = Pattern::LowIR {
                     instructions: then_instructions,
+                    terminator: then_terminator,
+                    source_block: true_dest.clone(),
                     confidence: Confidence::HIGH,
                 };
                 let then_ref = store.insert(then_pattern);
@@ -389,6 +414,8 @@ impl MediumIRAnalyzer {
                 let else_branch = if let Some(else_block) = func.blocks.get(false_dest) {
                     let else_pattern = Pattern::LowIR {
                         instructions: else_block.instructions.clone(),
+                        terminator: Some(else_block.terminator.clone()),
+                        source_block: false_dest.clone(),
                         confidence: Confidence::HIGH,
                     };
                     Some(store.insert(else_pattern))
@@ -412,6 +439,8 @@ impl MediumIRAnalyzer {
                 // Create switch pattern
                 let value_pattern = Pattern::LowIR {
                     instructions: vec![], // TODO: Extract value computation
+                    terminator: None,
+                    source_block: block_id.clone(),
                     confidence: Confidence::HIGH,
                 };
                 let value_ref = store.insert(value_pattern);
@@ -421,6 +450,8 @@ impl MediumIRAnalyzer {
                     if let low_ir::Constant::Int { value, .. } = constant {
                         let case_pattern = Pattern::LowIR {
                             instructions: vec![], // TODO: Extract case body
+                            terminator: None,
+                            source_block: block_id.clone(),
                             confidence: Confidence::HIGH,
                         };
                         // Convert i128 to i64, clamping if necessary
@@ -463,6 +494,8 @@ impl MediumIRAnalyzer {
                     _ => {
                         let indirect = Pattern::LowIR {
                             instructions: vec![], // TODO: Extract indirect target
+                            terminator: None,
+                            source_block: low_ir::BlockId(0), // TODO: Get proper block ID
                             confidence: Confidence::LOW,
                         };
                         FunctionRef::Indirect(store.insert(indirect))
@@ -475,6 +508,8 @@ impl MediumIRAnalyzer {
                     .map(|(_val, _ty)| {
                         let arg = Pattern::LowIR {
                             instructions: vec![], // TODO: Extract argument computation
+                            terminator: None,
+                            source_block: low_ir::BlockId(0), // TODO: Get proper block ID
                             confidence: Confidence::HIGH,
                         };
                         store.insert(arg)
@@ -485,6 +520,8 @@ impl MediumIRAnalyzer {
                 let return_pattern = dst.as_ref().map(|_| {
                     let ret = Pattern::LowIR {
                         instructions: vec![], // TODO: Extract return value handling
+                        terminator: None,
+                        source_block: low_ir::BlockId(0), // TODO: Get proper block ID
                         confidence: Confidence::HIGH,
                     };
                     store.insert(ret)
@@ -537,6 +574,8 @@ impl MediumIRAnalyzer {
         if all_patterns.is_empty() {
             let empty = Pattern::LowIR {
                 instructions: vec![],
+                terminator: None,
+                source_block: low_ir::BlockId(0), // Empty pattern, no specific block
                 confidence: Confidence::LOW,
             };
             store.insert(empty)
@@ -567,7 +606,18 @@ impl MediumIRAnalyzer {
                     parameters: params
                         .iter()
                         .enumerate()
-                        .map(|(i, ty)| (format!("param_{}", i), self.convert_type(ty)))
+                        .map(|(i, ty)| {
+                            // Use simple parameter names for better readability
+                            let name = match i {
+                                0 => "a".to_string(),
+                                1 => "b".to_string(),
+                                2 => "c".to_string(),
+                                3 => "d".to_string(),
+                                4 => "e".to_string(),
+                                _ => format!("param_{}", i),
+                            };
+                            (name, self.convert_type(ty))
+                        })
                         .collect(),
                     convention: low_ir::CallConv::C, // TODO: Detect actual convention
                     variadic: *varargs,
