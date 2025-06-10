@@ -792,7 +792,7 @@ impl Arm32Decoder {
     }
 
     /// Decode Thumb-2 32-bit instruction
-    fn decode_thumb2_32bit_encoding(&self, encoding: u32) -> Result<Instruction, Arm32Error> {
+    fn decode_thumb2_32bit_encoding(&self, _encoding: u32) -> Result<Instruction, Arm32Error> {
         // This is a complex area - Thumb-2 has many instruction formats
         // For now, return an error
         Err(Arm32Error::Unimplemented(

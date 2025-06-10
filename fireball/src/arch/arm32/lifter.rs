@@ -52,11 +52,11 @@ impl Arm32Lifter {
             locals: BTreeMap::new(),
         };
 
-        let mut instructions = Vec::new();
+        let instructions = Vec::new();
 
         // Convert each IR statement to Low IR instruction
         if let Some(ir_block_data) = ir_block.get_ir().as_ref() {
-            for ir in ir_block_data.ir() {
+            for _ir in ir_block_data.ir() {
                 // TODO: Implement ARM32 IR conversion
                 // This will involve mapping ARM32-specific operations
                 // to the Low IR representation

@@ -447,7 +447,7 @@ mod branch {
     }
 
     /// RET - Return from subroutine
-    pub fn ret(inst: &Instruction) -> &'static [IrStatement] {
+    pub fn ret(_inst: &Instruction) -> &'static [IrStatement] {
         Box::leak(Box::new([IrStatement::Halt]))
     }
 

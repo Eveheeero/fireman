@@ -36,7 +36,7 @@ pub fn parse_elf(data: Vec<u8>) -> Result<Elf, DecompileError> {
 }
 
 /// Parse 32-bit ELF
-fn parse_elf32(data: Vec<u8>, endian: ElfData) -> Result<Elf, DecompileError> {
+fn parse_elf32(_data: Vec<u8>, _endian: ElfData) -> Result<Elf, DecompileError> {
     // TODO: Implement 32-bit ELF parsing
     Err(DecompileError::Unknown(Some(
         "32-bit ELF parsing not implemented".to_string(),

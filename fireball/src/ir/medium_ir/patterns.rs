@@ -91,7 +91,7 @@ impl LoopPatternDetector {
     fn try_match_while_loop(
         header: &low_ir::BasicBlock,
         loop_blocks: &BTreeSet<low_ir::BlockId>,
-        func: &low_ir::Function,
+        _func: &low_ir::Function,
     ) -> Option<WhileLoopPattern> {
         // While loop: condition at header, no specific increment
         let condition = Self::extract_loop_condition(header)?;
@@ -106,7 +106,7 @@ impl LoopPatternDetector {
     fn try_match_do_while_loop(
         tail: &low_ir::BasicBlock,
         loop_blocks: &BTreeSet<low_ir::BlockId>,
-        func: &low_ir::Function,
+        _func: &low_ir::Function,
     ) -> Option<DoWhileLoopPattern> {
         // Do-while: condition at tail
         let condition = Self::extract_loop_condition(tail)?;
@@ -276,8 +276,8 @@ impl CallPatternDetector {
                 if let low_ir::Instruction::Call {
                     func: target,
                     args,
-                    dst,
-                    conv,
+                    dst: _,
+                    conv: _,
                 } = inst
                 {
                     if let Some(lib_call) = Self::match_library_call(target, args, pattern_db) {
@@ -292,9 +292,9 @@ impl CallPatternDetector {
 
     /// Match a call against known library functions
     fn match_library_call(
-        target: &low_ir::Value,
-        args: &[(low_ir::Value, low_ir::Type)],
-        pattern_db: &PatternDatabase,
+        _target: &low_ir::Value,
+        _args: &[(low_ir::Value, low_ir::Type)],
+        _pattern_db: &PatternDatabase,
     ) -> Option<LibraryCallPattern> {
         // TODO: Implement library function matching
         // This would involve:
@@ -330,7 +330,7 @@ impl ArrayPatternDetector {
         // Pattern: base + index * element_size
         match inst {
             low_ir::Instruction::Load {
-                dst: _, ptr, ty, ..
+                dst: _, ptr, ty: _, ..
             } => {
                 // Check if ptr is result of address calculation
                 if let Some((base, index, scale)) = Self::analyze_pointer_calculation(ptr) {
@@ -345,7 +345,7 @@ impl ArrayPatternDetector {
                 }
             }
             low_ir::Instruction::Store {
-                val: _, ptr, ty, ..
+                val: _, ptr, ty: _, ..
             } => {
                 // Check if ptr is result of address calculation
                 if let Some((base, index, scale)) = Self::analyze_pointer_calculation(ptr) {
@@ -365,7 +365,7 @@ impl ArrayPatternDetector {
 
     /// Analyze a pointer value to see if it's an array access pattern
     fn analyze_pointer_calculation(
-        ptr: &low_ir::Value,
+        _ptr: &low_ir::Value,
     ) -> Option<(low_ir::Value, low_ir::Value, usize)> {
         // For now, we need to trace back through the value
         // This is a simplified version - in reality we'd need to track through multiple instructions

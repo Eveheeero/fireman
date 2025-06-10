@@ -370,7 +370,7 @@ fn cmp() -> &'static [IrStatement] {
 #[box_to_static_reference]
 fn mul() -> &'static [IrStatement] {
     // Unsigned multiply - result in EDX:EAX
-    let size = o1_size();
+    let _size = o1_size();
     let mul = b::mul(eax_data(), o1());
     let assignment = assign(mul.clone(), edx_eax_data(), size_result_byte(c(8)));
     let calc_flags = calc_flags_automatically(mul, size_result_byte(c(8)), &[&OF, &CF]);

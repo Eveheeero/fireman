@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::ir::low_ir::{self, Module as LowModule};
-use crate::ir::medium_ir::pattern_database::{PatternDatabaseBuilder, Platform};
+use crate::ir::medium_ir::pattern_database::PatternDatabaseBuilder;
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -1022,7 +1022,7 @@ impl PatternDatabase {
 
 impl MediumIRAnalyzer {
     /// Try to match a function address to a known library function
-    fn match_library_function(&self, address: u64) -> Option<&LibraryPattern> {
+    fn match_library_function(&self, _address: u64) -> Option<&LibraryPattern> {
         // TODO: Implement proper symbol resolution
         // For now, check if address matches known library function addresses
         // This would typically involve:
@@ -1109,7 +1109,7 @@ impl MediumIRAnalyzer {
                         match lib_pattern.name.as_str() {
                             "malloc" | "calloc" => {
                                 // Extract size argument
-                                if let Some((size_val, _)) = args.first() {
+                                if let Some((_size_val, _)) = args.first() {
                                     let size_pattern = Pattern::LowIR {
                                         instructions: vec![], // TODO: Extract size computation
                                         terminator: None,
@@ -1132,7 +1132,7 @@ impl MediumIRAnalyzer {
                             }
                             "free" => {
                                 // Extract pointer argument
-                                if let Some((ptr_val, _)) = args.first() {
+                                if let Some((_ptr_val, _)) = args.first() {
                                     let ptr_pattern = Pattern::LowIR {
                                         instructions: vec![], // TODO: Extract pointer
                                         terminator: None,

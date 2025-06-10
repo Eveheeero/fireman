@@ -50,6 +50,6 @@ bindings
 .serena/
 .serena/cache
 **/Cargo.lock
-
+**/node_modules/
 iceball/architecture_doc_extractor/
 .output.txt

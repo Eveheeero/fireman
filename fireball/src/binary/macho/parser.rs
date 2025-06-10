@@ -30,7 +30,7 @@ pub fn parse_macho(data: Vec<u8>) -> Result<MachO, DecompileError> {
 }
 
 /// Parse 32-bit Mach-O
-fn parse_macho_32(data: Vec<u8>, is_big_endian: bool) -> Result<MachO, DecompileError> {
+fn parse_macho_32(_data: Vec<u8>, _is_big_endian: bool) -> Result<MachO, DecompileError> {
     // TODO: Implement 32-bit Mach-O parsing
     Err(DecompileError::Unknown(Some(
         "32-bit Mach-O parsing not implemented".to_string(),
@@ -74,7 +74,7 @@ fn parse_macho_64(data: Vec<u8>, is_big_endian: bool) -> Result<MachO, Decompile
     };
 
     // Parse load commands
-    let mut load_commands = Vec::new();
+    let load_commands = Vec::new();
     let mut offset = 32; // Start after header
 
     for _ in 0..header.ncmds {
@@ -82,7 +82,7 @@ fn parse_macho_64(data: Vec<u8>, is_big_endian: bool) -> Result<MachO, Decompile
             break;
         }
 
-        let cmd = read_u32(offset);
+        let _cmd = read_u32(offset);
         let cmdsize = read_u32(offset + 4);
 
         // Skip this load command for now

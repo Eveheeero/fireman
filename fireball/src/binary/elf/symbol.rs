@@ -171,8 +171,8 @@ fn parse_symbol32(data: &[u8]) -> Result<Symbol, FireballError> {
 }
 
 /// Resolve symbol names using string table
-pub fn resolve_symbol_names(symbols: &mut Vec<Symbol>, string_table: &BTreeMap<u32, String>) {
-    for symbol in symbols {
+pub fn resolve_symbol_names(symbols: &mut Vec<Symbol>, _string_table: &BTreeMap<u32, String>) {
+    for _symbol in symbols {
         // Name resolution would be done by looking up symbol.name in string_table
         // For now, we just store the index
     }

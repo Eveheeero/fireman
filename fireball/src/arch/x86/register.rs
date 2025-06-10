@@ -261,32 +261,32 @@ macro_rules! define_register {
 }
 
 // Define commonly used registers
-define_register!(eax, X86Register::EAX);
-define_register!(ebx, X86Register::EBX);
-define_register!(ecx, X86Register::ECX);
-define_register!(edx, X86Register::EDX);
-define_register!(esi, X86Register::ESI);
-define_register!(edi, X86Register::EDI);
-define_register!(esp, X86Register::ESP);
-define_register!(ebp, X86Register::EBP);
-define_register!(eip, X86Register::EIP);
-define_register!(eflags, X86Register::EFLAGS);
+define_register!(EAX, X86Register::EAX);
+define_register!(EBX, X86Register::EBX);
+define_register!(ECX, X86Register::ECX);
+define_register!(EDX, X86Register::EDX);
+define_register!(ESI, X86Register::ESI);
+define_register!(EDI, X86Register::EDI);
+define_register!(ESP, X86Register::ESP);
+define_register!(EBP, X86Register::EBP);
+define_register!(EIP, X86Register::EIP);
+define_register!(EFLAGS, X86Register::EFLAGS);
 
 // 16-bit registers
-define_register!(ax, X86Register::AX);
-define_register!(bx, X86Register::BX);
-define_register!(cx, X86Register::CX);
-define_register!(dx, X86Register::DX);
+define_register!(AX, X86Register::AX);
+define_register!(BX, X86Register::BX);
+define_register!(CX, X86Register::CX);
+define_register!(DX, X86Register::DX);
 
 // 8-bit registers
-define_register!(al, X86Register::AL);
-define_register!(ah, X86Register::AH);
-define_register!(bl, X86Register::BL);
-define_register!(bh, X86Register::BH);
-define_register!(cl, X86Register::CL);
-define_register!(ch, X86Register::CH);
-define_register!(dl, X86Register::DL);
-define_register!(dh, X86Register::DH);
+define_register!(AL, X86Register::AL);
+define_register!(AH, X86Register::AH);
+define_register!(BL, X86Register::BL);
+define_register!(BH, X86Register::BH);
+define_register!(CL, X86Register::CL);
+define_register!(CH, X86Register::CH);
+define_register!(DL, X86Register::DL);
+define_register!(DH, X86Register::DH);
 
 /// x86 condition codes (same as x86_64)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

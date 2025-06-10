@@ -5,10 +5,9 @@
 //! the decompilation process.
 
 use super::*;
-use crate::utils::Aos;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// Pattern database builder for creating and managing pattern databases
 #[derive(Debug)]
@@ -290,7 +289,7 @@ impl PatternDatabaseBuilder {
     }
 
     /// Parse idiom patterns from text
-    fn parse_idiom_patterns(&self, content: &str) -> Result<Vec<IdiomPattern>, String> {
+    fn parse_idiom_patterns(&self, _content: &str) -> Result<Vec<IdiomPattern>, String> {
         // TODO: Implement idiom pattern parsing
         Ok(Vec::new())
     }
