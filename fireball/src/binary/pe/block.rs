@@ -123,38 +123,42 @@ impl Pe {
                 destination_type: DestinationType::Dynamic,
                 relation_type,
             },
-            iceball::Argument::Memory(iceball::Memory::AbsoluteAddressing(offset)) => {
-                BlockRelationInformation {
-                    destination: Some(Address::from_virtual_address(&self.sections, *offset)),
-                    destination_type: DestinationType::Static,
-                    relation_type,
-                }
-            }
-            iceball::Argument::Memory(iceball::Memory::RelativeAddressing(args)) => {
-                if args
-                    .iter()
-                    .filter(|x| matches!(x, iceball::RelativeAddressingArgument::Register(_)))
-                    .all(|x| {
-                        matches!(
-                            x,
-                            iceball::RelativeAddressingArgument::Register(iceball::Register::X64(
-                                iceball::X64Register::Eip,
-                            )) | iceball::RelativeAddressingArgument::Register(
-                                iceball::Register::X64(iceball::X64Register::Rip,)
-                            )
-                        )
-                    })
-                {
+            iceball::Argument::Memory(mem) => {
+                // Check if this is absolute addressing (no base register)
+                if mem.base.is_none() && mem.index.is_none() {
                     BlockRelationInformation {
-                        destination: Some(self.calc_relative_address_with_ip(ip, args)),
+                        destination: Some(Address::from_virtual_address(
+                            &self.sections,
+                            mem.displacement as u64,
+                        )),
                         destination_type: DestinationType::Static,
                         relation_type,
                     }
                 } else {
-                    BlockRelationInformation {
-                        destination: None,
-                        destination_type: DestinationType::Dynamic,
-                        relation_type,
+                    // Check if this is RIP-relative addressing
+                    let is_rip_relative = match &mem.base {
+                        Some(iceball::Register::X64(iceball::X64Register::Eip))
+                        | Some(iceball::Register::X64(iceball::X64Register::Rip)) => true,
+                        _ => false,
+                    } && mem.index.is_none();
+
+                    if is_rip_relative {
+                        // Calculate absolute address for RIP-relative operand
+                        let absolute_addr = ip.get_virtual_address() as i64 + mem.displacement;
+                        BlockRelationInformation {
+                            destination: Some(Address::from_virtual_address(
+                                &self.sections,
+                                absolute_addr as u64,
+                            )),
+                            destination_type: DestinationType::Static,
+                            relation_type,
+                        }
+                    } else {
+                        BlockRelationInformation {
+                            destination: None,
+                            destination_type: DestinationType::Dynamic,
+                            relation_type,
+                        }
                     }
                 }
             }
@@ -164,107 +168,5 @@ impl Pe {
                 relation_type,
             },
         }
-    }
-
-    /// Calculates the absolute address for a RIP/EIP-relative operand.
-    fn calc_relative_address_with_ip(
-        &self,
-        ip: &Address,
-        args: &[iceball::RelativeAddressingArgument],
-    ) -> Address {
-        let extract_constant = |arg: &iceball::RelativeAddressingArgument| match arg {
-            iceball::RelativeAddressingArgument::Constant(x) => *x,
-            _ => unreachable!("{:?}", arg),
-        };
-        let mut args: Vec<_> = args.into();
-
-        // turn ip to constant
-        for i in &mut args {
-            match i {
-                iceball::RelativeAddressingArgument::Register(iceball::Register::X64(
-                    iceball::X64Register::Eip,
-                ))
-                | iceball::RelativeAddressingArgument::Register(iceball::Register::X64(
-                    iceball::X64Register::Rip,
-                )) => {
-                    *i = iceball::RelativeAddressingArgument::Constant(
-                        ip.get_virtual_address() as i128
-                    );
-                }
-                _ => {}
-            }
-        }
-
-        // calc mul operator
-        while args.contains(&iceball::RelativeAddressingArgument::Operator(
-            iceball::AddressingOperator::Mul,
-        )) {
-            let operator_index = args
-                .iter()
-                .position(|x| {
-                    matches!(
-                        x,
-                        iceball::RelativeAddressingArgument::Operator(
-                            iceball::AddressingOperator::Mul
-                        )
-                    )
-                })
-                .unwrap();
-            let arg1 = extract_constant(&args[operator_index - 1]);
-            let arg2 = extract_constant(&args[operator_index + 1]);
-            args.insert(
-                operator_index - 1,
-                iceball::RelativeAddressingArgument::Constant(arg1 * arg2),
-            );
-            args.remove(operator_index);
-            args.remove(operator_index);
-        }
-
-        // calc add/sub operator
-        while args.contains(&iceball::RelativeAddressingArgument::Operator(
-            iceball::AddressingOperator::Add,
-        )) || args.contains(&iceball::RelativeAddressingArgument::Operator(
-            iceball::AddressingOperator::Sub,
-        )) {
-            let operator_index = args
-                .iter()
-                .position(|x| {
-                    matches!(
-                        x,
-                        iceball::RelativeAddressingArgument::Operator(
-                            iceball::AddressingOperator::Add | iceball::AddressingOperator::Sub
-                        )
-                    )
-                })
-                .unwrap();
-            let arg1 = extract_constant(&args[operator_index - 1]);
-            let arg2 = extract_constant(&args[operator_index + 1]);
-            args.insert(
-                operator_index - 1,
-                iceball::RelativeAddressingArgument::Constant(match args[operator_index] {
-                    iceball::RelativeAddressingArgument::Operator(
-                        iceball::AddressingOperator::Add,
-                    ) => arg1 + arg2,
-                    iceball::RelativeAddressingArgument::Operator(
-                        iceball::AddressingOperator::Sub,
-                    ) => arg1 - arg2,
-                    _ => unreachable!(),
-                }),
-            );
-            args.remove(operator_index);
-            args.remove(operator_index);
-            args.remove(operator_index);
-        }
-
-        // return
-        debug_assert!(
-            args.len() == 1,
-            "Address computation not fully reduced: {:?}",
-            args
-        );
-        let address = extract_constant(&args[0])
-            .try_into()
-            .expect("Negative address result");
-        Address::from_virtual_address(&self.sections, address)
     }
 }

@@ -1,4 +1,4 @@
-use crate::{DisassembleError, Statement, StatementInner, X64Statement};
+use crate::{DisassembleError, StatementInner, X64Statement};
 
 impl StatementInner for X64Statement {
     fn is_jcc(&self) -> bool {
@@ -41,14 +41,10 @@ impl StatementInner for X64Statement {
 }
 
 impl X64Statement {
-    pub(crate) fn parse(mnemonic: impl AsRef<str>) -> Result<Statement, DisassembleError> {
+    pub(crate) fn parse(mnemonic: impl AsRef<str>) -> Result<X64Statement, DisassembleError> {
         let mnemonic = mnemonic.as_ref();
         let mnemonic = mnemonic.to_ascii_uppercase();
-        if let Ok(stmt) = mnemonic.parse::<X64Statement>() {
-            Ok(Statement::X64(stmt))
-        } else {
-            Err(DisassembleError::UnknownStatement)
-        }
+        mnemonic.parse::<X64Statement>()
     }
 }
 impl std::fmt::Display for X64Statement {

@@ -1,7 +1,6 @@
 //! ELF file parser implementation
 
 use super::{Elf, header::*, section::SectionHeader, symbol};
-use crate::prelude::FireballError;
 use crate::utils::error::DecompileError;
 use std::collections::BTreeMap;
 
@@ -81,11 +80,9 @@ fn parse_elf64(data: Vec<u8>, endian: ElfData) -> Result<Elf, DecompileError> {
 }
 
 /// Parse 64-bit ELF header
-fn parse_elf64_header(data: &[u8], endian: ElfData) -> Result<ElfHeader, FireballError> {
+fn parse_elf64_header(data: &[u8], endian: ElfData) -> Result<ElfHeader, DecompileError> {
     if data.len() < 64 {
-        return Err(FireballError::InvalidBinary(
-            "ELF header too small".to_string(),
-        ));
+        return Err(DecompileError::HeaderParsingFailed);
     }
 
     let read_u16 = |offset: usize| -> u16 {
@@ -163,16 +160,14 @@ fn parse_program_headers(
     data: &[u8],
     header: &ElfHeader,
     endian: ElfData,
-) -> Result<Vec<ProgramHeader>, FireballError> {
+) -> Result<Vec<ProgramHeader>, DecompileError> {
     let mut headers = Vec::new();
     let offset = header.phoff as usize;
     let size = header.phentsize as usize;
     let count = header.phnum as usize;
 
     if offset + size * count > data.len() {
-        return Err(FireballError::InvalidBinary(
-            "Program headers beyond file".to_string(),
-        ));
+        return Err(DecompileError::HeaderParsingFailed);
     }
 
     for i in 0..count {
@@ -185,11 +180,9 @@ fn parse_program_headers(
 }
 
 /// Parse a single 64-bit program header
-fn parse_program_header64(data: &[u8], endian: ElfData) -> Result<ProgramHeader, FireballError> {
+fn parse_program_header64(data: &[u8], endian: ElfData) -> Result<ProgramHeader, DecompileError> {
     if data.len() < 56 {
-        return Err(FireballError::InvalidBinary(
-            "Program header too small".to_string(),
-        ));
+        return Err(DecompileError::HeaderParsingFailed);
     }
 
     let read_u32 = |offset: usize| -> u32 {
@@ -251,16 +244,14 @@ fn parse_section_headers(
     data: &[u8],
     header: &ElfHeader,
     endian: ElfData,
-) -> Result<Vec<SectionHeader>, FireballError> {
+) -> Result<Vec<SectionHeader>, DecompileError> {
     let mut headers = Vec::new();
     let offset = header.shoff as usize;
     let size = header.shentsize as usize;
     let count = header.shnum as usize;
 
     if offset + size * count > data.len() {
-        return Err(FireballError::InvalidBinary(
-            "Section headers beyond file".to_string(),
-        ));
+        return Err(DecompileError::HeaderParsingFailed);
     }
 
     for i in 0..count {
@@ -273,11 +264,9 @@ fn parse_section_headers(
 }
 
 /// Parse a single 64-bit section header
-fn parse_section_header64(data: &[u8], endian: ElfData) -> Result<SectionHeader, FireballError> {
+fn parse_section_header64(data: &[u8], endian: ElfData) -> Result<SectionHeader, DecompileError> {
     if data.len() < 64 {
-        return Err(FireballError::InvalidBinary(
-            "Section header too small".to_string(),
-        ));
+        return Err(DecompileError::HeaderParsingFailed);
     }
 
     let read_u32 = |offset: usize| -> u32 {
@@ -340,15 +329,13 @@ fn parse_section_header64(data: &[u8], endian: ElfData) -> Result<SectionHeader,
 fn parse_string_table(
     data: &[u8],
     section: &SectionHeader,
-) -> Result<BTreeMap<u32, String>, FireballError> {
+) -> Result<BTreeMap<u32, String>, DecompileError> {
     let mut strings = BTreeMap::new();
     let offset = section.offset as usize;
     let size = section.size as usize;
 
     if offset + size > data.len() {
-        return Err(FireballError::InvalidBinary(
-            "String table beyond file".to_string(),
-        ));
+        return Err(DecompileError::HeaderParsingFailed);
     }
 
     let str_data = &data[offset..offset + size];

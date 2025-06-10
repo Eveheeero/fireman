@@ -1,5 +1,4 @@
 use super::{super::static_register::*, shortcuts::*};
-use std::ops::Deref;
 
 #[box_to_static_reference]
 pub(super) fn call() -> &'static [IrStatement] {
@@ -145,6 +144,9 @@ pub(super) fn cdqe() -> &'static [IrStatement] {
 
 #[box_to_static_reference]
 pub(super) fn cmpxchg() -> &'static [IrStatement] {
+    // CMPXCHG compares RAX with destination (o1)
+    // If equal, stores source (o2) in destination and sets ZF=1
+    // If not equal, loads destination into RAX and sets ZF=0
     let cond = b::equal(rax.clone(), d(o1()), o1_size());
     let true_b = [assign(o2(), d(o1()), o1_size())];
     let false_b = [assign(d(o1()), rax.clone(), o1_size())];
@@ -157,6 +159,7 @@ pub(super) fn cmpxchg() -> &'static [IrStatement] {
     let type1 = type_specified(o1(), o1_size(), DataType::Int);
     let type2 = type_specified(o2(), o2_size(), DataType::Int);
     let type3 = type_specified(rax.clone(), size_relative(rax.clone()), DataType::Int);
+    // Note: LOCK prefix handling is done at a higher level in the instruction analyzer
     [calc_flags, cmpxchg, type1, type2, type3].into()
 }
 

@@ -84,5 +84,8 @@ pub fn analyze_data_access_raw(insert: &mut impl FnMut(DataAccess), statement: &
         | IrStatement::Special(IrStatementSpecial::Assertion { .. })
         | IrStatement::Special(IrStatementSpecial::TypeSpecified { .. })
         | IrStatement::Special(IrStatementSpecial::CalcFlagsAutomatically { .. }) => {}
+        IrStatement::Atomic { statement, .. } => {
+            analyze_data_access_raw(insert, statement);
+        }
     }
 }

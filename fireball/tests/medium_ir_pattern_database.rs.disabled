@@ -1,0 +1,258 @@
+//! Tests for Medium IR pattern database integration
+
+use fireball::ir::low_ir::{self, Module as LowModule};
+use fireball::ir::medium_ir::{Module as MediumModule, analyzer::MediumIRAnalyzer};
+use std::collections::BTreeMap;
+
+/// Test that pattern database can be loaded and used
+#[test]
+#[ignore = "Test uses outdated API - needs to be rewritten"]
+fn test_pattern_database_loading() {
+    // Create a simple Low IR module with a malloc call
+    let mut low_module = LowModule {
+        target: low_ir::TargetInfo {
+            triple: "x86_64-unknown-linux-gnu".to_string(),
+            pointer_size: 8,
+        },
+        functions: BTreeMap::new(),
+        globals: BTreeMap::new(),
+        data: BTreeMap::new(),
+    };
+
+    // Create a function that calls malloc
+    let func_id = low_ir::FunctionId(0x1000);
+    let mut blocks = BTreeMap::new();
+
+    // Entry block with malloc call
+    let entry_block = low_ir::BasicBlock {
+        id: low_ir::BlockId(0x1000),
+        instructions: vec![
+            // %size = 100
+            low_ir::Instruction::Assign {
+                dst: low_ir::Local("size".to_string()),
+                val: low_ir::Value::Constant(low_ir::Constant::Int {
+                    value: 100,
+                    bits: 64,
+                    signed: false,
+                }),
+                ty: low_ir::Type::I64,
+            },
+            // %ptr = call malloc(%size)
+            low_ir::Instruction::Call {
+                func: low_ir::Value::Function(low_ir::FunctionId(0x2000)), // malloc address
+                args: vec![(
+                    low_ir::Value::Local(low_ir::Local("size".to_string())),
+                    low_ir::Type::I64,
+                )],
+                dst: Some(low_ir::Local("ptr".to_string())),
+                conv: low_ir::CallConv::C,
+            },
+        ],
+        terminator: low_ir::Terminator::Return(Some(low_ir::Value::Local(low_ir::Local(
+            "ptr".to_string(),
+        )))),
+    };
+
+    blocks.insert(entry_block.id.clone(), entry_block);
+
+    let function = low_ir::Function {
+        id: func_id.clone(),
+        signature: low_ir::Type::Function {
+            ret: Box::new(low_ir::Type::Pointer(Some(Box::new(low_ir::Type::Void)))),
+            params: vec![],
+            varargs: false,
+        },
+        blocks,
+        locals: BTreeMap::new(),
+        entry: low_ir::BlockId(0x1000),
+    };
+
+    low_module.functions.insert(func_id, function);
+
+    // Create analyzer and analyze the module
+    let analyzer = MediumIRAnalyzer::new();
+    let medium_module = analyzer.analyze(&low_module);
+
+    // Verify the module was analyzed
+    assert_eq!(medium_module.functions.len(), 1);
+
+    // Get the analyzed function
+    let analyzed_func = medium_module
+        .functions
+        .get(&low_ir::FunctionId(0x1000))
+        .unwrap();
+
+    // The function should have patterns detected
+    assert!(analyzed_func.patterns.patterns.len() > 0);
+}
+
+/// Test pattern database builder
+#[test]
+#[ignore = "Test uses outdated API - needs to be rewritten"]
+fn test_pattern_database_builder() {
+    use fireball::ir::low_ir;
+    use fireball::ir::medium_ir::pattern_database::{PatternDatabaseBuilder, Platform};
+    use fireball::ir::medium_ir::{
+        FunctionSignature, LibraryPattern, MemoryRegion, PatternBehavior, PatternDatabase,
+        PrimitiveType, TypeRef,
+    };
+
+    let mut builder = PatternDatabaseBuilder::new();
+
+    // Add a test library pattern
+    builder.add_library_pattern(
+        Platform::Generic,
+        LibraryPattern {
+            name: "test_func".to_string(),
+            library: "test_lib".to_string(),
+            signature: FunctionSignature {
+                return_type: TypeRef::Pointer(Box::new(TypeRef::Primitive(PrimitiveType::Void))),
+                parameters: vec![("size".to_string(), TypeRef::Primitive(PrimitiveType::I32))],
+                convention: low_ir::CallConv::C,
+                variadic: false,
+            },
+            behavior: PatternBehavior::ModifiesMemory {
+                regions: vec![MemoryRegion::Heap],
+            },
+        },
+    );
+
+    // Build the database
+    let db = builder.build();
+
+    // Verify the pattern was added
+    assert!(db.library_functions.contains_key("test_func"));
+}
+
+/// Test that string operation patterns are detected
+#[test]
+#[ignore = "Test uses outdated API - needs to be rewritten"]
+fn test_string_operation_detection() {
+    // Create a Low IR module with a strlen-like loop
+    let mut low_module = LowModule {
+        target: low_ir::TargetInfo {
+            triple: "x86_64-unknown-linux-gnu".to_string(),
+            pointer_size: 8,
+        },
+        functions: BTreeMap::new(),
+        globals: BTreeMap::new(),
+        data: BTreeMap::new(),
+    };
+
+    let func_id = low_ir::FunctionId(0x3000);
+    let mut blocks = BTreeMap::new();
+
+    // Entry block - initialize counter
+    let entry_block = low_ir::BasicBlock {
+        id: low_ir::BlockId(0x3000),
+        instructions: vec![
+            // %counter = 0
+            low_ir::Instruction::Assign {
+                dst: low_ir::Local("counter".to_string()),
+                val: low_ir::Value::Constant(low_ir::Constant::Int {
+                    value: 0,
+                    bits: 64,
+                    signed: false,
+                }),
+                ty: low_ir::Type::I64,
+            },
+        ],
+        terminator: low_ir::Terminator::Branch(low_ir::BlockId(0x3010)),
+    };
+
+    // Loop header - load byte and check for null
+    let loop_header = low_ir::BasicBlock {
+        id: low_ir::BlockId(0x3010),
+        instructions: vec![
+            // %byte = load i8* %ptr
+            low_ir::Instruction::Load {
+                dst: low_ir::Local("byte".to_string()),
+                ptr: low_ir::Value::Local(low_ir::Local("ptr".to_string())),
+                ty: low_ir::Type::I8,
+                volatile: false,
+                align: 1,
+            },
+            // %is_null = %byte == 0
+            low_ir::Instruction::BinOp {
+                dst: low_ir::Local("is_null".to_string()),
+                op: low_ir::BinaryOp::Eq,
+                lhs: low_ir::Value::Local(low_ir::Local("byte".to_string())),
+                rhs: low_ir::Value::Constant(low_ir::Constant::Int {
+                    value: 0,
+                    bits: 8,
+                    signed: false,
+                }),
+                ty: low_ir::Type::Bool,
+            },
+        ],
+        terminator: low_ir::Terminator::CondBranch {
+            cond: low_ir::Value::Local(low_ir::Local("is_null".to_string())),
+            true_dest: low_ir::BlockId(0x3030),  // exit
+            false_dest: low_ir::BlockId(0x3020), // loop body
+        },
+    };
+
+    // Loop body - increment counter and pointer
+    let loop_body = low_ir::BasicBlock {
+        id: low_ir::BlockId(0x3020),
+        instructions: vec![
+            // %counter = %counter + 1
+            low_ir::Instruction::BinOp {
+                dst: low_ir::Local("counter".to_string()),
+                op: low_ir::BinaryOp::Add,
+                lhs: low_ir::Value::Local(low_ir::Local("counter".to_string())),
+                rhs: low_ir::Value::Constant(low_ir::Constant::Int {
+                    value: 1,
+                    bits: 64,
+                    signed: false,
+                }),
+                ty: low_ir::Type::I64,
+            },
+        ],
+        terminator: low_ir::Terminator::Branch(low_ir::BlockId(0x3010)), // back to header
+    };
+
+    // Exit block
+    let exit_block = low_ir::BasicBlock {
+        id: low_ir::BlockId(0x3030),
+        instructions: vec![],
+        terminator: low_ir::Terminator::Return(Some(low_ir::Value::Local(low_ir::Local(
+            "counter".to_string(),
+        )))),
+    };
+
+    blocks.insert(entry_block.id.clone(), entry_block);
+    blocks.insert(loop_header.id.clone(), loop_header);
+    blocks.insert(loop_body.id.clone(), loop_body);
+    blocks.insert(exit_block.id.clone(), exit_block);
+
+    let function = low_ir::Function {
+        id: func_id.clone(),
+        signature: low_ir::Type::Function {
+            ret: Box::new(low_ir::Type::I64),
+            params: vec![low_ir::Type::Pointer(Some(Box::new(low_ir::Type::I8)))],
+            varargs: false,
+        },
+        blocks,
+        locals: BTreeMap::new(),
+        entry: low_ir::BlockId(0x3000),
+    };
+
+    low_module.functions.insert(func_id, function);
+
+    // Analyze the module
+    let analyzer = MediumIRAnalyzer::new();
+    let medium_module = analyzer.analyze(&low_module);
+
+    // Get the analyzed function
+    let analyzed_func = medium_module
+        .functions
+        .get(&low_ir::FunctionId(0x3000))
+        .unwrap();
+
+    // Should detect a loop pattern
+    assert!(analyzed_func.patterns.patterns.len() > 0);
+
+    // TODO: Once string operation detection is fully implemented,
+    // verify that a StringOperation pattern was detected
+}

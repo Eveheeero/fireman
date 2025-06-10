@@ -2,7 +2,9 @@
 
 use super::*;
 use crate::ir::low_ir::{self, Module as LowModule};
+use crate::ir::medium_ir::pattern_database::{PatternDatabaseBuilder, Platform};
 use std::collections::BTreeMap;
+use std::path::Path;
 
 /// Analyzer that converts Low IR to Medium IR with pattern recognition
 pub struct MediumIRAnalyzer {
@@ -19,6 +21,27 @@ impl MediumIRAnalyzer {
             pattern_db: PatternDatabase::default(),
             confidence_threshold: Confidence::LOW,
         }
+    }
+
+    /// Create analyzer with custom pattern database
+    pub fn with_pattern_database(pattern_db: PatternDatabase) -> Self {
+        Self {
+            pattern_db,
+            confidence_threshold: Confidence::LOW,
+        }
+    }
+
+    /// Load patterns from directory
+    pub fn load_patterns_from_directory<P: AsRef<Path>>(&mut self, path: P) -> Result<(), String> {
+        let mut builder = PatternDatabaseBuilder::new();
+
+        // Load pattern files
+        builder.load_from_directory(path)?;
+
+        // Build the database
+        self.pattern_db = builder.build();
+
+        Ok(())
     }
 
     /// Analyze Low IR module and produce Medium IR
@@ -114,6 +137,22 @@ impl MediumIRAnalyzer {
                 self.detect_array_access_pattern(inst, &block.instructions, i, store)
             {
                 patterns.push(array_pattern);
+            }
+        }
+
+        // Check for string operation patterns
+        for (i, inst) in block.instructions.iter().enumerate() {
+            if let Some(string_pattern) =
+                self.detect_string_operation(inst, &block.instructions, i, store)
+            {
+                patterns.push(string_pattern);
+            }
+        }
+
+        // Check for memory allocation patterns
+        for inst in &block.instructions {
+            if let Some(alloc_pattern) = self.detect_memory_allocation_pattern(inst, store) {
+                patterns.push(alloc_pattern);
             }
         }
 
@@ -495,10 +534,20 @@ impl MediumIRAnalyzer {
                 // Determine function reference
                 let func_ref = match func {
                     low_ir::Value::Function(id) => {
-                        FunctionRef::Address(Address::from_virtual_address(
+                        let addr = Address::from_virtual_address(
                             &std::sync::Arc::new(crate::core::Sections::default()),
                             id.0,
-                        ))
+                        );
+
+                        // Check if this matches a known library function
+                        if let Some(lib_pattern) = self.match_library_function(id.0) {
+                            FunctionRef::Library {
+                                name: lib_pattern.name.clone(),
+                                library: lib_pattern.library.clone(),
+                            }
+                        } else {
+                            FunctionRef::Address(addr)
+                        }
                     }
                     _ => {
                         let indirect = Pattern::LowIR {
@@ -968,5 +1017,146 @@ impl PatternDatabase {
         vec![
             // TODO: Add architecture-specific patterns
         ]
+    }
+}
+
+impl MediumIRAnalyzer {
+    /// Try to match a function address to a known library function
+    fn match_library_function(&self, address: u64) -> Option<&LibraryPattern> {
+        // TODO: Implement proper symbol resolution
+        // For now, check if address matches known library function addresses
+        // This would typically involve:
+        // 1. Checking import tables in PE/ELF
+        // 2. Matching against known library addresses
+        // 3. Using debug symbols if available
+
+        // Simple heuristic: check if function name exists in pattern database
+        // In a real implementation, this would use the actual symbol table
+        None
+    }
+
+    /// Detect string operations like strlen, strcpy
+    fn detect_string_operation(
+        &self,
+        inst: &low_ir::Instruction,
+        instructions: &[low_ir::Instruction],
+        inst_index: usize,
+        store: &mut PatternStore,
+    ) -> Option<PatternRef> {
+        // Look for patterns like:
+        // 1. Loop that reads bytes until null terminator (strlen)
+        // 2. Loop that copies bytes until null terminator (strcpy)
+        // 3. Loop that compares bytes (strcmp)
+
+        // This is a simplified detection - real implementation would be more sophisticated
+        match inst {
+            low_ir::Instruction::Load { ptr, ty, .. } => {
+                // Check if this is loading a byte
+                if matches!(ty, low_ir::Type::I8) {
+                    // Look ahead for a comparison with zero (null terminator check)
+                    for i in inst_index + 1..instructions.len() {
+                        if let low_ir::Instruction::BinOp {
+                            op: low_ir::BinaryOp::Eq,
+                            rhs: low_ir::Value::Constant(low_ir::Constant::Int { value: 0, .. }),
+                            ..
+                        } = &instructions[i]
+                        {
+                            // This might be a string operation
+                            let str_op = Pattern::StringOperation {
+                                operation: StringOp::Length,
+                                operands: vec![self.create_ptr_pattern(
+                                    ptr,
+                                    instructions,
+                                    inst_index,
+                                    store,
+                                )],
+                                confidence: Confidence::MEDIUM,
+                            };
+                            return Some(store.insert(str_op));
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        None
+    }
+
+    /// Create a pattern for a pointer value
+    fn create_ptr_pattern(
+        &self,
+        ptr: &low_ir::Value,
+        instructions: &[low_ir::Instruction],
+        current_index: usize,
+        store: &mut PatternStore,
+    ) -> PatternRef {
+        let pattern = self.create_value_pattern(ptr, instructions, current_index);
+        store.insert(pattern)
+    }
+
+    /// Detect memory allocation patterns
+    fn detect_memory_allocation_pattern(
+        &self,
+        inst: &low_ir::Instruction,
+        store: &mut PatternStore,
+    ) -> Option<PatternRef> {
+        match inst {
+            low_ir::Instruction::Call { func, args, .. } => {
+                // Check if this is a call to a known allocator
+                if let low_ir::Value::Function(id) = func {
+                    if let Some(lib_pattern) = self.match_library_function(id.0) {
+                        match lib_pattern.name.as_str() {
+                            "malloc" | "calloc" => {
+                                // Extract size argument
+                                if let Some((size_val, _)) = args.first() {
+                                    let size_pattern = Pattern::LowIR {
+                                        instructions: vec![], // TODO: Extract size computation
+                                        terminator: None,
+                                        source_block: low_ir::BlockId(0),
+                                        confidence: Confidence::HIGH,
+                                    };
+                                    let size_ref = store.insert(size_pattern);
+
+                                    let alloc = Pattern::MemoryAllocation {
+                                        size: size_ref,
+                                        allocator: match lib_pattern.name.as_str() {
+                                            "malloc" => AllocatorType::Malloc,
+                                            "calloc" => AllocatorType::Calloc,
+                                            _ => AllocatorType::Malloc,
+                                        },
+                                        confidence: Confidence::HIGH,
+                                    };
+                                    return Some(store.insert(alloc));
+                                }
+                            }
+                            "free" => {
+                                // Extract pointer argument
+                                if let Some((ptr_val, _)) = args.first() {
+                                    let ptr_pattern = Pattern::LowIR {
+                                        instructions: vec![], // TODO: Extract pointer
+                                        terminator: None,
+                                        source_block: low_ir::BlockId(0),
+                                        confidence: Confidence::HIGH,
+                                    };
+                                    let ptr_ref = store.insert(ptr_pattern);
+
+                                    let dealloc = Pattern::MemoryDeallocation {
+                                        pointer: ptr_ref,
+                                        deallocator: DeallocatorType::Free,
+                                        confidence: Confidence::HIGH,
+                                    };
+                                    return Some(store.insert(dealloc));
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        None
     }
 }

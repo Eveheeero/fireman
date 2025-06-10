@@ -105,6 +105,9 @@ pub fn analyze_datatype_raw(insert: &mut impl FnMut(KnownDataType), statement: &
         | IrStatement::Halt
         | IrStatement::Special(IrStatementSpecial::Assertion { .. })
         | IrStatement::Special(IrStatementSpecial::CalcFlagsAutomatically { .. }) => {}
+        IrStatement::Atomic { statement, .. } => {
+            analyze_datatype_raw(insert, statement);
+        }
     }
 }
 

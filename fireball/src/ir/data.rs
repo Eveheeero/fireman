@@ -205,84 +205,122 @@ impl IrDataContainable for IrIntrinsic {
 
 impl From<&iceball::Argument> for Aos<IrData> {
     fn from(value: &iceball::Argument) -> Self {
-        use iceball::{AddressingOperator, Argument, Memory, Register, RelativeAddressingArgument};
+        use iceball::{Argument, Register};
         match value {
             Argument::Constant(c) => IrData::Constant((*c).try_into().unwrap()).into(),
-            Argument::Memory(Memory::AbsoluteAddressing(v)) => {
-                IrData::Dereference(IrData::Constant((*v).try_into().unwrap()).into()).into()
-            }
-            Argument::Memory(Memory::RelativeAddressing(v)) => {
-                let v = v.as_ref();
-                let arg_count = v.len();
-                assert_ne!(arg_count, 0);
-                assert!(matches!(arg_count, 1 | 3));
+            Argument::Memory(mem) => {
+                // Build memory access expression from the Memory struct
+                let mut expr: Option<Aos<IrData>> = None;
 
-                let mut iter = v.iter();
-                let arg1 = iter.next().unwrap();
-                let mut current_expr: Aos<IrData> = match arg1 {
-                    RelativeAddressingArgument::Register(reg) => match reg {
+                // Add base register
+                if let Some(base_reg) = &mem.base {
+                    let base_ir = match base_reg {
                         Register::X64(x64_reg) => x64_reg_to_ir_reg(*x64_reg),
-                    },
-                    RelativeAddressingArgument::Constant(c) => {
-                        if *c >= 0 {
-                            IrData::Constant((*c).try_into().unwrap()).into()
-                        } else {
-                            IrData::Operation(IrDataOperation::Unary {
-                                operator: UnaryOperator::Negation,
-                                arg: IrData::Constant((0 - *c).try_into().unwrap()).into(),
-                            })
-                            .into()
-                        }
-                    }
-                    RelativeAddressingArgument::Operator(_) => unreachable!(),
-                };
-
-                if let Some(operator) = iter.next() {
-                    let operator = match operator {
-                        RelativeAddressingArgument::Operator(op) => op,
-                        _ => unreachable!(),
+                        Register::X86(x86_reg) => x86_reg_to_ir_reg(*x86_reg),
+                        Register::Arm32(arm32_reg) => arm32_reg_to_ir_reg(*arm32_reg),
+                        Register::Arm64(arm64_reg) => arm64_reg_to_ir_reg(*arm64_reg),
                     };
-                    let operand = iter.next().unwrap();
-                    let operand: Aos<IrData> = match operand {
-                        RelativeAddressingArgument::Register(reg) => match reg {
-                            Register::X64(x64_reg) => x64_reg_to_ir_reg(*x64_reg),
-                        },
-                        RelativeAddressingArgument::Constant(c) => {
-                            if *c >= 0 {
-                                IrData::Constant((*c).try_into().unwrap()).into()
-                            } else {
-                                IrData::Operation(IrDataOperation::Unary {
-                                    operator: UnaryOperator::Negation,
-                                    arg: IrData::Constant((0 - *c).try_into().unwrap()).into(),
-                                })
-                                .into()
-                            }
-                        }
-                        RelativeAddressingArgument::Operator(_) => unreachable!(),
-                    };
-
-                    let binary_op_ir = match operator {
-                        AddressingOperator::Add => BinaryOperator::Add,
-                        AddressingOperator::Sub => BinaryOperator::Sub,
-                        AddressingOperator::Mul => BinaryOperator::Mul,
-                    };
-
-                    current_expr = IrData::Operation(IrDataOperation::Binary {
-                        operator: binary_op_ir,
-                        arg1: current_expr,
-                        arg2: operand,
-                    })
-                    .into();
+                    expr = Some(base_ir);
                 }
 
-                IrData::Dereference(current_expr).into()
+                // Add scaled index register
+                if let Some(index_reg) = &mem.index {
+                    let index_ir = match index_reg {
+                        Register::X64(x64_reg) => x64_reg_to_ir_reg(*x64_reg),
+                        Register::X86(x86_reg) => x86_reg_to_ir_reg(*x86_reg),
+                        Register::Arm32(arm32_reg) => arm32_reg_to_ir_reg(*arm32_reg),
+                        Register::Arm64(arm64_reg) => arm64_reg_to_ir_reg(*arm64_reg),
+                    };
+
+                    let scaled_index = if mem.scale > 1 {
+                        IrData::Operation(IrDataOperation::Binary {
+                            operator: BinaryOperator::Mul,
+                            arg1: index_ir,
+                            arg2: IrData::Constant(mem.scale as usize).into(),
+                        })
+                        .into()
+                    } else {
+                        index_ir
+                    };
+
+                    expr = if let Some(base_expr) = expr {
+                        Some(
+                            IrData::Operation(IrDataOperation::Binary {
+                                operator: BinaryOperator::Add,
+                                arg1: base_expr,
+                                arg2: scaled_index,
+                            })
+                            .into(),
+                        )
+                    } else {
+                        Some(scaled_index)
+                    };
+                }
+
+                // Add displacement
+                if mem.displacement != 0 {
+                    let disp_ir = if mem.displacement >= 0 {
+                        IrData::Constant(mem.displacement as usize).into()
+                    } else {
+                        IrData::Operation(IrDataOperation::Unary {
+                            operator: UnaryOperator::Negation,
+                            arg: IrData::Constant((-mem.displacement) as usize).into(),
+                        })
+                        .into()
+                    };
+
+                    expr = if let Some(base_expr) = expr {
+                        if mem.displacement >= 0 {
+                            Some(
+                                IrData::Operation(IrDataOperation::Binary {
+                                    operator: BinaryOperator::Add,
+                                    arg1: base_expr,
+                                    arg2: disp_ir,
+                                })
+                                .into(),
+                            )
+                        } else {
+                            Some(
+                                IrData::Operation(IrDataOperation::Binary {
+                                    operator: BinaryOperator::Sub,
+                                    arg1: base_expr,
+                                    arg2: disp_ir,
+                                })
+                                .into(),
+                            )
+                        }
+                    } else {
+                        Some(disp_ir)
+                    };
+                }
+
+                // If no expression was built, this is an absolute address
+                let final_expr = expr.unwrap_or_else(|| IrData::Constant(0).into());
+                IrData::Dereference(final_expr).into()
             }
             Argument::Register(Register::X64(register)) => x64_reg_to_ir_reg(*register),
+            Argument::Register(Register::X86(register)) => x86_reg_to_ir_reg(*register),
+            Argument::Register(Register::Arm32(register)) => arm32_reg_to_ir_reg(*register),
+            Argument::Register(Register::Arm64(register)) => arm64_reg_to_ir_reg(*register),
         }
     }
 }
 fn x64_reg_to_ir_reg(reg: iceball::X64Register) -> Aos<IrData> {
     crate::arch::x86_64::str_to_x64_register(reg.name())
+}
+
+fn x86_reg_to_ir_reg(reg: iceball::X86Register) -> Aos<IrData> {
+    // X86 registers are a subset of X64 registers, so we can use the same function
+    // Most x86 registers have direct x64 equivalents
+    crate::arch::x86_64::str_to_x64_register(reg.to_string().as_str())
+}
+
+fn arm32_reg_to_ir_reg(reg: iceball::Arm32Register) -> Aos<IrData> {
+    crate::arch::arm32::str_to_arm32_register(reg.to_string().as_str())
+}
+
+fn arm64_reg_to_ir_reg(reg: iceball::Arm64Register) -> Aos<IrData> {
+    crate::arch::arm64::str_to_arm64_register(reg.to_string().as_str())
 }
 
 impl std::fmt::Display for IrData {

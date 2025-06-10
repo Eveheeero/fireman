@@ -50,6 +50,11 @@ impl<'a> Executor<'a> {
                 "Exception: {}",
                 msg
             ))),
+            IrStatement::Atomic { statement, .. } => {
+                // For simulation, atomic operations are treated the same as non-atomic
+                // The memory ordering is only relevant for code generation
+                self.execute_statement(statement)
+            }
         }
     }
 

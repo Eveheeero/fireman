@@ -2,9 +2,12 @@
 
 use crate::utils::error::FireballError;
 
+pub mod decoder;
 pub mod instruction_analyze;
 pub mod lifter;
 pub mod register;
+
+pub use register::str_to_arm32_register;
 
 /// ARM32-specific errors
 #[derive(Debug, Clone)]
@@ -28,6 +31,22 @@ impl From<Arm32Error> for FireballError {
             }
             Arm32Error::Unimplemented(feature) => {
                 FireballError::Unimplemented(format!("ARM32: {}", feature))
+            }
+        }
+    }
+}
+
+impl From<iceball::DisassembleError> for Arm32Error {
+    fn from(err: iceball::DisassembleError) -> Self {
+        match err {
+            iceball::DisassembleError::Unknown => {
+                Arm32Error::UnsupportedInstruction("Unknown error".to_string())
+            }
+            iceball::DisassembleError::UnknownStatement => {
+                Arm32Error::UnsupportedInstruction("Unknown statement".to_string())
+            }
+            iceball::DisassembleError::UnknownRegister => {
+                Arm32Error::UnsupportedInstruction("Unknown register".to_string())
             }
         }
     }

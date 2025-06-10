@@ -1,7 +1,3 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 Fireman is a high-performance, deterministic decompiler framework written in Rust. It transforms binary executables into
@@ -149,7 +145,7 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → C 
 ## Code Style Guidelines
 
 - Follow Rust naming conventions (snake_case for functions/variables, CamelCase for types)
-- Use `cargo fmt` before committing
+- Use `cargo fmt --all` before committing
 - Document public APIs with `///` doc comments
 - Use custom error types defined in `utils/error.rs`
 - Keep modules focused and well-organized

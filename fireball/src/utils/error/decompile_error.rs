@@ -72,7 +72,7 @@ impl From<super::FireballError> for DecompileError {
         match err {
             super::FireballError::Unknown => Self::Unknown(None),
             super::FireballError::IoError(e) => Self::Unknown(Some(format!("I/O error: {}", e))),
-            super::FireballError::InvalidBinary(msg) => Self::HeaderParsingFailed,
+            super::FireballError::InvalidBinary(_msg) => Self::HeaderParsingFailed,
             super::FireballError::Unimplemented(feature) => {
                 Self::Unknown(Some(format!("Unimplemented: {}", feature)))
             }

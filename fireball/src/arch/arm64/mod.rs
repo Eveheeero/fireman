@@ -65,3 +65,27 @@ pub fn arm64_to_ir(instruction: &Instruction) -> Result<Vec<IrStatement>, Arm64E
         .ok_or_else(|| Arm64Error::UnsupportedInstruction("Unknown instruction".to_string()))
         .map(|statements| statements.to_vec())
 }
+
+/// Convert string to ARM64 register IR data
+pub(crate) fn str_to_arm64_register(name: &str) -> crate::utils::Aos<crate::ir::data::IrData> {
+    use register::*;
+
+    match name.to_lowercase().as_str() {
+        "x0" => X0.clone(),
+        "x1" => X1.clone(),
+        "x2" => X2.clone(),
+        "x3" => X3.clone(),
+        "x4" => X4.clone(),
+        "x5" => X5.clone(),
+        "x6" => X6.clone(),
+        "x7" => X7.clone(),
+        "x8" => X8.clone(),
+        "x29" | "fp" => X29.clone(),
+        "x30" | "lr" => X30.clone(),
+        "sp" => SP.clone(),
+        "pc" => PC.clone(),
+        "xzr" => XZR.clone(),
+        "nzcv" => NZCV.clone(),
+        _ => unreachable!("Unknown ARM64 register: {}", name),
+    }
+}

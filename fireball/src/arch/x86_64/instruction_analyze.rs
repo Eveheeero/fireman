@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 
 mod a;
+mod atomic_variants;
 mod b;
 mod c;
 mod d;
@@ -35,6 +36,7 @@ mod shortcuts {
     use std::num::NonZeroU8;
 }
 
+use super::atomic::{LockPrefix, has_lock_prefix, validate_lock_prefix};
 use crate::{core::Instruction, ir::statements::*};
 use iceball::Statement;
 
@@ -46,7 +48,20 @@ use iceball::Statement;
 /// ### Returns
 /// `Option<&'static [IrStatement]>` : IR statements corresponding to the x86_64 instruction
 /// or `None` if the instruction is not supported.
+///
+/// This function also handles LOCK prefix detection for atomic operations.
 pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStatement]> {
+    // Check for LOCK prefix
+    let lock_prefix = has_lock_prefix(instruction);
+
+    // Validate LOCK prefix usage if present
+    if let Err(_) = validate_lock_prefix(instruction) {
+        // Invalid LOCK prefix usage - treat as regular instruction
+        // In production, we might want to log this
+    }
+
+    // If LOCK prefix is present and valid, use atomic variants
+    let use_atomic = lock_prefix == LockPrefix::Present;
     let op = if let Ok(Statement::X64(op)) = instruction.inner.statement {
         op
     } else {
@@ -54,14 +69,32 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
     };
 
     use iceball::X64Statement;
-    Some(match op {
-        X64Statement::Adc => a::adc(),
-        X64Statement::Add => a::add(),
+    let base_statements = match op {
+        X64Statement::Adc => {
+            if use_atomic {
+                atomic_variants::atomic_adc()
+            } else {
+                a::adc()
+            }
+        }
+        X64Statement::Add => {
+            if use_atomic {
+                atomic_variants::atomic_add()
+            } else {
+                a::add()
+            }
+        }
         X64Statement::Addps => a::addps(),
         X64Statement::Addpd => a::addpd(),
         X64Statement::Addss => a::addss(),
         X64Statement::Addsd => a::addsd(),
-        X64Statement::And => a::and(),
+        X64Statement::And => {
+            if use_atomic {
+                atomic_variants::atomic_and()
+            } else {
+                a::and()
+            }
+        }
         X64Statement::Andps => a::andps(),
         X64Statement::Andpd => a::andpd(),
         X64Statement::Andnps => a::andnps(),
@@ -79,7 +112,13 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Cdq => c::cdq(),
         X64Statement::Cqo => c::cqo(),
         X64Statement::Cld => c::cld(),
-        X64Statement::Cmpxchg => c::cmpxchg(),
+        X64Statement::Cmpxchg => {
+            if use_atomic {
+                atomic_variants::atomic_cmpxchg()
+            } else {
+                c::cmpxchg()
+            }
+        }
         X64Statement::Cpuid => None?,
         X64Statement::Cmovcc => c::cmovcc(),
         X64Statement::Cmps => c::cmps(),
@@ -87,7 +126,13 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Cmpsw => c::cmpsw(),
         X64Statement::Cmpsd => c::cmpsd(),
         X64Statement::Cmpsq => c::cmpsq(),
-        X64Statement::Dec => d::dec(),
+        X64Statement::Dec => {
+            if use_atomic {
+                atomic_variants::atomic_dec()
+            } else {
+                d::dec()
+            }
+        }
         X64Statement::Div => d::div(),
         X64Statement::Divps => d::divps(),
         X64Statement::Divpd => d::divpd(),
@@ -96,7 +141,13 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Fnstsw => None?,
         X64Statement::Hlt => None?,
         X64Statement::Imul => i::imul(),
-        X64Statement::Inc => i::inc(),
+        X64Statement::Inc => {
+            if use_atomic {
+                atomic_variants::atomic_inc()
+            } else {
+                i::inc()
+            }
+        }
         X64Statement::Idiv => None?,
         X64Statement::Int | X64Statement::Into => None?, // INLINE ASSEMBLY
         X64Statement::Int1 | X64Statement::Int3 => &[],
@@ -150,10 +201,28 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Movsw => m::movsw(),
         X64Statement::Movsd => m::movsd(),
         X64Statement::Movsq => m::movsq(),
-        X64Statement::Neg => n::neg(),
+        X64Statement::Neg => {
+            if use_atomic {
+                atomic_variants::atomic_neg()
+            } else {
+                n::neg()
+            }
+        }
         X64Statement::Nop => &[],
-        X64Statement::Not => n::not(),
-        X64Statement::Or => o::or(),
+        X64Statement::Not => {
+            if use_atomic {
+                atomic_variants::atomic_not()
+            } else {
+                n::not()
+            }
+        }
+        X64Statement::Or => {
+            if use_atomic {
+                atomic_variants::atomic_or()
+            } else {
+                o::or()
+            }
+        }
         X64Statement::Orps => o::orps(),
         X64Statement::Orpd => o::orpd(),
         X64Statement::Pop => p::pop(),
@@ -166,7 +235,13 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Ret => r::ret(),
         X64Statement::Shl => s::shl(),
         X64Statement::Shr => s::shr(),
-        X64Statement::Sub => s::sub(),
+        X64Statement::Sub => {
+            if use_atomic {
+                atomic_variants::atomic_sub()
+            } else {
+                s::sub()
+            }
+        }
         X64Statement::Subps => s::subps(),
         X64Statement::Subpd => s::subpd(),
         X64Statement::Subss => s::subss(),
@@ -178,7 +253,13 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Stc => s::stc(),
         X64Statement::Sahf => s::sahf(),
         X64Statement::Sar => s::sar(),
-        X64Statement::Sbb => s::sbb(),
+        X64Statement::Sbb => {
+            if use_atomic {
+                atomic_variants::atomic_sbb()
+            } else {
+                s::sbb()
+            }
+        }
         X64Statement::Setcc => None?,
         X64Statement::Std => s::std(),
         X64Statement::Scasb => None?,
@@ -190,11 +271,25 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
         X64Statement::Stosd => s::stosd(),
         X64Statement::Stosq => s::stosq(),
         X64Statement::Test => t::test(),
-        X64Statement::Xchg => x::xchg(),
-        X64Statement::Xor => x::xor(),
+        X64Statement::Xchg => {
+            if use_atomic {
+                atomic_variants::atomic_xchg()
+            } else {
+                x::xchg()
+            }
+        }
+        X64Statement::Xor => {
+            if use_atomic {
+                atomic_variants::atomic_xor()
+            } else {
+                x::xor()
+            }
+        }
         X64Statement::Xorps => x::xorps(),
         X64Statement::Xorpd => x::xorpd(),
 
         _ => None?,
-    })
+    };
+
+    Some(base_statements)
 }

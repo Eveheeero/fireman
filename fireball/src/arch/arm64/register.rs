@@ -388,23 +388,23 @@ macro_rules! define_register {
 }
 
 // Define commonly used registers
-define_register!(x0, Arm64Register::X0);
-define_register!(x1, Arm64Register::X1);
-define_register!(x2, Arm64Register::X2);
-define_register!(x3, Arm64Register::X3);
-define_register!(x4, Arm64Register::X4);
-define_register!(x5, Arm64Register::X5);
-define_register!(x6, Arm64Register::X6);
-define_register!(x7, Arm64Register::X7);
-define_register!(x8, Arm64Register::X8);
-define_register!(x29, Arm64Register::X29); // Frame pointer
-define_register!(x30, Arm64Register::X30); // Link register
-define_register!(sp, Arm64Register::SP);
-define_register!(pc, Arm64Register::PC);
-define_register!(xzr, Arm64Register::XZR);
+define_register!(X0, Arm64Register::X0);
+define_register!(X1, Arm64Register::X1);
+define_register!(X2, Arm64Register::X2);
+define_register!(X3, Arm64Register::X3);
+define_register!(X4, Arm64Register::X4);
+define_register!(X5, Arm64Register::X5);
+define_register!(X6, Arm64Register::X6);
+define_register!(X7, Arm64Register::X7);
+define_register!(X8, Arm64Register::X8);
+define_register!(X29, Arm64Register::X29); // Frame pointer
+define_register!(X30, Arm64Register::X30); // Link register
+define_register!(SP, Arm64Register::SP);
+define_register!(PC, Arm64Register::PC);
+define_register!(XZR, Arm64Register::XZR);
 
 // Condition flags
-define_register!(nzcv, Arm64Register::NZCV);
+define_register!(NZCV, Arm64Register::NZCV);
 
 /// ARM64 condition codes
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

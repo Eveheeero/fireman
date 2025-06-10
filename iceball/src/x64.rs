@@ -35,40 +35,97 @@ pub fn parse_argument(op: impl AsRef<str>) -> Result<crate::Argument, crate::Dis
 
 // dword ptr [rbp - 4]
 fn parse_memory(op: &str) -> Result<crate::Argument, crate::DisassembleError> {
-    let mut result = Vec::<crate::RelativeAddressingArgument>::new();
     let mut inner = op.split(['[', ']']);
     let inner = inner
         .nth(1)
         .unwrap_or_else(|| panic!("{}는 파싱 가능한 형태가 아닙니다.", op));
-    let items = inner.split(' ');
-    for item in items {
+
+    let mut base: Option<crate::Register> = None;
+    let mut index: Option<crate::Register> = None;
+    let mut scale: u8 = 1;
+    let mut displacement: i64 = 0;
+    let mut size: Option<u8> = None;
+
+    // Extract size hint from prefix (e.g., "dword ptr", "qword ptr")
+    if let Some(size_pos) = op.find(" ptr") {
+        let size_str = &op[..size_pos];
+        size = match size_str {
+            "byte" => Some(1),
+            "word" => Some(2),
+            "dword" => Some(4),
+            "qword" => Some(8),
+            _ => None,
+        };
+    }
+
+    // Parse the memory operand expression
+    let items: Vec<&str> = inner.split(' ').filter(|s| !s.is_empty()).collect();
+    let mut i = 0;
+    let mut pending_op = None;
+
+    while i < items.len() {
+        let item = items[i];
+
+        // Handle operators
+        if ["+", "-", "*"].contains(&item) {
+            pending_op = Some(item);
+            i += 1;
+            continue;
+        }
+
+        // Handle numbers
         if item.as_bytes()[0].is_ascii_digit() {
             let num = if item.contains('x') {
-                u64::from_str_radix(&item[2..], 16).unwrap()
+                i64::from_str_radix(&item[2..], 16).unwrap()
             } else {
                 item.parse().unwrap()
             };
-            result.push(crate::RelativeAddressingArgument::Constant(num as i128));
+
+            if let Some(op) = pending_op {
+                match op {
+                    "-" => displacement -= num,
+                    "+" => displacement += num,
+                    "*" => scale = num as u8,
+                    _ => {}
+                }
+                pending_op = None;
+            } else {
+                displacement = num;
+            }
+            i += 1;
             continue;
         }
 
-        if ["+", "-", "*"].contains(&item) {
-            result.push(crate::RelativeAddressingArgument::Operator(match item {
-                "+" => crate::AddressingOperator::Add,
-                "-" => crate::AddressingOperator::Sub,
-                "*" => crate::AddressingOperator::Mul,
-                _ => unreachable!(),
-            }));
+        // Handle registers
+        if let Ok(reg) = item.parse::<register::X64Register>() {
+            let reg = crate::Register::X64(reg);
+
+            // Check if this is a scale operation
+            if i + 2 < items.len() && items[i + 1] == "*" {
+                index = Some(reg);
+                i += 2; // Skip register and "*"
+                if i < items.len() && items[i].as_bytes()[0].is_ascii_digit() {
+                    scale = items[i].parse().unwrap_or(1);
+                    i += 1;
+                }
+            } else if base.is_none() {
+                base = Some(reg);
+                i += 1;
+            } else {
+                index = Some(reg);
+                i += 1;
+            }
             continue;
         }
 
-        let register = item.parse::<register::X64Register>().unwrap();
-        result.push(crate::RelativeAddressingArgument::Register(
-            crate::Register::X64(register),
-        ));
+        i += 1;
     }
 
-    Ok(crate::Argument::Memory(crate::Memory::RelativeAddressing(
-        result.into_boxed_slice(),
-    )))
+    Ok(crate::Argument::Memory(crate::Memory {
+        base,
+        index,
+        scale,
+        displacement,
+        size,
+    }))
 }

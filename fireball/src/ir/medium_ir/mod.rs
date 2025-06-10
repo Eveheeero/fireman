@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 
 pub mod analyzer;
 pub mod confidence;
+pub mod pattern_database;
 pub mod patterns;
 
 /// Pattern match confidence level
@@ -353,15 +354,44 @@ pub enum PatternMatcher {
     DataFlow(DataFlowMatcher),
 
     /// Composite matcher (all must match)
-    All(Vec<PatternMatcher>),
+    All(Vec<Box<PatternMatcher>>),
 
     /// Composite matcher (any must match)
-    Any(Vec<PatternMatcher>),
+    Any(Vec<Box<PatternMatcher>>),
 }
 
 #[derive(Debug, Clone)]
-pub struct InstructionMatcher {
-    // TODO: Define instruction matching rules
+pub enum InstructionMatcher {
+    /// Push register
+    Push(&'static str),
+
+    /// Move between registers
+    MovReg(&'static str, &'static str),
+
+    /// Subtract immediate from register
+    SubImm(&'static str, Box<InstructionMatcher>),
+
+    /// Load effective address
+    Lea(&'static str, &'static str),
+
+    /// Add register to register
+    AddReg(&'static str, &'static str, &'static str),
+
+    /// Pop register
+    Pop(&'static str),
+
+    /// Leave instruction
+    Leave,
+
+    /// Return instruction
+    Ret,
+
+    /// Any value placeholder
+    Any,
+
+    /// Custom matcher (note: this can't be Clone, so we'll use a placeholder)
+    #[allow(dead_code)]
+    Custom,
 }
 
 #[derive(Debug, Clone)]

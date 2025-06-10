@@ -77,12 +77,13 @@ fn test_cmpxchg_instruction() {
     let inst = create_test_instruction(
         X64Statement::Cmpxchg,
         vec![
-            Argument::Memory(Memory::RelativeAddressing(
-                vec![iceball::RelativeAddressingArgument::Register(
-                    Register::X64(X64Register::Rdi),
-                )]
-                .into_boxed_slice(),
-            )),
+            Argument::Memory(Memory {
+                base: Some(Register::X64(X64Register::Rdi)),
+                index: None,
+                scale: 1,
+                displacement: 0,
+                size: None,
+            }),
             Argument::Register(Register::X64(X64Register::Rsi)),
         ],
     );

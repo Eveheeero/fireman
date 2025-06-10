@@ -5,6 +5,21 @@ use crate::{
     utils::Aos,
 };
 
+/// Memory ordering for atomic operations
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum MemoryOrdering {
+    /// No synchronization (normal memory access)
+    Relaxed,
+    /// Acquire semantics (for loads)
+    Acquire,
+    /// Release semantics (for stores)
+    Release,
+    /// Both acquire and release semantics
+    AcqRel,
+    /// Sequential consistency
+    SeqCst,
+}
+
 /// Enum representing each IR statement
 ///
 /// ### Note
@@ -38,6 +53,11 @@ pub enum IrStatement {
         false_branch: Box<[IrStatement]>,
     },
     Special(IrStatementSpecial),
+    /// Atomic operation wrapper
+    Atomic {
+        statement: Box<IrStatement>,
+        ordering: MemoryOrdering,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,6 +104,7 @@ impl IrDataContainable for IrStatement {
             IrStatement::Special(ir_statement_special) => {
                 ir_statement_special.get_related_ir_data(v)
             }
+            IrStatement::Atomic { statement, .. } => statement.get_related_ir_data(v),
             _ => {}
         }
     }
@@ -145,6 +166,14 @@ impl std::fmt::Display for IrStatement {
             IrStatement::Undefined => write!(f, "undefined"),
             IrStatement::Exception(e) => write!(f, "exception {}", e),
             IrStatement::Halt => write!(f, "halt"),
+            IrStatement::Atomic {
+                statement,
+                ordering,
+            } => {
+                write!(f, "atomic[{:?}] {{", ordering)?;
+                write!(f, "\n    {}", statement)?;
+                write!(f, "\n}}")
+            }
         }
     }
 }

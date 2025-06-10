@@ -1,6 +1,10 @@
 //! ARM32 register definitions
 
+use crate::ir::Register;
+use crate::ir::data::{IrData, IrIntrinsic};
+use crate::utils::Aos;
 use std::fmt;
+use std::sync::LazyLock;
 
 /// ARM32 registers
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -32,31 +36,31 @@ pub enum Arm32Register {
     CPSR,
 
     // Saved Program Status Registers (banked registers)
-    SPSR_FIQ,
-    SPSR_IRQ,
-    SPSR_SVC,
-    SPSR_ABT,
-    SPSR_UND,
+    SpsrFiq,
+    SpsrIrq,
+    SpsrSvc,
+    SpsrAbt,
+    SpsrUnd,
 
     // Banked registers for different modes
     // FIQ mode has its own R8-R14
-    R8_FIQ,
-    R9_FIQ,
-    R10_FIQ,
-    R11_FIQ,
-    R12_FIQ,
-    R13_FIQ, // SP_FIQ
-    R14_FIQ, // LR_FIQ
+    R8Fiq,
+    R9Fiq,
+    R10Fiq,
+    R11Fiq,
+    R12Fiq,
+    R13Fiq, // SP_FIQ
+    R14Fiq, // LR_FIQ
 
     // Other modes have their own SP and LR
-    R13_IRQ, // SP_IRQ
-    R14_IRQ, // LR_IRQ
-    R13_SVC, // SP_SVC
-    R14_SVC, // LR_SVC
-    R13_ABT, // SP_ABT
-    R14_ABT, // LR_ABT
-    R13_UND, // SP_UND
-    R14_UND, // LR_UND
+    R13Irq, // SP_IRQ
+    R14Irq, // LR_IRQ
+    R13Svc, // SP_SVC
+    R14Svc, // LR_SVC
+    R13Abt, // SP_ABT
+    R14Abt, // LR_ABT
+    R13Und, // SP_UND
+    R14Und, // LR_UND
 
     // VFP/NEON single-precision registers (S0-S31)
     S0,
@@ -175,26 +179,26 @@ impl Arm32Register {
             | Self::LR
             | Self::PC
             | Self::CPSR
-            | Self::SPSR_FIQ
-            | Self::SPSR_IRQ
-            | Self::SPSR_SVC
-            | Self::SPSR_ABT
-            | Self::SPSR_UND
-            | Self::R8_FIQ
-            | Self::R9_FIQ
-            | Self::R10_FIQ
-            | Self::R11_FIQ
-            | Self::R12_FIQ
-            | Self::R13_FIQ
-            | Self::R14_FIQ
-            | Self::R13_IRQ
-            | Self::R14_IRQ
-            | Self::R13_SVC
-            | Self::R14_SVC
-            | Self::R13_ABT
-            | Self::R14_ABT
-            | Self::R13_UND
-            | Self::R14_UND => 4,
+            | Self::SpsrFiq
+            | Self::SpsrIrq
+            | Self::SpsrSvc
+            | Self::SpsrAbt
+            | Self::SpsrUnd
+            | Self::R8Fiq
+            | Self::R9Fiq
+            | Self::R10Fiq
+            | Self::R11Fiq
+            | Self::R12Fiq
+            | Self::R13Fiq
+            | Self::R14Fiq
+            | Self::R13Irq
+            | Self::R14Irq
+            | Self::R13Svc
+            | Self::R14Svc
+            | Self::R13Abt
+            | Self::R14Abt
+            | Self::R13Und
+            | Self::R14Und => 4,
 
             // Single-precision float registers (S0-S31)
             Self::S0
@@ -340,11 +344,11 @@ impl Arm32Register {
         matches!(
             self,
             Self::CPSR
-                | Self::SPSR_FIQ
-                | Self::SPSR_IRQ
-                | Self::SPSR_SVC
-                | Self::SPSR_ABT
-                | Self::SPSR_UND
+                | Self::SpsrFiq
+                | Self::SpsrIrq
+                | Self::SpsrSvc
+                | Self::SpsrAbt
+                | Self::SpsrUnd
                 | Self::FPSCR
                 | Self::FPEXC
                 | Self::FPSID
@@ -403,28 +407,28 @@ impl fmt::Display for Arm32Register {
 
             // Status registers
             Self::CPSR => write!(f, "cpsr"),
-            Self::SPSR_FIQ => write!(f, "spsr_fiq"),
-            Self::SPSR_IRQ => write!(f, "spsr_irq"),
-            Self::SPSR_SVC => write!(f, "spsr_svc"),
-            Self::SPSR_ABT => write!(f, "spsr_abt"),
-            Self::SPSR_UND => write!(f, "spsr_und"),
+            Self::SpsrFiq => write!(f, "spsr_fiq"),
+            Self::SpsrIrq => write!(f, "spsr_irq"),
+            Self::SpsrSvc => write!(f, "spsr_svc"),
+            Self::SpsrAbt => write!(f, "spsr_abt"),
+            Self::SpsrUnd => write!(f, "spsr_und"),
 
             // Banked registers
-            Self::R8_FIQ => write!(f, "r8_fiq"),
-            Self::R9_FIQ => write!(f, "r9_fiq"),
-            Self::R10_FIQ => write!(f, "r10_fiq"),
-            Self::R11_FIQ => write!(f, "r11_fiq"),
-            Self::R12_FIQ => write!(f, "r12_fiq"),
-            Self::R13_FIQ => write!(f, "r13_fiq"),
-            Self::R14_FIQ => write!(f, "r14_fiq"),
-            Self::R13_IRQ => write!(f, "r13_irq"),
-            Self::R14_IRQ => write!(f, "r14_irq"),
-            Self::R13_SVC => write!(f, "r13_svc"),
-            Self::R14_SVC => write!(f, "r14_svc"),
-            Self::R13_ABT => write!(f, "r13_abt"),
-            Self::R14_ABT => write!(f, "r14_abt"),
-            Self::R13_UND => write!(f, "r13_und"),
-            Self::R14_UND => write!(f, "r14_und"),
+            Self::R8Fiq => write!(f, "r8_fiq"),
+            Self::R9Fiq => write!(f, "r9_fiq"),
+            Self::R10Fiq => write!(f, "r10_fiq"),
+            Self::R11Fiq => write!(f, "r11_fiq"),
+            Self::R12Fiq => write!(f, "r12_fiq"),
+            Self::R13Fiq => write!(f, "r13_fiq"),
+            Self::R14Fiq => write!(f, "r14_fiq"),
+            Self::R13Irq => write!(f, "r13_irq"),
+            Self::R14Irq => write!(f, "r14_irq"),
+            Self::R13Svc => write!(f, "r13_svc"),
+            Self::R14Svc => write!(f, "r14_svc"),
+            Self::R13Abt => write!(f, "r13_abt"),
+            Self::R14Abt => write!(f, "r14_abt"),
+            Self::R13Und => write!(f, "r13_und"),
+            Self::R14Und => write!(f, "r14_und"),
 
             // VFP/NEON registers - Single precision
             Self::S0 => write!(f, "s0"),
@@ -561,5 +565,92 @@ impl ConditionFlags {
             Condition::AL => true,
             Condition::NV => false,
         }
+    }
+}
+
+// Static register definitions
+// ARM32 has 16 general-purpose registers (r0-r15), each 32 bits
+// We allocate them sequentially in the virtual machine's bit array
+static R0: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("r0", 0..32)).into());
+
+static R1: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("r1", 32..64)).into());
+
+static R2: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("r2", 64..96)).into());
+
+static R3: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("r3", 96..128)).into());
+
+static R4: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("r4", 128..160)).into());
+
+static R5: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("r5", 160..192)).into());
+
+static R6: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("r6", 192..224)).into());
+
+static R7: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("r7", 224..256)).into());
+
+static R8: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("r8", 256..288)).into());
+
+static R9: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("r9", 288..320)).into());
+
+static R10: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("r10", 320..352)).into());
+
+static R11: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("r11", 352..384)).into());
+
+static R12: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("r12", 384..416)).into());
+
+// r13 = sp (stack pointer)
+static SP: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("sp", 416..448)).into());
+
+// r14 = lr (link register)
+static LR: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("lr", 448..480)).into());
+
+// r15 = pc (program counter)
+static PC: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("pc", 480..512)).into());
+
+// CPSR (Current Program Status Register)
+static CPSR: LazyLock<Aos<IrData>> =
+    LazyLock::new(|| IrData::Register(Register::new("cpsr", 512..544)).into());
+
+/// Convert string to ARM32 register as IrData
+pub fn str_to_arm32_register(s: &str) -> Aos<IrData> {
+    match s.to_lowercase().as_str() {
+        // Core registers
+        "r0" => R0.clone(),
+        "r1" => R1.clone(),
+        "r2" => R2.clone(),
+        "r3" => R3.clone(),
+        "r4" => R4.clone(),
+        "r5" => R5.clone(),
+        "r6" => R6.clone(),
+        "r7" => R7.clone(),
+        "r8" => R8.clone(),
+        "r9" => R9.clone(),
+        "r10" => R10.clone(),
+        "r11" => R11.clone(),
+        "r12" => R12.clone(),
+        "r13" | "sp" => SP.clone(),
+        "r14" | "lr" => LR.clone(),
+        "r15" | "pc" => PC.clone(),
+
+        // Status registers
+        "cpsr" => CPSR.clone(),
+
+        // Unknown register
+        _ => IrData::Intrinsic(IrIntrinsic::Unknown).into(),
     }
 }

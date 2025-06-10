@@ -8,6 +8,7 @@ use crate::utils::error::DecompileError;
 use std::collections::BTreeMap;
 use std::path::Path;
 
+pub mod fire;
 pub mod header;
 pub mod parser;
 pub mod section;
@@ -45,6 +46,11 @@ impl Elf {
     /// Parse ELF from raw bytes
     pub fn from_bytes(data: Vec<u8>) -> Result<Self, DecompileError> {
         parser::parse_elf(data)
+    }
+
+    /// Create an ELF from binary data (for compatibility with Fireball interface)
+    pub fn from_binary(data: Vec<u8>) -> Result<Self, crate::prelude::FireballError> {
+        Self::from_bytes(data).map_err(|_e| crate::prelude::FireballError::Unknown)
     }
 
     /// Get the entry point address

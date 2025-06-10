@@ -45,18 +45,14 @@ impl Fireball {
             [0x4D, 0x5A, _, _] => Ok(Fireball::Pe(pe::Pe::from_binary(binary)?)),
 
             // ELF format: 0x7F ELF
-            [0x7F, 0x45, 0x4C, 0x46] => {
-                // TODO: Implement ELF parser
-                Err(FireballError::Unimplemented("ELF format not yet implemented".to_string()))
-            }
+            [0x7F, 0x45, 0x4C, 0x46] => Ok(Fireball::Elf(elf::Elf::from_binary(binary)?)),
 
             // Mach-O format (little-endian)
             [0xFE, 0xED, 0xFA, 0xCE] | // 32-bit
             [0xFE, 0xED, 0xFA, 0xCF] | // 64-bit
             [0xCE, 0xFA, 0xED, 0xFE] | // 32-bit big-endian
             [0xCF, 0xFA, 0xED, 0xFE] => { // 64-bit big-endian
-                // TODO: Implement Mach-O parser
-                Err(FireballError::Unimplemented("Mach-O format not yet implemented".to_string()))
+                Ok(Fireball::MachO(macho::MachO::from_binary(binary)?))
             }
 
             _ => Err(FireballError::InvalidBinary("Unknown binary format".to_string())),
@@ -67,8 +63,8 @@ impl Fireball {
     pub fn get_object(&self) -> &dyn FireRaw {
         match self {
             Self::Pe(pe) => pe,
-            Self::Elf(elf) => panic!("ELF FireRaw not implemented"),
-            Self::MachO(macho) => panic!("MachO FireRaw not implemented"),
+            Self::Elf(elf) => elf,
+            Self::MachO(macho) => macho,
         }
     }
 }

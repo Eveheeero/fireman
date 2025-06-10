@@ -52,3 +52,4 @@ bindings
 **/Cargo.lock
 
 iceball/architecture_doc_extractor/
+.output.txt

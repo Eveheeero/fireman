@@ -349,6 +349,20 @@ pub(super) fn convert_stmt(
                 data_type: _,
             } => Statement::Empty, // Used to detect types
         },
+        IrStatement::Atomic { statement, .. } => {
+            // For C generation, we treat atomic operations the same as regular ones
+            // The atomicity is implicit in the generated code
+            // In a production compiler, we might generate atomic intrinsics here
+            return convert_stmt(
+                ast,
+                function_id,
+                statement,
+                stmt_position,
+                root_expr,
+                var_map,
+                instruction_args,
+            );
+        }
     };
     Ok(ws(result, stmt_position.clone()))
 }

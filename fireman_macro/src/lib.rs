@@ -106,7 +106,7 @@ pub fn box_to_static_reference(_attribute: TokenStream, item: TokenStream) -> To
         #(#attrs)*
         #vis #sig {
             static ONCE: ::std::sync::LazyLock<::std::boxed::Box<#return_type>> = ::std::sync::LazyLock::new(|| #block);
-            ONCE.deref()
+            &**ONCE
         }
     };
     TokenStream::from(result)
