@@ -12,7 +12,8 @@ use crate::{
     ir::{
         Ir,
         analyze::DataType,
-        data::{AccessSize, IrData},
+        data::{AccessSize, IrData, IrDataOperation},
+        operator::{BinaryOperator, UnaryOperator},
         statements::{IrStatement, IrStatementSpecial},
     },
     utils::Aos,
@@ -385,9 +386,133 @@ impl TypeRecoveryEngine {
     }
 
     /// Detect arrays and structs from access patterns
-    fn detect_compound_types(&mut self, _ir: &Ir) {
-        // TODO: Implement array stride detection
-        // TODO: Implement struct field access pattern detection
+    fn detect_compound_types(&mut self, ir: &Ir) {
+        // Track memory access patterns to detect arrays and structs
+        // Look for patterns where addresses are computed by adding offsets
+        if let Some(statements) = &ir.statements {
+            let mut base_accesses: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+
+            for statement in statements.iter() {
+                // Look for memory dereferences in assignments
+                match statement {
+                    IrStatement::Assignment { from, to, size: _ } => {
+                        // Check if 'from' is a dereference of an address calculation
+                        if let IrData::Dereference(addr) = &**from {
+                            if let IrData::Operation(IrDataOperation::Binary {
+                                operator: BinaryOperator::Add,
+                                arg1,
+                                arg2,
+                            }) = &**addr
+                            {
+                                // Pattern: *(base + offset)
+                                if let IrData::Constant(offset) = &**arg2 {
+                                    base_accesses
+                                        .entry(arg1.to_string())
+                                        .or_insert_with(Vec::new)
+                                        .push(*offset);
+                                }
+                            }
+                        }
+
+                        // Also check 'to' for similar patterns
+                        if let IrData::Dereference(addr) = &**to {
+                            if let IrData::Operation(IrDataOperation::Binary {
+                                operator: BinaryOperator::Add,
+                                arg1,
+                                arg2,
+                            }) = &**addr
+                            {
+                                if let IrData::Constant(offset) = &**arg2 {
+                                    base_accesses
+                                        .entry(arg1.to_string())
+                                        .or_insert_with(Vec::new)
+                                        .push(*offset);
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            // Analyze the collected access patterns
+            for (base, offsets) in base_accesses {
+                if offsets.len() >= 2 {
+                    let mut sorted_offsets = offsets.clone();
+                    sorted_offsets.sort();
+                    sorted_offsets.dedup();
+
+                    // Check for array pattern: regular stride
+                    if let Some(stride) = self.detect_regular_stride(&sorted_offsets) {
+                        self.add_type_info(
+                            base.clone(),
+                            InferredType::Pointer {
+                                pointee: Box::new(InferredType::Array {
+                                    element: Box::new(InferredType::Unknown),
+                                    size: None,
+                                }),
+                                is_array: true,
+                            },
+                            0.7,
+                            TypeSource::MemoryAccess {
+                                stride,
+                                count: sorted_offsets.len(),
+                            },
+                        );
+                    }
+                    // Check for struct pattern: specific field offsets
+                    else if sorted_offsets.len() >= 2 && sorted_offsets[0] < 256 {
+                        // Heuristic: struct fields usually start at low offsets
+                        let mut fields = BTreeMap::new();
+                        for offset in &sorted_offsets {
+                            fields.insert(
+                                *offset,
+                                StructField {
+                                    offset: *offset,
+                                    ty: InferredType::Unknown,
+                                    name: None,
+                                },
+                            );
+                        }
+
+                        self.add_type_info(
+                            base,
+                            InferredType::Pointer {
+                                pointee: Box::new(InferredType::Struct {
+                                    fields,
+                                    size: None,
+                                    name: None,
+                                }),
+                                is_array: false,
+                            },
+                            0.6,
+                            TypeSource::InstructionUsage("struct_access".to_string()),
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// Detect if offsets follow a regular stride pattern
+    fn detect_regular_stride(&self, offsets: &[usize]) -> Option<usize> {
+        if offsets.len() < 2 {
+            return None;
+        }
+
+        // Calculate differences between consecutive offsets
+        let mut diffs = Vec::new();
+        for i in 1..offsets.len() {
+            diffs.push(offsets[i] - offsets[i - 1]);
+        }
+
+        // Check if all differences are the same
+        let first_diff = diffs[0];
+        if first_diff > 0 && diffs.iter().all(|&d| d == first_diff) {
+            Some(first_diff)
+        } else {
+            None
+        }
     }
 
     /// Propagate types through constraints
@@ -522,6 +647,154 @@ impl TypeRecoveryEngine {
                 signed: Some(false),
                 bits: Some(8),
             },
+        }
+    }
+
+    /// Infer type from a constant value
+    fn infer_type_from_constant(&mut self, value: usize, addr: &str, size: &AccessSize) {
+        // Common constant patterns
+        match value {
+            0 => {
+                // NULL pointer
+                self.add_type_info(
+                    addr.to_string(),
+                    InferredType::Pointer {
+                        pointee: Box::new(InferredType::Unknown),
+                        is_array: false,
+                    },
+                    0.5,
+                    TypeSource::ConstantComparison(0),
+                );
+            }
+            1 => {
+                // Likely boolean true
+                self.add_type_info(
+                    addr.to_string(),
+                    InferredType::Bool,
+                    0.6,
+                    TypeSource::ConstantComparison(1),
+                );
+            }
+            0x20..=0x7E => {
+                // ASCII printable character range
+                if let AccessSize::ResultOfByte(data) = size {
+                    if let IrData::Constant(1) = &**data {
+                        self.add_type_info(
+                            addr.to_string(),
+                            InferredType::Integer {
+                                signed: Some(false),
+                                bits: Some(8),
+                            },
+                            0.7,
+                            TypeSource::ConstantComparison(value as i128),
+                        );
+                    }
+                }
+            }
+            _ => {
+                // Try to infer size from the value
+                let bits = if value <= 0xFF {
+                    Some(8)
+                } else if value <= 0xFFFF {
+                    Some(16)
+                } else if value <= 0xFFFFFFFF {
+                    Some(32)
+                } else {
+                    Some(64)
+                };
+
+                self.add_type_info(
+                    addr.to_string(),
+                    InferredType::Integer { signed: None, bits },
+                    0.4,
+                    TypeSource::ConstantComparison(value as i128),
+                );
+            }
+        }
+    }
+
+    /// Analyze operations for type information
+    fn analyze_operation_for_types(&mut self, op: &IrDataOperation, result_addr: &str) {
+        match op {
+            IrDataOperation::Binary {
+                operator,
+                arg1,
+                arg2,
+            } => {
+                match operator {
+                    BinaryOperator::Add | BinaryOperator::Sub => {
+                        // If adding/subtracting to a register like SP/BP, likely pointer arithmetic
+                        if let IrData::Register(reg) = &**arg1 {
+                            if reg.name().contains("sp") || reg.name().contains("bp") {
+                                self.add_type_info(
+                                    result_addr.to_string(),
+                                    InferredType::Pointer {
+                                        pointee: Box::new(InferredType::Unknown),
+                                        is_array: false,
+                                    },
+                                    0.7,
+                                    TypeSource::InstructionUsage("pointer_arithmetic".to_string()),
+                                );
+                            }
+                        }
+
+                        // Arithmetic operations preserve numeric types
+                        self.add_constraint(
+                            &arg1.to_string(),
+                            result_addr,
+                            TypeConstraint::Arithmetic,
+                        );
+                        self.add_constraint(
+                            &arg2.to_string(),
+                            result_addr,
+                            TypeConstraint::Arithmetic,
+                        );
+                    }
+                    BinaryOperator::And | BinaryOperator::Or | BinaryOperator::Xor => {
+                        // Bitwise operations require integer types
+                        self.add_constraint(result_addr, result_addr, TypeConstraint::Bitwise);
+                    }
+                    BinaryOperator::Equal(_)
+                    | BinaryOperator::SignedLess(_)
+                    | BinaryOperator::SignedLessOrEqual(_)
+                    | BinaryOperator::UnsignedLess(_)
+                    | BinaryOperator::UnsignedLessOrEqual(_) => {
+                        // Comparison results are boolean
+                        self.add_type_info(
+                            result_addr.to_string(),
+                            InferredType::Bool,
+                            0.9,
+                            TypeSource::InstructionUsage("comparison".to_string()),
+                        );
+                    }
+                    _ => {}
+                }
+            }
+            IrDataOperation::Unary { operator, arg } => {
+                match operator {
+                    UnaryOperator::Not => {
+                        // Not can be bitwise or logical - infer boolean result
+                        self.add_type_info(
+                            result_addr.to_string(),
+                            InferredType::Bool,
+                            0.8,
+                            TypeSource::InstructionUsage("not_operation".to_string()),
+                        );
+
+                        // The argument should support bitwise operations
+                        self.add_constraint(&arg.to_string(), result_addr, TypeConstraint::Bitwise);
+                    }
+                    UnaryOperator::Negation => {
+                        // Negation preserves numeric type
+                        self.add_constraint(
+                            &arg.to_string(),
+                            result_addr,
+                            TypeConstraint::Arithmetic,
+                        );
+                    }
+                    _ => {}
+                }
+            }
         }
     }
 }
