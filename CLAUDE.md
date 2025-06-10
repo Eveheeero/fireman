@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**ALWAYS use serena.**
+
 ## Project Overview
 
 Fireman is a high-performance, deterministic decompiler framework written in Rust. It transforms binary executables into

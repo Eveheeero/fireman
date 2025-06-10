@@ -326,11 +326,11 @@ impl EnhancedCGenerator {
     /// Generate for loop
     fn generate_for_loop(
         &mut self,
-        init: Option<&PatternRef>,
-        condition: PatternRef,
-        increment: Option<&PatternRef>,
-        body: PatternRef,
-        confidence: Confidence,
+        _init: Option<&PatternRef>,
+        _condition: PatternRef,
+        _increment: Option<&PatternRef>,
+        _body: PatternRef,
+        _confidence: Confidence,
     ) {
         // TODO: Implement proper pattern resolution
         self.emit_line("/* TODO: For loop generation */");
@@ -339,9 +339,9 @@ impl EnhancedCGenerator {
     /// Generate while loop
     fn generate_while_loop(
         &mut self,
-        condition: PatternRef,
-        body: PatternRef,
-        confidence: Confidence,
+        _condition: PatternRef,
+        _body: PatternRef,
+        _confidence: Confidence,
     ) {
         // TODO: Implement proper pattern resolution
         self.emit_line("/* TODO: While loop generation */");
@@ -350,9 +350,9 @@ impl EnhancedCGenerator {
     /// Generate do-while loop
     fn generate_do_while_loop(
         &mut self,
-        body: PatternRef,
-        condition: PatternRef,
-        confidence: Confidence,
+        _body: PatternRef,
+        _condition: PatternRef,
+        _confidence: Confidence,
     ) {
         // TODO: Implement proper pattern resolution
         self.emit_line("/* TODO: Do-while loop generation */");
@@ -361,10 +361,10 @@ impl EnhancedCGenerator {
     /// Generate if-else
     fn generate_if_else(
         &mut self,
-        condition: PatternRef,
-        then_branch: PatternRef,
-        else_branch: Option<&PatternRef>,
-        confidence: Confidence,
+        _condition: PatternRef,
+        _then_branch: PatternRef,
+        _else_branch: Option<&PatternRef>,
+        _confidence: Confidence,
     ) {
         // TODO: Implement proper pattern resolution
         self.emit_line("/* TODO: If-else generation */");
@@ -375,7 +375,7 @@ impl EnhancedCGenerator {
         &mut self,
         target: &FunctionRef,
         arguments: &[PatternRef],
-        return_value: Option<&PatternRef>,
+        _return_value: Option<&PatternRef>,
         confidence: Confidence,
     ) {
         let func_name = match target {
@@ -403,11 +403,11 @@ impl EnhancedCGenerator {
     /// Generate array access pattern
     fn generate_array_access_pattern(
         &mut self,
-        base: PatternRef,
-        index: PatternRef,
-        element_type: &TypeRef,
+        _base: PatternRef,
+        _index: PatternRef,
+        _element_type: &TypeRef,
         is_write: bool,
-        confidence: Confidence,
+        _confidence: Confidence,
     ) {
         // TODO: Implement proper pattern resolution
         if is_write {
