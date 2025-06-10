@@ -1,8 +1,11 @@
 ## Project Overview
 
 Fireman is a high-performance, deterministic decompiler framework written in Rust. It transforms binary executables into
-readable, enhanced C code through a sophisticated multi-stage pipeline: Binary → Disassembly → Multi-Level IR →
+readable, Enhanced C code through a sophisticated multi-stage pipeline: Binary → Disassembly → Multi-Level IR →
 Analysis → Enhanced C Output.
+
+**Enhanced C**: A tailored C-like language that minimally leverages modern C++ features to improve readability while
+preserving decompiler characteristics and low-level details.
 
 **Core Design Principles**:
 
@@ -70,7 +73,7 @@ npm run tauri build
 
 The decompilation process follows a sophisticated multi-stage pipeline:
 ```
-Binary File → PE Parser → Disassembler → IR Generation → Analysis → C Generation
+Binary File → PE Parser → Disassembler → IR Generation → Analysis → Enhanced C Generation
                                               ↓
                                         GUI Visualization
 ```
@@ -103,7 +106,15 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → C 
 - Control flow graph construction
 - IR generation for common instructions
 - Basic data flow analysis
-- C code generation from IR
+- Enhanced C code generation from IR
+  - Auto type inference for complex types
+  - Fixed-width integer types (uint32_t, int64_t)
+  - nullptr instead of NULL
+  - Range-based for loops
+  - Confidence-based feature usage
+- Advanced type recovery system
+- Variable naming heuristics
+- Struct/class reconstruction
 - GUI for visualizing assembly and IR
 
 🚧 In Progress:

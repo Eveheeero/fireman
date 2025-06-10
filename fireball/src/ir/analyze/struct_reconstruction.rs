@@ -12,14 +12,14 @@
 use crate::{
     ir::{
         Ir,
-        analyze::type_recovery::{InferredType, StructField, TypeInfo},
+        analyze::type_recovery::{InferredType, TypeInfo},
         data::{AccessSize, IrData, IrDataOperation},
         operator::BinaryOperator,
         statements::IrStatement,
     },
     utils::Aos,
 };
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 /// Reconstructed structure definition
 #[derive(Debug, Clone)]
@@ -395,9 +395,23 @@ impl StructReconstructionEngine {
 
     /// Generate meaningful field names
     fn generate_field_names(&mut self) {
+        // Collect field names first to avoid borrow checker issues
+        let mut field_names = Vec::new();
+        for (_base, struct_def) in self.structs.iter() {
+            for (offset, field) in &struct_def.fields {
+                let name = self.generate_field_name(&field.field_type, *offset);
+                field_names.push((*offset, name));
+            }
+        }
+
+        // Apply the names
+        let mut name_idx = 0;
         for (_base, struct_def) in self.structs.iter_mut() {
-            for (offset, field) in struct_def.fields.iter_mut() {
-                field.name = Some(self.generate_field_name(&field.field_type, *offset));
+            for (_offset, field) in struct_def.fields.iter_mut() {
+                if name_idx < field_names.len() {
+                    field.name = Some(field_names[name_idx].1.clone());
+                    name_idx += 1;
+                }
             }
         }
     }
