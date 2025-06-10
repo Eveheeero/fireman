@@ -79,6 +79,168 @@ impl Default for EnhancedAstConfig {
         }
     }
 }
+/// Get pointer type based on architecture
+pub fn get_pointer_type(&self, pointee_type: CType) -> CType {
+    CType::Pointer(Box::new(pointee_type))
+}
+
+/// Get size_t type based on architecture
+pub fn get_size_type(&self) -> CType {
+    if self.config.use_fixed_width_types {
+        if let Some(arch) = &self.config.architecture {
+            match arch.pointer_size {
+                32 => CType::UInt32,
+                64 => CType::UInt64,
+                _ => CType::UInt,
+            }
+        } else {
+            CType::UInt
+        }
+    } else {
+        CType::UInt // size_t
+    }
+}
+
+/// Get ptrdiff_t type based on architecture
+pub fn get_ptrdiff_type(&self) -> CType {
+    if self.config.use_fixed_width_types {
+        if let Some(arch) = &self.config.architecture {
+            match arch.pointer_size {
+                32 => CType::Int32,
+                64 => CType::Int64,
+                _ => CType::Int,
+            }
+        } else {
+            CType::Int
+        }
+    } else {
+        CType::Int // ptrdiff_t
+    }
+}
+
+/// Get register-sized integer type based on architecture
+pub fn get_register_type(&self, signed: bool) -> CType {
+    if let Some(arch) = &self.config.architecture {
+        match arch.pointer_size {
+            32 => if signed { CType::Int32 } else { CType::UInt32 },
+            64 => if signed { CType::Int64 } else { CType::UInt64 },
+            _ => if signed { CType::Int } else { CType::UInt },
+        }
+    } else {
+        if signed { CType::Int } else { CType::UInt }
+    }
+}
+
+/// Get type for memory addresses based on architecture
+pub fn get_address_type(&self) -> CType {
+    if self.config.use_fixed_width_types {
+        if let Some(arch) = &self.config.architecture {
+            match arch.pointer_size {
+                32 => CType::UInt32,
+                64 => CType::UInt64,
+                _ => CType::UInt,
+            }
+        } else {
+            CType::UInt64 // Default to 64-bit addresses
+        }
+    } else {
+        CType::Pointer(Box::new(CType::Void))
+    }
+}
+
+/// Calculate struct alignment based on architecture
+pub fn get_struct_alignment(&self, max_field_alignment: usize) -> usize {
+    if let Some(arch) = &self.config.architecture {
+        // Architecture-specific alignment rules
+        match arch.arch_type {
+            ArchType::X86 | ArchType::X86_64 => {
+                // x86/x64 typically aligns to the largest field, max 8 bytes
+                max_field_alignment.min(8)
+            }
+            ArchType::Arm32 => {
+                // ARM32 typically aligns to 4 bytes max
+                max_field_alignment.min(4)
+            }
+            ArchType::Arm64 => {
+                // ARM64 aligns to the largest field, max 8 bytes
+                max_field_alignment.min(8)
+            }
+            _ => max_field_alignment,
+        }
+    } else {
+        max_field_alignment
+    }
+}
+
+/// Get type size in bytes based on architecture
+pub fn get_type_size(&self, c_type: &CType) -> Option<usize> {
+    match c_type {
+        CType::Void => Some(0),
+        CType::Bool | CType::Char | CType::Int8 | CType::UInt8 => Some(1),
+        CType::Int16 | CType::UInt16 => Some(2),
+        CType::Int32 | CType::UInt32 | CType::Float => Some(4),
+        CType::Int64 | CType::UInt64 | CType::Double => Some(8),
+        CType::Int | CType::UInt => {
+            // Architecture-dependent sizes
+            if let Some(arch) = &self.config.architecture {
+                match arch.arch_type {
+                    ArchType::X86 | ArchType::Arm32 => Some(4),
+                    ArchType::X86_64 | ArchType::Arm64 => Some(4), // int is still 32-bit on 64-bit platforms
+                    _ => None,
+                }
+            } else {
+                Some(4) // Default to 32-bit int
+            }
+        }
+        CType::Pointer(_) => {
+            if let Some(arch) = &self.config.architecture {
+                Some((arch.pointer_size / 8) as usize)
+            } else {
+                Some(8) // Default to 64-bit pointers
+            }
+        }
+        CType::Array(elem_type, count) => {
+            self.get_type_size(elem_type).map(|elem_size| elem_size * count)
+        }
+        _ => None, // Structs/Unions need more complex calculation
+    }
+}
+
+/// Format an address literal based on architecture
+pub fn format_address(&self, address: u64) -> String {
+    match self.config.numeric_format {
+        NumericFormat::Hexadecimal => {
+            if let Some(arch) = &self.config.architecture {
+                match arch.pointer_size {
+                    32 => format!("0x{:08x}", address as u32),
+                    64 => format!("0x{:016x}", address),
+                    _ => format!("0x{:x}", address),
+                }
+            } else {
+                format!("0x{:016x}", address) // Default to 64-bit
+            }
+        }
+        NumericFormat::Decimal => format!("{}", address),
+        NumericFormat::Binary => format!("0b{:b}", address),
+        NumericFormat::Auto => {
+            // For addresses, always use hex
+            self.format_address_hex(address)
+        }
+    }
+}
+
+/// Helper to format address as hex with proper width
+fn format_address_hex(&self, address: u64) -> String {
+    if let Some(arch) = &self.config.architecture {
+        match arch.pointer_size {
+            32 => format!("0x{:08x}", address as u32),
+            64 => format!("0x{:016x}", address),
+            _ => format!("0x{:x}", address),
+        }
+    } else {
+        format!("0x{:016x}", address)
+    }
+}
 
 /// Enhanced AST generator that works with existing AST structure
 pub struct EnhancedAstGenerator {
@@ -554,5 +716,140 @@ mod tests {
 
         let uint_type = gen.get_integer_type(Some(&false), Some(&64));
         assert_eq!(uint_type, CType::UInt64);
+    }
+
+    #[test]
+    fn test_architecture_aware_size_type() {
+        // Test with 32-bit architecture
+        let mut config = EnhancedAstConfig::default();
+        config.architecture = Some(ArchitectureInfo {
+            arch_type: ArchType::X86,
+            pointer_size: 32,
+            endianness: crate::arch::architecture::Endianness::Little,
+            register_count: 8,
+            instruction_alignment: 1,
+        });
+        let gen = EnhancedAstGenerator::new(config);
+
+        assert_eq!(gen.get_size_type(), CType::UInt32);
+        assert_eq!(gen.get_ptrdiff_type(), CType::Int32);
+        assert_eq!(gen.get_register_type(true), CType::Int32);
+        assert_eq!(gen.get_register_type(false), CType::UInt32);
+        assert_eq!(gen.get_address_type(), CType::UInt32);
+
+        // Test with 64-bit architecture
+        let mut config = EnhancedAstConfig::default();
+        config.architecture = Some(ArchitectureInfo {
+            arch_type: ArchType::X86_64,
+            pointer_size: 64,
+            endianness: crate::arch::architecture::Endianness::Little,
+            register_count: 16,
+            instruction_alignment: 1,
+        });
+        let gen = EnhancedAstGenerator::new(config);
+
+        assert_eq!(gen.get_size_type(), CType::UInt64);
+        assert_eq!(gen.get_ptrdiff_type(), CType::Int64);
+        assert_eq!(gen.get_register_type(true), CType::Int64);
+        assert_eq!(gen.get_register_type(false), CType::UInt64);
+        assert_eq!(gen.get_address_type(), CType::UInt64);
+    }
+
+    #[test]
+    fn test_type_sizes() {
+        let config = EnhancedAstConfig {
+            architecture: Some(ArchitectureInfo {
+                arch_type: ArchType::X86_64,
+                pointer_size: 64,
+                endianness: crate::arch::architecture::Endianness::Little,
+                register_count: 16,
+                instruction_alignment: 1,
+            }),
+            ..Default::default()
+        };
+        let gen = EnhancedAstGenerator::new(config);
+
+        assert_eq!(gen.get_type_size(&CType::Void), Some(0));
+        assert_eq!(gen.get_type_size(&CType::Bool), Some(1));
+        assert_eq!(gen.get_type_size(&CType::Int8), Some(1));
+        assert_eq!(gen.get_type_size(&CType::Int16), Some(2));
+        assert_eq!(gen.get_type_size(&CType::Int32), Some(4));
+        assert_eq!(gen.get_type_size(&CType::Int64), Some(8));
+        assert_eq!(gen.get_type_size(&CType::Float), Some(4));
+        assert_eq!(gen.get_type_size(&CType::Double), Some(8));
+        assert_eq!(gen.get_type_size(&CType::Int), Some(4)); // int is 32-bit even on 64-bit
+        assert_eq!(gen.get_type_size(&CType::Pointer(Box::new(CType::Void))), Some(8));
+        assert_eq!(gen.get_type_size(&CType::Array(Box::new(CType::Int32), 10)), Some(40));
+    }
+
+    #[test]
+    fn test_address_formatting() {
+        let config = EnhancedAstConfig {
+            numeric_format: NumericFormat::Hexadecimal,
+            architecture: Some(ArchitectureInfo {
+                arch_type: ArchType::X86,
+                pointer_size: 32,
+                endianness: crate::arch::architecture::Endianness::Little,
+                register_count: 8,
+                instruction_alignment: 1,
+            }),
+            ..Default::default()
+        };
+        let gen = EnhancedAstGenerator::new(config);
+
+        assert_eq!(gen.format_address(0x12345678), "0x12345678");
+        assert_eq!(gen.format_address(0x1000), "0x00001000");
+
+        // Test with 64-bit architecture
+        let config = EnhancedAstConfig {
+            numeric_format: NumericFormat::Hexadecimal,
+            architecture: Some(ArchitectureInfo {
+                arch_type: ArchType::X86_64,
+                pointer_size: 64,
+                endianness: crate::arch::architecture::Endianness::Little,
+                register_count: 16,
+                instruction_alignment: 1,
+            }),
+            ..Default::default()
+        };
+        let gen = EnhancedAstGenerator::new(config);
+
+        assert_eq!(gen.format_address(0x12345678), "0x0000000012345678");
+        assert_eq!(gen.format_address(0x7fff00001000), "0x00007fff00001000");
+    }
+
+    #[test]
+    fn test_struct_alignment() {
+        let config = EnhancedAstConfig {
+            architecture: Some(ArchitectureInfo {
+                arch_type: ArchType::X86_64,
+                pointer_size: 64,
+                endianness: crate::arch::architecture::Endianness::Little,
+                register_count: 16,
+                instruction_alignment: 1,
+            }),
+            ..Default::default()
+        };
+        let gen = EnhancedAstGenerator::new(config);
+
+        assert_eq!(gen.get_struct_alignment(1), 1);
+        assert_eq!(gen.get_struct_alignment(4), 4);
+        assert_eq!(gen.get_struct_alignment(8), 8);
+        assert_eq!(gen.get_struct_alignment(16), 8); // Max 8 bytes on x86_64
+
+        // Test ARM32
+        let config = EnhancedAstConfig {
+            architecture: Some(ArchitectureInfo {
+                arch_type: ArchType::Arm32,
+                pointer_size: 32,
+                endianness: crate::arch::architecture::Endianness::Little,
+                register_count: 16,
+                instruction_alignment: 4,
+            }),
+            ..Default::default()
+        };
+        let gen = EnhancedAstGenerator::new(config);
+
+        assert_eq!(gen.get_struct_alignment(8), 4); // Max 4 bytes on ARM32
     }
 }
