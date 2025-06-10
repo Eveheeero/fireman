@@ -43,23 +43,49 @@ improved readability while preserving low-level details.
 
 ### 🚧 Current Sprint Focus
 
-#### 🏗️ Sprint 5: Architecture-Agnostic AST Generation [NEW - IN PROGRESS]
+#### 🏗️ Sprint 6: Unified Instruction Handling & Testing [NEW - IN PROGRESS]
+
+**Goal**: Complete the architecture-agnostic framework with unified instruction handling and comprehensive testing
+
+1. **Unified Instruction Handling** [High Priority]
+    - [ ] Create common instruction interface for all architectures
+    - [ ] Map architecture-specific instructions to common IR
+    - [ ] Handle architecture-specific calling conventions
+    - [ ] Support architecture-specific optimizations at AST level
+    - [ ] Implement x86-64 as superset handler for x86-32
+
+2. **Testing & Validation** [Critical]
+    - [ ] Create cross-architecture test suite
+    - [ ] Verify deterministic output across architectures
+    - [ ] Test numeric format switching
+    - [ ] Validate AST structure preservation
+    - [ ] Test x86-64 handling of 32-bit code
+
+3. **LOCK Prefix Support** [High Priority]
+    - [ ] Add prefix detection in instruction parsing
+    - [ ] Create atomic IR operations
+    - [ ] Model memory barriers/fences
+    - [ ] Support for atomic variants (LOCK CMPXCHG, LOCK XADD, etc.)
+
+### ✅ Completed Sprints
+
+#### ✅ Sprint 5: Architecture-Agnostic AST Generation (COMPLETED)
 
 **Goal**: Implement unified architecture support at the AST level with configurable output
 
-1. **AST-Level Architecture Support** [Critical]
+1. **AST-Level Architecture Support** [COMPLETED] ✅
     - [x] Create unified Memory struct for all architectures ✅
     - [x] Add Architecture enum (X86, X86_64, ARM32, ARM64) ✅
-    - [ ] Implement architecture-aware type sizing in AST
-    - [ ] Add architecture detection from binary headers
-    - [ ] Create architecture-specific register mappings
+   - [x] Implement architecture-aware type sizing in AST ✅
+   - [x] Add architecture detection from binary headers ✅
+   - [x] Create architecture-specific register mappings ✅
 
-2. **Enhanced AST Generator** [High Priority]
+2. **Enhanced AST Generator** [COMPLETED] ✅
     - [x] Design EnhancedAstConfig with numeric format options ✅
     - [x] Implement hexadecimal as default output format ✅
-    - [ ] Add user-configurable numeric display (Hex/Dec/Bin/Auto)
-    - [ ] Create architecture-aware literal formatting
-    - [ ] Support proper type sizing based on architecture (32 vs 64-bit)
+   - [x] Add user-configurable numeric display (Hex/Dec/Bin/Auto) ✅
+   - [x] Create architecture-aware literal formatting ✅
+   - [x] Support proper type sizing based on architecture (32 vs 64-bit) ✅
 
 3. **Unified Instruction Handling** [Medium Priority]
     - [ ] Create common instruction interface for all architectures
