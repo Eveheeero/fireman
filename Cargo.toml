@@ -73,6 +73,9 @@ criterion = { version = "0.6", features = ["html_reports"] }
 proptest = "1.7"
 test-case = "3.3"
 
+# Cryptography
+sha2 = "0.10"
+
 [profile.dev]
 opt-level = 0
 debug = true

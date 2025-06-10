@@ -9,7 +9,6 @@
 4. **Architecture-Neutral**: Abstract away ISA details
 5. **Analysis-Friendly**: Easy to pattern match and transform
 6. **Progressive Refinement**: Three-level IR (Low → Medium → High) with increasing semantic understanding
-7. **ML-Enhanced**: Integrates confidence scores and ML suggestions without breaking determinism
 
 ### Determinism is Non-Negotiable
 
@@ -137,19 +136,19 @@ pub struct LowToMediumTransform {
 impl LowToMediumTransform {
     pub fn transform(&mut self, low_ir: &LowIRModule) -> MediumIRModule {
         let mut medium = MediumIRModule::new();
-        
+
         // Phase 1: Pattern detection (deterministic)
         for (addr, func) in &low_ir.functions {
             let patterns = self.detect_patterns(func);
             medium.add_function(addr, self.apply_patterns(func, patterns));
         }
-        
-        // Phase 2: ML enhancement (optional, cached)
+
+       // Phase 2: ML enhancement (optional, cached)
         if let Some(ml) = &self.ml_models {
             medium = ml.enhance_medium_ir(medium);
         }
-        
-        medium
+
+       medium
     }
 }
 
@@ -162,22 +161,22 @@ pub struct MediumToHighTransform {
 impl MediumToHighTransform {
     pub fn transform(&mut self, medium_ir: &MediumIRModule) -> HighIRModule {
         let mut high = HighIRModule::new();
-        
-        // Phase 1: Structure recovery
+
+       // Phase 1: Structure recovery
         let structures = self.type_recovery.recover_types(medium_ir);
-        
-        // Phase 2: Control flow recovery
+
+       // Phase 2: Control flow recovery
         for (addr, func) in &medium_ir.functions {
             let high_func = self.recover_control_flow(func, &structures);
             high.add_function(addr, high_func);
         }
-        
-        // Phase 3: ML naming (optional, cached)
+
+       // Phase 3: ML naming (optional, cached)
         if let Some(naming) = &self.ml_naming {
             high = naming.suggest_names(high);
         }
-        
-        high
+
+       high
     }
 }
 ```
@@ -195,11 +194,11 @@ All ML operations maintain determinism through:
 pub struct MLEnhancement {
     // Local models (always available)
     xgboost: XGBoostModels,
-    
-    // Optional models (cached)
+
+   // Optional models (cached)
     llm_cache: BTreeMap<ContentHash, LLMResult>,
-    
-    // Pattern database
+
+   // Pattern database
     pattern_db: PatternDatabase,
 }
 
@@ -207,20 +206,20 @@ impl MLEnhancement {
     /// Deterministic enhancement with caching
     pub fn enhance(&mut self, ir: IRLevel, content: &[u8]) -> EnhancedIR {
         let content_hash = self.hash_content(content);
-        
-        // Check cache first
+
+       // Check cache first
         if let Some(cached) = self.llm_cache.get(&content_hash) {
             return cached.clone();
         }
-        
-        // Run enhancement
+
+       // Run enhancement
         let enhanced = match ir {
             IRLevel::Low => self.enhance_low(content),
             IRLevel::Medium => self.enhance_medium(content),
             IRLevel::High => self.enhance_high(content),
         };
-        
-        // Cache result
+
+       // Cache result
         self.llm_cache.insert(content_hash, enhanced.clone());
         enhanced
     }
@@ -235,25 +234,25 @@ Every transformation tracks confidence scores:
 pub struct ConfidenceInfo {
     /// Overall confidence (0.0 - 1.0)
     pub overall: f32,
-    
-    /// Per-component confidence
+
+   /// Per-component confidence
     pub components: BTreeMap<String, f32>,
-    
-    /// Source of confidence assessment
+
+   /// Source of confidence assessment
     pub source: ConfidenceSource,
 }
 
 pub enum ConfidenceSource {
     /// Direct translation (always 1.0)
     Direct,
-    
-    /// Pattern matching with score
+
+   /// Pattern matching with score
     Pattern { pattern_id: PatternId, score: f32 },
-    
-    /// ML model prediction
+
+   /// ML model prediction
     MLModel { model: String, version: String, score: f32 },
-    
-    /// Heuristic analysis
+
+   /// Heuristic analysis
     Heuristic { rule: String, score: f32 },
 }
 ```
@@ -268,33 +267,33 @@ pub enum ConfidenceSource {
 pub enum Type {
     /// Void type
     Void,
-    
-    /// Boolean (1 bit)
+
+   /// Boolean (1 bit)
     Bool,
-    
-    /// Integers with explicit bit width
+
+   /// Integers with explicit bit width
     I1, I8, I16, I32, I64, I128,
-    
-    /// Floating point
+
+   /// Floating point
     F32, F64, F80,
-    
-    /// Pointer with optional pointee type
+
+   /// Pointer with optional pointee type
     Pointer(Option<Box<Type>>),
-    
-    /// Fixed-size array
+
+   /// Fixed-size array
     Array(Box<Type>, usize),
-    
-    /// Structure (ordered fields)
+
+   /// Structure (ordered fields)
     Struct(Vec<Type>),
-    
-    /// Function type
+
+   /// Function type
     Function {
         ret: Box<Type>,
         params: Vec<Type>,
         varargs: bool,
     },
-    
-    /// Unknown type (for initial lifting)
+
+   /// Unknown type (for initial lifting)
     Unknown,
 }
 
@@ -332,17 +331,17 @@ impl Type {
 pub enum Value {
     /// Constant values (always ordered first)
     Constant(Constant),
-    
-    /// Global variable
+
+   /// Global variable
     Global(GlobalId),
-    
-    /// Local SSA variable  
+
+   /// Local SSA variable
     Local(LocalId),
-    
-    /// Function reference
+
+   /// Function reference
     Function(FunctionId),
-    
-    /// Basic block label
+
+   /// Basic block label
     Label(BlockId),
 }
 
@@ -355,23 +354,23 @@ impl Ord for Value {
             (Constant(a), Constant(b)) => a.cmp(b),
             (Constant(_), _) => Ordering::Less,
             (_, Constant(_)) => Ordering::Greater,
-            
-            // Then globals (by ID)
+
+           // Then globals (by ID)
             (Global(a), Global(b)) => a.cmp(b),
             (Global(_), _) => Ordering::Less,
             (_, Global(_)) => Ordering::Greater,
-            
-            // Then functions (by address)
+
+           // Then functions (by address)
             (Function(a), Function(b)) => a.cmp(b),
             (Function(_), _) => Ordering::Less,
             (_, Function(_)) => Ordering::Greater,
-            
-            // Then locals (by source addr, name, version)
+
+           // Then locals (by source addr, name, version)
             (Local(a), Local(b)) => a.cmp(b),
             (Local(_), Label(_)) => Ordering::Less,
             (Label(_), Local(_)) => Ordering::Greater,
-            
-            // Finally labels (by block address)
+
+           // Finally labels (by block address)
             (Label(a), Label(b)) => a.cmp(b),
         }
     }
@@ -387,17 +386,17 @@ impl PartialOrd for Value {
 pub enum Constant {
     /// Integer constant with type
     Int { value: i128, ty: Type },
-    
-    /// Floating point constant
+
+   /// Floating point constant
     Float { bits: u64, ty: Type },
-    
-    /// Null pointer
+
+   /// Null pointer
     Null(Type),
-    
-    /// Undefined value
+
+   /// Undefined value
     Undef(Type),
-    
-    /// Aggregate constant
+
+   /// Aggregate constant
     Aggregate(Vec<Constant>),
 }
 
@@ -406,14 +405,14 @@ pub enum Constant {
 pub struct LocalId {
     /// Source instruction address (primary key)
     pub source: Address,
-    
-    /// Purpose/type (e.g., "load", "addr", "result")
+
+   /// Purpose/type (e.g., "load", "addr", "result")
     pub purpose: &'static str,
-    
-    /// Index for same purpose at same address
+
+   /// Index for same purpose at same address
     pub index: u32,
-    
-    /// SSA version (assigned during SSA construction)
+
+   /// SSA version (assigned during SSA construction)
     pub version: u32,
 }
 
@@ -453,22 +452,22 @@ impl TempAllocator {
     pub fn new() -> Self {
         Self { counters: BTreeMap::new() }
     }
-    
-    pub fn new_temp(&mut self, addr: Address, purpose: &'static str) -> LocalId {
+
+   pub fn new_temp(&mut self, addr: Address, purpose: &'static str) -> LocalId {
         let key = (addr, purpose);
         let index = self.counters.entry(key).or_insert(0);
         let current = *index;
         *index += 1;
-        
-        LocalId {
+
+      LocalId {
             source: addr,
             purpose,
             index: current,
             version: 0,  // Will be set during SSA
         }
     }
-    
-    /// MUST reset between functions
+
+   /// MUST reset between functions
     pub fn reset(&mut self) {
         self.counters.clear();
     }
@@ -489,16 +488,16 @@ pub enum Instruction {
         rhs: Value,
         ty: Type,
     },
-    
-    /// Unary operation: %dst = op %src
+
+   /// Unary operation: %dst = op %src
     UnOp {
         op: UnaryOp,
         dst: LocalId,
         src: Value,
         ty: Type,
     },
-    
-    /// Memory load: %dst = load ty* %ptr
+
+   /// Memory load: %dst = load ty* %ptr
     Load {
         dst: LocalId,
         ptr: Value,
@@ -506,8 +505,8 @@ pub enum Instruction {
         align: Option<u32>,
         volatile: bool,
     },
-    
-    /// Memory store: store ty %val, ty* %ptr
+
+   /// Memory store: store ty %val, ty* %ptr
     Store {
         val: Value,
         ptr: Value,
@@ -515,8 +514,8 @@ pub enum Instruction {
         align: Option<u32>,
         volatile: bool,
     },
-    
-    /// Type cast: %dst = cast op %src to ty
+
+   /// Type cast: %dst = cast op %src to ty
     Cast {
         op: CastOp,
         dst: LocalId,
@@ -524,23 +523,23 @@ pub enum Instruction {
         src_ty: Type,
         dst_ty: Type,
     },
-    
-    /// Function call: %dst = call fn(%args...)
+
+   /// Function call: %dst = call fn(%args...)
     Call {
         dst: Option<LocalId>,
         func: Value,
         args: Vec<(Value, Type)>,
         conv: CallConv,
     },
-    
-    /// PHI node: %dst = phi [%val1, %bb1], [%val2, %bb2], ...
+
+   /// PHI node: %dst = phi [%val1, %bb1], [%val2, %bb2], ...
     Phi {
         dst: LocalId,
         incoming: BTreeMap<BlockId, Value>,
         ty: Type,
     },
-    
-    /// Select: %dst = select %cond, %true_val, %false_val
+
+   /// Select: %dst = select %cond, %true_val, %false_val
     Select {
         dst: LocalId,
         cond: Value,
@@ -554,11 +553,11 @@ pub enum Instruction {
 pub enum BinaryOp {
     // Arithmetic (canonical order for commutative ops)
     Add, Sub, Mul, SDiv, UDiv, SRem, URem,
-    
-    // Bitwise (canonical order)
+
+   // Bitwise (canonical order)
     And, Or, Xor, Shl, LShr, AShr,
-    
-    // Comparison (not commutative)
+
+   // Comparison (not commutative)
     Eq, Ne, Slt, Sle, Sgt, Sge, Ult, Ule, Ugt, Uge,
 }
 
@@ -575,20 +574,20 @@ pub enum CastOp {
     Trunc,    // Truncate to smaller integer
     ZExt,     // Zero extend
     SExt,     // Sign extend
-    
-    // Pointer casts
+
+   // Pointer casts
     PtrToInt,
     IntToPtr,
-    
-    // Float casts
+
+   // Float casts
     FPTrunc,
     FPExt,
     FPToUI,
     FPToSI,
     UIToFP,
     SIToFP,
-    
-    // Bitcast (no value change)
+
+   // Bitcast (no value change)
     Bitcast,
 }
 ```
@@ -601,31 +600,31 @@ pub enum CastOp {
 pub enum Terminator {
     /// Return: ret ty %val
     Return(Option<(Value, Type)>),
-    
-    /// Unconditional branch: br label %dest
+
+   /// Unconditional branch: br label %dest
     Branch(BlockId),
-    
-    /// Conditional branch: br %cond, label %true, label %false
+
+   /// Conditional branch: br %cond, label %true, label %false
     CondBranch {
         cond: Value,
         true_dest: BlockId,
         false_dest: BlockId,
     },
-    
-    /// Switch: switch %val, label %default [val1, label1], ...
+
+   /// Switch: switch %val, label %default [val1, label1], ...
     Switch {
         value: Value,
         default: BlockId,
         cases: BTreeMap<Constant, BlockId>,
     },
-    
-    /// Indirect branch: indirectbr %addr, [%bb1, %bb2, ...]
+
+   /// Indirect branch: indirectbr %addr, [%bb1, %bb2, ...]
     IndirectBranch {
         addr: Value,
         destinations: BTreeSet<BlockId>,
     },
-    
-    /// Unreachable
+
+   /// Unreachable
     Unreachable,
 }
 ```
@@ -638,14 +637,14 @@ pub enum Terminator {
 pub struct BasicBlock {
     /// Block identifier (address-based)
     pub id: BlockId,
-    
-    /// PHI nodes (MUST be sorted by destination variable)
+
+   /// PHI nodes (MUST be sorted by destination variable)
     pub phis: Vec<Instruction>,
-    
-    /// Regular instructions (in address order)
+
+   /// Regular instructions (in address order)
     pub instructions: Vec<Instruction>,
-    
-    /// Block terminator
+
+   /// Block terminator
     pub terminator: Terminator,
 }
 
@@ -659,8 +658,8 @@ impl BasicBlock {
             }
         });
     }
-    
-    /// Verify block is in canonical form
+
+   /// Verify block is in canonical form
     pub fn verify_determinism(&self) -> Result<(), String> {
         // Check PHIs are sorted
         for window in self.phis.windows(2) {
@@ -670,8 +669,8 @@ impl BasicBlock {
                 }
             }
         }
-        
-        // Check instructions are in address order
+
+      // Check instructions are in address order
         let mut last_addr = Address(0);
         for inst in &self.instructions {
             let addr = inst.source_address();
@@ -680,8 +679,8 @@ impl BasicBlock {
             }
             last_addr = addr;
         }
-        
-        Ok(())
+
+      Ok(())
     }
 }
 
@@ -690,17 +689,17 @@ impl BasicBlock {
 pub struct Function {
     /// Function name/address
     pub id: FunctionId,
-    
-    /// Function signature
+
+   /// Function signature
     pub signature: FunctionType,
-    
-    /// Entry block
+
+   /// Entry block
     pub entry: BlockId,
-    
-    /// All blocks (ordered by address)
+
+   /// All blocks (ordered by address)
     pub blocks: BTreeMap<BlockId, BasicBlock>,
-    
-    /// Local variable types
+
+   /// Local variable types
     pub locals: BTreeMap<LocalId, Type>,
 }
 
@@ -709,14 +708,14 @@ pub struct Function {
 pub struct Module {
     /// Target architecture
     pub target: TargetInfo,
-    
-    /// Global variables (ordered)
+
+   /// Global variables (ordered)
     pub globals: BTreeMap<GlobalId, Global>,
-    
-    /// Functions (ordered by address)
+
+   /// Functions (ordered by address)
     pub functions: BTreeMap<FunctionId, Function>,
-    
-    /// External functions
+
+   /// External functions
     pub externals: BTreeMap<String, FunctionType>,
 }
 ```
@@ -729,8 +728,8 @@ pub struct Module {
 /// CRITICAL: Every lift operation must be deterministic
 pub struct DeterministicX86Lifter {
     temp_alloc: TempAllocator,
-    
-    /// Fixed patterns for each instruction
+
+   /// Fixed patterns for each instruction
     patterns: BTreeMap<OpcodeClass, LiftPattern>,
 }
 
@@ -738,8 +737,8 @@ impl DeterministicX86Lifter {
     /// MOV instruction - fully deterministic
     fn lift_mov(&mut self, inst: &X86Inst, addr: Address) -> Vec<Instruction> {
         let mut result = Vec::new();
-        
-        match (&inst.operands[0], &inst.operands[1]) {
+
+       match (&inst.operands[0], &inst.operands[1]) {
             // Pattern: MOV reg, reg
             (Operand::Reg(dst), Operand::Reg(src)) => {
                 result.push(Instruction::Assign {
@@ -748,8 +747,8 @@ impl DeterministicX86Lifter {
                     source_addr: addr,
                 });
             }
-            
-            // Pattern: MOV reg, imm
+
+          // Pattern: MOV reg, imm
             (Operand::Reg(dst), Operand::Imm(imm)) => {
                 result.push(Instruction::Assign {
                     dst: self.reg_to_local(dst, addr),
@@ -757,14 +756,14 @@ impl DeterministicX86Lifter {
                     source_addr: addr,
                 });
             }
-            
-            // Pattern: MOV reg, [mem]
+
+          // Pattern: MOV reg, [mem]
             (Operand::Reg(dst), Operand::Mem(mem)) => {
                 // Step 1: Calculate address (deterministic)
                 let addr_temp = self.temp_alloc.new_temp(addr, "addr");
                 result.extend(self.calc_mem_address(mem, addr_temp.clone(), addr));
-                
-                // Step 2: Load from memory
+
+               // Step 2: Load from memory
                 let load_temp = self.temp_alloc.new_temp(addr, "load");
                 result.push(Instruction::Load {
                     dst: load_temp.clone(),
@@ -773,22 +772,22 @@ impl DeterministicX86Lifter {
                     align: None,
                     volatile: false,
                 });
-                
-                // Step 3: Move to register
+
+               // Step 3: Move to register
                 result.push(Instruction::Assign {
                     dst: self.reg_to_local(dst, addr),
                     value: Value::Local(load_temp),
                     source_addr: addr,
                 });
             }
-            
-            // Pattern: MOV [mem], reg
+
+          // Pattern: MOV [mem], reg
             (Operand::Mem(mem), Operand::Reg(src)) => {
                 // Step 1: Calculate address
                 let addr_temp = self.temp_alloc.new_temp(addr, "addr");
                 result.extend(self.calc_mem_address(mem, addr_temp.clone(), addr));
-                
-                // Step 2: Store to memory
+
+               // Step 2: Store to memory
                 result.push(Instruction::Store {
                     val: Value::Local(self.reg_to_local(src, addr)),
                     ptr: Value::Local(addr_temp),
@@ -797,45 +796,45 @@ impl DeterministicX86Lifter {
                     volatile: false,
                 });
             }
-            
-            _ => panic!("Unhandled MOV at {:016x}: {:?}", addr, inst),
+
+          _ => panic!("Unhandled MOV at {:016x}: {:?}", addr, inst),
         }
-        
-        result
+
+       result
     }
-    
-    /// ADD instruction (canonicalized)
+
+   /// ADD instruction (canonicalized)
     fn lift_add(&mut self, dst: &Operand, src: &Operand, addr: Address) -> Vec<Instruction> {
         let dst_ty = self.operand_type(dst);
         let (dst_val, mut pre1) = self.operand_to_value(dst, addr);
         let (src_val, mut pre2) = self.operand_to_value(src, addr);
-        
-        let result = self.new_temp(addr, dst_ty, "add_result");
-        
-        let mut insts = vec![];
+
+      let result = self.new_temp(addr, dst_ty, "add_result");
+
+      let mut insts = vec![];
         insts.extend(pre1);
         insts.extend(pre2);
-        
-        // Canonical form: smaller operand first for Add
+
+      // Canonical form: smaller operand first for Add
         let (lhs, rhs) = self.canonicalize_operands(dst_val, src_val);
-        
-        insts.push(Instruction::BinOp {
+
+      insts.push(Instruction::BinOp {
             op: BinaryOp::Add,
             dst: result.clone(),
             lhs,
             rhs,
             ty: dst_ty,
         });
-        
-        // Store result back
+
+      // Store result back
         let (dst_loc, mut post) = self.location_to_lvalue(dst, addr);
         insts.extend(post);
         insts.push(self.create_store(dst_loc, Value::Local(result), addr));
-        
-        // Update flags deterministically
+
+      // Update flags deterministically
         insts.extend(self.update_flags_add(dst_val, src_val, addr));
-        
-        insts
+
+      insts
     }
 }
 ```
@@ -870,19 +869,19 @@ pub struct IRValidator {
     pub fn validate_module(&self, module: &Module) -> Result<(), ValidationError> {
         // Check determinism first
         self.validate_determinism(module)?;
-        
+
         // Check all functions
         for (id, func) in &module.functions {
             self.validate_function(func)?;
         }
-        
-        // Check all references resolve
+
+   // Check all references resolve
         self.validate_references(module)?;
-        
-        Ok(())
+
+   Ok(())
     }
-    
-    fn validate_determinism(&self, module: &Module) -> Result<(), ValidationError> {
+
+   fn validate_determinism(&self, module: &Module) -> Result<(), ValidationError> {
         // Verify functions are in address order
         let addresses: Vec<_> = module.functions.keys().map(|f| f.address).collect();
         for window in addresses.windows(2) {
@@ -892,8 +891,8 @@ pub struct IRValidator {
                 ));
             }
         }
-        
-        // Verify each function
+
+   // Verify each function
         for (_, func) in &module.functions {
             // Blocks in address order
             let block_addrs: Vec<_> = func.blocks.keys().map(|b| b.0).collect();
@@ -904,36 +903,36 @@ pub struct IRValidator {
                     ));
                 }
             }
-            
-            // Verify each block
+
+   // Verify each block
             for (_, block) in &func.blocks {
                 block.verify_determinism()
                     .map_err(|e| ValidationError::NonDeterministicBlock(e))?;
             }
         }
-        
-        Ok(())
+
+   Ok(())
     }
-    
-    fn validate_function(&self, func: &Function) -> Result<(), ValidationError> {
+
+   fn validate_function(&self, func: &Function) -> Result<(), ValidationError> {
         // Entry block exists
         if !func.blocks.contains_key(&func.entry) {
             return Err(ValidationError::MissingEntryBlock);
         }
-        
-        // All blocks reachable
+
+   // All blocks reachable
         let reachable = self.compute_reachable_blocks(func);
         if reachable.len() != func.blocks.len() {
             return Err(ValidationError::UnreachableBlocks);
         }
-        
-        // SSA property
+
+   // SSA property
         self.validate_ssa(func)?;
-        
-        // Type consistency
+
+   // Type consistency
         self.validate_types(func)?;
-        
-        Ok(())
+
+   Ok(())
     }
 }
 ```
@@ -982,21 +981,21 @@ let c_code = generator.generate(&optimized);
 #[test]
 fn test_ir_determinism() {
     let binary = include_bytes!("../tests/sample.bin");
-    
-    // Generate 1000 times
+
+   // Generate 1000 times
     let results: Vec<_> = (0..1000).map(|i| {
         // Different memory pressure each time
         let _mem: Vec<_> = (0..i*1000).map(|x| vec![x as u8; x % 1000]).collect();
-        
-        // Fresh lifter each time
+
+       // Fresh lifter each time
         let mut lifter = create_lifter();
         let ir = lifter.lift(binary);
-        
-        // Serialize for byte comparison
+
+       // Serialize for byte comparison
         bincode::serialize(&ir).unwrap()
     }).collect();
-    
-    // All must be IDENTICAL
+
+   // All must be IDENTICAL
     let first = &results[0];
     for (i, result) in results.iter().enumerate() {
         assert_eq!(first.len(), result.len(), "Different sizes at iteration {}", i);

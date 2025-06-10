@@ -47,7 +47,8 @@ Cargo.lock
 bindings
 *.log
 .idea/
-.serena/
+#.serena/
+.serena/cache
 **/Cargo.lock
 
 iceball/architecture_doc_extractor/
