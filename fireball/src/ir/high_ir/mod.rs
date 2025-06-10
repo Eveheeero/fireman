@@ -412,6 +412,9 @@ pub struct HighIRGenerator {
 
     /// Pattern simplifier
     simplifier: PatternSimplifier,
+
+    /// Track declared variables to avoid duplicate declarations
+    declared_vars: std::collections::BTreeSet<String>,
 }
 
 impl HighIRGenerator {
@@ -420,6 +423,7 @@ impl HighIRGenerator {
             name_gen: NameGenerator::new(),
             type_inference: TypeInference::new(),
             simplifier: PatternSimplifier::new(),
+            declared_vars: std::collections::BTreeSet::new(),
         }
     }
 
@@ -464,6 +468,9 @@ impl HighIRGenerator {
 
     /// Convert a Medium IR function to High IR
     fn convert_function(&mut self, func: &medium_ir::Function) -> Function {
+        // Clear declared variables for new function
+        self.declared_vars.clear();
+
         // Generate function name
         let name = self.name_gen.generate_function_name(&func.id);
 
@@ -472,6 +479,11 @@ impl HighIRGenerator {
 
         // Generate parameters
         let parameters = self.generate_parameters(&func.signature);
+
+        // Mark parameters as already declared
+        for param in &parameters {
+            self.declared_vars.insert(param.name.clone());
+        }
 
         // Convert function body
         let body_pattern = func.patterns.get(func.body).unwrap();
@@ -760,7 +772,7 @@ impl HighIRGenerator {
 
     /// Convert pattern to expression
     fn pattern_to_expression(
-        &self,
+        &mut self,
         pattern: &Pattern,
         store: &medium_ir::PatternStore,
     ) -> Expression {
@@ -770,8 +782,30 @@ impl HighIRGenerator {
                 operands,
                 ..
             } => self.convert_expression_pattern(operation, operands, store),
-            Pattern::LowIR { .. } => {
-                // TODO: Extract expression from low IR
+            Pattern::LowIR { instructions, .. } => {
+                // Extract expression from low IR instructions
+                // Look for the last instruction that produces a value
+                for inst in instructions.iter().rev() {
+                    match inst {
+                        low_ir::Instruction::BinOp { op, lhs, rhs, .. } => {
+                            let left = self.convert_low_ir_value(lhs);
+                            let right = self.convert_low_ir_value(rhs);
+                            let binary_op = self.convert_low_ir_binop(op);
+
+                            return Expression::Binary {
+                                op: binary_op,
+                                left: Box::new(left),
+                                right: Box::new(right),
+                            };
+                        }
+                        low_ir::Instruction::Assign { value, .. } => {
+                            return self.convert_low_ir_value(value);
+                        }
+                        _ => {}
+                    }
+                }
+
+                // Fallback if no suitable instruction found
                 Expression::Variable("temp".to_string())
             }
             _ => Expression::Variable("unknown".to_string()),
@@ -780,7 +814,7 @@ impl HighIRGenerator {
 
     /// Convert expression pattern
     fn convert_expression_pattern(
-        &self,
+        &mut self,
         operation: &medium_ir::ExpressionOp,
         operands: &[PatternRef],
         store: &medium_ir::PatternStore,
@@ -812,7 +846,7 @@ impl HighIRGenerator {
 
     /// Create binary expression
     fn make_binary_expr(
-        &self,
+        &mut self,
         op: BinaryOp,
         left_ref: &PatternRef,
         right_ref: &PatternRef,
@@ -836,7 +870,7 @@ impl HighIRGenerator {
 
     /// Create unary expression
     fn make_unary_expr(
-        &self,
+        &mut self,
         op: UnaryOp,
         operand_ref: &PatternRef,
         store: &medium_ir::PatternStore,
@@ -866,7 +900,7 @@ impl HighIRGenerator {
                     dst,
                     lhs,
                     rhs,
-                    ty: _,
+                    ty,
                     ..
                 } => {
                     // Convert binary operation to assignment
@@ -880,19 +914,50 @@ impl HighIRGenerator {
                         right: Box::new(right),
                     };
 
-                    let lvalue = LValue::Variable(self.convert_local_id_to_name(dst));
-                    statements.push(Statement::Assignment {
-                        lvalue,
-                        rvalue: expr,
-                    });
+                    let var_name = self.convert_local_id_to_name(dst);
+
+                    // Check if this is the first use of the variable
+                    if !self.declared_vars.contains(&var_name) {
+                        self.declared_vars.insert(var_name.clone());
+                        // Generate a declaration
+                        statements.push(Statement::Declaration {
+                            var: var_name,
+                            ty: self.convert_low_ir_type(ty),
+                            init: Some(expr),
+                        });
+                    } else {
+                        // Generate an assignment
+                        let lvalue = LValue::Variable(var_name);
+                        statements.push(Statement::Assignment {
+                            lvalue,
+                            rvalue: expr,
+                        });
+                    }
                 }
                 low_ir::Instruction::Assign { dst, value, .. } => {
                     let expr = self.convert_low_ir_value(value);
-                    let lvalue = LValue::Variable(self.convert_local_id_to_name(dst));
-                    statements.push(Statement::Assignment {
-                        lvalue,
-                        rvalue: expr,
-                    });
+                    let var_name = self.convert_local_id_to_name(dst);
+
+                    // For Assign, we need to infer the type from the value
+                    let ty = self.infer_type_from_value(value);
+
+                    // Check if this is the first use of the variable
+                    if !self.declared_vars.contains(&var_name) {
+                        self.declared_vars.insert(var_name.clone());
+                        // Generate a declaration
+                        statements.push(Statement::Declaration {
+                            var: var_name,
+                            ty,
+                            init: Some(expr),
+                        });
+                    } else {
+                        // Generate an assignment
+                        let lvalue = LValue::Variable(var_name);
+                        statements.push(Statement::Assignment {
+                            lvalue,
+                            rvalue: expr,
+                        });
+                    }
                 }
                 // TODO: Handle other instruction types
                 _ => {}
@@ -991,6 +1056,43 @@ impl HighIRGenerator {
             LowOp::Ule | LowOp::Sle => BinaryOp::Le,
             LowOp::Ugt | LowOp::Sgt => BinaryOp::Gt,
             LowOp::Uge | LowOp::Sge => BinaryOp::Ge,
+        }
+    }
+
+    /// Convert Low IR type to High IR type
+    fn convert_low_ir_type(&self, ty: &low_ir::Type) -> Type {
+        match ty {
+            low_ir::Type::Void => Type::Void,
+            low_ir::Type::Bool => Type::Bool,
+            low_ir::Type::I8 => Type::Char,
+            low_ir::Type::I16 => Type::Short,
+            low_ir::Type::I32 => Type::Int,
+            low_ir::Type::I64 => Type::LongLong,
+            low_ir::Type::F32 => Type::Float,
+            low_ir::Type::F64 => Type::Double,
+            low_ir::Type::Pointer(inner) => Type::Pointer(Box::new(
+                inner
+                    .as_ref()
+                    .map(|t| self.convert_low_ir_type(t))
+                    .unwrap_or(Type::Void),
+            )),
+            low_ir::Type::Array(elem, size) => Type::Array {
+                element: Box::new(self.convert_low_ir_type(elem)),
+                size: Some(*size),
+            },
+            _ => Type::Int, // Default for unknown types
+        }
+    }
+
+    /// Infer type from Low IR value
+    fn infer_type_from_value(&self, value: &low_ir::Value) -> Type {
+        match value {
+            low_ir::Value::Constant(constant) => match constant {
+                low_ir::Constant::Int { ty, .. } => self.convert_low_ir_type(ty),
+                low_ir::Constant::Float { ty, .. } => self.convert_low_ir_type(ty),
+                _ => Type::Int,
+            },
+            _ => Type::Int, // Default for other cases
         }
     }
 

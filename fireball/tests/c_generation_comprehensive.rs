@@ -170,7 +170,7 @@ fn create_conditional_return_function() -> LowModule {
             },
             lhs: Value::Local(LocalId {
                 source: Address::from_virtual_address(&sections, 0x2000),
-                purpose: "x",
+                purpose: "a",
                 index: 1,
                 version: 0,
             }),
