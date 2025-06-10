@@ -45,8 +45,8 @@ Working In Progress (2025.01 Updated)
   - [x] Define complete Low IR statement types
   - [x] Implement x64 → Low IR lifter (basic version)
   - [x] Add flag preservation logic
-  - [ ] Create SSA construction with deterministic phi placement
-  - [ ] Test: Verify 1:1 mapping with assembly
+  - [x] Create SSA construction with deterministic phi placement
+  - [x] Test: Verify 1:1 mapping with assembly
 
 - [ ] **Medium IR (Pattern Recognition)**
   - [ ] Design pattern matching framework
@@ -240,6 +240,7 @@ Working In Progress (2025.01 Updated)
 1. ~~Run and fix determinism tests~~ ✓
 2. ~~Implement Low IR statement types~~ ✓
 3. ~~Create x64 → Low IR lifter~~ ✓
-4. Create SSA construction for Low IR
-5. Build Medium IR pattern matcher
-6. Implement High IR generator
+4. ~~Create SSA construction for Low IR~~ ✓
+5. ~~Test Low IR: Verify 1:1 mapping with assembly~~ ✓
+6. Build Medium IR pattern matcher
+7. Implement High IR generator

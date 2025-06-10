@@ -8,8 +8,11 @@
 
 use crate::core::Address;
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Display, Formatter};
+
+pub mod ssa;
+pub use ssa::SSABuilder;
 
 /// Low IR types with explicit sizes
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -512,8 +515,6 @@ pub enum Terminator {
     /// Unreachable
     Unreachable,
 }
-
-use std::collections::BTreeSet;
 
 /// Basic block with deterministic ordering
 #[derive(Debug, Clone)]
