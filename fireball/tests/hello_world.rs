@@ -1,4 +1,5 @@
-use fireball::{core::Fire, pe::Pe};
+use fireball::binary::pe::Pe;
+use fireball::core::Fire;
 
 fn test_init() {
     use tracing_subscriber::{

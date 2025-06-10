@@ -1,6 +1,6 @@
+use crate::binary::pe::Pe;
 use crate::{
     core::{Address, Block, BlockRelationInformation, DestinationType, RelationType},
-    pe::Pe,
     prelude::*,
 };
 use std::sync::Arc;

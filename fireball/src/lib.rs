@@ -1,12 +1,9 @@
 #![allow(dead_code)]
 
 pub mod arch;
-mod binary;
+pub mod binary;
 pub mod core;
-pub mod elf;
 pub mod ir;
-pub mod macho;
-pub mod pe;
 pub mod prelude;
 pub mod simulation;
 #[cfg(test)]
@@ -15,6 +12,7 @@ pub mod utils;
 
 pub use crate::core::Fire;
 use crate::{core::FireRaw, prelude::*};
+use binary::{elf, macho, pe};
 
 /// Enum storing parsers for all supported types
 #[derive(Debug)]

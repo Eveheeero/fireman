@@ -3,6 +3,10 @@
 //! This module provides common functionality for working with binary files,
 //! shared across different file formats (PE, ELF, Mach-O).
 
+pub mod elf;
+pub mod macho;
+pub mod pe;
+
 /// Detect the architecture of a binary file
 pub fn detect_architecture(data: &[u8]) -> Option<&'static str> {
     if data.len() < 4 {

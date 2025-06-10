@@ -1,8 +1,8 @@
 //! Demo of Low IR generation from a simple binary
 
 use fireball::arch::x86_64::lifter::X64Lifter;
+use fireball::binary::pe::Pe;
 use fireball::core::FireRaw;
-use fireball::pe::Pe;
 
 fn main() {
     // Load test binary

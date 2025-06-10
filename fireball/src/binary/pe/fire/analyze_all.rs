@@ -3,7 +3,7 @@ use crate::{FireRaw, core::Block, prelude::DecompileError};
 use std::sync::Arc;
 
 impl Pe {
-    pub(super) fn _analyze_all(&self) -> Result<Vec<Arc<Block>>, DecompileError> {
+    pub(crate) fn _analyze_all(&self) -> Result<Vec<Arc<Block>>, DecompileError> {
         let entry = self.entry();
         let mut queue = Vec::new();
         queue.push(entry.clone());

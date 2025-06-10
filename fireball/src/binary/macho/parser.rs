@@ -2,7 +2,7 @@
 //!
 //! This module implements parsing of Mach-O binary files.
 
-use crate::macho::{MachO, header, symbol};
+use crate::binary::macho::{MachO, header, symbol};
 use crate::utils::error::DecompileError;
 
 /// Parse a Mach-O binary from raw bytes

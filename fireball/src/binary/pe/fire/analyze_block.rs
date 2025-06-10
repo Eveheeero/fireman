@@ -7,7 +7,7 @@ use crate::{
 use std::sync::Arc;
 
 impl Pe {
-    pub(super) fn _analyze_block(&self, address: &Address) -> Result<Arc<Block>, DecompileError> {
+    pub(crate) fn _analyze_block(&self, address: &Address) -> Result<Arc<Block>, DecompileError> {
         info!("Block analysis started {}", address);
 
         // Create the block

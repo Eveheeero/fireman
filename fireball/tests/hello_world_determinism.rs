@@ -2,8 +2,8 @@
 //!
 //! CRITICAL: This test verifies that the same binary ALWAYS produces identical IR
 
+use fireball::binary::pe::Pe;
 use fireball::core::FireRaw;
-use fireball::pe::Pe;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 

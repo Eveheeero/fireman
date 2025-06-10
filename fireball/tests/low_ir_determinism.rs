@@ -3,9 +3,9 @@
 //! CRITICAL: This test verifies that Low IR generation is deterministic
 
 use fireball::arch::x86_64::lifter::X64Lifter;
+use fireball::binary::pe::Pe;
 use fireball::core::{Address, FireRaw, Sections};
 use fireball::ir::low_ir::Module;
-use fireball::pe::Pe;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 

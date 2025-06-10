@@ -1,6 +1,6 @@
+use crate::binary::pe::Pe;
 use crate::{
     core::{Address, FireRaw, RelationType},
-    pe::Pe,
     prelude::*,
 };
 
