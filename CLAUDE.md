@@ -78,16 +78,21 @@ npm run tauri build
 
 The decompilation process follows a sophisticated multi-stage pipeline:
 ```
-Binary File → PE Parser → Disassembler → IR Generation → Analysis → Enhanced C Generation
-                                              ↓
-                                        GUI Visualization
+Binary File → PE Parser → Disassembler → IR Generation → Analysis → AST Generation → Enhanced C Output
+                                              ↓                           ↓
+                                        GUI Visualization          AST Optimizations
 ```
+
+**Key Point**: Optimizations happen at the AST level, not during IR processing. The IR levels are for analysis only.
 
 ### Multi-Level IR Design
 
 1. **Low IR**: Direct instruction translation, preserves all semantics
-2. **Medium IR**: Pattern recognition, basic optimizations, confidence tracking
+2. **Medium IR**: Pattern recognition, confidence tracking (NO optimizations here)
 3. **High IR**: Near-source representation with recovered types and structures
+
+**IMPORTANT**: All optimizations happen at the AST level, NOT at the IR level. The IR stages are purely for analysis and
+representation.
 
 ### Key Components in fireball/
 
@@ -134,6 +139,46 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → En
 - Advanced decompilation patterns
 - Code simulation capabilities
 
+## Architecture-Agnostic Design
+
+**NEW PRINCIPLE**: The decompiler must handle multiple architectures (x86, x86_64, ARM32, ARM64) uniformly at the AST
+level.
+
+### Architecture Support Strategy
+
+1. **Unified Architecture Interface**:
+   - `ArchitectureInfo` structure contains arch type, pointer size, endianness, register count
+   - Architecture detection from binary headers (PE, ELF, Mach-O)
+   - Architecture-aware type sizing and instruction alignment
+
+2. **AST-Level Optimization** (NOT IR-level):
+   - Enhanced C generation works directly with the C Abstract Syntax Tree
+   - Architecture-specific details handled during AST construction
+   - Preserves AST structure for further analysis and optimization
+
+3. **Numeric Display Configuration**:
+   - Default: Hexadecimal output for addresses and large values
+   - User-configurable: Decimal, Binary, or Auto-detection modes
+   - Architecture-aware formatting (32-bit vs 64-bit addresses)
+
+### Implementation Guidelines
+
+```rust
+// Architecture-aware type selection
+match arch.pointer_size {
+32 => CType::UInt32,  // or "unsigned int" based on config
+64 => CType::UInt64,  // or "unsigned long" based on config
+_ => CType::UInt,
+}
+
+// Unified instruction handling
+match arch.arch_type {
+ArchType::X86 | ArchType::X86_64 => x86_handler(),
+ArchType::Arm32 | ArchType::Arm64 => arm_handler(),
+_ => generic_handler(),
+}
+```
+
 ## Critical: Determinism Requirements
 
 **ABSOLUTE RULE**: The decompiler MUST produce byte-for-byte identical output for identical input, regardless of:
@@ -158,6 +203,31 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → En
 4. **Processing Order**: Always sort by address before processing
 5. **No Floating Point**: Use fixed-point arithmetic instead
 
+## Enhanced C AST Design
+
+**CRITICAL**: Work WITH the existing AST structure, not against it:
+
+1. **Extend, Don't Replace**:
+   - Use the existing `CAst`, `Statement`, `Expression` types
+   - Add enhanced features through configuration and helper functions
+   - Implement `PrintWithConfig` traits for custom rendering
+
+2. **Architecture-Aware AST Generation**:
+   ```rust
+   pub struct EnhancedAstConfig {
+       pub use_auto: bool,
+       pub use_nullptr: bool,
+       pub use_fixed_width_types: bool,
+       pub numeric_format: NumericFormat,  // Hex by default
+       pub architecture: Option<ArchitectureInfo>,
+   }
+   ```
+
+3. **Proper AST Integration**:
+   - Convert Medium IR patterns to AST statements
+   - Maintain AST structure for analysis passes
+   - Support confidence-based feature selection
+
 ## Code Style Guidelines
 
 - Follow Rust naming conventions (snake_case for functions/variables, CamelCase for types)
@@ -166,6 +236,28 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → En
 - Use custom error types defined in `utils/error.rs`
 - Keep modules focused and well-organized
 - **CRITICAL**: Validate determinism in all code changes
+
+### Visibility Guidelines
+
+1. **Minimize Public API Surface**:
+   ```rust
+   // ❌ AVOID: Overly permissive
+   pub fn internal_helper() { }
+   
+   // ✅ CORRECT: Appropriate visibility
+   pub(crate) fn internal_helper() { }  // Crate-visible
+   pub(super) fn module_helper() { }    // Module-visible
+   ```
+
+2. **Default Implementations**:
+   - Only implement `Default` when empty/zero state makes semantic sense
+   - Document why `Default` exists if not obvious
+   - Consider factory methods instead of `Default`
+
+3. **Constructor Visibility**:
+   - `new()` methods should generally be `pub(crate)` unless part of public API
+   - Document why public constructors exist
+   - Consider builder pattern for complex initialization
 
 ## Working with the Codebase
 
@@ -192,3 +284,75 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → En
 3. Ensure all iterations use sorted collections
 4. Update Enhanced C generation in `ir/analyze/ir_to_c/`
 5. Add confidence tracking for uncertain transformations
+
+## Simulation & Emulation Strategy
+
+**IMPORTANT**: Custom simulation code will be replaced with Unicorn Engine:
+
+1. **Why Unicorn Engine**:
+   - Battle-tested emulation framework
+   - Supports all target architectures (x86, ARM, MIPS, etc.)
+   - Better performance and accuracy
+   - Active maintenance and community
+
+2. **Migration Plan**:
+   ```rust
+   // Current (to be deprecated)
+   use crate::simulation::{CpuState, Memory, Executor};
+   
+   // Future (Unicorn-based)
+   use unicorn_engine::{Unicorn, RegisterX86, RegisterARM};
+   ```
+
+3. **Hook-Based Analysis**:
+   - Memory access tracking for type recovery
+   - Instruction tracing for coverage
+   - Syscall interception for API detection
+   - Branch tracking for control flow validation
+
+## Working with Enhanced C AST
+
+### Critical Implementation Notes
+
+1. **AST Extension Pattern**:
+   ```rust
+   // ❌ WRONG: Bypassing AST to generate strings directly
+   fn generate_enhanced_c(patterns: &[Pattern]) -> String {
+       let mut output = String::new();
+       // Direct string generation
+   }
+
+   // ✅ CORRECT: Extend existing AST structure
+   fn patterns_to_ast(patterns: &[Pattern]) -> CAst {
+       let mut ast = CAst::new();
+       // Convert patterns to AST nodes
+       // Let existing infrastructure handle rendering
+   }
+   ```
+
+2. **Architecture-Aware Code Generation**:
+   - Always check architecture before type sizing
+   - Use BTreeMap for deterministic iteration
+   - Format addresses based on pointer size (8 or 16 hex digits)
+   - Default to hexadecimal for numeric output
+
+3. **Numeric Format Handling**:
+   ```rust
+   match config.numeric_format {
+       NumericFormat::Hexadecimal => format!("0x{:x}", value),  // Default
+       NumericFormat::Decimal => value.to_string(),
+       NumericFormat::Binary => format!("0b{:b}", value),
+       NumericFormat::Auto => {
+           // Heuristic: hex for addresses, decimal for small values
+           if value > 0x1000 { format!("0x{:x}", value) }
+           else { value.to_string() }
+       }
+   }
+   ```
+
+4. **Pattern to AST Conversion Priority**:
+   - ForLoop, WhileLoop, DoWhileLoop → Control flow statements
+   - IfElse, SwitchCase → Conditional statements
+   - FunctionCall → Call expressions
+   - ArrayAccess, FieldAccess → Memory access expressions
+   - Always preserve confidence scores for uncertain transformations

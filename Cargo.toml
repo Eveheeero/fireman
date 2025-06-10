@@ -46,6 +46,9 @@ capstone = "0.13"
 pdb = "0.8"
 cpp_demangle = "0.4"
 
+# CPU Simulators
+unicorn-engine = "2.1"
+
 # Data structures
 bitvec = "1"
 hashbrown = "0.15"

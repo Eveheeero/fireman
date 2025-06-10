@@ -44,6 +44,11 @@ Cargo.lock
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,rust
 
+# node modules ignore
+pnpm-lock.yaml
+package.json
+
+# Ignore all local history of files
 bindings
 *.log
 .idea/

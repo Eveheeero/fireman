@@ -43,6 +43,100 @@ improved readability while preserving low-level details.
 
 ### 🚧 Current Sprint Focus
 
+#### 🏗️ Sprint 5: Architecture-Agnostic AST Generation [NEW - IN PROGRESS]
+
+**Goal**: Implement unified architecture support at the AST level with configurable output
+
+1. **AST-Level Architecture Support** [Critical]
+    - [x] Create unified Memory struct for all architectures ✅
+    - [x] Add Architecture enum (X86, X86_64, ARM32, ARM64) ✅
+    - [ ] Implement architecture-aware type sizing in AST
+    - [ ] Add architecture detection from binary headers
+    - [ ] Create architecture-specific register mappings
+
+2. **Enhanced AST Generator** [High Priority]
+    - [x] Design EnhancedAstConfig with numeric format options ✅
+    - [x] Implement hexadecimal as default output format ✅
+    - [ ] Add user-configurable numeric display (Hex/Dec/Bin/Auto)
+    - [ ] Create architecture-aware literal formatting
+    - [ ] Support proper type sizing based on architecture (32 vs 64-bit)
+
+3. **Unified Instruction Handling** [Medium Priority]
+    - [ ] Create common instruction interface for all architectures
+    - [ ] Map architecture-specific instructions to common IR
+    - [ ] Handle architecture-specific calling conventions
+    - [ ] Support architecture-specific optimizations at AST level
+
+4. **Testing & Validation** [High Priority]
+    - [ ] Create cross-architecture test suite
+    - [ ] Verify deterministic output across architectures
+    - [ ] Test numeric format switching
+    - [ ] Validate AST structure preservation
+
+#### 🔧 Sprint 6: Unified Architecture Implementation [NEW - PLANNED]
+
+**Goal**: Unify 32-bit and 64-bit implementations for x86 and ARM to reduce code duplication by 60-80%
+
+1. **Foundation & Design** [Week 1-2]
+    - [ ] Create x86_unified module structure
+        - [ ] common.rs - Shared x86/x64 logic (90% of instructions)
+        - [ ] x86_specific.rs - 32-bit only features
+        - [ ] x64_specific.rs - 64-bit only features (REX, R8-R15)
+    - [ ] Create arm_unified module structure
+        - [ ] common.rs - Shared ARM32/64 logic (60% of instructions)
+        - [ ] arm32_specific.rs - ARM32/Thumb specific
+        - [ ] arm64_specific.rs - AArch64 specific
+    - [ ] Design unified instruction trait interface
+
+2. **X86 Unification** [Week 3-4]
+    - [ ] Merge common instruction definitions
+        - [ ] Arithmetic (ADD, SUB, MUL, DIV) - 90% shared
+        - [ ] Logic (AND, OR, XOR) - 100% shared
+        - [ ] Control flow (JMP, CALL, Jcc) - 95% shared
+    - [ ] Unified register handling with mode detection
+    - [ ] Zero-extension handling for 64-bit mode
+    - [ ] REX prefix processing
+
+3. **ARM Unification** [Week 5-6]
+    - [ ] Merge common ARM concepts
+        - [ ] Condition codes (100% shared)
+        - [ ] Data processing (80% shared)
+        - [ ] Load/Store patterns (70% shared)
+    - [ ] Handle instruction set differences (ARM/Thumb/AArch64)
+    - [ ] Register mapping (R0-R15 vs X0-X30)
+
+4. **Integration & Migration** [Week 7]
+    - [ ] Update arch/mod.rs with unified modules
+    - [ ] Create compatibility layer for smooth migration
+    - [ ] Update all instruction analysis paths
+    - [ ] Maintain backward compatibility during transition
+
+5. **Testing & Validation** [Week 8]
+    - [ ] Comprehensive instruction coverage tests
+    - [ ] Cross-mode verification (32 vs 64-bit)
+    - [ ] Performance benchmarks (no regression)
+    - [ ] Determinism verification (1000 runs)
+
+6. **Cleanup & Optimization** [Week 9]
+    - [ ] Remove old architecture modules
+    - [ ] Delete compatibility layer
+    - [ ] Profile and optimize hot paths
+    - [ ] Update all documentation
+
+**Success Metrics**:
+
+- 60-80% code reduction in architecture modules
+- Zero performance regression (±5%)
+- 100% test compatibility
+- Single location for bug fixes
+
+**Key Design Decisions**:
+
+- Work WITH existing AST structure, not against it
+- All optimizations happen at AST level, NOT IR level
+- Hexadecimal output by default, user-configurable
+- Architecture detection automatic from binary
+
 #### ✅ Sprint 1: C Code Generation Quality (COMPLETED)
 
 **Goal**: Produce compilable, readable C code from binaries
@@ -274,16 +368,23 @@ Day 3: Test and verify all outputs compile
   - [ ] Macro reconstruction
 
 #### Simulation & Verification Framework
-- [x] **Core Simulation** (Completed)
+
+- [x] **Core Simulation** (Basic implementation - TO BE REPLACED)
   - [x] CPU state emulation for x64
   - [x] Memory management simulation
   - [x] Basic symbolic execution
-- [ ] **Enhanced Simulation**
-  - [ ] Taint analysis integration
-  - [ ] Path exploration strategies
-  - [ ] Constraint solver integration (Z3/CVC5)
+- [ ] **Unicorn Engine Integration** [PLANNED]
+    - [ ] Replace custom simulation with Unicorn Engine
+    - [ ] Support all architectures (x86, x86_64, ARM32, ARM64)
+    - [ ] Leverage Unicorn's accurate CPU emulation
+    - [ ] Hook-based instrumentation for analysis
+    - [ ] Snapshot/restore for path exploration
+- [ ] **Enhanced Analysis on Unicorn**
+    - [ ] Taint analysis via Unicorn hooks
+    - [ ] Dynamic type recovery during execution
+    - [ ] Constraint collection for symbolic execution
+    - [ ] Integration with Z3/CVC5 for path conditions
   - [ ] Concrete execution validation
-  - [ ] Simulation-guided decompilation
 
 ### 🟡 P2: User Interface & Tools
 
@@ -293,6 +394,11 @@ Day 3: Test and verify all outputs compile
 - [ ] Create memory/register simulation view
 - [ ] Add breakpoint support for simulation
 - [ ] Implement undo/redo for modifications
+- [ ] **Architecture Selection UI** [NEW]
+    - [ ] Add architecture dropdown/selector
+    - [ ] Display detected architecture info
+    - [ ] Allow manual architecture override
+    - [ ] Show architecture-specific features
 
 #### TUI Decompiler
 - [ ] Design terminal UI framework
@@ -300,6 +406,10 @@ Day 3: Test and verify all outputs compile
 - [ ] Add IR visualization
 - [ ] Create navigation shortcuts
 - [ ] Support mouse interaction
+- [ ] **Numeric Format Toggle** [NEW]
+    - [ ] Add hotkey for hex/dec/bin switching
+    - [ ] Remember user preference
+    - [ ] Show current format in status bar
 
 #### CLI Decompiler
 - [ ] Design command-line interface
@@ -307,6 +417,11 @@ Day 3: Test and verify all outputs compile
 - [ ] Implement output format options
 - [ ] Create scripting interface
 - [ ] Add progress reporting
+- [ ] **Architecture & Format Flags** [NEW]
+    - [ ] --arch flag for manual architecture
+    - [ ] --numeric-format flag (hex/dec/bin/auto)
+    - [ ] --detect-arch for architecture info
+    - [ ] --fixed-width-types toggle
 
 ### 🟢 P3: Advanced Analysis Features
 
@@ -330,6 +445,63 @@ Day 3: Test and verify all outputs compile
 - [ ] Add opaque predicate detection
 - [ ] Create VM-based obfuscation handler
 - [ ] Build pattern-based deobfuscator
+
+## 🏛️ Architecture-Specific Considerations [NEW SECTION]
+
+### x86/x86_64 Unified Handling
+
+- **Shared Components**:
+    - Common instruction decoding logic
+    - Unified memory addressing modes
+    - Shared flag handling
+- **Differences to Handle**:
+    - Register sizes (32 vs 64-bit)
+    - Default operand sizes
+    - REX prefix handling (x86_64 only)
+    - Calling conventions (cdecl/stdcall vs System V/Win64)
+
+### ARM32/ARM64 Unified Handling
+
+- **Shared Components**:
+    - Condition code system
+    - Load/store architecture principles
+    - Similar instruction patterns
+- **Differences to Handle**:
+    - Register count (R0-R15 vs X0-X30)
+    - Instruction encoding (32-bit vs fixed 32-bit)
+    - Thumb mode (ARM32 only)
+    - SIMD differences (NEON vs SVE)
+
+### Cross-Architecture Patterns
+
+- **Common Patterns**:
+  ```rust
+  // Function prologue detection
+  match arch {
+      X86 | X86_64 => detect_x86_prologue(),
+      ARM32 | ARM64 => detect_arm_prologue(),
+  }
+  
+  // Calling convention mapping
+  let arg_regs = match (arch, platform) {
+      (X86_64, Linux) => &["rdi", "rsi", "rdx", "rcx", "r8", "r9"],
+      (X86_64, Windows) => &["rcx", "rdx", "r8", "r9"],
+      (ARM64, _) => &["x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7"],
+      _ => &[],
+  };
+  ```
+
+### AST Generation Strategy
+
+- **Architecture-Aware Types**:
+    - size_t → uint32_t or uint64_t based on arch
+    - intptr_t → proper sized integer
+    - Pointer sizes in struct layouts
+- **Numeric Display**:
+    - Addresses: Always hex with proper width (8 or 16 digits)
+    - Small constants: Decimal by default
+    - Bit patterns: Hex or binary based on context
+    - User override: Global format preference
 
 ## 📊 Technical Debt & Infrastructure
 
@@ -465,3 +637,85 @@ Day 3: Test and verify all outputs compile
 - [x] Struct/class reconstruction ✅
 - [ ] ARM architecture support
 - [ ] Deobfuscation capabilities
+
+## 🧹 Final Cleanup Phase [LOWEST PRIORITY]
+
+**Goal**: Remove all redundancies and unused code after all other tasks are complete
+
+### When to Execute
+
+- **Prerequisite**: ALL other tasks must be 100% complete
+- **Timing**: Final phase before v1.0 release
+- **Duration**: 1-2 weeks
+
+### Cleanup Tasks
+
+1. **Code Redundancy Removal**
+    - [ ] Audit all modules for dead code using `cargo-udeps`
+    - [ ] Remove unused functions, types, and imports
+    - [ ] Consolidate duplicate logic across modules
+    - [ ] Remove commented-out code blocks
+    - [ ] Clean up `#[allow(dead_code)]` annotations
+
+2. **Module Consolidation**
+    - [ ] Merge small modules with <100 lines
+    - [ ] Combine related utility functions
+    - [ ] Flatten unnecessary module hierarchies
+    - [ ] Remove empty or single-item modules
+
+3. **Documentation Cleanup**
+    - [ ] Remove outdated documentation
+    - [ ] Delete obsolete design docs
+    - [ ] Archive old implementation notes
+    - [ ] Update README with current state
+    - [ ] Remove TODO comments that are done
+
+4. **Test Cleanup**
+    - [ ] Remove duplicate test cases
+    - [ ] Delete obsolete test fixtures
+    - [ ] Consolidate similar test files
+    - [ ] Remove unused test utilities
+    - [ ] Clean up test data files
+
+5. **Build & Dependencies**
+    - [ ] Remove unused dependencies
+    - [ ] Clean up feature flags
+    - [ ] Remove build script hacks
+    - [ ] Delete temporary compatibility code
+    - [ ] Optimize compile times
+
+6. **Final Verification**
+    - [ ] Run full test suite
+    - [ ] Verify no functionality lost
+    - [ ] Check binary size reduction
+    - [ ] Measure compile time improvement
+    - [ ] Document what was removed
+
+### Cleanup Checklist
+
+```bash
+# Tools to use
+cargo udeps          # Find unused dependencies
+cargo bloat          # Analyze binary size
+cargo machete        # Find unused code
+cargo audit          # Security check
+cargo clippy         # Final lint pass
+```
+
+### Expected Outcomes
+
+- 20-30% reduction in codebase size
+- Faster compile times
+- Cleaner module structure
+- Easier maintenance
+- Better documentation
+
+### Important Notes
+
+- **DO NOT** remove code that might be useful later
+- **DO NOT** optimize prematurely
+- **DO NOT** break public APIs
+- **ALWAYS** run full tests after each removal
+- **DOCUMENT** why something was removed
+
+This cleanup phase ensures the codebase remains maintainable and efficient after rapid development phases.
