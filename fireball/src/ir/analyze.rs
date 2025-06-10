@@ -6,6 +6,7 @@ pub mod ir_to_c;
 pub mod loop_analysis;
 pub mod loop_conversion;
 pub mod type_recovery;
+pub mod variable_naming;
 pub mod variables;
 
 pub use control_flow_graph::{ControlFlowGraph, ControlFlowGraphAnalyzer};
@@ -15,4 +16,5 @@ pub use ir_block_merger::MergedIr;
 pub use ir_to_c::generate_c_ast;
 pub use loop_analysis::{AnalyzedLoop, ComplexLoopAnalyzer, LoopPattern};
 pub use type_recovery::{InferredType, TypeInfo, TypeRecoveryEngine};
+pub use variable_naming::{VariableName, VariableNamingEngine};
 pub use variables::{IrVariable, analyze_variables};
