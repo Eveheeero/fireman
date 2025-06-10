@@ -44,21 +44,12 @@ impl Default for EnhancedCConfig {
 }
 
 /// Extended print configuration that includes Enhanced C options
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct ExtendedPrintConfig {
     /// Base C AST print configuration
     pub base: CAstPrintConfig,
     /// Enhanced C configuration
     pub enhanced: EnhancedCConfig,
-}
-
-impl Default for ExtendedPrintConfig {
-    fn default() -> Self {
-        Self {
-            base: CAstPrintConfig::default(),
-            enhanced: EnhancedCConfig::default(),
-        }
-    }
 }
 
 /// Enhanced C type mappings
