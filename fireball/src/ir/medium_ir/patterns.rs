@@ -329,13 +329,55 @@ impl ArrayPatternDetector {
     fn match_array_access(inst: &low_ir::Instruction) -> Option<ArrayAccessPattern> {
         // Pattern: base + index * element_size
         match inst {
-            low_ir::Instruction::Load { ptr, ty, .. } => {
+            low_ir::Instruction::Load {
+                dst: _, ptr, ty, ..
+            } => {
                 // Check if ptr is result of address calculation
-                // TODO: Trace back ptr calculation
-                None
+                if let Some((base, index, scale)) = Self::analyze_pointer_calculation(ptr) {
+                    Some(ArrayAccessPattern {
+                        base,
+                        index,
+                        element_size: scale,
+                        access_type: AccessType::Read,
+                    })
+                } else {
+                    None
+                }
+            }
+            low_ir::Instruction::Store {
+                val: _, ptr, ty, ..
+            } => {
+                // Check if ptr is result of address calculation
+                if let Some((base, index, scale)) = Self::analyze_pointer_calculation(ptr) {
+                    Some(ArrayAccessPattern {
+                        base,
+                        index,
+                        element_size: scale,
+                        access_type: AccessType::Write,
+                    })
+                } else {
+                    None
+                }
             }
             _ => None,
         }
+    }
+
+    /// Analyze a pointer value to see if it's an array access pattern
+    fn analyze_pointer_calculation(
+        ptr: &low_ir::Value,
+    ) -> Option<(low_ir::Value, low_ir::Value, usize)> {
+        // For now, we need to trace back through the value
+        // This is a simplified version - in reality we'd need to track through multiple instructions
+
+        // Common patterns:
+        // 1. base + (index * scale)
+        // 2. base + (index << shift) where shift represents scale
+        // 3. lea instruction patterns
+
+        // TODO: Implement proper value tracking through SSA
+        // For now, return None - this needs dataflow analysis
+        None
     }
 }
 

@@ -74,11 +74,12 @@ pub enum Pattern {
         confidence: Confidence,
     },
 
-    /// Array access: arr[index]
+    /// Array access pattern: arr[index]
     ArrayAccess {
         base: PatternRef,
         index: PatternRef,
-        element_size: usize,
+        element_type: TypeRef,
+        is_write: bool,
         confidence: Confidence,
     },
 

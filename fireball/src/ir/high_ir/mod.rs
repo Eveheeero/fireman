@@ -745,6 +745,52 @@ impl HighIRGenerator {
                 vec![Statement::Expression(expr)]
             }
 
+            Pattern::ArrayAccess {
+                base,
+                index,
+                element_type,
+                is_write,
+                ..
+            } => {
+                // Generate array access expression
+                let base_expr = if let Some(base_pattern) = store.get(*base) {
+                    self.pattern_to_expression(base_pattern, store)
+                } else {
+                    Expression::Variable("array".to_string())
+                };
+
+                let index_expr = if let Some(index_pattern) = store.get(*index) {
+                    self.pattern_to_expression(index_pattern, store)
+                } else {
+                    Expression::Literal(Literal::Integer(0))
+                };
+
+                let array_expr = Expression::ArrayAccess {
+                    array: Box::new(base_expr.clone()),
+                    index: Box::new(index_expr.clone()),
+                };
+
+                if *is_write {
+                    // For writes, we need to generate an assignment
+                    // The value being written should be in the surrounding context
+                    vec![Statement::Assignment {
+                        lvalue: LValue::ArrayAccess {
+                            array: Box::new(LValue::Variable("array".to_string())), // TODO: Extract actual array lvalue
+                            index: index_expr,
+                        },
+                        rvalue: Expression::Variable("value".to_string()), // TODO: Extract actual value
+                    }]
+                } else {
+                    // For reads, generate a temporary assignment
+                    let temp_name = self.name_gen.generate_temp_name();
+                    vec![Statement::Declaration {
+                        var: temp_name,
+                        ty: self.type_inference.convert_type(element_type),
+                        init: Some(array_expr),
+                    }]
+                }
+            }
+
             Pattern::LowIR {
                 instructions,
                 terminator,

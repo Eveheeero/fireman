@@ -108,6 +108,15 @@ impl MediumIRAnalyzer {
             }
         }
 
+        // Check for array access patterns
+        for (i, inst) in block.instructions.iter().enumerate() {
+            if let Some(array_pattern) =
+                self.detect_array_access_pattern(inst, &block.instructions, i, store)
+            {
+                patterns.push(array_pattern);
+            }
+        }
+
         // If no patterns found, wrap instructions as LowIR pattern
         if patterns.is_empty() {
             let low_ir_pattern = Pattern::LowIR {
@@ -661,6 +670,227 @@ impl MediumIRAnalyzer {
                 TypeRef::Struct { name: None, size }
             }
             _ => TypeRef::Unknown,
+        }
+    }
+
+    /// Detect array access patterns in instructions
+    fn detect_array_access_pattern(
+        &self,
+        inst: &low_ir::Instruction,
+        instructions: &[low_ir::Instruction],
+        inst_index: usize,
+        store: &mut PatternStore,
+    ) -> Option<PatternRef> {
+        match inst {
+            low_ir::Instruction::Load {
+                dst: _, ptr, ty: _, ..
+            } => {
+                // Check if the pointer is computed as base + index * scale
+                if let Some((base_val, index_val, element_ty)) =
+                    self.analyze_array_pointer(ptr, instructions, inst_index)
+                {
+                    // Create pattern for base value
+                    let base_pattern =
+                        self.create_value_pattern(&base_val, instructions, inst_index);
+                    let base_ref = store.insert(base_pattern);
+
+                    // Create pattern for index value
+                    let index_pattern =
+                        self.create_value_pattern(&index_val, instructions, inst_index);
+                    let index_ref = store.insert(index_pattern);
+
+                    let array_access = Pattern::ArrayAccess {
+                        base: base_ref,
+                        index: index_ref,
+                        element_type: element_ty,
+                        is_write: false,
+                        confidence: Confidence::MEDIUM,
+                    };
+
+                    Some(store.insert(array_access))
+                } else {
+                    None
+                }
+            }
+            low_ir::Instruction::Store {
+                val: _, ptr, ty: _, ..
+            } => {
+                // Similar to Load but for writes
+                if let Some((base_val, index_val, element_ty)) =
+                    self.analyze_array_pointer(ptr, instructions, inst_index)
+                {
+                    // Create pattern for base value
+                    let base_pattern =
+                        self.create_value_pattern(&base_val, instructions, inst_index);
+                    let base_ref = store.insert(base_pattern);
+
+                    // Create pattern for index value
+                    let index_pattern =
+                        self.create_value_pattern(&index_val, instructions, inst_index);
+                    let index_ref = store.insert(index_pattern);
+
+                    let array_access = Pattern::ArrayAccess {
+                        base: base_ref,
+                        index: index_ref,
+                        element_type: element_ty,
+                        is_write: true,
+                        confidence: Confidence::MEDIUM,
+                    };
+
+                    Some(store.insert(array_access))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    /// Analyze a pointer to determine if it's an array access
+    fn analyze_array_pointer(
+        &self,
+        ptr: &low_ir::Value,
+        instructions: &[low_ir::Instruction],
+        current_index: usize,
+    ) -> Option<(low_ir::Value, low_ir::Value, TypeRef)> {
+        // Look for patterns like:
+        // %ptr = %base + (%index * scale)
+        // %ptr = %base + (%index << shift)
+
+        if let low_ir::Value::Local(ptr_local) = ptr {
+            // Search backwards for the instruction that defines this pointer
+            for i in (0..current_index).rev() {
+                match &instructions[i] {
+                    low_ir::Instruction::BinOp {
+                        dst,
+                        op: low_ir::BinaryOp::Add,
+                        lhs,
+                        rhs,
+                        ..
+                    } if dst == ptr_local => {
+                        // Found an add instruction that produces our pointer
+                        // Check if rhs is a multiplication (index * scale)
+                        if let Some((index, scale)) =
+                            self.find_scale_operation(rhs, instructions, i)
+                        {
+                            // Determine element type from scale
+                            let element_ty = match scale {
+                                1 => TypeRef::Primitive(PrimitiveType::I8),
+                                2 => TypeRef::Primitive(PrimitiveType::I16),
+                                4 => TypeRef::Primitive(PrimitiveType::I32),
+                                8 => TypeRef::Primitive(PrimitiveType::I64),
+                                _ => TypeRef::Unknown,
+                            };
+                            return Some((lhs.clone(), index, element_ty));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Find a scale operation (multiplication or shift)
+    fn find_scale_operation(
+        &self,
+        value: &low_ir::Value,
+        instructions: &[low_ir::Instruction],
+        current_index: usize,
+    ) -> Option<(low_ir::Value, usize)> {
+        if let low_ir::Value::Local(local) = value {
+            // Search for the instruction that defines this value
+            for i in (0..current_index).rev() {
+                match &instructions[i] {
+                    low_ir::Instruction::BinOp {
+                        dst,
+                        op: low_ir::BinaryOp::Mul,
+                        lhs,
+                        rhs,
+                        ..
+                    } if dst == local => {
+                        // Found multiplication
+                        if let low_ir::Value::Constant(low_ir::Constant::Int { value, .. }) = rhs {
+                            return Some((lhs.clone(), *value as usize));
+                        }
+                    }
+                    low_ir::Instruction::BinOp {
+                        dst,
+                        op: low_ir::BinaryOp::Shl,
+                        lhs,
+                        rhs,
+                        ..
+                    } if dst == local => {
+                        // Found shift left (equivalent to multiplication by power of 2)
+                        if let low_ir::Value::Constant(low_ir::Constant::Int { value, .. }) = rhs {
+                            let scale = 1usize << (*value as usize);
+                            return Some((lhs.clone(), scale));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Create a pattern from a Low IR value
+    fn create_value_pattern(
+        &self,
+        value: &low_ir::Value,
+        instructions: &[low_ir::Instruction],
+        current_index: usize,
+    ) -> Pattern {
+        match value {
+            low_ir::Value::Local(local) => {
+                // Find the instruction that defines this local
+                let mut defining_instructions = vec![];
+
+                for i in (0..current_index).rev() {
+                    match &instructions[i] {
+                        low_ir::Instruction::BinOp { dst, .. } if dst == local => {
+                            defining_instructions.push(instructions[i].clone());
+                            break;
+                        }
+                        low_ir::Instruction::Assign { dst, .. } if dst == local => {
+                            defining_instructions.push(instructions[i].clone());
+                            break;
+                        }
+                        low_ir::Instruction::Load { dst, .. } if dst == local => {
+                            defining_instructions.push(instructions[i].clone());
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+
+                Pattern::LowIR {
+                    instructions: defining_instructions,
+                    terminator: None,
+                    source_block: low_ir::BlockId(0), // TODO: Get actual block ID
+                    confidence: Confidence::HIGH,
+                }
+            }
+            low_ir::Value::Constant(_) => {
+                // For constants, create an empty pattern that represents the constant
+                Pattern::LowIR {
+                    instructions: vec![],
+                    terminator: None,
+                    source_block: low_ir::BlockId(0),
+                    confidence: Confidence::CERTAIN,
+                }
+            }
+            _ => {
+                // For other values, create a low confidence pattern
+                Pattern::LowIR {
+                    instructions: vec![],
+                    terminator: None,
+                    source_block: low_ir::BlockId(0),
+                    confidence: Confidence::LOW,
+                }
+            }
         }
     }
 }

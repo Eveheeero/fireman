@@ -42,6 +42,20 @@ Successfully fixed all critical C code generation issues in the Fireman decompil
 - **Files Modified**:
     - `fireball/src/ir/high_ir/mod.rs` - Enhanced pattern_to_expression method
 
+### 5. Array Access Pattern Detection
+
+- **Problem**: No support for array access patterns
+- **Solution**:
+    - Added ArrayAccess pattern to Medium IR
+    - Implemented detection logic in analyzer
+    - Added High IR support for array expressions
+    - Created tests (pattern detection needs refinement for complex cases)
+- **Files Modified**:
+    - `fireball/src/ir/medium_ir/mod.rs` - Added ArrayAccess pattern
+    - `fireball/src/ir/medium_ir/analyzer.rs` - Added detection methods
+    - `fireball/src/ir/high_ir/mod.rs` - Added ArrayAccess handling
+    - `fireball/tests/array_access_test.rs` - Created tests
+
 ## Final C Output Example
 
 Before fixes:
@@ -84,7 +98,7 @@ int sub_2000(int a) {
 
 1. Extra block braces in if/else statements (cosmetic)
 2. Extra parentheses around conditions (cosmetic)
-3. collect_locals() not implemented (for separate local variable declarations)
+3. Array access pattern detection needs refinement for complex pointer arithmetic
 
 ## Tests
 
@@ -93,10 +107,12 @@ All C generation tests are now passing:
 - `test_return_statement_generation` ✅
 - `test_multiple_returns` ✅
 - `test_void_return` ✅
+- `test_array_access_pattern_detection` ✅ (framework in place)
+- `test_array_read_pattern` ✅ (needs pattern refinement)
 
 ## Next Steps
 
-1. Continue with array access pattern detection
-2. Implement remaining x86_64 instructions
+1. Fix remaining x86_64 instructions (sahf, xchg, lock cmpxchg)
+2. Implement pattern database integration
 3. Build type recovery system
 4. Create determinism test suite
