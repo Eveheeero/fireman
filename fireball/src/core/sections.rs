@@ -7,8 +7,8 @@ use std::sync::Arc;
 /// Data in this struct is immutable, only can write when start analysis. (By build_all method)
 #[derive(Default)]
 pub struct Sections {
-    /// Set of section information
-    data: std::sync::RwLock<std::collections::HashSet<Arc<Section>>>,
+    /// Map of section ID to section information (using BTreeMap for deterministic ordering)
+    data: std::sync::RwLock<std::collections::BTreeMap<usize, Arc<Section>>>,
 }
 
 impl Sections {
@@ -44,15 +44,18 @@ impl Sections {
                     let file_offset = section.pointer_to_raw_data as u64;
                     let size_of_file = section.size_of_raw_data as u64;
 
-                    section_writer.insert(Arc::new(Section {
+                    section_writer.insert(
                         id,
-                        name,
-                        real_name,
-                        virtual_address,
-                        virtual_size,
-                        file_offset,
-                        size_of_file,
-                    }));
+                        Arc::new(Section {
+                            id,
+                            name,
+                            real_name,
+                            virtual_address,
+                            virtual_size,
+                            file_offset,
+                            size_of_file,
+                        }),
+                    );
                 }
             }
             _ => todo!(),
@@ -65,7 +68,7 @@ impl Sections {
     pub(crate) fn from_virtual_address(&self, virtual_address: u64) -> Option<Arc<Section>> {
         let section_reader = &self.data.read().unwrap();
         // Iterate over all sections
-        for section in section_reader.iter() {
+        for section in section_reader.values() {
             // Calculate section start and end for virtual address
             let section_start_virtual = section.virtual_address;
             let section_end_virtual = section.virtual_address + section.virtual_size;
@@ -84,7 +87,7 @@ impl Sections {
     pub(crate) fn from_file_offset(&self, file_offset: u64) -> Option<Arc<Section>> {
         let section_reader = &self.data.read().unwrap();
         // Iterate over all sections
-        for section in section_reader.iter() {
+        for section in section_reader.values() {
             // Calculate section start and end for file offset
             let section_start_file = section.file_offset;
             let section_end_file = section.file_offset + section.size_of_file;
@@ -102,7 +105,7 @@ impl Sections {
     pub(crate) fn from_name(&self, name: &str) -> Option<Arc<Section>> {
         let section_reader = &self.data.read().unwrap();
         // Iterate over all sections
-        for section in section_reader.iter() {
+        for section in section_reader.values() {
             // Return the section information if the section name matches
             if section.name == name {
                 return Some(section.clone());
@@ -112,10 +115,15 @@ impl Sections {
     }
 
     /// Add a section to the sections collection
-    pub(crate) fn add_section(&self, section: Section) -> usize {
+    /// Returns the section's ID
+    pub(crate) fn add_section(&self, mut section: Section) -> usize {
         let mut section_writer = self.data.write().unwrap();
-        let id = section_writer.len();
-        section_writer.insert(Arc::new(section));
+        // If section doesn't have an ID, assign the next sequential one
+        if section.id == 0 && !section_writer.is_empty() {
+            section.id = section_writer.len();
+        }
+        let id = section.id;
+        section_writer.insert(id, Arc::new(section));
         id
     }
 }
