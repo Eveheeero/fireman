@@ -3,6 +3,9 @@
 //! This module generates human-readable source-like code from Medium IR patterns,
 //! performing variable naming, type inference, and high-level construct generation.
 
+// pub mod to_c; // Disabled due to private field access issues with C AST
+pub mod c_codegen;
+
 use crate::ir::low_ir;
 use crate::ir::medium_ir::{self, Pattern, PatternRef};
 use std::collections::BTreeMap;

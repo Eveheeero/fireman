@@ -91,7 +91,9 @@ impl MediumIRAnalyzer {
         }
 
         // Check for conditional patterns
-        if let Some(cond_pattern) = self.detect_conditional_pattern(&block.terminator, store) {
+        if let Some(cond_pattern) =
+            self.detect_conditional_pattern(&block.terminator, store, &block.instructions, func)
+        {
             patterns.push(cond_pattern);
         }
 
@@ -126,21 +128,72 @@ impl MediumIRAnalyzer {
             // For now, create a simple while loop pattern
             // Extract condition from the block's terminator
             let condition_pattern = match &block.terminator {
-                low_ir::Terminator::CondBranch { .. } => {
-                    // Create a placeholder condition pattern
-                    let cond = Pattern::LowIR {
-                        instructions: vec![], // TODO: Extract actual condition instructions
-                        confidence: Confidence::MEDIUM,
+                low_ir::Terminator::CondBranch { cond, .. } => {
+                    // Find the instruction that produces this condition value
+                    let mut cond_instructions = vec![];
+
+                    // Look for the instruction that generates the condition
+                    for inst in &block.instructions {
+                        match inst {
+                            low_ir::Instruction::BinOp { dst, .. } => {
+                                // Check if this instruction produces the condition value
+                                if let low_ir::Value::Local(cond_local) = cond {
+                                    if dst == cond_local {
+                                        cond_instructions.push(inst.clone());
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    let cond_pattern = Pattern::LowIR {
+                        instructions: cond_instructions.clone(),
+                        confidence: if cond_instructions.is_empty() {
+                            Confidence::LOW
+                        } else {
+                            Confidence::HIGH
+                        },
                     };
-                    store.insert(cond)
+                    store.insert(cond_pattern)
                 }
                 _ => return None,
             };
 
-            // Create a placeholder body pattern
+            // Collect body instructions from blocks that are part of the loop
+            let mut body_instructions = vec![];
+            let mut body_blocks = vec![];
+
+            // Find blocks that are part of the loop body
+            for (other_id, other_block) in &func.blocks {
+                // A block is part of the loop body if:
+                // 1. It has higher address than header (typical for loop body)
+                // 2. It eventually branches back to the header
+                if other_id > &block.id {
+                    let branches_to_header = match &other_block.terminator {
+                        low_ir::Terminator::Branch(target) => target == &block.id,
+                        low_ir::Terminator::CondBranch {
+                            true_dest,
+                            false_dest,
+                            ..
+                        } => true_dest == &block.id || false_dest == &block.id,
+                        _ => false,
+                    };
+
+                    if branches_to_header {
+                        body_blocks.push((other_id, other_block));
+                        body_instructions.extend(other_block.instructions.clone());
+                    }
+                }
+            }
+
             let body = Pattern::LowIR {
-                instructions: vec![], // TODO: Extract actual body instructions
-                confidence: Confidence::MEDIUM,
+                instructions: body_instructions,
+                confidence: if body_blocks.is_empty() {
+                    Confidence::LOW
+                } else {
+                    Confidence::MEDIUM
+                },
             };
             let body_ref = store.insert(body);
 
@@ -289,32 +342,65 @@ impl MediumIRAnalyzer {
         &self,
         terminator: &low_ir::Terminator,
         store: &mut PatternStore,
+        block_instructions: &[low_ir::Instruction],
+        func: &low_ir::Function,
     ) -> Option<PatternRef> {
         match terminator {
             low_ir::Terminator::CondBranch {
-                cond: _,
-                true_dest: _,
-                false_dest: _,
+                cond,
+                true_dest,
+                false_dest,
             } => {
-                // Create condition pattern
+                // Extract condition computation instructions
+                let mut cond_instructions = vec![];
+                for inst in block_instructions {
+                    match inst {
+                        low_ir::Instruction::BinOp { dst, .. } => {
+                            if let low_ir::Value::Local(cond_local) = cond {
+                                if dst == cond_local {
+                                    cond_instructions.push(inst.clone());
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
                 let condition = Pattern::LowIR {
-                    instructions: vec![], // TODO: Extract condition computation
+                    instructions: cond_instructions,
                     confidence: Confidence::HIGH,
                 };
                 let cond_ref = store.insert(condition);
 
-                // Create then branch pattern
+                // Extract then branch instructions
+                let then_instructions = if let Some(then_block) = func.blocks.get(true_dest) {
+                    then_block.instructions.clone()
+                } else {
+                    vec![]
+                };
+
                 let then_pattern = Pattern::LowIR {
-                    instructions: vec![], // TODO: Extract then branch
+                    instructions: then_instructions,
                     confidence: Confidence::HIGH,
                 };
                 let then_ref = store.insert(then_pattern);
+
+                // Extract else branch instructions if it exists
+                let else_branch = if let Some(else_block) = func.blocks.get(false_dest) {
+                    let else_pattern = Pattern::LowIR {
+                        instructions: else_block.instructions.clone(),
+                        confidence: Confidence::HIGH,
+                    };
+                    Some(store.insert(else_pattern))
+                } else {
+                    None
+                };
 
                 // Create if-else pattern
                 let if_else = Pattern::IfElse {
                     condition: cond_ref,
                     then_branch: then_ref,
-                    else_branch: None, // TODO: Handle else branch
+                    else_branch,
                     confidence: Confidence::MEDIUM,
                 };
 
@@ -423,8 +509,26 @@ impl MediumIRAnalyzer {
         basic_patterns: &BTreeMap<low_ir::BlockId, Vec<PatternRef>>,
         store: &mut PatternStore,
     ) -> PatternRef {
-        // TODO: Implement composite pattern recognition
-        // For now, just wrap all patterns in a sequence
+        // Look for high-level patterns like loops first
+        for (_block_id, patterns) in basic_patterns {
+            for pattern_ref in patterns {
+                if let Some(pattern) = store.get(*pattern_ref) {
+                    // If we found a loop or conditional pattern, make it the top-level pattern
+                    match pattern {
+                        Pattern::ForLoop { .. }
+                        | Pattern::WhileLoop { .. }
+                        | Pattern::DoWhileLoop { .. }
+                        | Pattern::IfElse { .. }
+                        | Pattern::SwitchCase { .. } => {
+                            return *pattern_ref;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        // Otherwise, collect all patterns
         let all_patterns: Vec<_> = basic_patterns
             .values()
             .flat_map(|patterns| patterns.iter().cloned())
@@ -439,13 +543,13 @@ impl MediumIRAnalyzer {
         } else if all_patterns.len() == 1 {
             all_patterns[0]
         } else {
-            // Create expression pattern to hold multiple patterns
-            let expr = Pattern::Expression {
-                operation: ExpressionOp::And, // Placeholder
+            // Create a compound pattern using Expression with And
+            let seq = Pattern::Expression {
+                operation: ExpressionOp::And,
                 operands: all_patterns,
                 confidence: Confidence::MEDIUM,
             };
-            store.insert(expr)
+            store.insert(seq)
         }
     }
 
