@@ -65,7 +65,7 @@ Working In Progress (2025.01 Updated)
 ### Enhanced C Generation
 - [ ] Implement IR → C AST converter
 - [ ] Add expression simplification
-- [ ] Create enhanced(Modern CPP Cherry-Picked) C pattern generation
+- [ ] Create Enhanced-C(Modern CPP Cherry-Picked Into C) pattern generation
 - [ ] Implement comment generation for uncertainty
 - [ ] Test: Compilability of generated code
 
