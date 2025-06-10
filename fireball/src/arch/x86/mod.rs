@@ -45,21 +45,12 @@ impl std::fmt::Display for X86Error {
 impl std::error::Error for X86Error {}
 
 /// x86 (32-bit) architecture information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct X86Info {
     /// Always false for 32-bit x86
     pub is_64bit: bool,
     /// CPU features (MMX, SSE, etc.)
     pub features: X86Features,
-}
-
-impl Default for X86Info {
-    fn default() -> Self {
-        Self {
-            is_64bit: false,
-            features: X86Features::default(),
-        }
-    }
 }
 
 /// x86 CPU features for 32-bit mode

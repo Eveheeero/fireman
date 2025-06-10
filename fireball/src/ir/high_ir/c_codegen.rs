@@ -13,6 +13,12 @@ pub struct CCodeGenerator {
     output: String,
 }
 
+impl Default for CCodeGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CCodeGenerator {
     pub fn new() -> Self {
         Self {
@@ -33,7 +39,7 @@ impl CCodeGenerator {
         self.writeln("");
 
         // Generate code for each source file
-        for (_name, source_file) in &module.source_files {
+        for source_file in module.source_files.values() {
             for func in &source_file.functions {
                 self.generate_function(func);
                 self.writeln("");

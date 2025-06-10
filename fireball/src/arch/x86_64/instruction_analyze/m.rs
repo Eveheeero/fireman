@@ -258,12 +258,12 @@ pub(super) fn movsb() -> &'static [IrStatement] {
     let inc_rsi = assign(
         b::add(rsi.clone(), c(1)),
         rsi.clone(),
-        &size_relative(rsi.clone()),
+        size_relative(rsi.clone()),
     );
     let inc_rdi = assign(
         b::add(rdi.clone(), c(1)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
 
     [move_stmt, inc_rsi, inc_rdi].into()
@@ -280,12 +280,12 @@ pub(super) fn movsw() -> &'static [IrStatement] {
     let inc_rsi = assign(
         b::add(rsi.clone(), c(2)),
         rsi.clone(),
-        &size_relative(rsi.clone()),
+        size_relative(rsi.clone()),
     );
     let inc_rdi = assign(
         b::add(rdi.clone(), c(2)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
 
     [move_stmt, inc_rsi, inc_rdi].into()
@@ -302,12 +302,12 @@ pub(super) fn movsd() -> &'static [IrStatement] {
     let inc_rsi = assign(
         b::add(rsi.clone(), c(4)),
         rsi.clone(),
-        &size_relative(rsi.clone()),
+        size_relative(rsi.clone()),
     );
     let inc_rdi = assign(
         b::add(rdi.clone(), c(4)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
 
     [move_stmt, inc_rsi, inc_rdi].into()
@@ -324,12 +324,12 @@ pub(super) fn movsq() -> &'static [IrStatement] {
     let inc_rsi = assign(
         b::add(rsi.clone(), c(8)),
         rsi.clone(),
-        &size_relative(rsi.clone()),
+        size_relative(rsi.clone()),
     );
     let inc_rdi = assign(
         b::add(rdi.clone(), c(8)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
 
     [move_stmt, inc_rsi, inc_rdi].into()

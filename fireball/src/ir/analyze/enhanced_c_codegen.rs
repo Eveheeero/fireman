@@ -144,7 +144,7 @@ impl EnhancedCGenerator {
         let structs_clone = self.structs.clone();
         if !structs_clone.is_empty() {
             self.emit_line("/* Forward declarations */");
-            for (name, _) in &structs_clone {
+            for name in structs_clone.keys() {
                 let struct_name = self
                     .get_struct_name(name)
                     .unwrap_or_else(|| format!("struct_{}", name));
@@ -476,7 +476,7 @@ impl EnhancedCGenerator {
         self.emit_line("switch (/* value */) {");
         self.indent();
 
-        for (case_val, _case_ref) in cases {
+        for case_val in cases.keys() {
             self.emit_line(&format!("case {}:", case_val));
             self.indent();
             self.emit_line("/* TODO: Case body */");

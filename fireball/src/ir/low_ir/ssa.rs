@@ -42,6 +42,12 @@ pub struct PhiNode {
     pub ty: Type,
 }
 
+impl Default for SSABuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SSABuilder {
     pub fn new() -> Self {
         Self {
@@ -241,7 +247,7 @@ impl SSABuilder {
                 if let Some(dst) = self.get_instruction_def(inst) {
                     var_defs
                         .entry(dst.purpose)
-                        .or_insert_with(BTreeSet::new)
+                        .or_default()
                         .insert(block_id.clone());
                 }
             }
@@ -271,10 +277,7 @@ impl SSABuilder {
                                 ty: Type::I64, // Default, will be refined
                             };
 
-                            self.phis
-                                .entry(df_block.clone())
-                                .or_insert_with(Vec::new)
-                                .push(phi);
+                            self.phis.entry(df_block.clone()).or_default().push(phi);
 
                             work_list.push(df_block.clone());
                         }
@@ -419,7 +422,7 @@ impl SSABuilder {
     fn push_version(&mut self, purpose: &'static str, var: LocalId, version: u32) {
         self.version_stacks
             .entry(purpose)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push((var, version));
     }
 

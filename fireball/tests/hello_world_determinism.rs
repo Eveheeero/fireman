@@ -13,7 +13,7 @@ fn hash_decompilation_result(pe: &Pe) -> String {
 
     // Add entry point address
     let entry_addr = pe.entry().get_virtual_address();
-    hasher.update(&entry_addr.to_le_bytes());
+    hasher.update(entry_addr.to_le_bytes());
 
     // Get all blocks and sort them by ID for deterministic ordering
     let blocks = pe.get_blocks().get_all();
@@ -21,9 +21,9 @@ fn hash_decompilation_result(pe: &Pe) -> String {
 
     // Hash each block's data
     for (id, block) in sorted_blocks {
-        hasher.update(&id.to_le_bytes());
+        hasher.update(id.to_le_bytes());
         hasher.update(
-            &block
+            block
                 .get_start_address()
                 .get_virtual_address()
                 .to_le_bytes(),
@@ -31,28 +31,28 @@ fn hash_decompilation_result(pe: &Pe) -> String {
 
         // Add block size if available
         if let Some(size) = block.get_block_size() {
-            hasher.update(&size.to_le_bytes());
+            hasher.update(size.to_le_bytes());
         } else {
-            hasher.update(&0u64.to_le_bytes()); // Use 0 for blocks without size
+            hasher.update(0u64.to_le_bytes()); // Use 0 for blocks without size
         }
 
         // Add instruction count
         let instructions = block.get_instructions();
-        hasher.update(&(instructions.len() as u64).to_le_bytes());
+        hasher.update((instructions.len() as u64).to_le_bytes());
 
         // Add each instruction's basic info
         for (idx, instr) in instructions.iter().enumerate() {
             // Since address is private, use instruction index + block start
             // This still provides deterministic ordering
-            hasher.update(&(idx as u64).to_le_bytes());
+            hasher.update((idx as u64).to_le_bytes());
 
             // Use the bytes length for size
             if let Ok(bytes) = instr.inner().get_bytes() {
-                hasher.update(&(bytes.len() as u64).to_le_bytes());
+                hasher.update((bytes.len() as u64).to_le_bytes());
                 // Also hash the actual instruction bytes for better coverage
-                hasher.update(&bytes);
+                hasher.update(bytes);
             } else {
-                hasher.update(&0u64.to_le_bytes()); // Unknown size
+                hasher.update(0u64.to_le_bytes()); // Unknown size
             }
         }
     }
@@ -60,7 +60,7 @@ fn hash_decompilation_result(pe: &Pe) -> String {
     // Add relations count (we can't easily iterate them, so just count)
     // This is sufficient to detect changes in control flow
     let blocks_count = blocks.len();
-    hasher.update(&(blocks_count as u64).to_le_bytes());
+    hasher.update((blocks_count as u64).to_le_bytes());
 
     // Get the final hash
     let result = hasher.finalize();

@@ -192,16 +192,16 @@ fn hash_low_ir_module(module: &Module) -> String {
     let mut hasher = Sha256::new();
 
     // Hash target info
-    hasher.update(&module.target.arch.as_bytes());
-    hasher.update(&module.target.bits.to_le_bytes());
+    hasher.update(module.target.arch.as_bytes());
+    hasher.update(module.target.bits.to_le_bytes());
 
     // Hash functions
     for (func_id, function) in &module.functions {
-        hasher.update(&func_id.0.to_le_bytes());
+        hasher.update(func_id.0.to_le_bytes());
 
         // Hash blocks
         for (block_id, block) in &function.blocks {
-            hasher.update(&block_id.0.to_le_bytes());
+            hasher.update(block_id.0.to_le_bytes());
 
             // Hash terminator type
             let term_type = match &block.terminator {
@@ -212,7 +212,7 @@ fn hash_low_ir_module(module: &Module) -> String {
                 Terminator::IndirectBranch { .. } => 4u8,
                 Terminator::Unreachable => 5u8,
             };
-            hasher.update(&[term_type]);
+            hasher.update([term_type]);
         }
     }
 

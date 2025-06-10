@@ -364,6 +364,12 @@ pub struct PatternValidator {
     confidence_calc: ConfidenceCalculator,
 }
 
+impl Default for PatternValidator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PatternValidator {
     pub fn new() -> Self {
         Self {
@@ -386,15 +392,13 @@ impl PatternValidator {
 
     /// Analyze relationships between patterns
     fn analyze_pattern_relationships(&self, _function: &Function) -> Vec<(PatternRef, i8)> {
-        let adjustments = Vec::new();
-
         // TODO: Implement relationship analysis
         // Examples:
         // - If a loop contains known library calls, increase confidence
         // - If control flow is inconsistent, decrease confidence
         // - If patterns form known idioms together, increase confidence
 
-        adjustments
+        Vec::new()
     }
 
     /// Adjust pattern confidence

@@ -15,24 +15,24 @@ fn hash_low_ir_module(module: &Module) -> String {
 
     // Hash target info
     hasher.update(module.target.arch.as_bytes());
-    hasher.update(&module.target.bits.to_le_bytes());
-    hasher.update(&[module.target.endian as u8]);
+    hasher.update(module.target.bits.to_le_bytes());
+    hasher.update([module.target.endian as u8]);
 
     // Hash functions in deterministic order (BTreeMap)
     for (func_id, function) in &module.functions {
-        hasher.update(&func_id.0.to_le_bytes());
-        hasher.update(&function.entry.0.to_le_bytes());
+        hasher.update(func_id.0.to_le_bytes());
+        hasher.update(function.entry.0.to_le_bytes());
 
         // Hash blocks
         for (block_id, block) in &function.blocks {
-            hasher.update(&block_id.0.to_le_bytes());
+            hasher.update(block_id.0.to_le_bytes());
 
             // Hash instructions
-            hasher.update(&(block.instructions.len() as u64).to_le_bytes());
+            hasher.update((block.instructions.len() as u64).to_le_bytes());
             for (idx, _inst) in block.instructions.iter().enumerate() {
                 // For now, just hash instruction index
                 // Full instruction hashing would require implementing Hash for Instruction
-                hasher.update(&(idx as u64).to_le_bytes());
+                hasher.update((idx as u64).to_le_bytes());
             }
 
             // Hash terminator type as string for determinism
@@ -48,7 +48,7 @@ fn hash_low_ir_module(module: &Module) -> String {
         }
 
         // Hash locals count
-        hasher.update(&(function.locals.len() as u64).to_le_bytes());
+        hasher.update((function.locals.len() as u64).to_le_bytes());
     }
 
     let result = hasher.finalize();

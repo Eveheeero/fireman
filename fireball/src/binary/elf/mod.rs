@@ -87,7 +87,7 @@ impl Elf {
                     real_name: None,
                     virtual_address: phdr.p_vaddr,
                     virtual_size: phdr.p_memsz,
-                    file_offset: phdr.p_offset as u64,
+                    file_offset: phdr.p_offset,
                     size_of_file: phdr.p_filesz,
                 };
 

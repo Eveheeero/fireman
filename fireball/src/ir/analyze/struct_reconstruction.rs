@@ -153,6 +153,12 @@ struct FunctionInfo {
     struct_parameters: Vec<String>,
 }
 
+impl Default for StructReconstructionEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StructReconstructionEngine {
     pub fn new() -> Self {
         Self {
@@ -199,19 +205,16 @@ impl StructReconstructionEngine {
     fn collect_access_patterns(&mut self, ir: &Ir) {
         if let Some(statements) = &ir.statements {
             for statement in statements.iter() {
-                match statement {
-                    IrStatement::Assignment { from, to, size } => {
-                        // Analyze source
-                        if let IrData::Dereference(addr) = &**from {
-                            self.analyze_memory_access(addr, size, AccessType::Read);
-                        }
-
-                        // Analyze destination
-                        if let IrData::Dereference(addr) = &**to {
-                            self.analyze_memory_access(addr, size, AccessType::Write);
-                        }
+                if let IrStatement::Assignment { from, to, size } = statement {
+                    // Analyze source
+                    if let IrData::Dereference(addr) = &**from {
+                        self.analyze_memory_access(addr, size, AccessType::Read);
                     }
-                    _ => {}
+
+                    // Analyze destination
+                    if let IrData::Dereference(addr) = &**to {
+                        self.analyze_memory_access(addr, size, AccessType::Write);
+                    }
                 }
             }
         }
@@ -237,7 +240,7 @@ impl StructReconstructionEngine {
 
                 self.access_patterns
                     .entry(base.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(MemoryAccess {
                         base,
                         offset: *offset,

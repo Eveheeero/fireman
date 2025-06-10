@@ -214,7 +214,7 @@ pub(super) fn stosb() -> &'static [IrStatement] {
     let inc_rdi = assign(
         b::add(rdi.clone(), c(1)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
 
     [store, inc_rdi].into()
@@ -229,7 +229,7 @@ pub(super) fn stosw() -> &'static [IrStatement] {
     let inc_rdi = assign(
         b::add(rdi.clone(), c(2)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
 
     [store, inc_rdi].into()
@@ -244,7 +244,7 @@ pub(super) fn stosd() -> &'static [IrStatement] {
     let inc_rdi = assign(
         b::add(rdi.clone(), c(4)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
 
     [store, inc_rdi].into()
@@ -259,7 +259,7 @@ pub(super) fn stosq() -> &'static [IrStatement] {
     let inc_rdi = assign(
         b::add(rdi.clone(), c(8)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
 
     [store, inc_rdi].into()
@@ -279,15 +279,15 @@ pub(super) fn scasb() -> &'static [IrStatement] {
     let inc_rdi = assign(
         b::add(rdi.clone(), c(1)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
     let dec_rdi = assign(
         b::sub(rdi.clone(), c(1)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
     let update_rdi = condition(
-        b::equal(df.clone(), c(0), &size_result_bit(c(1))),
+        b::equal(df.clone(), c(0), size_result_bit(c(1))),
         [inc_rdi],
         [dec_rdi],
     );
@@ -309,15 +309,15 @@ pub(super) fn scasw() -> &'static [IrStatement] {
     let inc_rdi = assign(
         b::add(rdi.clone(), c(2)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
     let dec_rdi = assign(
         b::sub(rdi.clone(), c(2)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
     let update_rdi = condition(
-        b::equal(df.clone(), c(0), &size_result_bit(c(1))),
+        b::equal(df.clone(), c(0), size_result_bit(c(1))),
         [inc_rdi],
         [dec_rdi],
     );
@@ -339,15 +339,15 @@ pub(super) fn scasd() -> &'static [IrStatement] {
     let inc_rdi = assign(
         b::add(rdi.clone(), c(4)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
     let dec_rdi = assign(
         b::sub(rdi.clone(), c(4)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
     let update_rdi = condition(
-        b::equal(df.clone(), c(0), &size_result_bit(c(1))),
+        b::equal(df.clone(), c(0), size_result_bit(c(1))),
         [inc_rdi],
         [dec_rdi],
     );
@@ -369,15 +369,15 @@ pub(super) fn scasq() -> &'static [IrStatement] {
     let inc_rdi = assign(
         b::add(rdi.clone(), c(8)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
     let dec_rdi = assign(
         b::sub(rdi.clone(), c(8)),
         rdi.clone(),
-        &size_relative(rdi.clone()),
+        size_relative(rdi.clone()),
     );
     let update_rdi = condition(
-        b::equal(df.clone(), c(0), &size_result_bit(c(1))),
+        b::equal(df.clone(), c(0), size_result_bit(c(1))),
         [inc_rdi],
         [dec_rdi],
     );

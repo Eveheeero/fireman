@@ -145,6 +145,12 @@ pub struct FunctionSignature {
     pub varargs: bool,
 }
 
+impl Default for TypeRecoveryEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TypeRecoveryEngine {
     pub fn new() -> Self {
         let mut engine = Self {
@@ -394,44 +400,41 @@ impl TypeRecoveryEngine {
 
             for statement in statements.iter() {
                 // Look for memory dereferences in assignments
-                match statement {
-                    IrStatement::Assignment { from, to, size: _ } => {
-                        // Check if 'from' is a dereference of an address calculation
-                        if let IrData::Dereference(addr) = &**from {
-                            if let IrData::Operation(IrDataOperation::Binary {
-                                operator: BinaryOperator::Add,
-                                arg1,
-                                arg2,
-                            }) = &**addr
-                            {
-                                // Pattern: *(base + offset)
-                                if let IrData::Constant(offset) = &**arg2 {
-                                    base_accesses
-                                        .entry(arg1.to_string())
-                                        .or_insert_with(Vec::new)
-                                        .push(*offset);
-                                }
-                            }
-                        }
-
-                        // Also check 'to' for similar patterns
-                        if let IrData::Dereference(addr) = &**to {
-                            if let IrData::Operation(IrDataOperation::Binary {
-                                operator: BinaryOperator::Add,
-                                arg1,
-                                arg2,
-                            }) = &**addr
-                            {
-                                if let IrData::Constant(offset) = &**arg2 {
-                                    base_accesses
-                                        .entry(arg1.to_string())
-                                        .or_insert_with(Vec::new)
-                                        .push(*offset);
-                                }
+                if let IrStatement::Assignment { from, to, size: _ } = statement {
+                    // Check if 'from' is a dereference of an address calculation
+                    if let IrData::Dereference(addr) = &**from {
+                        if let IrData::Operation(IrDataOperation::Binary {
+                            operator: BinaryOperator::Add,
+                            arg1,
+                            arg2,
+                        }) = &**addr
+                        {
+                            // Pattern: *(base + offset)
+                            if let IrData::Constant(offset) = &**arg2 {
+                                base_accesses
+                                    .entry(arg1.to_string())
+                                    .or_default()
+                                    .push(*offset);
                             }
                         }
                     }
-                    _ => {}
+
+                    // Also check 'to' for similar patterns
+                    if let IrData::Dereference(addr) = &**to {
+                        if let IrData::Operation(IrDataOperation::Binary {
+                            operator: BinaryOperator::Add,
+                            arg1,
+                            arg2,
+                        }) = &**addr
+                        {
+                            if let IrData::Constant(offset) = &**arg2 {
+                                base_accesses
+                                    .entry(arg1.to_string())
+                                    .or_default()
+                                    .push(*offset);
+                            }
+                        }
+                    }
                 }
             }
 

@@ -417,6 +417,12 @@ pub struct HighIRGenerator {
     declared_vars: std::collections::BTreeSet<String>,
 }
 
+impl Default for HighIRGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HighIRGenerator {
     pub fn new() -> Self {
         Self {
@@ -451,7 +457,7 @@ impl HighIRGenerator {
         };
 
         // Convert each function
-        for (_func_id, medium_func) in &medium_module.functions {
+        for medium_func in medium_module.functions.values() {
             let high_func = self.convert_function(medium_func);
             main_file.functions.push(high_func);
         }

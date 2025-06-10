@@ -10,6 +10,12 @@ pub struct Arm64Lifter {
     module: Module,
 }
 
+impl Default for Arm64Lifter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Arm64Lifter {
     /// Create a new ARM64 lifter
     pub fn new() -> Self {

@@ -15,6 +15,12 @@ pub struct MediumIRAnalyzer {
     confidence_threshold: Confidence,
 }
 
+impl Default for MediumIRAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MediumIRAnalyzer {
     pub fn new() -> Self {
         Self {
@@ -188,16 +194,13 @@ impl MediumIRAnalyzer {
 
                     // Look for the instruction that generates the condition
                     for inst in &block.instructions {
-                        match inst {
-                            low_ir::Instruction::BinOp { dst, .. } => {
-                                // Check if this instruction produces the condition value
-                                if let low_ir::Value::Local(cond_local) = cond {
-                                    if dst == cond_local {
-                                        cond_instructions.push(inst.clone());
-                                    }
+                        if let low_ir::Instruction::BinOp { dst, .. } = inst {
+                            // Check if this instruction produces the condition value
+                            if let low_ir::Value::Local(cond_local) = cond {
+                                if dst == cond_local {
+                                    cond_instructions.push(inst.clone());
                                 }
                             }
-                            _ => {}
                         }
                     }
 
@@ -285,22 +288,21 @@ impl MediumIRAnalyzer {
             // Check if any predecessor (that's not part of the loop) has initialization
             for (pred_id, pred_block) in predecessors {
                 // If predecessor has lower address, it's likely not part of the loop
-                if pred_id < &block.id {
-                    if pred_block
+                if pred_id < &block.id
+                    && pred_block
                         .instructions
                         .iter()
                         .any(|inst| matches!(inst, low_ir::Instruction::Assign { .. }))
-                    {
-                        has_init = true;
-                        let init = Pattern::LowIR {
-                            instructions: pred_block.instructions.clone(),
-                            terminator: None,
-                            source_block: pred_id.clone(),
-                            confidence: Confidence::MEDIUM,
-                        };
-                        init_ref = Some(store.insert(init));
-                        break;
-                    }
+                {
+                    has_init = true;
+                    let init = Pattern::LowIR {
+                        instructions: pred_block.instructions.clone(),
+                        terminator: None,
+                        source_block: pred_id.clone(),
+                        confidence: Confidence::MEDIUM,
+                    };
+                    init_ref = Some(store.insert(init));
+                    break;
                 }
             }
 
@@ -417,15 +419,12 @@ impl MediumIRAnalyzer {
                 // Extract condition computation instructions
                 let mut cond_instructions = vec![];
                 for inst in block_instructions {
-                    match inst {
-                        low_ir::Instruction::BinOp { dst, .. } => {
-                            if let low_ir::Value::Local(cond_local) = cond {
-                                if dst == cond_local {
-                                    cond_instructions.push(inst.clone());
-                                }
+                    if let low_ir::Instruction::BinOp { dst, .. } = inst {
+                        if let low_ir::Value::Local(cond_local) = cond {
+                            if dst == cond_local {
+                                cond_instructions.push(inst.clone());
                             }
                         }
-                        _ => {}
                     }
                 }
 
@@ -444,11 +443,10 @@ impl MediumIRAnalyzer {
                     vec![]
                 };
 
-                let then_terminator = if let Some(then_block) = func.blocks.get(true_dest) {
-                    Some(then_block.terminator.clone())
-                } else {
-                    None
-                };
+                let then_terminator = func
+                    .blocks
+                    .get(true_dest)
+                    .map(|then_block| then_block.terminator.clone());
 
                 let then_pattern = Pattern::LowIR {
                     instructions: then_instructions,
@@ -494,7 +492,7 @@ impl MediumIRAnalyzer {
                 let value_ref = store.insert(value_pattern);
 
                 let mut case_patterns = BTreeMap::new();
-                for (constant, _block_id) in cases {
+                for constant in cases.keys() {
                     if let low_ir::Constant::Int { value, .. } = constant {
                         let case_pattern = Pattern::LowIR {
                             instructions: vec![], // TODO: Extract case body
@@ -605,7 +603,7 @@ impl MediumIRAnalyzer {
         store: &mut PatternStore,
     ) -> PatternRef {
         // Look for high-level patterns like loops first
-        for (_block_id, patterns) in basic_patterns {
+        for patterns in basic_patterns.values() {
             for pattern_ref in patterns {
                 if let Some(pattern) = store.get(*pattern_ref) {
                     // If we found a loop or conditional pattern, make it the top-level pattern
@@ -1049,35 +1047,32 @@ impl MediumIRAnalyzer {
         // 3. Loop that compares bytes (strcmp)
 
         // This is a simplified detection - real implementation would be more sophisticated
-        match inst {
-            low_ir::Instruction::Load { ptr, ty, .. } => {
-                // Check if this is loading a byte
-                if matches!(ty, low_ir::Type::I8) {
-                    // Look ahead for a comparison with zero (null terminator check)
-                    for i in inst_index + 1..instructions.len() {
-                        if let low_ir::Instruction::BinOp {
-                            op: low_ir::BinaryOp::Eq,
-                            rhs: low_ir::Value::Constant(low_ir::Constant::Int { value: 0, .. }),
-                            ..
-                        } = &instructions[i]
-                        {
-                            // This might be a string operation
-                            let str_op = Pattern::StringOperation {
-                                operation: StringOp::Length,
-                                operands: vec![self.create_ptr_pattern(
-                                    ptr,
-                                    instructions,
-                                    inst_index,
-                                    store,
-                                )],
-                                confidence: Confidence::MEDIUM,
-                            };
-                            return Some(store.insert(str_op));
-                        }
+        if let low_ir::Instruction::Load { ptr, ty, .. } = inst {
+            // Check if this is loading a byte
+            if matches!(ty, low_ir::Type::I8) {
+                // Look ahead for a comparison with zero (null terminator check)
+                for i in inst_index + 1..instructions.len() {
+                    if let low_ir::Instruction::BinOp {
+                        op: low_ir::BinaryOp::Eq,
+                        rhs: low_ir::Value::Constant(low_ir::Constant::Int { value: 0, .. }),
+                        ..
+                    } = &instructions[i]
+                    {
+                        // This might be a string operation
+                        let str_op = Pattern::StringOperation {
+                            operation: StringOp::Length,
+                            operands: vec![self.create_ptr_pattern(
+                                ptr,
+                                instructions,
+                                inst_index,
+                                store,
+                            )],
+                            confidence: Confidence::MEDIUM,
+                        };
+                        return Some(store.insert(str_op));
                     }
                 }
             }
-            _ => {}
         }
 
         None
@@ -1101,60 +1096,57 @@ impl MediumIRAnalyzer {
         inst: &low_ir::Instruction,
         store: &mut PatternStore,
     ) -> Option<PatternRef> {
-        match inst {
-            low_ir::Instruction::Call { func, args, .. } => {
-                // Check if this is a call to a known allocator
-                if let low_ir::Value::Function(id) = func {
-                    if let Some(lib_pattern) = self.match_library_function(id.0) {
-                        match lib_pattern.name.as_str() {
-                            "malloc" | "calloc" => {
-                                // Extract size argument
-                                if let Some((_size_val, _)) = args.first() {
-                                    let size_pattern = Pattern::LowIR {
-                                        instructions: vec![], // TODO: Extract size computation
-                                        terminator: None,
-                                        source_block: low_ir::BlockId(0),
-                                        confidence: Confidence::HIGH,
-                                    };
-                                    let size_ref = store.insert(size_pattern);
+        if let low_ir::Instruction::Call { func, args, .. } = inst {
+            // Check if this is a call to a known allocator
+            if let low_ir::Value::Function(id) = func {
+                if let Some(lib_pattern) = self.match_library_function(id.0) {
+                    match lib_pattern.name.as_str() {
+                        "malloc" | "calloc" => {
+                            // Extract size argument
+                            if let Some((_size_val, _)) = args.first() {
+                                let size_pattern = Pattern::LowIR {
+                                    instructions: vec![], // TODO: Extract size computation
+                                    terminator: None,
+                                    source_block: low_ir::BlockId(0),
+                                    confidence: Confidence::HIGH,
+                                };
+                                let size_ref = store.insert(size_pattern);
 
-                                    let alloc = Pattern::MemoryAllocation {
-                                        size: size_ref,
-                                        allocator: match lib_pattern.name.as_str() {
-                                            "malloc" => AllocatorType::Malloc,
-                                            "calloc" => AllocatorType::Calloc,
-                                            _ => AllocatorType::Malloc,
-                                        },
-                                        confidence: Confidence::HIGH,
-                                    };
-                                    return Some(store.insert(alloc));
-                                }
+                                let alloc = Pattern::MemoryAllocation {
+                                    size: size_ref,
+                                    allocator: match lib_pattern.name.as_str() {
+                                        "malloc" => AllocatorType::Malloc,
+                                        "calloc" => AllocatorType::Calloc,
+                                        _ => AllocatorType::Malloc,
+                                    },
+                                    confidence: Confidence::HIGH,
+                                };
+                                return Some(store.insert(alloc));
                             }
-                            "free" => {
-                                // Extract pointer argument
-                                if let Some((_ptr_val, _)) = args.first() {
-                                    let ptr_pattern = Pattern::LowIR {
-                                        instructions: vec![], // TODO: Extract pointer
-                                        terminator: None,
-                                        source_block: low_ir::BlockId(0),
-                                        confidence: Confidence::HIGH,
-                                    };
-                                    let ptr_ref = store.insert(ptr_pattern);
-
-                                    let dealloc = Pattern::MemoryDeallocation {
-                                        pointer: ptr_ref,
-                                        deallocator: DeallocatorType::Free,
-                                        confidence: Confidence::HIGH,
-                                    };
-                                    return Some(store.insert(dealloc));
-                                }
-                            }
-                            _ => {}
                         }
+                        "free" => {
+                            // Extract pointer argument
+                            if let Some((_ptr_val, _)) = args.first() {
+                                let ptr_pattern = Pattern::LowIR {
+                                    instructions: vec![], // TODO: Extract pointer
+                                    terminator: None,
+                                    source_block: low_ir::BlockId(0),
+                                    confidence: Confidence::HIGH,
+                                };
+                                let ptr_ref = store.insert(ptr_pattern);
+
+                                let dealloc = Pattern::MemoryDeallocation {
+                                    pointer: ptr_ref,
+                                    deallocator: DeallocatorType::Free,
+                                    confidence: Confidence::HIGH,
+                                };
+                                return Some(store.insert(dealloc));
+                            }
+                        }
+                        _ => {}
                     }
                 }
             }
-            _ => {}
         }
 
         None

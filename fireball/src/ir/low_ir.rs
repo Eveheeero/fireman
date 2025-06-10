@@ -68,13 +68,7 @@ impl Type {
             Type::I64 | Type::F64 | Type::Pointer(_) => Some(8),
             Type::I128 => Some(16),
             Type::F80 => Some(10),
-            Type::Array(elem, count) => {
-                if let Some(elem_size) = elem.size() {
-                    Some(elem_size * count)
-                } else {
-                    None
-                }
-            }
+            Type::Array(elem, count) => elem.size().map(|elem_size| elem_size * count),
             Type::Struct(fields) => {
                 let mut size = 0;
                 for field in fields {
@@ -149,7 +143,7 @@ impl Ord for LocalId {
     fn cmp(&self, other: &Self) -> Ordering {
         self.source
             .cmp(&other.source)
-            .then_with(|| self.purpose.cmp(&other.purpose))
+            .then_with(|| self.purpose.cmp(other.purpose))
             .then_with(|| self.index.cmp(&other.index))
             .then_with(|| self.version.cmp(&other.version))
     }
@@ -188,6 +182,12 @@ impl Display for LocalId {
 /// Helper for creating temporaries deterministically
 pub struct TempAllocator {
     counters: BTreeMap<(Address, &'static str), u32>,
+}
+
+impl Default for TempAllocator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TempAllocator {
@@ -570,7 +570,7 @@ impl BasicBlock {
         for inst in &self.instructions {
             let addr = inst.source_address();
             if addr < last_addr {
-                return Err(format!("Instructions not in address order"));
+                return Err("Instructions not in address order".to_string());
             }
             last_addr = addr;
         }

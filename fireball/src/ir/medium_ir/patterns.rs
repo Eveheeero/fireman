@@ -44,11 +44,8 @@ impl LoopPatternDetector {
             Self::try_match_while_loop(header_block, &loop_blocks, func)
         {
             Some(LoopPattern::While(while_loop))
-        } else if let Some(do_while) = Self::try_match_do_while_loop(tail_block, &loop_blocks, func)
-        {
-            Some(LoopPattern::DoWhile(do_while))
         } else {
-            None
+            Self::try_match_do_while_loop(tail_block, &loop_blocks, func).map(LoopPattern::DoWhile)
         }
     }
 
@@ -169,7 +166,7 @@ impl LoopPatternDetector {
                     if default == target {
                         predecessors.push(block_id.clone());
                     }
-                    for (_, dest) in cases {
+                    for dest in cases.values() {
                         if dest == target {
                             predecessors.push(block_id.clone());
                             break;
@@ -487,7 +484,7 @@ fn compute_dominators(
     while changed {
         changed = false;
 
-        for (block_id, _block) in &func.blocks {
+        for block_id in func.blocks.keys() {
             if block_id == entry {
                 continue;
             }

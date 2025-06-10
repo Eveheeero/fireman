@@ -379,11 +379,9 @@ impl<'a> Executor<'a> {
                 Ok(())
             }
 
-            _ => {
-                return Err(SimulationError::InvalidOperation(
-                    "Cannot store to non-lvalue".to_string(),
-                ));
-            }
+            _ => Err(SimulationError::InvalidOperation(
+                "Cannot store to non-lvalue".to_string(),
+            )),
         }
     }
 }

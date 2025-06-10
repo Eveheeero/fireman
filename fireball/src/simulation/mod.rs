@@ -72,6 +72,12 @@ pub struct SimulationContext {
     pub symbolic_engine: Option<SymbolicEngine>,
 }
 
+impl Default for SimulationContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SimulationContext {
     /// Create a new simulation context
     pub fn new() -> Self {

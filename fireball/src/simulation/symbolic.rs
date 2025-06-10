@@ -140,6 +140,12 @@ pub struct SymbolicEngine {
     symbol_counter: u64,
 }
 
+impl Default for SymbolicEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SymbolicEngine {
     /// Create a new symbolic execution engine
     pub fn new() -> Self {

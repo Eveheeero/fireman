@@ -104,7 +104,7 @@ fn test_thread_local_isolation() {
     use std::cell::RefCell;
 
     thread_local! {
-        static COUNTER: RefCell<u32> = RefCell::new(0);
+        static COUNTER: RefCell<u32> = const { RefCell::new(0) };
     }
 
     let module = create_test_module();

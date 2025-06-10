@@ -12,6 +12,12 @@ pub struct X86Lifter {
     module: Module,
 }
 
+impl Default for X86Lifter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl X86Lifter {
     /// Create a new x86 lifter
     pub fn new() -> Self {

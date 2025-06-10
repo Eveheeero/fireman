@@ -398,19 +398,19 @@ fn hash_ssa_function(function: &Function) -> String {
 
     // Hash blocks in order
     for (block_id, block) in &function.blocks {
-        hasher.update(&block_id.0.to_le_bytes());
+        hasher.update(block_id.0.to_le_bytes());
 
         // Hash phis
-        hasher.update(&(block.phis.len() as u64).to_le_bytes());
+        hasher.update((block.phis.len() as u64).to_le_bytes());
         for phi in &block.phis {
             if let Instruction::Phi { dst, incoming, .. } = phi {
-                hasher.update(&dst.version.to_le_bytes());
-                hasher.update(&(incoming.len() as u64).to_le_bytes());
+                hasher.update(dst.version.to_le_bytes());
+                hasher.update((incoming.len() as u64).to_le_bytes());
             }
         }
 
         // Hash instructions with versions
-        hasher.update(&(block.instructions.len() as u64).to_le_bytes());
+        hasher.update((block.instructions.len() as u64).to_le_bytes());
         for inst in &block.instructions {
             // Hash version of definition if any
             match inst {
@@ -419,7 +419,7 @@ fn hash_ssa_function(function: &Function) -> String {
                 | Instruction::UnOp { dst, .. }
                 | Instruction::Load { dst, .. }
                 | Instruction::Cast { dst, .. } => {
-                    hasher.update(&dst.version.to_le_bytes());
+                    hasher.update(dst.version.to_le_bytes());
                 }
                 _ => {}
             }

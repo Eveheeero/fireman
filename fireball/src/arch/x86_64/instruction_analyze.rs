@@ -55,7 +55,7 @@ pub fn create_ir_statement(instruction: &Instruction) -> Option<&'static [IrStat
     let lock_prefix = has_lock_prefix(instruction);
 
     // Validate LOCK prefix usage if present
-    if let Err(_) = validate_lock_prefix(instruction) {
+    if validate_lock_prefix(instruction).is_err() {
         // Invalid LOCK prefix usage - treat as regular instruction
         // In production, we might want to log this
     }

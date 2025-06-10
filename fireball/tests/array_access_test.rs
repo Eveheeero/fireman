@@ -72,7 +72,7 @@ fn test_array_access_pattern_detection() {
     );
 
     // Create basic block with array access pattern
-    let mut block = low_ir::BasicBlock {
+    let block = low_ir::BasicBlock {
         id: low_ir::BlockId(0x1000),
         phis: vec![],
         instructions: vec![
@@ -220,7 +220,7 @@ fn test_array_read_pattern() {
     func.locals.insert(result_local.clone(), low_ir::Type::I32);
 
     // Create block with array read using shift instead of multiply
-    let mut block = low_ir::BasicBlock {
+    let block = low_ir::BasicBlock {
         id: low_ir::BlockId(0x2000),
         phis: vec![],
         instructions: vec![

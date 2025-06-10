@@ -33,6 +33,12 @@ pub enum Platform {
     Generic,
 }
 
+impl Default for PatternDatabaseBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PatternDatabaseBuilder {
     /// Create a new pattern database builder
     pub fn new() -> Self {
@@ -384,9 +390,9 @@ impl PatternDatabaseBuilder {
         let lib_name = pattern.library.clone();
         self.library_patterns
             .entry(platform)
-            .or_insert_with(BTreeMap::new)
+            .or_default()
             .entry(lib_name)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(pattern);
     }
 

@@ -19,6 +19,12 @@ pub struct CpuState {
     pub rsp: u64,
 }
 
+impl Default for CpuState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CpuState {
     /// Create a new CPU state with default values
     pub fn new() -> Self {
@@ -253,10 +259,10 @@ mod tests {
 
         // Test setting and getting flags
         cpu.set_flag("zf", true).unwrap();
-        assert_eq!(cpu.get_flag("zf").unwrap(), true);
-        assert_eq!(cpu.get_flag("cf").unwrap(), false);
+        assert!(cpu.get_flag("zf").unwrap());
+        assert!(!cpu.get_flag("cf").unwrap());
 
         cpu.set_flag("cf", true).unwrap();
-        assert_eq!(cpu.get_flag("cf").unwrap(), true);
+        assert!(cpu.get_flag("cf").unwrap());
     }
 }

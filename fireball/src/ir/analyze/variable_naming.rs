@@ -80,6 +80,12 @@ pub enum UsageContext {
     MemoryAllocation,
 }
 
+impl Default for VariableNamingEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VariableNamingEngine {
     pub fn new() -> Self {
         let mut engine = Self {
@@ -232,10 +238,7 @@ impl VariableNamingEngine {
 
     /// Add a usage context for a variable
     fn add_usage_context(&mut self, var: String, context: UsageContext) {
-        self.usage_contexts
-            .entry(var)
-            .or_insert_with(Vec::new)
-            .push(context);
+        self.usage_contexts.entry(var).or_default().push(context);
     }
 
     /// Generate names based on type information
