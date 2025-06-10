@@ -1,52 +1,94 @@
 # Fireman - Features & Plans
 
-Working In Progress (2025.06 Updated)
+Working In Progress (2025.01 Updated)
 
-## Features & Plans
+## 🎯 Project Status Overview
 
-**Currently, There is only IR Based Analyzed Routine.**
+**Current Focus**: Implementing Binary-to-Enhanced-C Decompiler with Absolute Determinism
 
-- [x] Generate IR Based Environment
-- [X] Complete Instruction Parsing Routine
-    - [X] X64
-        - [X] Copy All Instruction Documents
-        - [X] Complete Instruction Parsing Function
-    - [ ] ARM
-    - [ ] ...
-- [X] IR Based Analyzed Routine
-    - [X] Single Block Variable Analysis (aka Data Flow Analysis)
-        - [X] Reaching Definitions Analysis
-        - [X] Liveness Analysis
-    - [X] Control Flow Analysis
-        - [X] Complex Loop Analysis
-    - [X] Merged Block Variable Analysis
-- [X] Simulation Routine
-- [X] Generate Enhanced C Code
-    - [ ] Optimization
-- [ ] GUI decompiler
-    - [X] Inspect IR
-    - [ ] Modify IR or Instruction
-    - [X] Generate Enhanced C Code
-        - [ ] Simulate With Memory / Register
-- [ ] TUI decompiler
-- [ ] CLI decompiler
-- [ ] IR Pattern Matching Routine (to detect well-known library's function like msvc's memcpy)
-- [ ] Optimizer
-- [ ] Deobfucasioner
+### ✅ Completed Components
+- [x] Basic IR Environment Foundation
+- [x] X64 Instruction Parsing (Most common instructions)
+- [x] Control Flow Analysis with Complex Loop Detection
+- [x] Data Flow Analysis (Reaching Definitions, Liveness)
+- [x] Basic Simulation Framework (CPU State, Memory)
+- [x] Deterministic Infrastructure (Address-based naming, BTreeMap usage)
+
+### 🚧 In Progress
+- [ ] Multi-Level IR Implementation (Low → Medium → High)
+- [ ] Enhanced C Code Generation with Optimizations
+- [ ] Complete Determinism Testing Suite
+
+### 📋 Planned Features
+- [ ] ARM Architecture Support
+- [ ] GUI/TUI/CLI Interfaces
+- [ ] IR Pattern Matching for Library Functions
+- [ ] Advanced Deobfuscation
 
 ---
 
-## Detailed Tasks(not strictly follow)
-### 🔴 P0: Critical Foundation
+## 🔴 P0: CRITICAL - Deterministic Binary-to-Enhanced-C Pipeline
 
-#### Complete x64 Instruction Coverage
+### Deterministic Foundation (In Progress)
+- [x] Create deterministic naming system (address-based)
+- [x] Replace all HashMap with BTreeMap
+- [x] Implement deterministic ID generation
+- [x] Add SHA-256 based determinism testing
+- [ ] Complete determinism test suite
+  - [ ] Cross-platform determinism tests
+  - [ ] Parallel execution determinism tests
+  - [ ] Memory pressure determinism tests
 
-- [x] Implement basic SSE/AVX instructions (MOVAPS, ADDPS, MULPS, etc.)
-- [x] Implement remaining common instructions (MOVSX/MOVZX, NEG/NOT, CMOVcc, etc.)
-- [x] Implement string operations (MOVS*, STOS*, SCAS*)
-- [x] Implement flag operations (SAHF, STC, STD, SAR, SBB)
-- [ ] Add support for rare/undocumented instructions
-- [ ] Handle instruction prefixes properly (REX, VEX, EVEX)
+### Multi-Level IR Implementation
+- [ ] **Low IR (Direct Translation)**
+  - [ ] Define complete Low IR statement types
+  - [ ] Implement x64 → Low IR lifter
+  - [ ] Add flag preservation logic
+  - [ ] Create SSA construction with deterministic phi placement
+  - [ ] Test: Verify 1:1 mapping with assembly
+
+- [ ] **Medium IR (Pattern Recognition)**
+  - [ ] Design pattern matching framework
+  - [ ] Implement basic patterns (loops, function calls, switches)
+  - [ ] Add confidence scoring system
+  - [ ] Create pattern database integration
+  - [ ] Test: Pattern detection accuracy
+
+- [ ] **High IR (Source-Like)**
+  - [ ] Implement type recovery system
+  - [ ] Add high-level construct generation
+  - [ ] Create variable naming heuristics
+  - [ ] Build struct/class reconstruction
+  - [ ] Test: Readability metrics
+
+### Enhanced C Generation
+- [ ] Implement IR → C AST converter
+- [ ] Add expression simplification
+- [ ] Create idiomatic C pattern generation
+- [ ] Implement comment generation for uncertainty
+- [ ] Test: Compilability of generated code
+
+---
+
+## Detailed Tasks
+### 🔴 P0: Critical Foundation Tasks
+
+#### x64 Instruction Coverage Enhancement
+- [x] Basic SSE/AVX instructions (MOVAPS, ADDPS, MULPS, etc.)
+- [x] Common instructions (MOVSX/MOVZX, NEG/NOT, CMOVcc)
+- [x] String operations (MOVS*, STOS*, SCAS*)
+- [x] Flag operations (SAHF, STC, SETCC)
+- [x] Conditional moves (CMOVcc family)
+- [ ] **Remaining x64 Instructions**
+  - [ ] FPU instructions (FLD, FST, FADD, etc.)
+  - [ ] Advanced SSE4/AVX2/AVX-512 instructions
+  - [ ] System instructions (CPUID, RDTSC, etc.)
+  - [ ] Rare/undocumented instructions
+- [ ] **Instruction Prefix Handling**
+  - [ ] REX prefix proper decoding
+  - [ ] VEX prefix support
+  - [ ] EVEX prefix support
+  - [ ] Segment override prefixes
 
 #### ARM Architecture Support
 - [ ] Research ARM64 instruction set
@@ -54,31 +96,54 @@ Working In Progress (2025.06 Updated)
 - [ ] Implement basic ARM64 decoder
 - [ ] Add Thumb mode support
 
-### 🟠 P1: Core Decompilation
+### 🟠 P1: Extended Architecture Support
 
-#### Complex Loop Analysis
-- [x] Implement loop pattern recognition (for, while, do-while)
-- [x] Handle nested loops correctly
-- [x] Detect loop invariants
-- [x] Identify iterator variables
-- [ ] Support range-based loops (C++11)
+#### IR Analysis Infrastructure
+- [x] **Loop Analysis** (Completed)
+  - [x] Loop pattern recognition (for, while, do-while)
+  - [x] Nested loop handling
+  - [x] Loop invariant detection
+  - [x] Iterator variable identification
+  - [ ] Range-based loop support (C++11/C++20)
+- [ ] **Advanced Analysis Passes**
+  - [ ] Pointer alias analysis
+  - [ ] Type propagation system
+  - [ ] Value range analysis
+  - [ ] Memory access pattern detection
+  - [ ] Function signature recovery
 
-#### ENHANCED C Code Generation Optimization
-- [ ] Implement expression simplification
-- [ ] Add dead code elimination
-- [ ] Optimize redundant casts
-- [ ] Improve variable naming heuristics
-- [ ] Generate idiomatic C patterns
+#### Enhanced C Code Generation Pipeline
+- [ ] **AST Generation**
+  - [ ] IR → C AST converter implementation
+  - [ ] Control flow reconstruction
+  - [ ] Expression tree building
+  - [ ] Type annotation system
+- [ ] **Optimization Passes**
+  - [ ] Expression simplification
+  - [ ] Dead code elimination
+  - [ ] Redundant cast removal
+  - [ ] Common subexpression elimination
+  - [ ] Constant folding
+- [ ] **Code Quality**
+  - [ ] Variable naming heuristics
+  - [ ] Idiomatic C pattern generation
+  - [ ] Comment generation for uncertainty
+  - [ ] Readable formatting rules
+  - [ ] Macro reconstruction
 
-#### Simulation Routine
+#### Simulation & Verification Framework
+- [x] **Core Simulation** (Completed)
+  - [x] CPU state emulation for x64
+  - [x] Memory management simulation
+  - [x] Basic symbolic execution
+- [ ] **Enhanced Simulation**
+  - [ ] Taint analysis integration
+  - [ ] Path exploration strategies
+  - [ ] Constraint solver integration (Z3/CVC5)
+  - [ ] Concrete execution validation
+  - [ ] Simulation-guided decompilation
 
-- [X] Design simulation framework
-- [X] Implement x64 CPU state emulation
-- [X] Add memory management simulation
-- [X] Create symbolic execution engine
-- [ ] Build constraint solver integration (future enhancement)
-
-### 🟡 P2: User Interface
+### 🟡 P2: User Interface & Tools
 
 #### GUI Enhancements
 - [ ] Add IR modification capabilities
@@ -101,7 +166,7 @@ Working In Progress (2025.06 Updated)
 - [ ] Create scripting interface
 - [ ] Add progress reporting
 
-### 🟢 P3: Advanced Features
+### 🟢 P3: Advanced Analysis Features
 
 #### IR Pattern Matching
 - [ ] Design pattern description language
@@ -124,26 +189,83 @@ Working In Progress (2025.06 Updated)
 - [ ] Create VM-based obfuscation handler
 - [ ] Build pattern-based deobfuscator
 
-## Technical Debt
+## 📊 Technical Debt & Infrastructure
 
-### 🔴 Code Quality
-- [ ] Add comprehensive error handling
-- [ ] Improve logging infrastructure
-- [ ] Create performance benchmarks
-- [ ] Add fuzzing harness
-- [ ] Implement CI/CD pipeline
+### 🔴 Code Quality & Reliability
+- [ ] **Error Handling**
+  - [ ] Comprehensive error types for each module
+  - [ ] Error recovery strategies
+  - [ ] Graceful degradation paths
+- [ ] **Performance & Profiling**
+  - [ ] Create performance benchmark suite
+  - [ ] Memory usage profiling
+  - [ ] Optimization hotspot identification
+  - [ ] Zero-copy architecture validation
+- [ ] **Build & CI/CD**
+  - [ ] GitHub Actions workflow
+  - [ ] Cross-platform build matrix
+  - [ ] Automated release pipeline
+  - [ ] Dependency security scanning
 
-### 🟠 Documentation
-- [ ] Write architecture documentation
-- [ ] Create plugin development guide
-- [ ] Add code examples
-- [ ] Document IR specification
-- [ ] Create video tutorials
+### 🟠 Documentation & Knowledge Base
+- [x] Architecture documentation (partial)
+- [x] IR specification document
+- [ ] **Developer Documentation**
+  - [ ] API reference generation
+  - [ ] Plugin development guide
+  - [ ] Contributing guidelines
+  - [ ] Code style guide
+- [ ] **User Documentation**
+  - [ ] Usage tutorials
+  - [ ] Example walkthroughs
+  - [ ] Video tutorials
+  - [ ] FAQ compilation
 
-### 🟡 Testing
+### 🟡 Testing Infrastructure
+- [ ] **Unit Testing** (Target: 80% coverage)
+  - [ ] IR generation tests
+  - [ ] Pattern matching tests
+  - [ ] C generation tests
+- [ ] **Integration Testing**
+  - [ ] End-to-end decompilation tests
+  - [ ] Cross-architecture tests
+  - [ ] Large binary test suite
+- [ ] **Specialized Testing**
+  - [ ] Determinism verification suite
+  - [ ] Differential testing against other decompilers
+  - [ ] Fuzzing harness for robustness
+  - [ ] Performance regression tests
+  - [ ] Memory leak detection
 
-- [ ] Achieve 80%>= test coverage
-- [ ] Add integration tests
-- [ ] Create regression test suite
-- [ ] Implement differential testing
-- [ ] Add performance tests
+## 🚀 Future Roadmap
+
+### Phase 1: Production-Ready Core (Q1 2025)
+- Complete deterministic Binary-to-Enhanced-C pipeline
+- Achieve 95% x64 instruction coverage
+- Release v0.1.0 with CLI interface
+
+### Phase 2: Multi-Architecture (Q2 2025)
+- ARM64 support
+- ELF file format support
+- GUI application beta
+
+### Phase 3: Advanced Features (Q3-Q4 2025)
+- ML-powered pattern recognition
+- Advanced deobfuscation
+- Plugin system
+- Cloud-based analysis
+
+## 📝 Quick Task Reference
+
+### Immediate Next Steps
+1. Run and fix determinism tests
+2. Implement Low IR statement types
+3. Create x64 → Low IR lifter
+4. Build Medium IR pattern matcher
+5. Implement High IR generator
+
+### Weekly Goals
+- Week 1: Complete Low IR implementation
+- Week 2: Medium IR pattern framework
+- Week 3: High IR and C generation
+- Week 4: Testing and optimization
