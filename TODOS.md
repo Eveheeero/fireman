@@ -42,9 +42,9 @@ Working In Progress (2025.01 Updated)
 ### Multi-Level IR Implementation
 
 - [x] **Low IR (Direct Translation)**
-    - [x] Define complete Low IR statement types
-    - [x] Implement x64 → Low IR lifter (basic version)
-    - [x] Add flag preservation logic
+  - [x] Define complete Low IR statement types
+  - [x] Implement x64 → Low IR lifter (basic version)
+  - [x] Add flag preservation logic
   - [ ] Create SSA construction with deterministic phi placement
   - [ ] Test: Verify 1:1 mapping with assembly
 
@@ -236,7 +236,8 @@ Working In Progress (2025.01 Updated)
 ## 📝 Quick Task Reference
 
 ### Immediate Next Steps
-1. Run and fix determinism tests
+
+1. ~~Run and fix determinism tests~~ ✓
 2. ~~Implement Low IR statement types~~ ✓
 3. ~~Create x64 → Low IR lifter~~ ✓
 4. Create SSA construction for Low IR

@@ -290,27 +290,150 @@ impl X64Lifter {
                 let mut insts = Vec::new();
 
                 // Convert operand
-                let (val, ty, mut val_insts) = self.convert_ir_data(arg, addr.clone(), false)?;
+                let (val, src_ty, mut val_insts) =
+                    self.convert_ir_data(arg, addr.clone(), false)?;
                 insts.append(&mut val_insts);
 
-                // Convert operator
-                let op = self.convert_unary_operator(operator)?;
+                // Handle extension operators as casts
+                use crate::ir::operator::UnaryOperator;
+                match operator {
+                    UnaryOperator::SignExtend => {
+                        // Sign extend to i64
+                        let result_temp = self.temp_alloc.new_temp(addr, "sext");
+                        let dst_ty = Type::I64;
+                        self.locals.insert(result_temp.clone(), dst_ty.clone());
 
-                // Create temporary for result
-                let result_temp = self.temp_alloc.new_temp(addr, "unop");
-                self.locals.insert(result_temp.clone(), ty.clone());
+                        insts.push(Instruction::Cast {
+                            op: CastOp::SExt,
+                            dst: result_temp.clone(),
+                            src: val,
+                            src_ty,
+                            dst_ty: dst_ty.clone(),
+                        });
 
-                insts.push(Instruction::UnOp {
-                    op,
-                    dst: result_temp.clone(),
-                    src: val,
-                    ty: ty.clone(),
-                    flags: FlagUpdate::Unchanged,
-                });
+                        Ok((Value::Local(result_temp), dst_ty, insts))
+                    }
+                    UnaryOperator::ZeroExtend => {
+                        // Zero extend to i64
+                        let result_temp = self.temp_alloc.new_temp(addr, "zext");
+                        let dst_ty = Type::I64;
+                        self.locals.insert(result_temp.clone(), dst_ty.clone());
 
-                Ok((Value::Local(result_temp), ty, insts))
+                        insts.push(Instruction::Cast {
+                            op: CastOp::ZExt,
+                            dst: result_temp.clone(),
+                            src: val,
+                            src_ty,
+                            dst_ty: dst_ty.clone(),
+                        });
+
+                        Ok((Value::Local(result_temp), dst_ty, insts))
+                    }
+                    _ => {
+                        // Other unary operators
+                        let op = self.convert_unary_operator(operator)?;
+
+                        // Create temporary for result
+                        let result_temp = self.temp_alloc.new_temp(addr, "unop");
+                        self.locals.insert(result_temp.clone(), src_ty.clone());
+
+                        insts.push(Instruction::UnOp {
+                            op,
+                            dst: result_temp.clone(),
+                            src: val,
+                            ty: src_ty.clone(),
+                            flags: FlagUpdate::Unchanged,
+                        });
+
+                        Ok((Value::Local(result_temp), src_ty, insts))
+                    }
+                }
             }
-            _ => Err(format!("Unsupported IrData: {:?}", data)),
+            IrData::Intrinsic(intrinsic) => {
+                // Handle intrinsic values
+                use crate::ir::data::IrIntrinsic;
+                match intrinsic {
+                    IrIntrinsic::ArchitectureByteSize => {
+                        // For x64, architecture byte size is 8
+                        let ty = Type::I64;
+                        let const_val = Constant::Int {
+                            value: 8,
+                            ty: ty.clone(),
+                        };
+                        Ok((Value::Constant(const_val), ty, vec![]))
+                    }
+                    IrIntrinsic::ArchitectureBitSize => {
+                        // For x64, architecture bit size is 64
+                        let ty = Type::I64;
+                        let const_val = Constant::Int {
+                            value: 64,
+                            ty: ty.clone(),
+                        };
+                        Ok((Value::Constant(const_val), ty, vec![]))
+                    }
+                    IrIntrinsic::Unknown | IrIntrinsic::Undefined => {
+                        // Create undefined value
+                        let ty = Type::I64;
+                        Ok((Value::Constant(Constant::Undef(ty.clone())), ty, vec![]))
+                    }
+                    IrIntrinsic::InstructionByteSize => {
+                        // This would need to be determined from the actual instruction
+                        // For now, use a placeholder
+                        let ty = Type::I64;
+                        let const_val = Constant::Int {
+                            value: 4, // Typical x64 instruction size
+                            ty: ty.clone(),
+                        };
+                        Ok((Value::Constant(const_val), ty, vec![]))
+                    }
+                    IrIntrinsic::ArchitectureBitPerByte => {
+                        let ty = Type::I64;
+                        let const_val = Constant::Int {
+                            value: 8,
+                            ty: ty.clone(),
+                        };
+                        Ok((Value::Constant(const_val), ty, vec![]))
+                    }
+                    IrIntrinsic::SignedMax(_size) | IrIntrinsic::UnsignedMax(_size) => {
+                        // Would need to calculate based on size
+                        let ty = Type::I64;
+                        Ok((Value::Constant(Constant::Undef(ty.clone())), ty, vec![]))
+                    }
+                    IrIntrinsic::SignedMin(_size) | IrIntrinsic::UnsignedMin(_size) => {
+                        // Would need to calculate based on size
+                        let ty = Type::I64;
+                        Ok((Value::Constant(Constant::Undef(ty.clone())), ty, vec![]))
+                    }
+                    IrIntrinsic::BitOnes(_size) | IrIntrinsic::BitZeros(_size) => {
+                        // Would need to calculate based on size
+                        let ty = Type::I64;
+                        Ok((Value::Constant(Constant::Undef(ty.clone())), ty, vec![]))
+                    }
+                    _ => Err(format!("Unsupported intrinsic: {:?}", intrinsic)),
+                }
+            }
+            IrData::Operand(operand_idx) => {
+                // For operand references, create a placeholder
+                // In a real implementation, this would resolve to the actual operand
+                let temp = self.temp_alloc.new_temp(addr.clone(), "operand_ref");
+                let ty = Type::I64; // Default type
+                self.locals.insert(temp.clone(), ty.clone());
+
+                // For now, just use operand index as a placeholder value
+                let const_val = Constant::Int {
+                    value: operand_idx.get() as i128,
+                    ty: Type::I8,
+                };
+
+                // Create assignment to temporary
+                let inst = Instruction::Assign {
+                    dst: temp.clone(),
+                    value: Value::Constant(const_val),
+                    source_addr: addr,
+                };
+
+                Ok((Value::Local(temp), ty, vec![inst]))
+            }
         }
     }
 
@@ -330,6 +453,12 @@ impl X64Lifter {
             IrData::Dereference(_inner) => {
                 // For memory stores, we return a temporary and generate store instruction
                 let temp = self.temp_alloc.new_temp(addr, "store_temp");
+                self.locals.insert(temp.clone(), Type::I64);
+                Ok((temp, vec![]))
+            }
+            IrData::Operand(_) => {
+                // For operand references, create a temporary that will be resolved later
+                let temp = self.temp_alloc.new_temp(addr, "operand");
                 self.locals.insert(temp.clone(), Type::I64);
                 Ok((temp, vec![]))
             }
