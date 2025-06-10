@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
 };
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet},
     sync::Arc,
 };
 
@@ -112,11 +112,11 @@ fn find_block_id_by_address(blocks: &[Arc<Block>], address: &Address) -> Option<
 }
 
 fn dfs_loop_detection(
-    id_to_block: &HashMap<usize, &Arc<Block>>,
+    id_to_block: &BTreeMap<usize, &Arc<Block>>,
     now_id: usize,
-    componenets_relation_map: &HashMap<usize, Vec<usize>>,
-    dfs_visited_id: &mut HashSet<usize>,
-    stack: &mut HashSet<usize>,
+    componenets_relation_map: &BTreeMap<usize, Vec<usize>>,
+    dfs_visited_id: &mut BTreeSet<usize>,
+    stack: &mut BTreeSet<usize>,
     loops: &mut Vec<LoopInfo>,
 ) {
     dfs_visited_id.insert(now_id);
@@ -150,13 +150,13 @@ pub fn analyze_control_flow_graph(
     blocks: &[Arc<Block>],
     relations: &[Relation],
 ) -> Vec<ControlFlowGraph> {
-    let id_to_block: HashMap<usize, &Arc<Block>> =
+    let id_to_block: BTreeMap<usize, &Arc<Block>> =
         blocks.iter().map(|block| (block.get_id(), block)).collect();
 
     /* Turn relations to mapped relations */
-    let mut relations_map: HashMap<usize, HashSet<usize>> = HashMap::new();
+    let mut relations_map: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
     for &block_id in id_to_block.keys() {
-        relations_map.insert(block_id, HashSet::new());
+        relations_map.insert(block_id, BTreeSet::new());
     }
     for relation in relations.iter() {
         let from_id = relation.from();
@@ -170,7 +170,7 @@ pub fn analyze_control_flow_graph(
         }
     }
 
-    let mut visited_id: HashSet<usize> = HashSet::new();
+    let mut visited_id: BTreeSet<usize> = BTreeSet::new();
     let mut cfgs: Vec<ControlFlowGraph> = Vec::new();
     for start_node_id in id_to_block.keys() {
         if !visited_id.contains(start_node_id) {
@@ -202,7 +202,7 @@ pub fn analyze_control_flow_graph(
 
             /* Analyze with component blocks */
             // Turn relations to mapped relations for this componetn
-            let mut componenets_relation_map: HashMap<usize, Vec<usize>> = HashMap::new();
+            let mut componenets_relation_map: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
             {
                 for &block_id in component_ids.iter() {
                     componenets_relation_map.insert(block_id, Vec::new());
@@ -227,8 +227,8 @@ pub fn analyze_control_flow_graph(
             /* Searching for looping blocks */
             let mut component_loops: Vec<LoopInfo> = Vec::new();
             {
-                let mut dfs_visited_id: HashSet<usize> = HashSet::new();
-                let mut stack: HashSet<usize> = HashSet::new();
+                let mut dfs_visited_id: BTreeSet<usize> = BTreeSet::new();
+                let mut stack: BTreeSet<usize> = BTreeSet::new();
                 for &start_node_id in component_ids.iter() {
                     if !dfs_visited_id.contains(&start_node_id) {
                         dfs_loop_detection(

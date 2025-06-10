@@ -3,6 +3,7 @@
 pub mod analyze;
 pub mod arm;
 pub mod data;
+pub mod low_ir;
 pub mod operator;
 mod register;
 pub mod statements;

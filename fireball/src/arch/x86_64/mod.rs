@@ -1,6 +1,8 @@
 //! Module that converts x86_64 architecture instructions into IR
 
 pub mod instruction_analyze;
+pub mod lifter;
+mod lifter_types;
 
 mod static_register {
     #![allow(non_upper_case_globals, unused)]

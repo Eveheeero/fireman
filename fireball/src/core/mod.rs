@@ -4,6 +4,7 @@
 mod address;
 mod block;
 mod blocks;
+mod deterministic;
 mod fire;
 mod fire_raw;
 mod instruction;
@@ -18,6 +19,10 @@ pub use address::Address;
 pub use block::Block;
 pub(crate) use blocks::BlockRelationInformation;
 pub use blocks::Blocks;
+pub use deterministic::{
+    BinaryOp, BlockId, DeterministicNamer, FunctionId, GlobalId, LocalId, TempAllocator,
+    canonicalize_commutative,
+};
 pub use fire::Fire;
 pub use fire_raw::FireRaw;
 pub use instruction::Instruction;

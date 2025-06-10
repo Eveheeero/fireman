@@ -104,3 +104,11 @@ impl Sections {
         None
     }
 }
+
+impl Default for Sections {
+    fn default() -> Self {
+        Self {
+            data: Default::default(),
+        }
+    }
+}

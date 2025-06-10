@@ -47,7 +47,7 @@ Cargo.lock
 bindings
 *.log
 .idea/
-#.serena/
+.serena/
 .serena/cache
 **/Cargo.lock
 

@@ -95,6 +95,12 @@ impl Address {
     pub(crate) fn get_section(&self) -> Option<Arc<Section>> {
         self.section.clone()
     }
+
+    /// Returns a deterministic string representation of the address
+    /// Always returns 16-digit hex format for consistency
+    pub fn as_deterministic_string(&self) -> String {
+        format!("{:016x}", self.virtual_offset)
+    }
 }
 
 impl std::ops::AddAssign<u64> for Address {
@@ -148,7 +154,15 @@ impl std::ops::Sub<&Address> for &Address {
 }
 impl PartialOrd for Address {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.virtual_offset.partial_cmp(&other.virtual_offset)
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Address {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // CRITICAL: For determinism, we only compare virtual addresses
+        // Section information is ignored in ordering
+        self.virtual_offset.cmp(&other.virtual_offset)
     }
 }
 impl std::fmt::Display for Address {
