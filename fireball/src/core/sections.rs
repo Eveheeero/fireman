@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 /// Struct that holding all section's information.
 /// Data in this struct is immutable, only can write when start analysis. (By build_all method)
-#[derive(Default)]
 pub struct Sections {
     /// Set of section information
     data: std::sync::RwLock<std::collections::HashSet<Arc<Section>>>,
@@ -17,6 +16,12 @@ impl Sections {
         Arc::new(Self {
             data: Default::default(),
         })
+    }
+
+    /// Create an empty Sections for testing purposes
+    #[cfg(test)]
+    pub fn empty() -> Arc<Self> {
+        Self::new()
     }
 
     /// Build all section struct from binary.
@@ -106,10 +111,18 @@ impl Sections {
     }
 
     /// Add a section to the sections collection
-    pub fn add_section(&self, section: Section) -> usize {
+    pub(crate) fn add_section(&self, section: Section) -> usize {
         let mut section_writer = self.data.write().unwrap();
         let id = section_writer.len();
         section_writer.insert(Arc::new(section));
         id
+    }
+}
+
+impl Default for Sections {
+    fn default() -> Self {
+        Self {
+            data: Default::default(),
+        }
     }
 }

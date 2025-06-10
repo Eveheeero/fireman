@@ -10,7 +10,7 @@ impl PrintWithConfig for CType {
     }
     fn print(
         &self,
-        f: &mut impl std::fmt::Write,
+        f: &mut (impl std::fmt::Write + ?Sized),
         config: Option<CAstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
@@ -49,7 +49,7 @@ impl PrintWithConfig for Statement {
     }
     fn print(
         &self,
-        f: &mut impl std::fmt::Write,
+        f: &mut (impl std::fmt::Write + ?Sized),
         config: Option<CAstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
@@ -179,7 +179,7 @@ impl PrintWithConfig for Expression {
     }
     fn print(
         &self,
-        f: &mut impl std::fmt::Write,
+        f: &mut (impl std::fmt::Write + ?Sized),
         config: Option<CAstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
@@ -254,7 +254,7 @@ impl PrintWithConfig for Literal {
     }
     fn print(
         &self,
-        f: &mut impl std::fmt::Write,
+        f: &mut (impl std::fmt::Write + ?Sized),
         config: Option<CAstPrintConfig>,
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
@@ -276,7 +276,7 @@ impl PrintWithConfig for UnaryOperator {
     }
     fn print(
         &self,
-        f: &mut impl std::fmt::Write,
+        f: &mut (impl std::fmt::Write + ?Sized),
         config: Option<CAstPrintConfig>,
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
@@ -301,7 +301,7 @@ impl PrintWithConfig for BinaryOperator {
     }
     fn print(
         &self,
-        f: &mut impl std::fmt::Write,
+        f: &mut (impl std::fmt::Write + ?Sized),
         config: Option<CAstPrintConfig>,
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
@@ -335,7 +335,7 @@ impl PrintWithConfig for Variable {
     }
     fn print(
         &self,
-        f: &mut impl std::fmt::Write,
+        f: &mut (impl std::fmt::Write + ?Sized),
         config: Option<CAstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
@@ -355,7 +355,7 @@ impl PrintWithConfig for WrappedStatement {
     }
     fn print(
         &self,
-        f: &mut impl std::fmt::Write,
+        f: &mut (impl std::fmt::Write + ?Sized),
         config: Option<CAstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
@@ -373,7 +373,7 @@ impl<T: PrintWithConfig> PrintWithConfig for Wrapped<T> {
     }
     fn print(
         &self,
-        f: &mut impl std::fmt::Write,
+        f: &mut (impl std::fmt::Write + ?Sized),
         config: Option<CAstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
@@ -397,7 +397,7 @@ impl PrintWithConfig for JumpTarget {
     }
     fn print(
         &self,
-        f: &mut impl std::fmt::Write,
+        f: &mut (impl std::fmt::Write + ?Sized),
         config: Option<CAstPrintConfig>,
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
@@ -419,7 +419,7 @@ impl PrintWithConfig for CValue {
     }
     fn print(
         &self,
-        f: &mut impl std::fmt::Write,
+        f: &mut (impl std::fmt::Write + ?Sized),
         config: Option<CAstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();

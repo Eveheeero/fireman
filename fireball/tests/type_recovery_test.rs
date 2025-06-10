@@ -44,14 +44,14 @@ fn test_type_recovery_basic() {
     let types = engine.recover_types(&ir);
 
     // Check that type was inferred
-    assert!(types.contains_key("0x1000"));
-    assert!(types.contains_key("0x2000"));
+    assert!(types.contains_key("const_1000"));
+    assert!(types.contains_key("const_2000"));
 
-    let type1000 = &types["0x1000"];
+    let type1000 = &types["const_1000"];
     assert!(matches!(type1000.ty, InferredType::Integer { .. }));
     assert_eq!(type1000.confidence, 1.0);
 
-    let type2000 = &types["0x2000"];
+    let type2000 = &types["const_2000"];
     assert!(matches!(type2000.ty, InferredType::Integer { .. }));
     assert!(type2000.confidence > 0.8);
 }
@@ -75,8 +75,8 @@ fn test_function_call_type_inference() {
     let types = engine.recover_types(&ir);
 
     // Check that the target was recognized as a function
-    assert!(types.contains_key("0x5000"));
-    let func_type = &types["0x5000"];
+    assert!(types.contains_key("const_5000"));
+    let func_type = &types["const_5000"];
     assert!(matches!(func_type.ty, InferredType::Function { .. }));
 }
 
@@ -98,7 +98,7 @@ fn test_pointer_type_inference() {
 
     let types = engine.recover_types(&ir);
 
-    assert!(types.contains_key("0x4000"));
-    let type4000 = &types["0x4000"];
+    assert!(types.contains_key("const_4000"));
+    let type4000 = &types["const_4000"];
     assert!(matches!(type4000.ty, InferredType::Pointer { .. }));
 }

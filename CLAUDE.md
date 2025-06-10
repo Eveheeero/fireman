@@ -1,6 +1,6 @@
-# CLAUDE.md
+# Agentic Instructions
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to the coding AGENT when working with code in this repository.
 
 **ALWAYS use serena.**
 
@@ -94,13 +94,6 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → AS
 **IMPORTANT**: All optimizations happen at the AST level, NOT at the IR level. The IR stages are purely for analysis and
 representation.
 
-### Key Components in fireball/
-
-- **pe/**: PE file parsing, section handling, entry point detection
-- **arch/x86_64/**: x86_64 instruction parsing and analysis
-- **ir/**: Intermediate representation, control flow graphs, data flow analysis
-- **core/**: Core data structures (Fire, Block, Instruction, Section)
-
 ### Important Types
 
 - `Fire`: Main decompiler interface that orchestrates the analysis
@@ -117,11 +110,11 @@ representation.
 - IR generation for common instructions
 - Basic data flow analysis
 - Enhanced C code generation from IR
-  - Auto type inference for complex types
-  - Fixed-width integer types (uint32_t, int64_t)
-  - nullptr instead of NULL
-  - Range-based for loops
-  - Confidence-based feature usage
+    - Auto type inference for complex types
+    - Fixed-width integer types (uint32_t, int64_t)
+    - nullptr instead of NULL
+    - Range-based for loops
+    - Confidence-based feature usage
 - Advanced type recovery system
 - Variable naming heuristics
 - Struct/class reconstruction
@@ -134,32 +127,37 @@ representation.
 
 📋 Planned:
 - ARM architecture support
-- x86_32 support
+- x86(32bit/64bit) Integration
+- Unify 32-bit and 64-bit implementations for x86 and ARM to reduce code duplication by 60-80%
 - ELF file format support
 - Advanced decompilation patterns
 - Code simulation capabilities
+- Clean old redunduncies
 
 ## Architecture-Agnostic Design
 
 **NEW PRINCIPLE**: The decompiler must handle multiple architectures (x86, x86_64, ARM32, ARM64) uniformly at the AST
-level.
+level. Simultaniously handle the [32bit&64bit] in one implementation for all platforms if possible.
 
 ### Architecture Support Strategy
 
 1. **Unified Architecture Interface**:
-   - `ArchitectureInfo` structure contains arch type, pointer size, endianness, register count
-   - Architecture detection from binary headers (PE, ELF, Mach-O)
-   - Architecture-aware type sizing and instruction alignment
+
+- `ArchitectureInfo` structure contains arch type, pointer size, endianness, register count
+- Architecture detection from binary headers (PE, ELF, Mach-O)
+- Architecture-aware type sizing and instruction alignment
 
 2. **AST-Level Optimization** (NOT IR-level):
-   - Enhanced C generation works directly with the C Abstract Syntax Tree
-   - Architecture-specific details handled during AST construction
-   - Preserves AST structure for further analysis and optimization
+
+- Enhanced C generation works directly with the C Abstract Syntax Tree
+- Architecture-specific details handled during AST construction
+- Preserves AST structure for further analysis and optimization
 
 3. **Numeric Display Configuration**:
-   - Default: Hexadecimal output for addresses and large values
-   - User-configurable: Decimal, Binary, or Auto-detection modes
-   - Architecture-aware formatting (32-bit vs 64-bit addresses)
+
+- Default: Hexadecimal output for addresses and large values
+- User-configurable: Decimal, Binary, or Auto-detection modes
+- Architecture-aware formatting (32-bit vs 64-bit addresses)
 
 ### Implementation Guidelines
 
@@ -208,9 +206,10 @@ _ => generic_handler(),
 **CRITICAL**: Work WITH the existing AST structure, not against it:
 
 1. **Extend, Don't Replace**:
-   - Use the existing `CAst`, `Statement`, `Expression` types
-   - Add enhanced features through configuration and helper functions
-   - Implement `PrintWithConfig` traits for custom rendering
+
+- Use the existing `CAst`, `Statement`, `Expression` types
+- Add enhanced features through configuration and helper functions
+- Implement `PrintWithConfig` traits for custom rendering
 
 2. **Architecture-Aware AST Generation**:
    ```rust
@@ -224,9 +223,10 @@ _ => generic_handler(),
    ```
 
 3. **Proper AST Integration**:
-   - Convert Medium IR patterns to AST statements
-   - Maintain AST structure for analysis passes
-   - Support confidence-based feature selection
+
+- Convert Medium IR patterns to AST statements
+- Maintain AST structure for analysis passes
+- Support confidence-based feature selection
 
 ## Code Style Guidelines
 
@@ -243,21 +243,23 @@ _ => generic_handler(),
    ```rust
    // ❌ AVOID: Overly permissive
    pub fn internal_helper() { }
-   
+
    // ✅ CORRECT: Appropriate visibility
    pub(crate) fn internal_helper() { }  // Crate-visible
    pub(super) fn module_helper() { }    // Module-visible
    ```
 
 2. **Default Implementations**:
-   - Only implement `Default` when empty/zero state makes semantic sense
-   - Document why `Default` exists if not obvious
-   - Consider factory methods instead of `Default`
+
+- Only implement `Default` when empty/zero state makes semantic sense
+- Document why `Default` exists if not obvious
+- Consider factory methods instead of `Default`
 
 3. **Constructor Visibility**:
-   - `new()` methods should generally be `pub(crate)` unless part of public API
-   - Document why public constructors exist
-   - Consider builder pattern for complex initialization
+
+- `new()` methods should generally be `pub(crate)` unless part of public API
+- Document why public constructors exist
+- Consider builder pattern for complex initialization
 
 ## Working with the Codebase
 
@@ -290,25 +292,27 @@ _ => generic_handler(),
 **IMPORTANT**: Custom simulation code will be replaced with Unicorn Engine:
 
 1. **Why Unicorn Engine**:
-   - Battle-tested emulation framework
-   - Supports all target architectures (x86, ARM, MIPS, etc.)
-   - Better performance and accuracy
-   - Active maintenance and community
+
+- Battle-tested emulation framework
+- Supports all target architectures (x86, ARM, MIPS, etc.)
+- Better performance and accuracy
+- Active maintenance and community
 
 2. **Migration Plan**:
    ```rust
    // Current (to be deprecated)
    use crate::simulation::{CpuState, Memory, Executor};
-   
+
    // Future (Unicorn-based)
    use unicorn_engine::{Unicorn, RegisterX86, RegisterARM};
    ```
 
 3. **Hook-Based Analysis**:
-   - Memory access tracking for type recovery
-   - Instruction tracing for coverage
-   - Syscall interception for API detection
-   - Branch tracking for control flow validation
+
+- Memory access tracking for type recovery
+- Instruction tracing for coverage
+- Syscall interception for API detection
+- Branch tracking for control flow validation
 
 ## Working with Enhanced C AST
 
@@ -331,10 +335,11 @@ _ => generic_handler(),
    ```
 
 2. **Architecture-Aware Code Generation**:
-   - Always check architecture before type sizing
-   - Use BTreeMap for deterministic iteration
-   - Format addresses based on pointer size (8 or 16 hex digits)
-   - Default to hexadecimal for numeric output
+
+- Always check architecture before type sizing
+- Use BTreeMap for deterministic iteration
+- Format addresses based on pointer size (8 or 16 hex digits)
+- Default to hexadecimal for numeric output
 
 3. **Numeric Format Handling**:
    ```rust
@@ -351,8 +356,9 @@ _ => generic_handler(),
    ```
 
 4. **Pattern to AST Conversion Priority**:
-   - ForLoop, WhileLoop, DoWhileLoop → Control flow statements
-   - IfElse, SwitchCase → Conditional statements
-   - FunctionCall → Call expressions
-   - ArrayAccess, FieldAccess → Memory access expressions
-   - Always preserve confidence scores for uncertain transformations
+
+- ForLoop, WhileLoop, DoWhileLoop → Control flow statements
+- IfElse, SwitchCase → Conditional statements
+- FunctionCall → Call expressions
+- ArrayAccess, FieldAccess → Memory access expressions
+- Always preserve confidence scores for uncertain transformations

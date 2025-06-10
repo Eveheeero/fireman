@@ -34,7 +34,7 @@ fn test_if_else_c_generation() {
 
 // Helper functions (same as in high_ir_generation.rs)
 
-fn create_simple_function_module() -> LowModule {
+fn _create_simple_function_module() -> LowModule {
     let sections = Arc::new(Sections::default());
     let mut module = LowModule::new(TargetInfo::x86_64());
 
@@ -96,7 +96,7 @@ fn create_simple_function_module() -> LowModule {
     module
 }
 
-fn create_while_loop_module() -> LowModule {
+fn _create_while_loop_module() -> LowModule {
     let sections = Arc::new(Sections::default());
     let mut module = LowModule::new(TargetInfo::x86_64());
 
@@ -211,7 +211,7 @@ fn create_while_loop_module() -> LowModule {
     module
 }
 
-fn create_if_else_module() -> LowModule {
+fn _create_if_else_module() -> LowModule {
     let sections = Arc::new(Sections::default());
     let mut module = LowModule::new(TargetInfo::x86_64());
 

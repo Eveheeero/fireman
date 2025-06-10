@@ -1,6 +1,15 @@
 //! Simulation framework for executing IR statements
 //!
-//! This module provides a simulation engine that can execute IR statements
+//! DEPRECATED: This module will be replaced with Unicorn Engine integration.
+//! Unicorn provides a much more complete and battle-tested emulation framework.
+//!
+//! TODO: Replace with unicorn-engine crate:
+//! - https://github.com/unicorn-engine/unicorn
+//! - Better architecture support (x86, ARM, etc.)
+//! - More accurate CPU emulation
+//! - Better performance
+//!
+//! This module provides a basic simulation engine that can execute IR statements
 //! to understand program behavior, perform symbolic execution, and verify
 //! decompilation correctness.
 

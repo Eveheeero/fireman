@@ -295,7 +295,12 @@ impl TypeRecoveryEngine {
                 }) = statement
                 {
                     let inferred = self.datatype_to_inferred(data_type, size);
-                    self.add_type_info(location.to_string(), inferred, 1.0, TypeSource::Explicit);
+                    self.add_type_info(
+                        Self::irdata_to_identifier(location),
+                        inferred,
+                        1.0,
+                        TypeSource::Explicit,
+                    );
                 }
             }
         }
@@ -311,13 +316,13 @@ impl TypeRecoveryEngine {
                     }
                     IrStatement::Jump { target } => {
                         self.add_type_info(
-                            target.to_string(),
+                            Self::irdata_to_identifier(target),
                             InferredType::Pointer {
                                 pointee: Box::new(InferredType::Unknown),
                                 is_array: false,
                             },
                             0.9,
-                            TypeSource::InstructionUsage(target.to_string()),
+                            TypeSource::InstructionUsage(Self::irdata_to_identifier(target)),
                         );
                     }
                     IrStatement::JumpByCall { target } => {
@@ -325,10 +330,10 @@ impl TypeRecoveryEngine {
                     }
                     IrStatement::Condition { condition, .. } => {
                         self.add_type_info(
-                            condition.to_string(),
+                            Self::irdata_to_identifier(condition),
                             InferredType::Bool,
                             0.8,
-                            TypeSource::InstructionUsage(condition.to_string()),
+                            TypeSource::InstructionUsage(Self::irdata_to_identifier(condition)),
                         );
                     }
                     _ => {}
@@ -340,8 +345,8 @@ impl TypeRecoveryEngine {
     /// Analyze assignment for type information
     fn analyze_assignment(&mut self, from: &Aos<IrData>, to: &Aos<IrData>, size: &AccessSize) {
         // If we know the type of one side, propagate to the other
-        let from_addr = from.to_string();
-        let to_addr = to.to_string();
+        let from_addr = Self::irdata_to_identifier(from);
+        let to_addr = Self::irdata_to_identifier(to);
 
         // Add size constraint
         if let AccessSize::ResultOfByte(data) = size {
@@ -380,14 +385,14 @@ impl TypeRecoveryEngine {
         // TODO: Match against known function signatures
         // For now, just mark as function pointer
         self.add_type_info(
-            target.to_string(),
+            Self::irdata_to_identifier(target),
             InferredType::Function {
                 return_type: Box::new(InferredType::Unknown),
                 params: vec![],
                 varargs: false,
             },
             0.7,
-            TypeSource::InstructionUsage(target.to_string()),
+            TypeSource::InstructionUsage(Self::irdata_to_identifier(target)),
         );
     }
 
@@ -412,7 +417,7 @@ impl TypeRecoveryEngine {
                             // Pattern: *(base + offset)
                             if let IrData::Constant(offset) = &**arg2 {
                                 base_accesses
-                                    .entry(arg1.to_string())
+                                    .entry(Self::irdata_to_identifier(arg1))
                                     .or_default()
                                     .push(*offset);
                             }
@@ -429,7 +434,7 @@ impl TypeRecoveryEngine {
                         {
                             if let IrData::Constant(offset) = &**arg2 {
                                 base_accesses
-                                    .entry(arg1.to_string())
+                                    .entry(Self::irdata_to_identifier(arg1))
                                     .or_default()
                                     .push(*offset);
                             }
@@ -743,12 +748,12 @@ impl TypeRecoveryEngine {
 
                         // Arithmetic operations preserve numeric types
                         self.add_constraint(
-                            &arg1.to_string(),
+                            &Self::irdata_to_identifier(arg1),
                             result_addr,
                             TypeConstraint::Arithmetic,
                         );
                         self.add_constraint(
-                            &arg2.to_string(),
+                            &Self::irdata_to_identifier(arg2),
                             result_addr,
                             TypeConstraint::Arithmetic,
                         );
@@ -785,12 +790,16 @@ impl TypeRecoveryEngine {
                         );
 
                         // The argument should support bitwise operations
-                        self.add_constraint(&arg.to_string(), result_addr, TypeConstraint::Bitwise);
+                        self.add_constraint(
+                            &Self::irdata_to_identifier(arg),
+                            result_addr,
+                            TypeConstraint::Bitwise,
+                        );
                     }
                     UnaryOperator::Negation => {
                         // Negation preserves numeric type
                         self.add_constraint(
-                            &arg.to_string(),
+                            &Self::irdata_to_identifier(arg),
                             result_addr,
                             TypeConstraint::Arithmetic,
                         );
@@ -802,8 +811,36 @@ impl TypeRecoveryEngine {
     }
 }
 
-// TODO: Implement proper mapping from IrData to addresses
-// For now, we'll use a placeholder approach
+impl TypeRecoveryEngine {
+    /// Generate a unique identifier for an IrData value
+    /// This is used as a key in the type map
+    fn irdata_to_identifier(data: &IrData) -> String {
+        match data {
+            IrData::Constant(val) => format!("const_{:x}", val),
+            IrData::Register(reg) => format!("reg_{}", reg.name()),
+            IrData::Dereference(addr) => format!("deref_{}", Self::irdata_to_identifier(addr)),
+            IrData::Operation(op) => match op {
+                IrDataOperation::Binary {
+                    operator,
+                    arg1,
+                    arg2,
+                } => {
+                    format!(
+                        "binop_{:?}_{}_{}",
+                        operator,
+                        Self::irdata_to_identifier(arg1),
+                        Self::irdata_to_identifier(arg2)
+                    )
+                }
+                IrDataOperation::Unary { operator, arg } => {
+                    format!("unop_{:?}_{}", operator, Self::irdata_to_identifier(arg))
+                }
+            },
+            IrData::Intrinsic(intrinsic) => format!("intrinsic_{:?}", intrinsic),
+            IrData::Operand(n) => format!("operand_{}", n),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

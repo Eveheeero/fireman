@@ -1,6 +1,6 @@
 //! Test for Enhanced C code generation
 
-use fireball::ir::analyze::{EnhancedCConfig, EnhancedCGenerator};
+use fireball::ir::analyze::enhanced_c_codegen::{EnhancedCConfig, EnhancedCGenerator};
 use fireball::ir::medium_ir::Pattern;
 
 #[test]

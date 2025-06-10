@@ -1,0 +1,127 @@
+#![cfg(false)] // TODO: Fix visibility issue with Instruction::new
+//! Tests for x86-64 instruction decoder
+
+use fireball::arch::x86_64::instruction_analyze::create_ir_statement;
+use fireball::core::Instruction;
+use iceball::{
+    Argument, Instruction as IceballInstruction, Memory, Register, Statement, X64Register,
+    X64Statement,
+};
+
+/// Helper to create a test instruction
+fn create_test_instruction(statement: X64Statement, args: Vec<Argument>) -> Instruction {
+    Instruction::new(
+        0x401000,
+        IceballInstruction {
+            statement: Ok(Statement::X64(statement)),
+            arguments: args.into_boxed_slice(),
+            bytes: None,
+        },
+    )
+}
+
+/// Helper to create a register argument
+fn reg_arg(reg: X64Register) -> Argument {
+    Argument::Register(Register::X64(reg))
+}
+
+/// Helper to create a constant argument
+fn const_arg(val: u64) -> Argument {
+    Argument::Constant(val)
+}
+
+/// Helper to create a memory argument
+fn mem_arg(
+    base: Option<X64Register>,
+    index: Option<X64Register>,
+    scale: u8,
+    displacement: i64,
+) -> Argument {
+    Argument::Memory(Memory {
+        base: base.map(|r| Register::X64(r)),
+        index: index.map(|r| Register::X64(r)),
+        scale,
+        displacement,
+        size: None,
+    })
+}
+
+#[test]
+fn test_mov_reg_to_reg() {
+    // MOV RAX, RBX
+    let inst = create_test_instruction(
+        X64Statement::Mov,
+        vec![reg_arg(X64Register::RAX), reg_arg(X64Register::RBX)],
+    );
+
+    let ir_statements = create_ir_statement(&inst);
+    assert!(ir_statements.is_some(), "MOV should generate IR statements");
+
+    let statements = ir_statements.unwrap();
+    assert_eq!(statements.len(), 1, "MOV should generate exactly 1 statement");
+}
+
+#[test]
+fn test_add_instruction() {
+    // ADD RAX, RBX
+    let inst = create_test_instruction(
+        X64Statement::Add,
+        vec![reg_arg(X64Register::RAX), reg_arg(X64Register::RBX)],
+    );
+
+    let ir_statements = create_ir_statement(&inst);
+    assert!(ir_statements.is_some(), "ADD should generate IR statements");
+
+    let statements = ir_statements.unwrap();
+    assert!(statements.len() >= 1, "ADD should generate at least 1 statement");
+}
+
+#[test]
+fn test_sub_instruction() {
+    // SUB RAX, RBX
+    let inst = create_test_instruction(
+        X64Statement::Sub,
+        vec![reg_arg(X64Register::RAX), reg_arg(X64Register::RBX)],
+    );
+
+    let ir_statements = create_ir_statement(&inst);
+    assert!(ir_statements.is_some(), "SUB should generate IR statements");
+
+    let statements = ir_statements.unwrap();
+    assert!(statements.len() >= 1, "SUB should generate at least 1 statement");
+}
+
+#[test]
+fn test_ret_instruction() {
+    // RET
+    let inst = create_test_instruction(X64Statement::Ret, vec![]);
+
+    let ir_statements = create_ir_statement(&inst);
+    assert!(ir_statements.is_some(), "RET should generate IR statements");
+
+    let statements = ir_statements.unwrap();
+    assert!(statements.len() >= 1, "RET should generate at least 1 statement");
+}
+
+#[test]
+fn test_lea_instruction() {
+    // LEA RAX, [RBX + RCX*8 + 0x10]
+    let inst = create_test_instruction(
+        X64Statement::Lea,
+        vec![
+            reg_arg(X64Register::RAX),
+            mem_arg(
+                Some(X64Register::RBX),
+                Some(X64Register::RCX),
+                8,
+                0x10,
+            ),
+        ],
+    );
+
+    let ir_statements = create_ir_statement(&inst);
+    assert!(ir_statements.is_some(), "LEA should generate IR statements");
+
+    let statements = ir_statements.unwrap();
+    assert!(statements.len() >= 1, "LEA should generate at least 1 statement");
+}

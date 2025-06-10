@@ -230,7 +230,7 @@ fn create_conditional_return_function() -> LowModule {
 }
 
 fn create_void_function() -> LowModule {
-    let sections = Arc::new(Sections::default());
+    let _sections = Arc::new(Sections::default());
     let mut module = LowModule::new(TargetInfo::x86_64());
 
     let func_id = FunctionId(0x3000);

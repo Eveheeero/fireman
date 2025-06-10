@@ -14,9 +14,9 @@ pub mod variables;
 pub use control_flow_graph::{ControlFlowGraph, ControlFlowGraphAnalyzer};
 pub use data_access::analyze_data_access;
 pub use datatype::{DataType, KnownDataType, analyze_datatype};
-pub use enhanced_c_codegen::{EnhancedCConfig, EnhancedCGenerator};
+
 pub use ir_block_merger::MergedIr;
-pub use ir_to_c::generate_c_ast;
+pub use ir_to_c::{generate_c_ast, generate_enhanced_c};
 pub use loop_analysis::{AnalyzedLoop, ComplexLoopAnalyzer, LoopPattern};
 pub use struct_reconstruction::{ReconstructedStruct, StructReconstructionEngine};
 pub use type_recovery::{InferredType, TypeInfo, TypeRecoveryEngine};

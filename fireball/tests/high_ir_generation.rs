@@ -58,6 +58,7 @@ fn test_for_loop_generation() {
 
     // TODO: This fails because Medium IR is not detecting loop patterns yet
     // assert!(found_for_loop, "Should generate a for loop statement");
+    let _ = found_for_loop; // Suppress unused variable warning
 }
 
 #[test]

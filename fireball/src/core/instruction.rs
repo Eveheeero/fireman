@@ -13,7 +13,7 @@ pub struct Instruction {
 
 impl Instruction {
     /// Creates a new instruction with the given address and inner instruction
-    pub fn new(address: u64, inner: iceball::Instruction) -> Self {
+    pub(crate) fn new(address: u64, inner: iceball::Instruction) -> Self {
         Self { address, inner }
     }
 

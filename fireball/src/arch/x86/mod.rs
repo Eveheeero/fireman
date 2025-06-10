@@ -1,7 +1,13 @@
 //! x86 (32-bit) architecture support for Fireman decompiler
+//! x86 (32-bit) architecture support
 //!
 //! This module implements x86 32-bit instruction decoding and IR generation.
 //! It shares many instructions with x86_64 but operates in 32-bit mode.
+//!
+//! TODO: This module will be deprecated in favor of x86_unified
+//! - 90% of code is identical to x86_64
+//! - Will be replaced by x86_unified with ProcessorMode::Protected32
+//! - Migration planned for Sprint 6 (Week 3-4)
 
 pub mod instruction_analyze;
 pub mod lifter;

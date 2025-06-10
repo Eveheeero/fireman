@@ -133,7 +133,7 @@ impl EnhancedCAstTransformer {
         }
 
         // Only use auto if we have an initializer and the type is complex
-        if let Some(init_expr) = init {
+        if let Some(_init_expr) = init {
             match &var.var_type {
                 CType::Pointer(inner) => {
                     // Use auto for complex pointer types
@@ -150,9 +150,9 @@ impl EnhancedCAstTransformer {
     /// Check if a for loop can be converted to range-based
     pub fn can_convert_to_range_for(
         &self,
-        init: &Statement,
-        cond: &Expression,
-        update: &Statement,
+        _init: &Statement,
+        _cond: &Expression,
+        _update: &Statement,
     ) -> Option<(Variable, String)> {
         if !self.config.use_range_for {
             return None;

@@ -11,6 +11,9 @@ homepage = "https://crates.io/crates/fireball"
 [lib]
 crate-type = ["cdylib", "rlib", "staticlib"]
 
+[features]
+unified-arch = []
+
 [dependencies]
 iceball.workspace = true
 goblin.workspace = true

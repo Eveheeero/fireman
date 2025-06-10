@@ -43,7 +43,7 @@ pub trait PrintWithConfig {
     fn to_string_with_config(&self, option: Option<CAstPrintConfig>) -> String;
     fn print(
         &self,
-        f: &mut impl std::fmt::Write,
+        f: &mut (impl std::fmt::Write + ?Sized),
         config: Option<CAstPrintConfig>,
     ) -> std::fmt::Result;
 }

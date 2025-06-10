@@ -72,9 +72,7 @@ fn parse_memory_operand(inner: &str) -> Result<Argument, DisassembleError> {
     };
 
     // Parse additional parts (offset, index register with shift)
-    for i in 1..parts.len() {
-        let part = parts[i];
-
+    for part in parts.iter().skip(1) {
         // Check for immediate offset
         if let Some(imm_str) = part.strip_prefix('#') {
             if let Ok(offset) = parse_immediate(imm_str) {
@@ -93,19 +91,14 @@ fn parse_memory_operand(inner: &str) -> Result<Argument, DisassembleError> {
 
             // Check for shift operations (lsl, lsr, asr, ror)
             let tokens: Vec<&str> = part.split_whitespace().collect();
-            if tokens.len() >= 3 {
-                match tokens[1] {
-                    "lsl" => {
-                        if let Some(shift_str) = tokens[2].strip_prefix('#') {
-                            if let Ok(shift) = shift_str.parse::<u8>() {
-                                scale = 1 << shift; // Convert left shift to scale
-                            }
-                        }
+            if tokens.len() >= 3 && tokens[1] == "lsl" {
+                if let Some(shift_str) = tokens[2].strip_prefix('#') {
+                    if let Ok(shift) = shift_str.parse::<u8>() {
+                        scale = 1 << shift; // Convert left shift to scale
                     }
-                    // TODO: Handle other shift operations
-                    _ => {}
                 }
             }
+            // TODO: Handle other shift operations
         }
     }
 

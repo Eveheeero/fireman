@@ -1,5 +1,7 @@
 pub mod c_abstract_syntax_tree;
 mod convert;
+pub mod enhanced_c;
+pub mod enhanced_printer;
 
 use crate::{
     core::Block,
@@ -153,4 +155,24 @@ pub fn generate_c_ast_function(ast: &mut CAst, data: MergedIr) -> Result<(), Dec
         .body = func_body;
 
     Ok(())
+}
+
+/// Generate Enhanced C code from targets
+pub fn generate_enhanced_c(
+    targets: impl IntoIterator<Item = Arc<Block>>,
+    enhanced_config: enhanced_c::EnhancedCConfig,
+) -> Result<String, DecompileError> {
+    use enhanced_c::ExtendedPrintConfig;
+    use enhanced_printer::EnhancedCAstExt;
+
+    // Generate standard C AST first
+    let ast = generate_c_ast(targets)?;
+
+    // Convert to Enhanced C with configuration
+    let extended_config = ExtendedPrintConfig {
+        base: c_abstract_syntax_tree::CAstPrintConfig::default(),
+        enhanced: enhanced_config,
+    };
+
+    Ok(ast.to_enhanced_c_code(extended_config))
 }
