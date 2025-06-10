@@ -111,11 +111,11 @@ representation.
 - IR generation for common instructions
 - Basic data flow analysis
 - Enhanced C code generation from IR
-  - Auto type inference for complex types
-  - Fixed-width integer types (uint32_t, int64_t)
-  - nullptr instead of NULL
-  - Range-based for loops
-  - Confidence-based feature usage
+    - Auto type inference for complex types
+    - Fixed-width integer types (uint32_t, int64_t)
+    - nullptr instead of NULL
+    - Range-based for loops
+    - Confidence-based feature usage
 - Advanced type recovery system
 - Variable naming heuristics
 - Struct/class reconstruction
@@ -128,17 +128,11 @@ representation.
 
 📋 Planned:
 - ARM architecture support
-- x86(32bit/64bit) Integration
-- Unify 32-bit and 64-bit implementations for x86 and ARM to reduce code duplication by 60-80%
+- Unify 32-bit and 64-bit implementations for ARM to reduce code duplication by 60-80%
 - ELF file format support
 - Advanced decompilation patterns
 - Code simulation capabilities
 - Clean old redunduncies
-
-## Architecture-Agnostic Design
-
-**NEW PRINCIPLE**: The decompiler must handle multiple architectures (x86, x86_64, ARM32, ARM64) uniformly at the AST
-level. Simultaniously handle the [32bit&64bit] in one implementation for all platforms if possible.
 
 ### Architecture Support Strategy
 

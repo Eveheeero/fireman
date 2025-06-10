@@ -10,6 +10,7 @@ pub mod simulation;
 pub mod tests;
 pub mod utils;
 
+use crate::arch::architecture::ArchitectureInfo;
 pub use crate::core::Fire;
 use crate::{core::FireRaw, prelude::*};
 use binary::{elf, macho, pe};
@@ -76,6 +77,10 @@ impl Fire for Fireball {
 
     fn get_binary(&self) -> &Vec<u8> {
         self.get_object().get_binary()
+    }
+
+    fn get_architecture(&self) -> ArchitectureInfo {
+        self.get_object().get_architecture()
     }
 
     fn decompile_all(&self) -> Result<String, prelude::DecompileError> {

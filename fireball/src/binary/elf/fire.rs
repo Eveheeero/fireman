@@ -1,6 +1,7 @@
 //! Fire and FireRaw trait implementations for ELF
 
 use crate::{
+    arch::architecture::ArchitectureInfo,
     core::{Address, Block, Blocks, Fire, FireRaw, PreDefinedOffsets, Relations, Sections},
     prelude::DecompileError,
 };
@@ -13,6 +14,10 @@ impl Fire for super::Elf {
 
     fn get_binary(&self) -> &Vec<u8> {
         &self.data
+    }
+
+    fn get_architecture(&self) -> ArchitectureInfo {
+        self.architecture.clone()
     }
 
     fn decompile_all(&self) -> Result<String, DecompileError> {

@@ -6,6 +6,7 @@ mod block;
 mod fire;
 mod fmt;
 
+use crate::arch::architecture::ArchitectureInfo;
 use crate::core::{Address, Blocks, PreDefinedOffsets, Relations, Sections};
 use std::{pin::Pin, sync::Arc};
 
@@ -27,4 +28,6 @@ pub struct Pe {
     blocks: Arc<Blocks>,
     /// Block relation information data
     relations: Arc<Relations>,
+    /// Detected architecture information
+    architecture: ArchitectureInfo,
 }

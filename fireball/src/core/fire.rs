@@ -1,5 +1,6 @@
 //! Module defining the `Fire` struct responsible for common decompilation functionality
 
+use crate::arch::architecture::ArchitectureInfo;
 use crate::prelude::DecompileError;
 
 /// This trait defines the necessary functions provided by this library when implementing a decompiler.
@@ -20,6 +21,14 @@ pub trait Fire {
     /// ### Note
     /// - This function performs no additional computation.
     fn get_binary(&self) -> &Vec<u8>;
+    /// Returns the detected architecture information.
+    ///
+    /// ### Returns
+    /// - `ArchitectureInfo` - the detected architecture information
+    ///
+    /// ### Note
+    /// - This function performs architecture detection on first call and caches the result.
+    fn get_architecture(&self) -> ArchitectureInfo;
     /// Decompiles the entire binary.
     ///
     /// ### Returns

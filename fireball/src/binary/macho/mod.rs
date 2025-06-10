@@ -3,6 +3,7 @@
 //! This module implements parsing and analysis of Mach-O files used on
 //! Apple platforms including macOS, iOS, tvOS, and watchOS.
 
+use crate::arch::architecture::ArchitectureInfo;
 use crate::core::{Section, Sections};
 use crate::utils::error::DecompileError;
 use std::path::Path;
@@ -33,6 +34,9 @@ pub struct MachO {
 
     /// Raw file data
     pub data: Vec<u8>,
+
+    /// Detected architecture information
+    pub architecture: ArchitectureInfo,
 }
 
 impl MachO {

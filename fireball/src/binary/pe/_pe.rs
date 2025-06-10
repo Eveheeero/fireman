@@ -19,9 +19,14 @@ impl Pe {
 
     /// Creates a PE struct from binary data.
     pub(crate) fn new(path: Option<String>, binary: Vec<u8>) -> Self {
-        // 1. Build section information
-        // 2. Create Capstone object
-        // 3. Generate predefined binary offset information
+        // 1. Detect architecture
+        // 2. Build section information
+        // 3. Create Capstone object
+        // 4. Generate predefined binary offset information
+
+        // Detect architecture from binary
+        let architecture =
+            crate::arch::architecture::ArchitectureDetector::detect_from_bytes(&binary);
 
         // Common objects used throughout
         let gl = goblin::pe::PE::parse(&binary).unwrap();
@@ -93,6 +98,7 @@ impl Pe {
             sections,
             relations: relations.clone(),
             blocks: Blocks::new(relations),
+            architecture,
         }
     }
 

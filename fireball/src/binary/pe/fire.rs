@@ -8,6 +8,7 @@ mod analyze_from_virtual_address;
 
 use super::Pe;
 use crate::{
+    arch::architecture::ArchitectureInfo,
     core::{Address, Block, Blocks, Fire, FireRaw, PreDefinedOffsets, Relations, Sections},
     prelude::DecompileError,
 };
@@ -20,6 +21,10 @@ impl Fire for Pe {
 
     fn get_binary(&self) -> &Vec<u8> {
         &self.binary
+    }
+
+    fn get_architecture(&self) -> ArchitectureInfo {
+        self.architecture.clone()
     }
 
     fn decompile_all(&self) -> Result<String, DecompileError> {

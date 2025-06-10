@@ -12,16 +12,15 @@
 pub mod architecture;
 pub mod arm32;
 pub mod arm64;
-pub mod x86;
 pub mod x86_64;
 
 // New unified modules (in development)
 #[cfg(feature = "unified-arch")]
 pub mod arm_unified;
-#[cfg(feature = "unified-arch")]
-pub mod x86_unified;
+pub mod register_mapping;
 
 // Re-export key types
 pub use architecture::{
     ArchType, ArchitectureContext, ArchitectureDetector, ArchitectureInfo, Endianness,
 };
+pub use register_mapping::{CallingConventionRegisters, RegisterMapper, get_register_mapper};

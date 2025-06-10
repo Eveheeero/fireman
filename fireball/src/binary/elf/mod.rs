@@ -3,6 +3,7 @@
 //! This module implements parsing and analysis of ELF files commonly used on
 //! Linux, BSD, and other Unix-like operating systems.
 
+use crate::arch::architecture::ArchitectureInfo;
 use crate::core::{Section, Sections};
 use crate::utils::error::DecompileError;
 use std::collections::BTreeMap;
@@ -34,6 +35,9 @@ pub struct Elf {
 
     /// Raw file data
     pub data: Vec<u8>,
+
+    /// Detected architecture information
+    pub architecture: ArchitectureInfo,
 }
 
 impl Elf {

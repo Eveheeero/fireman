@@ -69,6 +69,9 @@ fn parse_elf64(data: Vec<u8>, endian: ElfData) -> Result<Elf, DecompileError> {
     let mut string_tables = BTreeMap::new();
     string_tables.insert(0, string_table_data);
 
+    // Detect architecture from the binary
+    let architecture = crate::arch::architecture::ArchitectureDetector::detect_from_bytes(&data);
+
     Ok(Elf {
         header,
         program_headers,
@@ -76,6 +79,7 @@ fn parse_elf64(data: Vec<u8>, endian: ElfData) -> Result<Elf, DecompileError> {
         symbols: symbol::SymbolTables::default(),
         string_tables,
         data,
+        architecture,
     })
 }
 

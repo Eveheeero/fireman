@@ -91,6 +91,9 @@ fn parse_macho_64(data: Vec<u8>, is_big_endian: bool) -> Result<MachO, Decompile
         offset += cmdsize as usize;
     }
 
+    // Detect architecture from the binary
+    let architecture = crate::arch::architecture::ArchitectureDetector::detect_from_bytes(&data);
+
     Ok(MachO {
         header,
         load_commands,
@@ -98,5 +101,6 @@ fn parse_macho_64(data: Vec<u8>, is_big_endian: bool) -> Result<MachO, Decompile
         symbols: symbol::SymbolTable::default(),
         string_table: Vec::new(),
         data,
+        architecture,
     })
 }

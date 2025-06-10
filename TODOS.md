@@ -73,70 +73,6 @@ improved readability while preserving low-level details.
     - [ ] Test numeric format switching
     - [ ] Validate AST structure preservation
 
-#### 🔧 Sprint 6: Unified Architecture Implementation [NEW - PLANNED]
-
-**Goal**: Unify 32-bit and 64-bit implementations for x86 and ARM to reduce code duplication by 60-80%
-
-1. **Foundation & Design** [Week 1-2]
-    - [ ] Create x86_unified module structure
-        - [ ] common.rs - Shared x86/x64 logic (90% of instructions)
-        - [ ] x86_specific.rs - 32-bit only features
-        - [ ] x64_specific.rs - 64-bit only features (REX, R8-R15)
-    - [ ] Create arm_unified module structure
-        - [ ] common.rs - Shared ARM32/64 logic (60% of instructions)
-        - [ ] arm32_specific.rs - ARM32/Thumb specific
-        - [ ] arm64_specific.rs - AArch64 specific
-    - [ ] Design unified instruction trait interface
-
-2. **X86 Unification** [Week 3-4]
-    - [ ] Merge common instruction definitions
-        - [ ] Arithmetic (ADD, SUB, MUL, DIV) - 90% shared
-        - [ ] Logic (AND, OR, XOR) - 100% shared
-        - [ ] Control flow (JMP, CALL, Jcc) - 95% shared
-    - [ ] Unified register handling with mode detection
-    - [ ] Zero-extension handling for 64-bit mode
-    - [ ] REX prefix processing
-
-3. **ARM Unification** [Week 5-6]
-    - [ ] Merge common ARM concepts
-        - [ ] Condition codes (100% shared)
-        - [ ] Data processing (80% shared)
-        - [ ] Load/Store patterns (70% shared)
-    - [ ] Handle instruction set differences (ARM/Thumb/AArch64)
-    - [ ] Register mapping (R0-R15 vs X0-X30)
-
-4. **Integration & Migration** [Week 7]
-    - [ ] Update arch/mod.rs with unified modules
-    - [ ] Create compatibility layer for smooth migration
-    - [ ] Update all instruction analysis paths
-    - [ ] Maintain backward compatibility during transition
-
-5. **Testing & Validation** [Week 8]
-    - [ ] Comprehensive instruction coverage tests
-    - [ ] Cross-mode verification (32 vs 64-bit)
-    - [ ] Performance benchmarks (no regression)
-    - [ ] Determinism verification (1000 runs)
-
-6. **Cleanup & Optimization** [Week 9]
-    - [ ] Remove old architecture modules
-    - [ ] Delete compatibility layer
-    - [ ] Profile and optimize hot paths
-    - [ ] Update all documentation
-
-**Success Metrics**:
-
-- 60-80% code reduction in architecture modules
-- Zero performance regression (±5%)
-- 100% test compatibility
-- Single location for bug fixes
-
-**Key Design Decisions**:
-
-- Work WITH existing AST structure, not against it
-- All optimizations happen at AST level, NOT IR level
-- Hexadecimal output by default, user-configurable
-- Architecture detection automatic from binary
-
 #### ✅ Sprint 1: C Code Generation Quality (COMPLETED)
 
 **Goal**: Produce compilable, readable C code from binaries
@@ -323,7 +259,8 @@ Day 3: Test and verify all outputs compile
 
 #### x86 (32-bits) Instruction Support
 
-- [ ] x86 Instruction Support
+- [ ] x86 Instruction Support (NOTE: x86-64 is a superset of x86-32, so the x86-64 implementation handles both
+  architectures)
 
 ### 🟠 P1: Extended Architecture Support
 
@@ -481,7 +418,7 @@ Day 3: Test and verify all outputs compile
       X86 | X86_64 => detect_x86_prologue(),
       ARM32 | ARM64 => detect_arm_prologue(),
   }
-  
+
   // Calling convention mapping
   let arg_regs = match (arch, platform) {
       (X86_64, Linux) => &["rdi", "rsi", "rdx", "rcx", "r8", "r9"],

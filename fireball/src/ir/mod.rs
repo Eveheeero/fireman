@@ -7,7 +7,7 @@ pub mod high_ir;
 pub mod low_ir;
 pub mod medium_ir;
 pub mod operator;
-mod register;
+pub mod register;
 pub mod statements;
 pub mod utils;
 pub mod x86_64;
