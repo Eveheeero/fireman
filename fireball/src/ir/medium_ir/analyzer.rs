@@ -1,0 +1,588 @@
+//! Medium IR analyzer for pattern recognition
+
+use super::*;
+use crate::ir::low_ir::{self, Module as LowModule};
+use std::collections::BTreeMap;
+
+/// Analyzer that converts Low IR to Medium IR with pattern recognition
+pub struct MediumIRAnalyzer {
+    /// Pattern database for matching
+    pattern_db: PatternDatabase,
+
+    /// Confidence threshold for pattern acceptance
+    confidence_threshold: Confidence,
+}
+
+impl MediumIRAnalyzer {
+    pub fn new() -> Self {
+        Self {
+            pattern_db: PatternDatabase::default(),
+            confidence_threshold: Confidence::LOW,
+        }
+    }
+
+    /// Analyze Low IR module and produce Medium IR
+    pub fn analyze(&self, low_module: &LowModule) -> Module {
+        let mut module = Module {
+            target: low_module.target.clone(),
+            functions: BTreeMap::new(),
+            global_patterns: self.pattern_db.clone(),
+        };
+
+        // Analyze each function
+        for (func_id, low_func) in &low_module.functions {
+            let analyzed = self.analyze_function(low_func);
+            module.functions.insert(func_id.clone(), analyzed);
+        }
+
+        module
+    }
+
+    /// Analyze a single function
+    fn analyze_function(&self, low_func: &low_ir::Function) -> Function {
+        let mut pattern_store = PatternStore::new();
+
+        // First pass: identify basic patterns
+        let basic_patterns = self.identify_basic_patterns(low_func, &mut pattern_store);
+
+        // Second pass: identify higher-level patterns
+        let body = self.identify_composite_patterns(&basic_patterns, &mut pattern_store);
+
+        // Analyze function signature
+        let signature = self.analyze_signature(low_func);
+
+        Function {
+            id: low_func.id.clone(),
+            signature,
+            patterns: pattern_store,
+            body,
+            confidence: Confidence::MEDIUM, // TODO: Calculate actual confidence
+        }
+    }
+
+    /// Identify basic patterns in the function
+    fn identify_basic_patterns(
+        &self,
+        low_func: &low_ir::Function,
+        store: &mut PatternStore,
+    ) -> BTreeMap<low_ir::BlockId, Vec<PatternRef>> {
+        let mut basic_patterns = BTreeMap::new();
+
+        for (block_id, block) in &low_func.blocks {
+            let patterns = self.analyze_block(block, low_func, store);
+            basic_patterns.insert(block_id.clone(), patterns);
+        }
+
+        basic_patterns
+    }
+
+    /// Analyze a basic block for patterns
+    fn analyze_block(
+        &self,
+        block: &low_ir::BasicBlock,
+        func: &low_ir::Function,
+        store: &mut PatternStore,
+    ) -> Vec<PatternRef> {
+        let mut patterns = Vec::new();
+
+        // Check for loop patterns
+        if let Some(loop_pattern) = self.detect_loop_pattern(block, func, store) {
+            patterns.push(loop_pattern);
+        }
+
+        // Check for conditional patterns
+        if let Some(cond_pattern) = self.detect_conditional_pattern(&block.terminator, store) {
+            patterns.push(cond_pattern);
+        }
+
+        // Check for function call patterns
+        for inst in &block.instructions {
+            if let Some(call_pattern) = self.detect_call_pattern(inst, store) {
+                patterns.push(call_pattern);
+            }
+        }
+
+        // If no patterns found, wrap instructions as LowIR pattern
+        if patterns.is_empty() {
+            let low_ir_pattern = Pattern::LowIR {
+                instructions: block.instructions.clone(),
+                confidence: Confidence::CERTAIN,
+            };
+            patterns.push(store.insert(low_ir_pattern));
+        }
+
+        patterns
+    }
+
+    /// Detect loop patterns in a block
+    fn detect_loop_pattern(
+        &self,
+        block: &low_ir::BasicBlock,
+        func: &low_ir::Function,
+        store: &mut PatternStore,
+    ) -> Option<PatternRef> {
+        // Check if this block is a loop header
+        if self.is_loop_header(block, func) {
+            // For now, create a simple while loop pattern
+            // Extract condition from the block's terminator
+            let condition_pattern = match &block.terminator {
+                low_ir::Terminator::CondBranch { .. } => {
+                    // Create a placeholder condition pattern
+                    let cond = Pattern::LowIR {
+                        instructions: vec![], // TODO: Extract actual condition instructions
+                        confidence: Confidence::MEDIUM,
+                    };
+                    store.insert(cond)
+                }
+                _ => return None,
+            };
+
+            // Create a placeholder body pattern
+            let body = Pattern::LowIR {
+                instructions: vec![], // TODO: Extract actual body instructions
+                confidence: Confidence::MEDIUM,
+            };
+            let body_ref = store.insert(body);
+
+            // Check if this looks like a for loop (has initialization and increment)
+            let mut has_init = false;
+            let mut has_increment = false;
+            let mut init_ref = None;
+            let mut increment_ref = None;
+
+            // Look for initialization in direct predecessor blocks (not just entry)
+            // Find predecessors of the loop header
+            let mut predecessors = Vec::new();
+            for (pred_id, pred_block) in &func.blocks {
+                match &pred_block.terminator {
+                    low_ir::Terminator::Branch(target) if target == &block.id => {
+                        predecessors.push((pred_id, pred_block));
+                    }
+                    low_ir::Terminator::CondBranch {
+                        true_dest,
+                        false_dest,
+                        ..
+                    } => {
+                        if true_dest == &block.id || false_dest == &block.id {
+                            predecessors.push((pred_id, pred_block));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            // Check if any predecessor (that's not part of the loop) has initialization
+            for (pred_id, pred_block) in predecessors {
+                // If predecessor has lower address, it's likely not part of the loop
+                if pred_id < &block.id {
+                    if pred_block
+                        .instructions
+                        .iter()
+                        .any(|inst| matches!(inst, low_ir::Instruction::Assign { .. }))
+                    {
+                        has_init = true;
+                        let init = Pattern::LowIR {
+                            instructions: pred_block.instructions.clone(),
+                            confidence: Confidence::MEDIUM,
+                        };
+                        init_ref = Some(store.insert(init));
+                        break;
+                    }
+                }
+            }
+
+            // Look for increment in the loop body
+            // A loop body typically has higher address than the header
+            for (other_id, other_block) in &func.blocks {
+                if other_id > &block.id && other_id < &low_ir::BlockId(block.id.0 + 0x100) {
+                    // Check if this block eventually branches back to the header
+                    let branches_to_header = match &other_block.terminator {
+                        low_ir::Terminator::Branch(target) => target == &block.id,
+                        low_ir::Terminator::CondBranch {
+                            true_dest,
+                            false_dest,
+                            ..
+                        } => true_dest == &block.id || false_dest == &block.id,
+                        _ => false,
+                    };
+
+                    if branches_to_header {
+                        for inst in &other_block.instructions {
+                            if matches!(
+                                inst,
+                                low_ir::Instruction::BinOp {
+                                    op: low_ir::BinaryOp::Add,
+                                    ..
+                                } | low_ir::Instruction::BinOp {
+                                    op: low_ir::BinaryOp::Sub,
+                                    ..
+                                }
+                            ) {
+                                has_increment = true;
+                                let inc = Pattern::LowIR {
+                                    instructions: vec![inst.clone()],
+                                    confidence: Confidence::MEDIUM,
+                                };
+                                increment_ref = Some(store.insert(inc));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // A for loop typically has both init and increment
+            // A while loop might have increment but no init
+            let is_for_loop = has_init && has_increment;
+
+            // Create the appropriate loop pattern
+            let pattern = if is_for_loop {
+                Pattern::ForLoop {
+                    init: init_ref,
+                    condition: condition_pattern,
+                    increment: increment_ref,
+                    body: body_ref,
+                    confidence: Confidence::MEDIUM,
+                }
+            } else {
+                Pattern::WhileLoop {
+                    condition: condition_pattern,
+                    body: body_ref,
+                    confidence: Confidence::MEDIUM,
+                }
+            };
+
+            Some(store.insert(pattern))
+        } else {
+            None
+        }
+    }
+
+    /// Check if a block is a loop header
+    fn is_loop_header(&self, block: &low_ir::BasicBlock, func: &low_ir::Function) -> bool {
+        // A block is a loop header if it has a back edge
+        // (i.e., a predecessor with a higher address)
+        for (other_id, other_block) in &func.blocks {
+            match &other_block.terminator {
+                low_ir::Terminator::Branch(target) => {
+                    if target == &block.id && other_id > &block.id {
+                        return true;
+                    }
+                }
+                low_ir::Terminator::CondBranch {
+                    true_dest,
+                    false_dest,
+                    ..
+                } => {
+                    if (true_dest == &block.id || false_dest == &block.id) && other_id > &block.id {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
+    /// Detect conditional patterns in terminator
+    fn detect_conditional_pattern(
+        &self,
+        terminator: &low_ir::Terminator,
+        store: &mut PatternStore,
+    ) -> Option<PatternRef> {
+        match terminator {
+            low_ir::Terminator::CondBranch {
+                cond: _,
+                true_dest: _,
+                false_dest: _,
+            } => {
+                // Create condition pattern
+                let condition = Pattern::LowIR {
+                    instructions: vec![], // TODO: Extract condition computation
+                    confidence: Confidence::HIGH,
+                };
+                let cond_ref = store.insert(condition);
+
+                // Create then branch pattern
+                let then_pattern = Pattern::LowIR {
+                    instructions: vec![], // TODO: Extract then branch
+                    confidence: Confidence::HIGH,
+                };
+                let then_ref = store.insert(then_pattern);
+
+                // Create if-else pattern
+                let if_else = Pattern::IfElse {
+                    condition: cond_ref,
+                    then_branch: then_ref,
+                    else_branch: None, // TODO: Handle else branch
+                    confidence: Confidence::MEDIUM,
+                };
+
+                Some(store.insert(if_else))
+            }
+            low_ir::Terminator::Switch {
+                value: _, cases, ..
+            } => {
+                // Create switch pattern
+                let value_pattern = Pattern::LowIR {
+                    instructions: vec![], // TODO: Extract value computation
+                    confidence: Confidence::HIGH,
+                };
+                let value_ref = store.insert(value_pattern);
+
+                let mut case_patterns = BTreeMap::new();
+                for (constant, _block_id) in cases {
+                    if let low_ir::Constant::Int { value, .. } = constant {
+                        let case_pattern = Pattern::LowIR {
+                            instructions: vec![], // TODO: Extract case body
+                            confidence: Confidence::HIGH,
+                        };
+                        // Convert i128 to i64, clamping if necessary
+                        let case_value = (*value).clamp(i64::MIN as i128, i64::MAX as i128) as i64;
+                        case_patterns.insert(case_value, store.insert(case_pattern));
+                    }
+                }
+
+                let switch = Pattern::SwitchCase {
+                    value: value_ref,
+                    cases: case_patterns,
+                    default: None, // TODO: Handle default case
+                    confidence: Confidence::MEDIUM,
+                };
+
+                Some(store.insert(switch))
+            }
+            _ => None,
+        }
+    }
+
+    /// Detect function call patterns
+    fn detect_call_pattern(
+        &self,
+        inst: &low_ir::Instruction,
+        store: &mut PatternStore,
+    ) -> Option<PatternRef> {
+        match inst {
+            low_ir::Instruction::Call {
+                func, args, dst, ..
+            } => {
+                // Determine function reference
+                let func_ref = match func {
+                    low_ir::Value::Function(id) => {
+                        FunctionRef::Address(Address::from_virtual_address(
+                            &std::sync::Arc::new(crate::core::Sections::default()),
+                            id.0,
+                        ))
+                    }
+                    _ => {
+                        let indirect = Pattern::LowIR {
+                            instructions: vec![], // TODO: Extract indirect target
+                            confidence: Confidence::LOW,
+                        };
+                        FunctionRef::Indirect(store.insert(indirect))
+                    }
+                };
+
+                // Convert arguments to patterns
+                let arg_patterns: Vec<_> = args
+                    .iter()
+                    .map(|(_val, _ty)| {
+                        let arg = Pattern::LowIR {
+                            instructions: vec![], // TODO: Extract argument computation
+                            confidence: Confidence::HIGH,
+                        };
+                        store.insert(arg)
+                    })
+                    .collect();
+
+                // Create return value pattern if present
+                let return_pattern = dst.as_ref().map(|_| {
+                    let ret = Pattern::LowIR {
+                        instructions: vec![], // TODO: Extract return value handling
+                        confidence: Confidence::HIGH,
+                    };
+                    store.insert(ret)
+                });
+
+                let call = Pattern::FunctionCall {
+                    target: func_ref,
+                    arguments: arg_patterns,
+                    return_value: return_pattern,
+                    confidence: Confidence::HIGH,
+                };
+
+                Some(store.insert(call))
+            }
+            _ => None,
+        }
+    }
+
+    /// Identify composite patterns from basic patterns
+    fn identify_composite_patterns(
+        &self,
+        basic_patterns: &BTreeMap<low_ir::BlockId, Vec<PatternRef>>,
+        store: &mut PatternStore,
+    ) -> PatternRef {
+        // TODO: Implement composite pattern recognition
+        // For now, just wrap all patterns in a sequence
+        let all_patterns: Vec<_> = basic_patterns
+            .values()
+            .flat_map(|patterns| patterns.iter().cloned())
+            .collect();
+
+        if all_patterns.is_empty() {
+            let empty = Pattern::LowIR {
+                instructions: vec![],
+                confidence: Confidence::LOW,
+            };
+            store.insert(empty)
+        } else if all_patterns.len() == 1 {
+            all_patterns[0]
+        } else {
+            // Create expression pattern to hold multiple patterns
+            let expr = Pattern::Expression {
+                operation: ExpressionOp::And, // Placeholder
+                operands: all_patterns,
+                confidence: Confidence::MEDIUM,
+            };
+            store.insert(expr)
+        }
+    }
+
+    /// Analyze function signature
+    fn analyze_signature(&self, low_func: &low_ir::Function) -> FunctionSignature {
+        // Extract signature from Low IR function type
+        match &low_func.signature {
+            low_ir::Type::Function {
+                ret,
+                params,
+                varargs,
+            } => {
+                FunctionSignature {
+                    return_type: self.convert_type(ret),
+                    parameters: params
+                        .iter()
+                        .enumerate()
+                        .map(|(i, ty)| (format!("param_{}", i), self.convert_type(ty)))
+                        .collect(),
+                    convention: low_ir::CallConv::C, // TODO: Detect actual convention
+                    variadic: *varargs,
+                }
+            }
+            _ => {
+                // Fallback signature
+                FunctionSignature {
+                    return_type: TypeRef::Unknown,
+                    parameters: vec![],
+                    convention: low_ir::CallConv::C,
+                    variadic: false,
+                }
+            }
+        }
+    }
+
+    /// Convert Low IR type to Medium IR type
+    fn convert_type(&self, low_type: &low_ir::Type) -> TypeRef {
+        match low_type {
+            low_ir::Type::Void => TypeRef::Primitive(PrimitiveType::Void),
+            low_ir::Type::Bool => TypeRef::Primitive(PrimitiveType::Bool),
+            low_ir::Type::I8 => TypeRef::Primitive(PrimitiveType::I8),
+            low_ir::Type::I16 => TypeRef::Primitive(PrimitiveType::I16),
+            low_ir::Type::I32 => TypeRef::Primitive(PrimitiveType::I32),
+            low_ir::Type::I64 => TypeRef::Primitive(PrimitiveType::I64),
+            low_ir::Type::F32 => TypeRef::Primitive(PrimitiveType::F32),
+            low_ir::Type::F64 => TypeRef::Primitive(PrimitiveType::F64),
+            low_ir::Type::Pointer(pointee) => TypeRef::Pointer(Box::new(
+                pointee
+                    .as_ref()
+                    .map(|t| self.convert_type(t))
+                    .unwrap_or(TypeRef::Unknown),
+            )),
+            low_ir::Type::Array(elem, size) => TypeRef::Array {
+                element: Box::new(self.convert_type(elem)),
+                size: Some(*size),
+            },
+            low_ir::Type::Struct(fields) => {
+                let size = fields.iter().filter_map(|f| f.size()).sum();
+                TypeRef::Struct { name: None, size }
+            }
+            _ => TypeRef::Unknown,
+        }
+    }
+}
+
+impl Default for PatternDatabase {
+    fn default() -> Self {
+        Self {
+            library_functions: Self::init_library_functions(),
+            idioms: Self::init_idioms(),
+            arch_patterns: Self::init_arch_patterns(),
+        }
+    }
+}
+
+impl PatternDatabase {
+    /// Initialize known library function patterns
+    fn init_library_functions() -> BTreeMap<String, LibraryPattern> {
+        let mut funcs = BTreeMap::new();
+
+        // malloc pattern
+        funcs.insert(
+            "malloc".to_string(),
+            LibraryPattern {
+                name: "malloc".to_string(),
+                library: "libc".to_string(),
+                signature: FunctionSignature {
+                    return_type: TypeRef::Pointer(Box::new(TypeRef::Primitive(
+                        PrimitiveType::Void,
+                    ))),
+                    parameters: vec![("size".to_string(), TypeRef::Primitive(PrimitiveType::U64))],
+                    convention: low_ir::CallConv::C,
+                    variadic: false,
+                },
+                behavior: PatternBehavior::ModifiesMemory {
+                    regions: vec![MemoryRegion::Heap],
+                },
+            },
+        );
+
+        // free pattern
+        funcs.insert(
+            "free".to_string(),
+            LibraryPattern {
+                name: "free".to_string(),
+                library: "libc".to_string(),
+                signature: FunctionSignature {
+                    return_type: TypeRef::Primitive(PrimitiveType::Void),
+                    parameters: vec![(
+                        "ptr".to_string(),
+                        TypeRef::Pointer(Box::new(TypeRef::Primitive(PrimitiveType::Void))),
+                    )],
+                    convention: low_ir::CallConv::C,
+                    variadic: false,
+                },
+                behavior: PatternBehavior::ModifiesMemory {
+                    regions: vec![MemoryRegion::Heap],
+                },
+            },
+        );
+
+        // TODO: Add more library functions
+
+        funcs
+    }
+
+    /// Initialize common code idioms
+    fn init_idioms() -> Vec<IdiomPattern> {
+        vec![
+            // TODO: Add common idiom patterns
+        ]
+    }
+
+    /// Initialize architecture-specific patterns
+    fn init_arch_patterns() -> Vec<ArchPattern> {
+        vec![
+            // TODO: Add architecture-specific patterns
+        ]
+    }
+}
