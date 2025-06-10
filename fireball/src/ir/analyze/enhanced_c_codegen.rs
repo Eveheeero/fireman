@@ -420,10 +420,10 @@ impl EnhancedCGenerator {
     /// Generate field access
     fn generate_field_access(
         &mut self,
-        base: PatternRef,
+        _base: PatternRef,
         offset: usize,
-        field_type: &TypeRef,
-        confidence: Confidence,
+        _field_type: &TypeRef,
+        _confidence: Confidence,
     ) {
         // TODO: Implement proper pattern resolution
         self.emit_line(&format!(
@@ -436,8 +436,8 @@ impl EnhancedCGenerator {
     fn generate_expression(
         &mut self,
         operation: &ExpressionOp,
-        operands: &[PatternRef],
-        confidence: Confidence,
+        _operands: &[PatternRef],
+        _confidence: Confidence,
     ) {
         use crate::ir::medium_ir::ExpressionOp;
 
@@ -468,10 +468,10 @@ impl EnhancedCGenerator {
     /// Generate switch statement
     fn generate_switch(
         &mut self,
-        value: PatternRef,
+        _value: PatternRef,
         cases: &BTreeMap<i64, PatternRef>,
         default: Option<&PatternRef>,
-        confidence: Confidence,
+        _confidence: Confidence,
     ) {
         self.emit_line("switch (/* value */) {");
         self.indent();
@@ -501,7 +501,7 @@ impl EnhancedCGenerator {
         &mut self,
         operation: &StringOp,
         operands: &[PatternRef],
-        confidence: Confidence,
+        _confidence: Confidence,
     ) {
         use crate::ir::medium_ir::StringOp;
 
@@ -526,7 +526,7 @@ impl EnhancedCGenerator {
     /// Generate memory allocation
     fn generate_memory_allocation(
         &mut self,
-        size: PatternRef,
+        _size: PatternRef,
         allocator: &AllocatorType,
         confidence: Confidence,
     ) {
@@ -551,9 +551,9 @@ impl EnhancedCGenerator {
     /// Generate memory deallocation
     fn generate_memory_deallocation(
         &mut self,
-        pointer: PatternRef,
+        _pointer: PatternRef,
         deallocator: &DeallocatorType,
-        confidence: Confidence,
+        _confidence: Confidence,
     ) {
         use crate::ir::medium_ir::DeallocatorType;
 

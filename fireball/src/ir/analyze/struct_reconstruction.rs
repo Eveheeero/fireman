@@ -377,7 +377,7 @@ impl StructReconstructionEngine {
     /// Detect inheritance relationships and virtual tables
     fn detect_inheritance(&mut self) {
         // Look for vtable pointers at offset 0
-        for (base, struct_def) in self.structs.iter_mut() {
+        for (_base, struct_def) in self.structs.iter_mut() {
             if let Some(field) = struct_def.fields.get(&0) {
                 if matches!(field.field_type, InferredType::Pointer { .. }) && field.size == 8 {
                     // Potential vtable pointer

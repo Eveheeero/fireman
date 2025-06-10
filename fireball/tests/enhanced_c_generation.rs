@@ -1,7 +1,7 @@
 //! Test for Enhanced C code generation
 
 use fireball::ir::analyze::{EnhancedCConfig, EnhancedCGenerator};
-use fireball::ir::medium_ir::{Confidence, Pattern, PatternRef};
+use fireball::ir::medium_ir::Pattern;
 
 #[test]
 fn test_enhanced_c_header_generation() {
@@ -36,10 +36,8 @@ fn test_enhanced_c_config_options() {
 
 #[test]
 fn test_type_to_enhanced_c() {
-    use fireball::ir::analyze::type_recovery::InferredType;
-
     let config = EnhancedCConfig::default();
-    let generator = EnhancedCGenerator::new(config);
+    let _generator = EnhancedCGenerator::new(config);
 
     // Just verify the generator can be created successfully
     // The actual type conversion is tested indirectly through generation
