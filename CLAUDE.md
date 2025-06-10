@@ -116,6 +116,7 @@ Binary File → PE Parser → Disassembler → IR Generation → Analysis → C 
 
 📋 Planned:
 - ARM architecture support
+- x86_32 support
 - ELF file format support
 - Advanced decompilation patterns
 - Code simulation capabilities
