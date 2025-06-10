@@ -1,10 +1,9 @@
+use crate::tui::{FiremanScope, MutexCtx};
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use std::{
     fs,
     path::{Path, PathBuf},
 };
-
-use crate::tui::{FiremanCtx, MutexCtx};
 
 pub fn handle_events(ctx_: &MutexCtx) -> std::io::Result<bool> {
     match event::read()? {
@@ -96,7 +95,9 @@ fn handle_enter(ctx_: &MutexCtx) {
     } else {
         match fs::File::open(&path) {
             Ok(_) => {
-                ctx.new_context.message = Some(format!("File opened: {}", path));
+                ctx.fireball =
+                    Some(fireball::Fireball::from_path(&path).expect("Failed to load Fireball"));
+                ctx.scope = FiremanScope::Main;
             }
             Err(e) => {
                 ctx.new_context.message = Some(format!("Failed to open file: {}", e));
@@ -204,7 +205,8 @@ fn complete_selected_item(
 
 fn extract_item_info(item: &str) -> (bool, &str) {
     // ">> " 또는 ">>> " 접두사 제거
-    let item = item.strip_prefix(">>> ")
+    let item = item
+        .strip_prefix(">>> ")
         .or_else(|| item.strip_prefix(">> "))
         .unwrap_or(item);
     let is_dir = item.starts_with("📁 ");
@@ -240,14 +242,4 @@ fn build_completion_path(current_path: &Path, clean_name: &str, is_dir: bool) ->
     }
 
     Some(path_str)
-}
-
-pub fn get_keybinding(_ctx: &FiremanCtx) -> &'static [(&'static str, &'static str)] {
-    &[
-        ("↑↓/Home/End/Pu/Pd", "Navigate"),
-        ("type", "Enter path"),
-        ("enter", "Open File"),
-        ("tab", "Autocomplete"),
-        ("esc", "Quit"),
-    ]
 }

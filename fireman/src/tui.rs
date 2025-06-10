@@ -1,3 +1,4 @@
+mod main;
 mod new;
 
 use crate::utils::log::init_log;
@@ -41,6 +42,7 @@ pub struct FiremanCtx {
     redraw_queue: VecDeque<()>,
 
     new_context: new::Context,
+    main_context: main::Context,
 }
 impl FiremanCtx {
     pub fn new() -> MutexCtx {
@@ -50,12 +52,14 @@ impl FiremanCtx {
             scope: FiremanScope::New,
             redraw_queue: VecDeque::new(),
             new_context: new::Context::new(),
+            main_context: main::Context::new(),
         })))
     }
 }
 #[derive(PartialEq, Clone, Copy)]
 pub enum FiremanScope {
     New,
+    Main,
 }
 
 fn run(terminal: &mut ratatui::DefaultTerminal, ctx: &MutexCtx) -> std::io::Result<()> {
@@ -84,6 +88,7 @@ fn draw(frame: &mut Frame, ctx: &MutexCtx) {
 
     match ctx.scope {
         FiremanScope::New => new::display(frame, main_area, &ctx),
+        FiremanScope::Main => main::display(frame, main_area, &ctx),
     }
 }
 
@@ -101,6 +106,7 @@ fn display_keybindings(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     let keybindings = {
         match ctx.scope {
             FiremanScope::New => new::get_keybinding(ctx),
+            FiremanScope::Main => main::get_keybinding(ctx),
         }
     };
     for (k, v) in keybindings {
@@ -120,5 +126,6 @@ pub fn handle_events(ctx_: &MutexCtx) -> std::io::Result<bool> {
     drop(ctx);
     match scope {
         FiremanScope::New => new::handle_events(ctx_),
+        FiremanScope::Main => main::handle_events(ctx_),
     }
 }
