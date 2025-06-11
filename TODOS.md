@@ -225,7 +225,7 @@ All sprints completed! Next priorities from the roadmap:
   - [ ] Memory allocation patterns
   - [ ] Error handling patterns
 
-#### ✅ Sprint 3: Determinism & Testing (COMPLETED)
+#### ✅ Sprint 3: Determinism & Testing (PARITAL)
 
 **Goal**: Ensure 100% deterministic output
 
@@ -242,6 +242,19 @@ All sprints completed! Next priorities from the roadmap:
 - [x] Integration tests for full pipeline ✅
 - [x] Regression test suite ✅
 - [x] Performance benchmarks ✅
+- [ ] Fuzzing harness for robustness (PENDING)
+- [ ] Determinism verification suite (PENDING)
+- [ ] Pass all the tests with 100% coverage
+
+3. **Passes Advanced Determinism Checks** [PENDING]
+4. **IR Determinism Verification** [PENDING]
+
+- [ ] Verify identical output across platforms
+- [ ] Ensure thread count independence
+- [ ] Validate numeric format consistency
+- [ ] Check AST structure preservation
+
+5. **Determinism Reporting** [PENDING]
 
 ### 🎨 Enhanced C Generation Pipeline
 
@@ -563,7 +576,8 @@ Day 3: Test and verify all outputs compile
   - [ ] Code style guide
 
 ### 🟡 Testing Infrastructure
-- [ ] **Unit Testing** (Target: 80% coverage)
+
+- [ ] **Unit Testing** (Target: At least 95%>= coverage)
   - [ ] IR generation tests
   - [ ] Pattern matching tests
   - [ ] C generation tests
