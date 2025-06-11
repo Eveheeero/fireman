@@ -4,7 +4,7 @@ version = "0.0.1"
 edition = "2021"
 authors = ["Eveheeero <xhve00000@gmail.com>"]
 repository = "https://github.com/Eveheeero/fireman"
-license = "MIT"
+license = "GPL-2.0"
 description = "Disassemble library used in fireball. (Reserved)"
 homepage = "https://crates.io/crates/iceball"
 
