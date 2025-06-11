@@ -363,6 +363,167 @@ pub(super) fn convert_stmt(
                 instruction_args,
             );
         }
+        IrStatement::AtomicLoad {
+            result, address, ..
+        } => {
+            // For C generation, treat as regular load
+            // In production, would use atomic load intrinsics like __atomic_load_n
+            let addr_expr = convert_expr(
+                ast,
+                function_id,
+                root_expr.unwrap_or(address),
+                address,
+                var_map,
+            )?;
+            let result_expr = convert_expr(
+                ast,
+                function_id,
+                root_expr.unwrap_or(result),
+                result,
+                var_map,
+            )?;
+            Statement::Assignment(result_expr, wdn(Expression::Deref(Box::new(addr_expr))))
+        }
+        IrStatement::AtomicStore { address, value, .. } => {
+            // For C generation, treat as regular store
+            // In production, would use atomic store intrinsics like __atomic_store_n
+            let addr_expr = convert_expr(
+                ast,
+                function_id,
+                root_expr.unwrap_or(address),
+                address,
+                var_map,
+            )?;
+            let value_expr =
+                convert_expr(ast, function_id, root_expr.unwrap_or(value), value, var_map)?;
+            Statement::Assignment(wdn(Expression::Deref(Box::new(addr_expr))), value_expr)
+        }
+        IrStatement::AtomicRmw {
+            result,
+            operation,
+            address,
+            value,
+            ..
+        } => {
+            // For C generation, use a comment to indicate atomic operation
+            // In production, would use __atomic_fetch_add, __atomic_fetch_sub, etc.
+            let addr_expr = convert_expr(
+                ast,
+                function_id,
+                root_expr.unwrap_or(address),
+                address,
+                var_map,
+            )?;
+            let value_expr =
+                convert_expr(ast, function_id, root_expr.unwrap_or(value), value, var_map)?;
+            let result_expr = convert_expr(
+                ast,
+                function_id,
+                root_expr.unwrap_or(result),
+                result,
+                var_map,
+            )?;
+
+            // Convert operator to binary operator
+            let bin_op = match operation {
+                crate::ir::operator::Operator::Add => BinaryOperator::Add,
+                crate::ir::operator::Operator::Sub => BinaryOperator::Sub,
+                crate::ir::operator::Operator::And => BinaryOperator::BitAnd,
+                crate::ir::operator::Operator::Or => BinaryOperator::BitOr,
+                crate::ir::operator::Operator::Xor => BinaryOperator::BitXor,
+                crate::ir::operator::Operator::Mov => {
+                    // Exchange operation - just assign value
+                    return Ok(ws(
+                        Statement::Assignment(result_expr, value_expr),
+                        stmt_position.clone(),
+                    ));
+                }
+                _ => {
+                    // For Min/Max/etc, generate a function call
+                    let op_name = format!("atomic_{:?}", operation).to_lowercase();
+                    return Ok(ws(
+                        Statement::Assignment(
+                            result_expr,
+                            wdn(Expression::Call(op_name, vec![addr_expr, value_expr])),
+                        ),
+                        stmt_position.clone(),
+                    ));
+                }
+            };
+
+            // result = *addr; *addr = *addr op value;
+            Statement::Block(vec![
+                ws(
+                    Statement::Assignment(
+                        result_expr.clone(),
+                        wdn(Expression::Deref(Box::new(addr_expr.clone()))),
+                    ),
+                    stmt_position.clone(),
+                ),
+                ws(
+                    Statement::Assignment(
+                        wdn(Expression::Deref(Box::new(addr_expr.clone()))),
+                        wdn(Expression::BinaryOp(
+                            bin_op,
+                            Box::new(wdn(Expression::Deref(Box::new(addr_expr)))),
+                            Box::new(value_expr),
+                        )),
+                    ),
+                    stmt_position.clone(),
+                ),
+            ])
+        }
+        IrStatement::AtomicCompareExchange {
+            result,
+            address,
+            expected,
+            desired,
+            ..
+        } => {
+            // For C generation, simulate compare-exchange with a comment
+            // In production, would use __atomic_compare_exchange_n
+            let addr_expr = convert_expr(
+                ast,
+                function_id,
+                root_expr.unwrap_or(address),
+                address,
+                var_map,
+            )?;
+            let expected_expr = convert_expr(
+                ast,
+                function_id,
+                root_expr.unwrap_or(expected),
+                expected,
+                var_map,
+            )?;
+            let desired_expr = convert_expr(
+                ast,
+                function_id,
+                root_expr.unwrap_or(desired),
+                desired,
+                var_map,
+            )?;
+            let result_expr = convert_expr(
+                ast,
+                function_id,
+                root_expr.unwrap_or(result),
+                result,
+                var_map,
+            )?;
+
+            // Simulate: result = (*addr == expected) ? ((*addr = desired), 1) : 0
+            Statement::Assignment(
+                result_expr,
+                wdn(Expression::Call(
+                    "atomic_cmpxchg".into(),
+                    vec![addr_expr, expected_expr, desired_expr],
+                )),
+            )
+        }
+        IrStatement::Fence { .. } => {
+            // Memory fence - generate a comment or barrier function call
+            Statement::Call(JumpTarget::Unknown("__atomic_thread_fence".into()), vec![])
+        }
     };
     Ok(ws(result, stmt_position.clone()))
 }

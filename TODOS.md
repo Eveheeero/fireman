@@ -43,29 +43,29 @@ improved readability while preserving low-level details.
 
 ### 🚧 Current Sprint Focus
 
-#### 🏗️ Sprint 6: Unified Instruction Handling & Testing [NEW - IN PROGRESS]
+#### 🏗️ Sprint 6: Unified Instruction Handling & Testing [IN PROGRESS]
 
 **Goal**: Complete the architecture-agnostic framework with unified instruction handling and comprehensive testing
 
 1. **Unified Instruction Handling** [High Priority]
-    - [ ] Create common instruction interface for all architectures
-    - [ ] Map architecture-specific instructions to common IR
+    - [x] Create common instruction interface for all architectures ✅
+    - [x] Map architecture-specific instructions to common IR ✅
     - [ ] Handle architecture-specific calling conventions
     - [ ] Support architecture-specific optimizations at AST level
-    - [ ] Implement x86-64 as superset handler for x86-32
+    - [x] Implement x86-64 as superset handler for x86-32 ✅
 
 2. **Testing & Validation** [Critical]
-    - [ ] Create cross-architecture test suite
+    - [x] Create cross-architecture test suite ✅
     - [ ] Verify deterministic output across architectures
     - [ ] Test numeric format switching
     - [ ] Validate AST structure preservation
     - [ ] Test x86-64 handling of 32-bit code
 
-3. **LOCK Prefix Support** [High Priority]
-    - [ ] Add prefix detection in instruction parsing
-    - [ ] Create atomic IR operations
-    - [ ] Model memory barriers/fences
-    - [ ] Support for atomic variants (LOCK CMPXCHG, LOCK XADD, etc.)
+3. **LOCK Prefix Support** [High Priority] ✅ COMPLETED
+    - [x] Add prefix detection in instruction parsing ✅
+    - [x] Create atomic IR operations ✅
+    - [x] Model memory barriers/fences ✅
+    - [x] Support for atomic variants (LOCK CMPXCHG, LOCK XADD, etc.) ✅
 
 ### ✅ Completed Sprints
 
@@ -261,11 +261,11 @@ Day 3: Test and verify all outputs compile
   - [x] SAHF - Store AH into Flags (implemented in s.rs)
   - [x] XCHG - Exchange operands (implemented in x.rs)
   - [x] CMPXCHG - Compare and exchange (implemented in c.rs)
-- [ ] **LOCK Prefix Support** [High Priority]
-  - [ ] Add prefix detection in instruction parsing
-  - [ ] Create atomic IR operations
-  - [ ] Model memory barriers/fences
-  - [ ] Support for atomic variants (LOCK CMPXCHG, LOCK XADD, etc.)
+- [x] **LOCK Prefix Support** [High Priority] ✅ COMPLETED
+    - [x] Add prefix detection in instruction parsing ✅
+    - [x] Create atomic IR operations ✅
+    - [x] Model memory barriers/fences ✅
+    - [x] Support for atomic variants (LOCK CMPXCHG, LOCK XADD, etc.) ✅
 - [ ] **Remaining x64 Instructions**
   - [ ] FPU instructions (FLD, FST, FADD, etc.)
   - [ ] Advanced SSE4/AVX2/AVX-512 instructions
@@ -282,11 +282,6 @@ Day 3: Test and verify all outputs compile
 - [ ] Design ARM-specific IR mappings
 - [ ] Implement basic ARM64 decoder
 - [ ] Add Thumb mode support
-
-#### x86 (32-bits) Instruction Support
-
-- [ ] x86 Instruction Support (NOTE: x86-64 is a superset of x86-32, so the x86-64 implementation handles both
-  architectures)
 
 ### 🟠 P1: Extended Architecture Support
 
@@ -336,7 +331,7 @@ Day 3: Test and verify all outputs compile
   - [x] CPU state emulation for x64
   - [x] Memory management simulation
   - [x] Basic symbolic execution
-- [ ] **Unicorn Engine Integration** [PLANNED]
+- [ ] **Unicorn Engine(v2.0+) Integration** [PLANNED]
     - [ ] Replace custom simulation with Unicorn Engine
     - [ ] Support all architectures (x86, x86_64, ARM32, ARM64)
     - [ ] Leverage Unicorn's accurate CPU emulation

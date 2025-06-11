@@ -2,6 +2,7 @@
 
 pub mod analyze;
 pub mod arm;
+pub mod atomic_operations;
 pub mod data;
 pub mod high_ir;
 pub mod low_ir;

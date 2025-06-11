@@ -318,13 +318,36 @@ pub enum CastOp {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum CallConv {
+    /// Default C calling convention (platform-specific)
     C,
+    /// Fast calling convention (compiler optimized)
     Fast,
+    /// Cold calling convention (for rarely called functions)
     Cold,
+    /// x86 stdcall (callee cleanup)
     X86Stdcall,
+    /// x86 fastcall (first 2 params in ECX, EDX)
     X86Fastcall,
+    /// x86 thiscall (this in ECX)
+    X86Thiscall,
+    /// x86 vectorcall (extended fastcall with vector support)
+    X86Vectorcall,
+    /// x86-64 System V ABI (Linux, macOS, BSD)
     X86_64SysV,
+    /// x86-64 Windows calling convention
     X86_64Win64,
+    /// ARM AAPCS (32-bit ARM)
+    ArmAapcs,
+    /// ARM AAPCS-VFP (with VFP hardware)
+    ArmAapcsVfp,
+    /// ARM64 AAPCS (64-bit ARM)
+    Arm64Aapcs,
+    /// ARM64 AAPCS with Darwin extensions
+    Arm64AapcsDarwin,
+    /// Preserve all registers
+    PreserveAll,
+    /// Preserve most registers
+    PreserveMost,
 }
 
 /// CPU flags that can be affected by operations

@@ -36,6 +36,26 @@ pub enum BinaryOperator {
     UnsignedLessOrEqual(AccessSize),
 }
 
+/// Unified operator enum for atomic operations
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Operator {
+    // Basic operations
+    Add,
+    Sub,
+    And,
+    Or,
+    Xor,
+    Mov,
+    // Min/Max operations
+    Max,
+    Min,
+    Umax,
+    Umin,
+    // Other operations
+    Not,
+    Neg,
+}
+
 impl IrDataContainable for UnaryOperator {
     fn get_related_ir_data<'d>(&'d self, _v: &mut Vec<&'d Aos<IrData>>) {}
 }

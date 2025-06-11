@@ -108,6 +108,95 @@ pub fn analyze_datatype_raw(insert: &mut impl FnMut(KnownDataType), statement: &
         IrStatement::Atomic { statement, .. } => {
             analyze_datatype_raw(insert, statement);
         }
+        IrStatement::AtomicLoad {
+            result,
+            address,
+            size,
+            ..
+        } => {
+            insert(KnownDataType {
+                location: result.clone(),
+                data_type: DataType::Unknown,
+                data_size: AccessSize::ResultOfByte(Aos::new(IrData::Constant(*size))),
+            });
+            insert(KnownDataType {
+                location: address.clone(),
+                data_type: DataType::Address,
+                data_size: AccessSize::ArchitectureSize,
+            });
+        }
+        IrStatement::AtomicStore {
+            address,
+            value,
+            size,
+            ..
+        } => {
+            insert(KnownDataType {
+                location: address.clone(),
+                data_type: DataType::Address,
+                data_size: AccessSize::ArchitectureSize,
+            });
+            insert(KnownDataType {
+                location: value.clone(),
+                data_type: DataType::Unknown,
+                data_size: AccessSize::ResultOfByte(Aos::new(IrData::Constant(*size))),
+            });
+        }
+        IrStatement::AtomicRmw {
+            result,
+            address,
+            value,
+            size,
+            ..
+        } => {
+            insert(KnownDataType {
+                location: result.clone(),
+                data_type: DataType::Unknown,
+                data_size: AccessSize::ResultOfByte(Aos::new(IrData::Constant(*size))),
+            });
+            insert(KnownDataType {
+                location: address.clone(),
+                data_type: DataType::Address,
+                data_size: AccessSize::ArchitectureSize,
+            });
+            insert(KnownDataType {
+                location: value.clone(),
+                data_type: DataType::Unknown,
+                data_size: AccessSize::ResultOfByte(Aos::new(IrData::Constant(*size))),
+            });
+        }
+        IrStatement::AtomicCompareExchange {
+            result,
+            address,
+            expected,
+            desired,
+            size,
+            ..
+        } => {
+            insert(KnownDataType {
+                location: result.clone(),
+                data_type: DataType::Unknown,
+                data_size: AccessSize::ResultOfByte(Aos::new(IrData::Constant(*size))),
+            });
+            insert(KnownDataType {
+                location: address.clone(),
+                data_type: DataType::Address,
+                data_size: AccessSize::ArchitectureSize,
+            });
+            insert(KnownDataType {
+                location: expected.clone(),
+                data_type: DataType::Unknown,
+                data_size: AccessSize::ResultOfByte(Aos::new(IrData::Constant(*size))),
+            });
+            insert(KnownDataType {
+                location: desired.clone(),
+                data_type: DataType::Unknown,
+                data_size: AccessSize::ResultOfByte(Aos::new(IrData::Constant(*size))),
+            });
+        }
+        IrStatement::Fence { .. } => {
+            // Fence has no data type information
+        }
     }
 }
 

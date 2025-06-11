@@ -87,5 +87,61 @@ pub fn analyze_data_access_raw(insert: &mut impl FnMut(DataAccess), statement: &
         IrStatement::Atomic { statement, .. } => {
             analyze_data_access_raw(insert, statement);
         }
+        IrStatement::AtomicLoad { address, .. } => {
+            insert(DataAccess::new(
+                address.clone(),
+                DataAccessType::Read,
+                AccessSize::ArchitectureSize,
+            ));
+        }
+        IrStatement::AtomicStore { address, value, .. } => {
+            insert(DataAccess::new(
+                address.clone(),
+                DataAccessType::Read,
+                AccessSize::ArchitectureSize,
+            ));
+            insert(DataAccess::new(
+                value.clone(),
+                DataAccessType::Read,
+                AccessSize::Unlimited,
+            ));
+        }
+        IrStatement::AtomicRmw { address, value, .. } => {
+            insert(DataAccess::new(
+                address.clone(),
+                DataAccessType::Read,
+                AccessSize::ArchitectureSize,
+            ));
+            insert(DataAccess::new(
+                value.clone(),
+                DataAccessType::Read,
+                AccessSize::Unlimited,
+            ));
+        }
+        IrStatement::AtomicCompareExchange {
+            address,
+            expected,
+            desired,
+            ..
+        } => {
+            insert(DataAccess::new(
+                address.clone(),
+                DataAccessType::Read,
+                AccessSize::ArchitectureSize,
+            ));
+            insert(DataAccess::new(
+                expected.clone(),
+                DataAccessType::Read,
+                AccessSize::Unlimited,
+            ));
+            insert(DataAccess::new(
+                desired.clone(),
+                DataAccessType::Read,
+                AccessSize::Unlimited,
+            ));
+        }
+        IrStatement::Fence { .. } => {
+            // Fence has no data access
+        }
     }
 }

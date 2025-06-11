@@ -29,8 +29,39 @@ pub enum Endianness {
     Big,
 }
 
-/// Supported architecture types
+/// Operating system type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OperatingSystem {
+    Windows,
+    Linux,
+    MacOS,
+    FreeBSD,
+    NetBSD,
+    OpenBSD,
+    Android,
+    IOs,
+    Unknown,
+}
+
+impl OperatingSystem {
+    /// Get human-readable name
+    pub fn name(&self) -> &'static str {
+        match self {
+            OperatingSystem::Windows => "Windows",
+            OperatingSystem::Linux => "Linux",
+            OperatingSystem::MacOS => "macOS",
+            OperatingSystem::FreeBSD => "FreeBSD",
+            OperatingSystem::NetBSD => "NetBSD",
+            OperatingSystem::OpenBSD => "OpenBSD",
+            OperatingSystem::Android => "Android",
+            OperatingSystem::IOs => "iOS",
+            OperatingSystem::Unknown => "Unknown",
+        }
+    }
+}
+
+/// Supported architecture types
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ArchType {
     X86,
     X86_64,

@@ -12,11 +12,22 @@
 pub mod architecture;
 pub mod arm32;
 pub mod arm64;
+pub mod calling_convention;
 pub mod register_mapping;
+pub mod unified_instruction;
 pub mod x86_64;
 
 // Re-export key types
 pub use architecture::{
     ArchType, ArchitectureContext, ArchitectureDetector, ArchitectureInfo, Endianness,
+    OperatingSystem,
+};
+pub use calling_convention::{
+    CallingConventionInfo, CallingConventionProvider, ParamLocation, ParamType,
+    get_calling_convention_provider,
 };
 pub use register_mapping::{CallingConventionRegisters, RegisterMapper, get_register_mapper};
+pub use unified_instruction::{
+    ArchMode, ArmInstructionSet, BaseOperation, InstructionCategory, InstructionModifiers,
+    ProcessorMode, UnifiedArchContext, UnifiedInstruction, UnifiedInstructionAnalyzer,
+};

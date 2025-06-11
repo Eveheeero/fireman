@@ -58,6 +58,43 @@ pub enum IrStatement {
         statement: Box<IrStatement>,
         ordering: MemoryOrdering,
     },
+    /// Atomic load operation
+    AtomicLoad {
+        result: Aos<IrData>,
+        address: Aos<IrData>,
+        size: usize,
+        ordering: MemoryOrdering,
+    },
+    /// Atomic store operation
+    AtomicStore {
+        address: Aos<IrData>,
+        value: Aos<IrData>,
+        size: usize,
+        ordering: MemoryOrdering,
+    },
+    /// Atomic read-modify-write operation
+    AtomicRmw {
+        result: Aos<IrData>,
+        operation: crate::ir::operator::Operator,
+        address: Aos<IrData>,
+        value: Aos<IrData>,
+        size: usize,
+        ordering: MemoryOrdering,
+    },
+    /// Atomic compare and exchange
+    AtomicCompareExchange {
+        result: Aos<IrData>,
+        address: Aos<IrData>,
+        expected: Aos<IrData>,
+        desired: Aos<IrData>,
+        size: usize,
+        success_ordering: MemoryOrdering,
+        failure_ordering: MemoryOrdering,
+    },
+    /// Memory fence/barrier
+    Fence {
+        ordering: MemoryOrdering,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -105,6 +142,28 @@ impl IrDataContainable for IrStatement {
                 ir_statement_special.get_related_ir_data(v)
             }
             IrStatement::Atomic { statement, .. } => statement.get_related_ir_data(v),
+            IrStatement::AtomicLoad { address, .. } => {
+                v.push(address);
+            }
+            IrStatement::AtomicStore { address, value, .. } => {
+                v.push(address);
+                v.push(value);
+            }
+            IrStatement::AtomicRmw { address, value, .. } => {
+                v.push(address);
+                v.push(value);
+            }
+            IrStatement::AtomicCompareExchange {
+                address,
+                expected,
+                desired,
+                ..
+            } => {
+                v.push(address);
+                v.push(expected);
+                v.push(desired);
+            }
+            IrStatement::Fence { .. } => {}
             _ => {}
         }
     }
@@ -174,6 +233,52 @@ impl std::fmt::Display for IrStatement {
                 write!(f, "\n    {}", statement)?;
                 write!(f, "\n}}")
             }
+            IrStatement::AtomicLoad {
+                result,
+                address,
+                size,
+                ordering,
+            } => write!(
+                f,
+                "{} = atomic_load[{:?}]({}, size={})",
+                result, ordering, address, size
+            ),
+            IrStatement::AtomicStore {
+                address,
+                value,
+                size,
+                ordering,
+            } => write!(
+                f,
+                "atomic_store[{:?}]({} = {}, size={})",
+                ordering, address, value, size
+            ),
+            IrStatement::AtomicRmw {
+                result,
+                operation,
+                address,
+                value,
+                size,
+                ordering,
+            } => write!(
+                f,
+                "{} = atomic_rmw[{:?}]({:?}, {}, {}, size={})",
+                result, ordering, operation, address, value, size
+            ),
+            IrStatement::AtomicCompareExchange {
+                result,
+                address,
+                expected,
+                desired,
+                size,
+                success_ordering,
+                failure_ordering,
+            } => write!(
+                f,
+                "{} = atomic_cmpxchg[{:?}/{:?}]({}, {}, {}, size={})",
+                result, success_ordering, failure_ordering, address, expected, desired, size
+            ),
+            IrStatement::Fence { ordering } => write!(f, "fence[{:?}]", ordering),
         }
     }
 }

@@ -55,6 +55,201 @@ impl<'a> Executor<'a> {
                 // The memory ordering is only relevant for code generation
                 self.execute_statement(statement)
             }
+            IrStatement::AtomicLoad {
+                result,
+                address,
+                size,
+                ..
+            } => {
+                // For simulation, treat as regular load
+                let addr_value = self.evaluate_data(address)?;
+                let value = match size {
+                    1 => self.context.memory.read_u8(addr_value)? as u64,
+                    2 => self.context.memory.read_u16(addr_value)? as u64,
+                    4 => self.context.memory.read_u32(addr_value)? as u64,
+                    8 => self.context.memory.read_u64(addr_value)?,
+                    _ => {
+                        return Err(SimulationError::InvalidOperation(format!(
+                            "Unsupported atomic load size: {}",
+                            size
+                        )));
+                    }
+                };
+                self.store_data(
+                    result,
+                    value,
+                    &AccessSize::ResultOfByte(Aos::new(IrData::Constant(*size))),
+                )?;
+                Ok(())
+            }
+            IrStatement::AtomicStore {
+                address,
+                value,
+                size,
+                ..
+            } => {
+                // For simulation, treat as regular store
+                let addr_value = self.evaluate_data(address)?;
+                let data_value = self.evaluate_data(value)?;
+                match size {
+                    1 => self.context.memory.write_u8(addr_value, data_value as u8)?,
+                    2 => self
+                        .context
+                        .memory
+                        .write_u16(addr_value, data_value as u16)?,
+                    4 => self
+                        .context
+                        .memory
+                        .write_u32(addr_value, data_value as u32)?,
+                    8 => self.context.memory.write_u64(addr_value, data_value)?,
+                    _ => {
+                        return Err(SimulationError::InvalidOperation(format!(
+                            "Unsupported atomic store size: {}",
+                            size
+                        )));
+                    }
+                }
+                Ok(())
+            }
+            IrStatement::AtomicRmw {
+                result,
+                operation,
+                address,
+                value,
+                size,
+                ..
+            } => {
+                // Read-modify-write: load current value, apply operation, store result
+                let addr_value = self.evaluate_data(address)?;
+                let operand_value = self.evaluate_data(value)?;
+                let current_value = match size {
+                    1 => self.context.memory.read_u8(addr_value)? as u64,
+                    2 => self.context.memory.read_u16(addr_value)? as u64,
+                    4 => self.context.memory.read_u32(addr_value)? as u64,
+                    8 => self.context.memory.read_u64(addr_value)?,
+                    _ => {
+                        return Err(SimulationError::InvalidOperation(format!(
+                            "Unsupported atomic RMW size: {}",
+                            size
+                        )));
+                    }
+                };
+
+                // Apply the operation
+                let new_value = match operation {
+                    Operator::Add => current_value.wrapping_add(operand_value),
+                    Operator::Sub => current_value.wrapping_sub(operand_value),
+                    Operator::And => current_value & operand_value,
+                    Operator::Or => current_value | operand_value,
+                    Operator::Xor => current_value ^ operand_value,
+                    Operator::Mov => operand_value, // Exchange - just use the new value
+                    Operator::Max => {
+                        std::cmp::max(current_value as i64, operand_value as i64) as u64
+                    }
+                    Operator::Min => {
+                        std::cmp::min(current_value as i64, operand_value as i64) as u64
+                    }
+                    Operator::Umax => std::cmp::max(current_value, operand_value),
+                    Operator::Umin => std::cmp::min(current_value, operand_value),
+                    _ => {
+                        return Err(SimulationError::InvalidOperation(format!(
+                            "Unsupported atomic RMW operation: {:?}",
+                            operation
+                        )));
+                    }
+                };
+
+                // Store the old value in result
+                self.store_data(
+                    result,
+                    current_value,
+                    &AccessSize::ResultOfByte(Aos::new(IrData::Constant(*size))),
+                )?;
+
+                // Write the new value to memory
+                match size {
+                    1 => self.context.memory.write_u8(addr_value, new_value as u8)?,
+                    2 => self
+                        .context
+                        .memory
+                        .write_u16(addr_value, new_value as u16)?,
+                    4 => self
+                        .context
+                        .memory
+                        .write_u32(addr_value, new_value as u32)?,
+                    8 => self.context.memory.write_u64(addr_value, new_value)?,
+                    _ => {
+                        return Err(SimulationError::InvalidOperation(format!(
+                            "Unsupported atomic RMW size: {}",
+                            size
+                        )));
+                    }
+                }
+                Ok(())
+            }
+            IrStatement::AtomicCompareExchange {
+                result,
+                address,
+                expected,
+                desired,
+                size,
+                ..
+            } => {
+                // Compare and exchange: if *address == expected, then *address = desired
+                let addr_value = self.evaluate_data(address)?;
+                let expected_value = self.evaluate_data(expected)?;
+                let desired_value = self.evaluate_data(desired)?;
+                let current_value = match size {
+                    1 => self.context.memory.read_u8(addr_value)? as u64,
+                    2 => self.context.memory.read_u16(addr_value)? as u64,
+                    4 => self.context.memory.read_u32(addr_value)? as u64,
+                    8 => self.context.memory.read_u64(addr_value)?,
+                    _ => {
+                        return Err(SimulationError::InvalidOperation(format!(
+                            "Unsupported atomic cmpxchg size: {}",
+                            size
+                        )));
+                    }
+                };
+
+                let success = current_value == expected_value;
+                if success {
+                    match size {
+                        1 => self
+                            .context
+                            .memory
+                            .write_u8(addr_value, desired_value as u8)?,
+                        2 => self
+                            .context
+                            .memory
+                            .write_u16(addr_value, desired_value as u16)?,
+                        4 => self
+                            .context
+                            .memory
+                            .write_u32(addr_value, desired_value as u32)?,
+                        8 => self.context.memory.write_u64(addr_value, desired_value)?,
+                        _ => {
+                            return Err(SimulationError::InvalidOperation(format!(
+                                "Unsupported atomic cmpxchg size: {}",
+                                size
+                            )));
+                        }
+                    }
+                }
+
+                // Store success flag in result (1 if successful, 0 if failed)
+                self.store_data(
+                    result,
+                    if success { 1 } else { 0 },
+                    &AccessSize::ResultOfByte(Aos::new(IrData::Constant(1))),
+                )?;
+                Ok(())
+            }
+            IrStatement::Fence { .. } => {
+                // Memory fence - no operation needed in simulation
+                // This is only relevant for code generation and hardware ordering
+                Ok(())
+            }
         }
     }
 
