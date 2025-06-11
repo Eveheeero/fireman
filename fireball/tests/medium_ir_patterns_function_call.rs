@@ -21,41 +21,39 @@ fn test_function_call_pattern_detection() {
     let mut found_indirect_call = false;
     let body_ref = func.body;
 
-    if let Some(pattern) = func.patterns.get(body_ref) {
-        if let Pattern::Expression { operands, .. } = pattern {
-            // Check operands for function calls
-            for op_ref in operands {
-                if let Some(Pattern::LowIR { instructions, .. }) = func.patterns.get(*op_ref) {
-                    // Check each instruction in the LowIR pattern
-                    for inst in instructions {
-                        if let Instruction::Call { .. } = inst {
-                            // We found a call instruction wrapped in LowIR
-                            // This is because our current implementation doesn't extract calls from blocks
-                            found_direct_call = true;
-                        }
+    if let Some(Pattern::Expression { operands, .. }) = func.patterns.get(body_ref) {
+        // Check operands for function calls
+        for op_ref in operands {
+            if let Some(Pattern::LowIR { instructions, .. }) = func.patterns.get(*op_ref) {
+                // Check each instruction in the LowIR pattern
+                for inst in instructions {
+                    if let Instruction::Call { .. } = inst {
+                        // We found a call instruction wrapped in LowIR
+                        // This is because our current implementation doesn't extract calls from blocks
+                        found_direct_call = true;
                     }
-                } else if let Some(Pattern::FunctionCall {
-                    target,
-                    arguments,
-                    confidence,
-                    ..
-                }) = func.patterns.get(*op_ref)
-                {
-                    match target {
-                        FunctionRef::Address(_) => {
-                            found_direct_call = true;
-                        }
-                        FunctionRef::Indirect(_) => {
-                            found_indirect_call = true;
-                        }
-                        _ => {}
-                    }
-                    assert!(!arguments.is_empty(), "Function call should have arguments");
-                    assert!(
-                        confidence >= &Confidence::HIGH,
-                        "Function calls should have high confidence"
-                    );
                 }
+            } else if let Some(Pattern::FunctionCall {
+                target,
+                arguments,
+                confidence,
+                ..
+            }) = func.patterns.get(*op_ref)
+            {
+                match target {
+                    FunctionRef::Address(_) => {
+                        found_direct_call = true;
+                    }
+                    FunctionRef::Indirect(_) => {
+                        found_indirect_call = true;
+                    }
+                    _ => {}
+                }
+                assert!(!arguments.is_empty(), "Function call should have arguments");
+                assert!(
+                    confidence >= &Confidence::HIGH,
+                    "Function calls should have high confidence"
+                );
             }
         }
     }

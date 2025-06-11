@@ -53,11 +53,10 @@ impl ExpressionSimplifier {
     /// Simplify expressions in a statement
     pub fn simplify_statement(&mut self, stmt: &mut WrappedStatement) {
         match &mut stmt.statement {
-            Statement::Declaration(_var, init_expr) => {
-                if let Some(expr) = init_expr {
-                    self.simplify_expression(expr);
-                }
+            Statement::Declaration(_var, Some(expr)) => {
+                self.simplify_expression(expr);
             }
+            Statement::Declaration(_, None) => {}
             Statement::Assignment(lhs, rhs) => {
                 self.simplify_expression(lhs);
                 self.simplify_expression(rhs);
@@ -87,11 +86,10 @@ impl ExpressionSimplifier {
                     self.simplify_statement(s);
                 }
             }
-            Statement::Return(expr) => {
-                if let Some(e) = expr {
-                    self.simplify_expression(e);
-                }
+            Statement::Return(Some(e)) => {
+                self.simplify_expression(e);
             }
+            Statement::Return(None) => {}
             Statement::Call(_target, args) => {
                 for arg in args {
                     self.simplify_expression(arg);

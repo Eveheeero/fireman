@@ -44,5 +44,5 @@ fn hello_world() {
 
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
     println!("{}", pe.decompile_all().unwrap());
-    assert!(true);
+    // TODO: Add proper assertion once we have the expected output
 }

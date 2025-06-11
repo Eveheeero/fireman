@@ -11,6 +11,7 @@ use fireball::ir::analyze::ir_to_c::c_abstract_syntax_tree::{
 use std::sync::Arc;
 
 /// Helper to create a simple AST with numeric values
+#[allow(dead_code)]
 fn create_numeric_ast() -> CAst {
     let mut ast = CAst::new();
 

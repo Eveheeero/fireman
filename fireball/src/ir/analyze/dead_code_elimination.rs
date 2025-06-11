@@ -31,6 +31,12 @@ pub struct EliminationStats {
     pub redundant_jumps_removed: usize,
 }
 
+impl Default for DeadCodeEliminator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DeadCodeEliminator {
     /// Create a new dead code eliminator
     pub fn new() -> Self {
@@ -143,6 +149,7 @@ impl DeadCodeEliminator {
     }
 
     /// Collect function calls in an expression
+    #[allow(clippy::only_used_in_recursion)]
     fn collect_calls_in_expression(&mut self, expr: &Wrapped<Expression>) {
         match &expr.item {
             Expression::Call(_, args) => {
@@ -218,11 +225,8 @@ impl DeadCodeEliminator {
                 }
             }
             Statement::Call(target, args) => {
-                match target {
-                    JumpTarget::Variable { id, .. } => {
-                        self.used_variables.insert(*id);
-                    }
-                    _ => {}
+                if let JumpTarget::Variable { id, .. } = target {
+                    self.used_variables.insert(*id);
                 }
                 for arg in args {
                     self.collect_used_vars_in_expression(arg);
@@ -238,6 +242,7 @@ impl DeadCodeEliminator {
     }
 
     /// Collect used variables in an expression
+    #[allow(clippy::only_used_in_recursion)]
     fn collect_used_vars_in_expression(&mut self, expr: &Wrapped<Expression>) {
         match &expr.item {
             Expression::Variable(_, var_id) => {
@@ -362,12 +367,13 @@ impl DeadCodeEliminator {
     }
 
     /// Simplify redundant control flow
-    fn simplify_control_flow(&mut self, stmts: &mut Vec<WrappedStatement>) {
+    #[allow(clippy::only_used_in_recursion)]
+    fn simplify_control_flow(&mut self, stmts: &mut [WrappedStatement]) {
         for stmt in stmts.iter_mut() {
             match &mut stmt.statement {
                 // Remove if statements with empty branches
                 Statement::If(_, then_block, else_block) => {
-                    if then_block.is_empty() && else_block.as_ref().map_or(true, |e| e.is_empty()) {
+                    if then_block.is_empty() && else_block.as_ref().is_none_or(Vec::is_empty) {
                         // Both branches are empty, this will be removed by empty block removal
                         continue;
                     }

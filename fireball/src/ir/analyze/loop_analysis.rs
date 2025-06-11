@@ -21,6 +21,7 @@ use super::control_flow_graph::LoopInfo;
 
 /// Represents different types of loop patterns
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)]
 pub enum LoopPattern {
     /// Traditional for loop: for(init; condition; increment)
     ForLoop {

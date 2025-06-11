@@ -483,6 +483,7 @@ impl CCodeGenerator {
     }
 
     /// Convert type to C string
+    #[allow(clippy::only_used_in_recursion)]
     fn type_to_c(&self, ty: &hir::Type) -> String {
         match ty {
             hir::Type::Void => "void".to_string(),

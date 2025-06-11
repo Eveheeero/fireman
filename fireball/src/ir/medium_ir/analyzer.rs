@@ -607,15 +607,15 @@ impl MediumIRAnalyzer {
             for pattern_ref in patterns {
                 if let Some(pattern) = store.get(*pattern_ref) {
                     // If we found a loop or conditional pattern, make it the top-level pattern
-                    match pattern {
+                    if matches!(
+                        pattern,
                         Pattern::ForLoop { .. }
-                        | Pattern::WhileLoop { .. }
-                        | Pattern::DoWhileLoop { .. }
-                        | Pattern::IfElse { .. }
-                        | Pattern::SwitchCase { .. } => {
-                            return *pattern_ref;
-                        }
-                        _ => {}
+                            | Pattern::WhileLoop { .. }
+                            | Pattern::DoWhileLoop { .. }
+                            | Pattern::IfElse { .. }
+                            | Pattern::SwitchCase { .. }
+                    ) {
+                        return *pattern_ref;
                     }
                 }
             }
@@ -692,6 +692,7 @@ impl MediumIRAnalyzer {
     }
 
     /// Convert Low IR type to Medium IR type
+    #[allow(clippy::only_used_in_recursion)]
     fn convert_type(&self, low_type: &low_ir::Type) -> TypeRef {
         match low_type {
             low_ir::Type::Void => TypeRef::Primitive(PrimitiveType::Void),
@@ -854,26 +855,22 @@ impl MediumIRAnalyzer {
                         dst,
                         op: low_ir::BinaryOp::Mul,
                         lhs,
-                        rhs,
+                        rhs: low_ir::Value::Constant(low_ir::Constant::Int { value, .. }),
                         ..
                     } if dst == local => {
                         // Found multiplication
-                        if let low_ir::Value::Constant(low_ir::Constant::Int { value, .. }) = rhs {
-                            return Some((lhs.clone(), *value as usize));
-                        }
+                        return Some((lhs.clone(), *value as usize));
                     }
                     low_ir::Instruction::BinOp {
                         dst,
                         op: low_ir::BinaryOp::Shl,
                         lhs,
-                        rhs,
+                        rhs: low_ir::Value::Constant(low_ir::Constant::Int { value, .. }),
                         ..
                     } if dst == local => {
                         // Found shift left (equivalent to multiplication by power of 2)
-                        if let low_ir::Value::Constant(low_ir::Constant::Int { value, .. }) = rhs {
-                            let scale = 1usize << (*value as usize);
-                            return Some((lhs.clone(), scale));
-                        }
+                        let scale = 1usize << (*value as usize);
+                        return Some((lhs.clone(), scale));
                     }
                     _ => {}
                 }
@@ -1096,55 +1093,58 @@ impl MediumIRAnalyzer {
         inst: &low_ir::Instruction,
         store: &mut PatternStore,
     ) -> Option<PatternRef> {
-        if let low_ir::Instruction::Call { func, args, .. } = inst {
+        if let low_ir::Instruction::Call {
+            func: low_ir::Value::Function(id),
+            args,
+            ..
+        } = inst
+        {
             // Check if this is a call to a known allocator
-            if let low_ir::Value::Function(id) = func {
-                if let Some(lib_pattern) = self.match_library_function(id.0) {
-                    match lib_pattern.name.as_str() {
-                        "malloc" | "calloc" => {
-                            // Extract size argument
-                            if let Some((_size_val, _)) = args.first() {
-                                let size_pattern = Pattern::LowIR {
-                                    instructions: vec![], // TODO: Extract size computation
-                                    terminator: None,
-                                    source_block: low_ir::BlockId(0),
-                                    confidence: Confidence::HIGH,
-                                };
-                                let size_ref = store.insert(size_pattern);
+            if let Some(lib_pattern) = self.match_library_function(id.0) {
+                match lib_pattern.name.as_str() {
+                    "malloc" | "calloc" => {
+                        // Extract size argument
+                        if let Some((_size_val, _)) = args.first() {
+                            let size_pattern = Pattern::LowIR {
+                                instructions: vec![], // TODO: Extract size computation
+                                terminator: None,
+                                source_block: low_ir::BlockId(0),
+                                confidence: Confidence::HIGH,
+                            };
+                            let size_ref = store.insert(size_pattern);
 
-                                let alloc = Pattern::MemoryAllocation {
-                                    size: size_ref,
-                                    allocator: match lib_pattern.name.as_str() {
-                                        "malloc" => AllocatorType::Malloc,
-                                        "calloc" => AllocatorType::Calloc,
-                                        _ => AllocatorType::Malloc,
-                                    },
-                                    confidence: Confidence::HIGH,
-                                };
-                                return Some(store.insert(alloc));
-                            }
+                            let alloc = Pattern::MemoryAllocation {
+                                size: size_ref,
+                                allocator: match lib_pattern.name.as_str() {
+                                    "malloc" => AllocatorType::Malloc,
+                                    "calloc" => AllocatorType::Calloc,
+                                    _ => AllocatorType::Malloc,
+                                },
+                                confidence: Confidence::HIGH,
+                            };
+                            return Some(store.insert(alloc));
                         }
-                        "free" => {
-                            // Extract pointer argument
-                            if let Some((_ptr_val, _)) = args.first() {
-                                let ptr_pattern = Pattern::LowIR {
-                                    instructions: vec![], // TODO: Extract pointer
-                                    terminator: None,
-                                    source_block: low_ir::BlockId(0),
-                                    confidence: Confidence::HIGH,
-                                };
-                                let ptr_ref = store.insert(ptr_pattern);
-
-                                let dealloc = Pattern::MemoryDeallocation {
-                                    pointer: ptr_ref,
-                                    deallocator: DeallocatorType::Free,
-                                    confidence: Confidence::HIGH,
-                                };
-                                return Some(store.insert(dealloc));
-                            }
-                        }
-                        _ => {}
                     }
+                    "free" => {
+                        // Extract pointer argument
+                        if let Some((_ptr_val, _)) = args.first() {
+                            let ptr_pattern = Pattern::LowIR {
+                                instructions: vec![], // TODO: Extract pointer
+                                terminator: None,
+                                source_block: low_ir::BlockId(0),
+                                confidence: Confidence::HIGH,
+                            };
+                            let ptr_ref = store.insert(ptr_pattern);
+
+                            let dealloc = Pattern::MemoryDeallocation {
+                                pointer: ptr_ref,
+                                deallocator: DeallocatorType::Free,
+                                confidence: Confidence::HIGH,
+                            };
+                            return Some(store.insert(dealloc));
+                        }
+                    }
+                    _ => {}
                 }
             }
         }

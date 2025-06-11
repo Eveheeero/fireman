@@ -190,6 +190,7 @@ impl PatternDatabaseBuilder {
     }
 
     /// Parse type from string representation
+    #[allow(clippy::only_used_in_recursion)]
     fn parse_type(&self, type_str: &str) -> TypeRef {
         match type_str {
             "void" => TypeRef::Primitive(PrimitiveType::Void),

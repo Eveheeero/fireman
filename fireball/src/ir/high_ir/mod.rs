@@ -1112,6 +1112,7 @@ impl HighIRGenerator {
     }
 
     /// Convert Low IR type to High IR type
+    #[allow(clippy::only_used_in_recursion)]
     fn convert_low_ir_type(&self, ty: &low_ir::Type) -> Type {
         match ty {
             low_ir::Type::Void => Type::Void,
@@ -1193,6 +1194,7 @@ impl TypeInference {
         self.convert_type(&sig.return_type)
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn convert_type(&self, ty: &medium_ir::TypeRef) -> Type {
         use medium_ir::{PrimitiveType, TypeRef};
 
