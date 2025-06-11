@@ -53,7 +53,26 @@ improved readability while preserving low-level details.
 
 ### 🚧 Current Sprint Focus
 
-#### Sprint 7: Code Quality & Optimization (IN PROGRESS)
+All sprints completed! Next priorities from the roadmap:
+
+1. **Pattern Recognition Enhancement** (Medium Priority)
+    - Multi-dimensional array support
+    - Pattern database integration
+    - Common stdlib patterns
+
+2. **x86_64 Instruction Coverage** (High Priority)
+    - FPU instructions
+    - Advanced SSE/AVX instructions
+    - System instructions
+
+3. **ARM Architecture Support** (High Priority)
+    - ARM64 instruction set research
+    - ARM-specific IR mappings
+    - Basic ARM64 decoder
+
+### ✅ Completed Sprints
+
+#### ✅ Sprint 7: Code Quality & Optimization (COMPLETED)
 
 **Goal**: Improve code generation quality and implement AST-level optimizations
 
@@ -66,15 +85,29 @@ improved readability while preserving low-level details.
     - [x] Redundant cast removal
    - [x] Integration into AST optimization pipeline ✅
 
-2. **Code Quality Improvements** [IN PROGRESS]
+2. **Code Quality Improvements** [COMPLETED] ✅
     - [x] Dead code elimination ✅
         - [x] Created dead code eliminator module
         - [x] Remove unreachable statements
         - [x] Remove unused variables
         - [x] Remove empty blocks
         - [x] Integration into AST optimization pipeline
-    - [ ] Advanced constant folding
-    - [ ] Common subexpression elimination
+   - [x] Advanced constant folding ✅
+       - [x] Created advanced constant folding module
+       - [x] Cross-statement constant propagation
+       - [x] Algebraic simplifications (x * 2^n → x << n)
+       - [x] Compile-time expression evaluation
+       - [x] Constant condition elimination
+       - [x] Dead code removal for pure expressions
+       - [x] Integration into AST optimization pipeline
+   - [x] Common subexpression elimination ✅
+       - [x] Created common subexpression elimination module
+       - [x] Expression hash computation with normalization
+       - [x] Tracking of expression locations
+       - [x] Invalidation of expressions when variables change
+       - [x] CSE opportunity detection and commenting
+       - [x] Integration into AST optimization pipeline
+       - Note: Full CSE transformation requires AST variable creation API
 
 3. **Clippy Lint Fixes** [COMPLETED] ✅
     - [x] Fixed 788 documentation formatting warnings in iceball
@@ -82,8 +115,6 @@ improved readability while preserving low-level details.
     - [x] Fixed matches! macro usage
     - [x] Fixed test compilation errors (PE format wrappers)
    - [x] Reduced total warnings from 788 to 0 (excluding firebat frontend build error)
-
-### ✅ Completed Sprints
 
 #### ✅ Sprint 6: Unified Instruction Handling & Testing (COMPLETED)
 

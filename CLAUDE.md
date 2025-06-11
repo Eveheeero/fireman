@@ -57,10 +57,10 @@ cargo test --workspace -- --nocapture
 cargo fmt --all
 
 # Lint code
-cargo clippy --workspace --tests
+cargo clippy --workspace --tests --all-features
 
 # Check compilation without building
-cargo check --workspace --tests
+cargo check --workspace --tests --all-features
 ```
 
 ### GUI Development

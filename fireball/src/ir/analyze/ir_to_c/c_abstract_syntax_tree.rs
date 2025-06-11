@@ -137,7 +137,7 @@ pub enum CValue {
     Array(Vec<Wrapped<CValue>>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
     Int(i64),
     UInt(u64),
@@ -204,7 +204,7 @@ pub enum Expression {
     MemberAccess(Box<Wrapped<Expression>>, String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UnaryOperator {
     Negate,  // -
     Not,     // !
@@ -217,7 +217,7 @@ pub enum UnaryOperator {
     CastUnsigned,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BinaryOperator {
     Add,
     Sub,

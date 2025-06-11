@@ -1,6 +1,6 @@
 //! Example demonstrating the use of architecture-specific register mapping
 
-use fireball::arch::{ArchType, RegisterMapper, get_register_mapper};
+use fireball::arch::{ArchType, get_register_mapper};
 
 fn main() {
     println!("=== Architecture-Specific Register Mapping Demo ===\n");

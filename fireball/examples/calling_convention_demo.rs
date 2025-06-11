@@ -1,8 +1,7 @@
 //! Example demonstrating calling convention support
 
 use fireball::arch::{
-    ArchType, CallingConventionInfo, CallingConventionProvider, OperatingSystem, ParamLocation,
-    ParamType, get_calling_convention_provider,
+    ArchType, OperatingSystem, ParamLocation, ParamType, get_calling_convention_provider,
 };
 use fireball::ir::low_ir::CallConv;
 

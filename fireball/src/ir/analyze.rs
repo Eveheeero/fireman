@@ -1,4 +1,6 @@
+pub mod advanced_constant_folding;
 pub mod ast_optimization;
+pub mod common_subexpression_elimination;
 pub mod control_flow_graph;
 pub mod data_access;
 pub mod datatype;

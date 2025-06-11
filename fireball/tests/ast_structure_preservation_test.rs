@@ -339,6 +339,7 @@ fn test_ast_structure_preservation_after_optimization() {
         enable_cc_optimizations: false,
         enable_expression_simplification: true,
         enable_dead_code_elimination: true,
+        enable_cse: true,
     };
 
     let mut optimizer = AstOptimizer::new(config);

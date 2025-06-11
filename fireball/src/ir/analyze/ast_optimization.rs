@@ -5,6 +5,8 @@
 //! capabilities and conventions.
 
 use crate::arch::{ArchType, ArchitectureInfo};
+use crate::ir::analyze::advanced_constant_folding::AdvancedConstantFolder;
+use crate::ir::analyze::common_subexpression_elimination::CommonSubexpressionEliminator;
 use crate::ir::analyze::dead_code_elimination::DeadCodeEliminator;
 use crate::ir::analyze::enhanced_c_codegen::EnhancedCConfig;
 use crate::ir::analyze::expression_simplifier::ExpressionSimplifier;
@@ -32,6 +34,8 @@ pub struct ArchOptimizationConfig {
     pub enable_expression_simplification: bool,
     /// Enable dead code elimination
     pub enable_dead_code_elimination: bool,
+    /// Enable common subexpression elimination
+    pub enable_cse: bool,
 }
 
 impl Default for ArchOptimizationConfig {
@@ -51,6 +55,7 @@ impl Default for ArchOptimizationConfig {
             enable_cc_optimizations: true,
             enable_expression_simplification: true,
             enable_dead_code_elimination: true,
+            enable_cse: true,
         }
     }
 }
@@ -100,6 +105,16 @@ impl AstOptimizer {
         // Run expression simplification if enabled
         if self.config.enable_expression_simplification {
             self.simplify_expressions(ast);
+        }
+
+        // Run advanced constant folding
+        if self.config.enable_expression_simplification {
+            self.perform_advanced_constant_folding(ast);
+        }
+
+        // Run common subexpression elimination if enabled
+        if self.config.enable_cse {
+            self.eliminate_common_subexpressions(ast);
         }
 
         // Run dead code elimination if enabled
@@ -402,6 +417,19 @@ impl AstOptimizer {
         self.stats.type_improvements += simpl_stats.constant_expressions_folded;
     }
 
+    /// Perform advanced constant folding
+    fn perform_advanced_constant_folding(&mut self, ast: &mut CAst) {
+        let mut folder = AdvancedConstantFolder::new();
+        folder.fold_constants(ast);
+
+        // Update stats with folding results
+        let fold_stats = folder.stats();
+        self.stats.simd_patterns_recognized += fold_stats.constants_propagated;
+        self.stats.type_improvements += fold_stats.algebraic_simplifications;
+        self.stats.arch_idioms_applied += fold_stats.conditions_eliminated;
+        self.stats.cc_optimizations += fold_stats.expressions_precomputed;
+    }
+
     /// Eliminate dead code from the AST
     fn eliminate_dead_code(&mut self, ast: &mut CAst) {
         let mut eliminator = DeadCodeEliminator::new();
@@ -412,6 +440,19 @@ impl AstOptimizer {
         // Add dead code stats to existing fields for now
         self.stats.arch_idioms_applied += elim_stats.unreachable_statements_removed;
         self.stats.cc_optimizations += elim_stats.unused_variables_removed;
+    }
+
+    /// Eliminate common subexpressions from the AST
+    fn eliminate_common_subexpressions(&mut self, ast: &mut CAst) {
+        let mut eliminator = CommonSubexpressionEliminator::new();
+        eliminator.eliminate(ast);
+
+        // Update stats with CSE results
+        let cse_stats = eliminator.stats();
+        // Map CSE stats to existing optimization stats
+        self.stats.simd_patterns_recognized += cse_stats.subexpressions_eliminated;
+        self.stats.type_improvements += cse_stats.temp_variables_created;
+        self.stats.arch_idioms_applied += cse_stats.redundant_computations_removed;
     }
 }
 
@@ -436,6 +477,7 @@ mod tests {
             enable_cc_optimizations: true,
             enable_expression_simplification: true,
             enable_dead_code_elimination: true,
+            enable_cse: true,
         };
 
         let optimizer = AstOptimizer::new(config);
