@@ -282,9 +282,10 @@ Binary → Disassembly → Low IR → Medium IR → High IR → Enhanced C
 
 **📚 Implementation Guides Created:**
 
-- [`docs/implementation/c-generation-fixes.md`](docs/implementation/c-generation-fixes.md) - Complete fix guide
-- [`docs/implementation/immediate-fixes-spec.md`](docs/implementation/immediate-fixes-spec.md) - Technical specification
-- [`docs/implementation/execution-plan.md`](docs/implementation/execution-plan.md) - Week-by-week plan
+- [`docs/implementation/c-generation-fixes.md`](archive/implementation/c-generation-fixes.md) - Complete fix guide
+- [`docs/implementation/immediate-fixes-spec.md`](archive/implementation/immediate-fixes-spec.md) - Technical
+  specification
+- [`docs/implementation/execution-plan.md`](archive/implementation/execution-plan.md) - Week-by-week plan
 
 #### Phase 1: Fix Core C Generation (Current Week)
 
@@ -358,10 +359,10 @@ Day 3: Test and verify all outputs compile
       - [x] Basic FPU instructions implemented (FLD, FST, FSTP, FADD, FSUB, FMUL, FDIV)
       - [x] FPU utility instructions (FABS, FCHS, FSQRT, FXCH, FCOM)
       - [x] Integer conversion (FILD, FIST, FISTP)
-      - [ ] Fix FPU stack semantics (push/pop operations)
-      - [ ] Add FPU status word updates (C0, C1, C2, C3 flags)
-      - [ ] Implement FPU control word operations (FLDCW, FSTCW)
-      - [ ] Add transcendental functions (FSIN, FCOS, FTAN, etc.)
+    - [x] Fix FPU stack semantics (push/pop operations) ✅
+    - [x] Add FPU status word updates (C0, C1, C2, C3 flags) ✅
+    - [x] Implement FPU control word operations (FLDCW, FSTCW) ✅
+    - [x] Add transcendental functions (FSIN, FCOS, FTAN, etc.) ✅
       - [ ] Handle special values (NaN, infinity, denormals)
       - [ ] Integrate with FpuState for proper stack tracking
   - [ ] Advanced SSE4/AVX2/AVX-512 instructions
@@ -430,18 +431,18 @@ Day 3: Test and verify all outputs compile
   - [x] FPU state emulation
 - [ ] **Unicorn Engine (v2.1.3) Integration** [IN PROGRESS]
     - [x] Add unicorn-engine dependency to workspace
-    - [ ] Create emulation module structure
-        - [x] Main emulator interface (emulation/mod.rs)
-        - [ ] Context save/restore module (emulation/context.rs)
-        - [ ] Hook management system (emulation/hooks.rs)
-        - [ ] Memory region tracking (emulation/memory.rs)
-        - [ ] Emulator state management (emulation/state.rs)
-    - [ ] Implement register mapping (IR ↔ Unicorn)
-    - [ ] Add memory management wrapper
-    - [ ] Create execution control interface
-    - [ ] Support all architectures (x86, x86_64, ARM32, ARM64)
-    - [ ] Hook-based instrumentation for analysis
-    - [ ] Snapshot/restore for path exploration
+  - [x] Create emulation module structure
+      - [x] Main emulator interface (simulation/unicorn.rs) ✅
+      - [x] Context save/restore functionality ✅
+      - [x] Hook management system (code, mem read/write hooks) ✅
+      - [x] Memory region tracking ✅
+      - [x] Emulator state management ✅
+  - [x] Implement register mapping (IR ↔ Unicorn) ✅
+  - [x] Add memory management wrapper ✅
+  - [x] Create execution control interface ✅
+  - [x] Support all architectures (x86, x86_64, ARM32, ARM64) ✅
+  - [x] Hook-based instrumentation for analysis ✅
+  - [x] Snapshot/restore for path exploration ✅
     - [ ] Integration tests with real binaries
     - [ ] Migration path from old simulation module
     - [ ] Performance benchmarking vs custom simulation

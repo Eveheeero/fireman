@@ -48,6 +48,9 @@ Cargo.lock
 pnpm-lock.yaml
 package.json
 
+# Local only files
+archive/
+
 # Ignore all local history of files
 bindings
 *.log

@@ -70,7 +70,8 @@ The pre-commit hooks will:
 
 ## Code Style
 
-This project follows the [official Rust Style Guide](https://doc.rust-lang.org/stable/style-guide/) with decompiler-specific adaptations. For comprehensive guidelines, see [docs/RUST_STYLE_GUIDE.md](docs/RUST_STYLE_GUIDE.md).
+This project follows the [official Rust Style Guide](https://doc.rust-lang.org/stable/style-guide/) with
+decompiler-specific adaptations. For comprehensive guidelines, see [RUST_STYLE_GUIDE.md](RUST_STYLE_GUIDE.md).
 
 ### Quick Reference
 
@@ -136,5 +137,3 @@ All public items must have comprehensive documentation following this template:
 - **Property-based testing** for instruction decoding and analysis invariants
 - **Snapshot testing** for IR transformations and code generation
 - **Determinism tests** to ensure reproducible analysis results
-
-See [docs/RUST_STYLE_GUIDE.md](docs/RUST_STYLE_GUIDE.md) for complete guidelines including advanced patterns for binary analysis, IR transformations, and performance optimization.
