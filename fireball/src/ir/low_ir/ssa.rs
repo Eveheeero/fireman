@@ -42,12 +42,6 @@ pub struct PhiNode {
     pub ty: Type,
 }
 
-impl Default for SSABuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl SSABuilder {
     pub fn new() -> Self {
         Self {

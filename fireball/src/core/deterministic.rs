@@ -15,12 +15,6 @@ pub struct DeterministicNamer {
     counters: BTreeMap<(Address, &'static str), u32>,
 }
 
-impl Default for DeterministicNamer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl DeterministicNamer {
     pub fn new() -> Self {
         Self {
@@ -48,12 +42,6 @@ impl DeterministicNamer {
 /// Deterministic temporary allocator for IR generation
 pub struct TempAllocator {
     counters: BTreeMap<(Address, &'static str), u32>,
-}
-
-impl Default for TempAllocator {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl TempAllocator {

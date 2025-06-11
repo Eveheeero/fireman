@@ -80,12 +80,6 @@ pub enum UsageContext {
     MemoryAllocation,
 }
 
-impl Default for VariableNamingEngine {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl VariableNamingEngine {
     pub fn new() -> Self {
         let mut engine = Self {

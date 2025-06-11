@@ -184,12 +184,6 @@ pub struct TempAllocator {
     counters: BTreeMap<(Address, &'static str), u32>,
 }
 
-impl Default for TempAllocator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl TempAllocator {
     pub fn new() -> Self {
         Self {

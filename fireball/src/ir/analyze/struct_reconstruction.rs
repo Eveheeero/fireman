@@ -153,12 +153,6 @@ struct FunctionInfo {
     struct_parameters: Vec<String>,
 }
 
-impl Default for StructReconstructionEngine {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl StructReconstructionEngine {
     pub fn new() -> Self {
         Self {

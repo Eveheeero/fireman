@@ -7,12 +7,6 @@ pub enum DecompileError {
     CASTGenerationFailed(Option<String>),
 }
 
-impl Default for DecompileError {
-    fn default() -> Self {
-        Self::Unknown(None)
-    }
-}
-
 impl std::fmt::Display for DecompileError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

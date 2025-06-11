@@ -417,12 +417,6 @@ pub struct HighIRGenerator {
     declared_vars: std::collections::BTreeSet<String>,
 }
 
-impl Default for HighIRGenerator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl HighIRGenerator {
     pub fn new() -> Self {
         Self {

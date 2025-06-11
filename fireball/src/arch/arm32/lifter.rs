@@ -13,12 +13,6 @@ pub struct Arm32Lifter {
     module: Module,
 }
 
-impl Default for Arm32Lifter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Arm32Lifter {
     /// Create a new ARM32 lifter
     pub fn new() -> Self {

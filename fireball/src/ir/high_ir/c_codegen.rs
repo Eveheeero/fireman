@@ -13,12 +13,6 @@ pub struct CCodeGenerator {
     output: String,
 }
 
-impl Default for CCodeGenerator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl CCodeGenerator {
     pub fn new() -> Self {
         Self {

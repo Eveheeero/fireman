@@ -18,12 +18,6 @@ pub struct X64Lifter {
     locals: BTreeMap<LocalId, Type>,
 }
 
-impl Default for X64Lifter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl X64Lifter {
     pub fn new() -> Self {
         Self {

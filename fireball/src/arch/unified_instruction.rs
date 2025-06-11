@@ -197,12 +197,6 @@ pub struct UnifiedInstructionAnalyzer {
     operation_map: BTreeMap<(ArchType, String), BaseOperation>,
 }
 
-impl Default for UnifiedInstructionAnalyzer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl UnifiedInstructionAnalyzer {
     pub fn new() -> Self {
         let mut operation_map = BTreeMap::new();

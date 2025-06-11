@@ -31,12 +31,6 @@ pub struct EliminationStats {
     pub redundant_jumps_removed: usize,
 }
 
-impl Default for DeadCodeEliminator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl DeadCodeEliminator {
     /// Create a new dead code eliminator
     pub fn new() -> Self {

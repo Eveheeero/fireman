@@ -243,12 +243,6 @@ pub enum BinaryOperator {
     RightShift,
 }
 
-impl Default for CAst {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl CAst {
     pub fn new() -> Self {
         Self {

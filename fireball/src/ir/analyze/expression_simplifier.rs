@@ -22,12 +22,6 @@ pub struct SimplificationStats {
     pub redundant_casts_removed: usize,
 }
 
-impl Default for ExpressionSimplifier {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ExpressionSimplifier {
     pub fn new() -> Self {
         Self {

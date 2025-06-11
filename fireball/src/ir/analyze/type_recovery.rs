@@ -145,12 +145,6 @@ pub struct FunctionSignature {
     pub varargs: bool,
 }
 
-impl Default for TypeRecoveryEngine {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl TypeRecoveryEngine {
     pub fn new() -> Self {
         let mut engine = Self {

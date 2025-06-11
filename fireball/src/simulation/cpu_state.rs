@@ -19,12 +19,6 @@ pub struct CpuState {
     pub rsp: u64,
 }
 
-impl Default for CpuState {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl CpuState {
     /// Create a new CPU state with default values
     pub fn new() -> Self {

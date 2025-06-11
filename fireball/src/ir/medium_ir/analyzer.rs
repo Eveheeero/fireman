@@ -15,12 +15,6 @@ pub struct MediumIRAnalyzer {
     confidence_threshold: Confidence,
 }
 
-impl Default for MediumIRAnalyzer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl MediumIRAnalyzer {
     pub fn new() -> Self {
         Self {

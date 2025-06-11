@@ -5,12 +5,6 @@ pub enum DisassembleError {
     CapstoneFailed(String),
 }
 
-impl Default for DisassembleError {
-    fn default() -> Self {
-        Self::Unknown(None)
-    }
-}
-
 impl std::fmt::Display for DisassembleError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

@@ -33,12 +33,6 @@ pub enum Platform {
     Generic,
 }
 
-impl Default for PatternDatabaseBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl PatternDatabaseBuilder {
     /// Create a new pattern database builder
     pub fn new() -> Self {

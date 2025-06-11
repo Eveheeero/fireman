@@ -364,12 +364,6 @@ pub struct PatternValidator {
     confidence_calc: ConfidenceCalculator,
 }
 
-impl Default for PatternValidator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl PatternValidator {
     pub fn new() -> Self {
         Self {

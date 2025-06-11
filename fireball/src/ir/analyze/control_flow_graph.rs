@@ -14,12 +14,6 @@ pub struct ControlFlowGraphAnalyzer {
     analyzed: Option<Vec<ControlFlowGraph>>,
 }
 
-impl Default for ControlFlowGraphAnalyzer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ControlFlowGraphAnalyzer {
     pub fn new() -> Self {
         Self {

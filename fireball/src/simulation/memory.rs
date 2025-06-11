@@ -80,12 +80,6 @@ pub struct Memory {
     regions: Vec<MemoryRegion>,
 }
 
-impl Default for Memory {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Memory {
     /// Create a new memory instance
     pub fn new() -> Self {

@@ -268,12 +268,6 @@ pub struct PatternStore {
     next_id: u32,
 }
 
-impl Default for PatternStore {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl PatternStore {
     pub fn new() -> Self {
         Self {
