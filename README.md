@@ -70,45 +70,71 @@ The pre-commit hooks will:
 
 ## Code Style
 
-This project follows Rust's standard conventions with some additional guidelines to ensure consistency and maintainability.
+This project follows the [official Rust Style Guide](https://doc.rust-lang.org/stable/style-guide/) with decompiler-specific adaptations. For comprehensive guidelines, see [docs/RUST_STYLE_GUIDE.md](docs/RUST_STYLE_GUIDE.md).
 
-### General Guidelines
+### Quick Reference
 
+#### Formatting & Organization
+- **4 spaces** for indentation (no tabs), **100 characters** max line width
 - Use `cargo fmt --all` for automatic formatting (enforced by pre-commit hooks)
-- Follow Rust naming conventions:
-  - `snake_case` for variables, functions, and modules
-  - `PascalCase` for types, structs, enums, and traits
-  - `SCREAMING_SNAKE_CASE` for constants and statics
-- Prefer explicit types when they improve readability
-- Use meaningful variable and function names
-- Keep functions focused and single-purpose
+- **Block indent** over visual indent for better diffs
+- **Deterministic collections**: Use `BTreeMap`/`BTreeSet` instead of `HashMap`/`HashSet` for reproducible analysis results
 
-### Documentation
+#### Naming Conventions
+- `snake_case` for variables, functions, and modules
+- `PascalCase` for types, structs, enums, and traits
+- `SCREAMING_SNAKE_CASE` for constants and statics
+- Architecture-specific prefixes: `X86Instruction`, `ArmRegister`, `RiscVDecoder`
+- IR level indicators: `HighIR`, `MediumIR`, `LowIR`
 
-- All public items must have documentation comments (`///`)
-- Use the following comment template structure when applicable:
+#### Decompiler-Specific Patterns
+```rust
+// ✅ Memory layout documentation
+/// Memory layout: [REX][Opcode][ModR/M][SIB][Disp][Imm]
+#[repr(C)]
+pub struct X86Instruction { /* ... */ }
 
-#### Comment Template (optional, to avoid typing Note, NOTE, NOTES, notes, ....)
+// ✅ Rich error context
+#[error("Invalid instruction at {address:#x}: {reason}")]
+InvalidInstruction { address: u64, reason: String },
 
-- \#\#\# Arguments
-- \#\#\# Returns
-- \#\#\# Errors
-- \#\#\### Panics
-- \#\#\# Safety (for unsafe code)
-- \#\#\# Examples
-- \#\#\# Note
-- \#\#\# Todo
+// ✅ Architecture-agnostic traits
+pub trait InstructionTrait {
+    fn address(&self) -> u64;
+    fn bytes(&self) -> &[u8];
+    fn mnemonic(&self) -> &str;
+}
+```
+
+### Documentation Standards
+
+All public items must have comprehensive documentation following this template:
+
+```rust
+/// Brief one-line description.
+///
+/// Detailed explanation of functionality, algorithms used,
+/// and important implementation details.
+///
+/// # Arguments
+/// # Returns
+/// # Errors
+/// # Examples
+/// # Note (performance, safety, determinism considerations)
+```
 
 ### Error Handling
 
-- Use `Result<T, E>` for fallible operations
-- Prefer specific error types over generic ones
+- Use `Result<T, E>` for fallible operations with domain-specific error types
+- Rich error context with addresses, instruction details, and analysis state
 - Use `?` operator for error propagation
-- Avoid `unwrap()` and `expect()` in production code (use in tests when appropriate)
+- Avoid `unwrap()` and `expect()` in production code
 
-### Testing
+### Testing Standards
 
-- Write unit tests for all public functions
-- Use descriptive test names that explain what is being tested
-- Group related tests in modules
-- Use `#[should_panic]` sparingly and with specific expected messages
+- **Unit tests** for all public functions with descriptive names
+- **Property-based testing** for instruction decoding and analysis invariants
+- **Snapshot testing** for IR transformations and code generation
+- **Determinism tests** to ensure reproducible analysis results
+
+See [docs/RUST_STYLE_GUIDE.md](docs/RUST_STYLE_GUIDE.md) for complete guidelines including advanced patterns for binary analysis, IR transformations, and performance optimization.
