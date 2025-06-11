@@ -10,9 +10,9 @@ use crate::{
     prelude::*,
     utils::Aos,
 };
-use hashbrown::HashMap;
 use num_bigint::{BigInt, Sign};
 use std::{
+    collections::BTreeMap,
     ops::Deref,
     sync::{Arc, RwLock},
 };
@@ -21,7 +21,7 @@ use std::{
 pub struct CAst {
     pub static_variables: ArcVariableMap,
     pub functions: ArcFunctionMap,
-    pub last_variable_id: HashMap<FunctionId, u32>,
+    pub last_variable_id: BTreeMap<FunctionId, u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,8 +48,8 @@ pub trait PrintWithConfig {
     ) -> std::fmt::Result;
 }
 
-pub type ArcFunctionMap = Arc<RwLock<HashMap<FunctionId, Function>>>;
-pub type ArcVariableMap = Arc<RwLock<HashMap<VariableId, Variable>>>;
+pub type ArcFunctionMap = Arc<RwLock<BTreeMap<FunctionId, Function>>>;
+pub type ArcVariableMap = Arc<RwLock<BTreeMap<VariableId, Variable>>>;
 
 #[derive(Debug, Clone)]
 pub struct AstDescriptor {
@@ -246,9 +246,9 @@ pub enum BinaryOperator {
 impl CAst {
     pub fn new() -> Self {
         Self {
-            functions: Arc::new(RwLock::new(HashMap::new())),
-            static_variables: Arc::new(RwLock::new(HashMap::new())),
-            last_variable_id: HashMap::new(),
+            functions: Arc::new(RwLock::new(BTreeMap::new())),
+            static_variables: Arc::new(RwLock::new(BTreeMap::new())),
+            last_variable_id: BTreeMap::new(),
         }
     }
 
@@ -262,7 +262,7 @@ impl CAst {
             id,
             return_type: CType::Void,
             parameters: Vec::new(),
-            variables: Arc::new(RwLock::new(HashMap::new())),
+            variables: Arc::new(RwLock::new(BTreeMap::new())),
             body: Vec::new(),
         };
         self.functions.write().unwrap().insert(id, func.clone());

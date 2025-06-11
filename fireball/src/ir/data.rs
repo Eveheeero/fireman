@@ -5,7 +5,7 @@ use crate::{
 use std::num::NonZeroU8;
 
 /// Data used internally by the IR
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum IrData {
     /// The literal value (e.g., 0x1234) in `mov eax, 0x1234`
     Constant(usize),
@@ -21,7 +21,7 @@ pub enum IrData {
     Operand(NonZeroU8),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum IrIntrinsic {
     Unknown,
     Undefined,
@@ -42,7 +42,7 @@ pub enum IrIntrinsic {
     ArchitectureByteSizeCondition(NumCondition),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Copy, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Hash, PartialOrd, Ord)]
 pub enum NumCondition {
     Higher(u16),
     HigherOrEqual(u16),
@@ -53,19 +53,19 @@ pub enum NumCondition {
     RangeInclusive(u16, u16),
     ExcludesRange(u16, u16),
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct DataAccess {
     location: Aos<IrData>,
     access_type: DataAccessType,
     size: AccessSize,
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy, PartialOrd, Ord)]
 pub enum DataAccessType {
     Read,
     Write,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum IrDataOperation {
     Unary {
         operator: UnaryOperator,
@@ -78,7 +78,7 @@ pub enum IrDataOperation {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum AccessSize {
     ResultOfBit(Aos<IrData>),
     ResultOfByte(Aos<IrData>),

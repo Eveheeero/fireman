@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy, PartialOrd, Ord)]
 pub struct Register {
     name: &'static str,
     bit_start: usize,

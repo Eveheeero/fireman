@@ -11,7 +11,7 @@ use crate::{
 };
 pub use private::IrVariable;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet},
     sync::LazyLock,
 };
 
@@ -78,7 +78,7 @@ mod private {
 
 fn collect_written_locations_recursive(
     stmt: &IrStatement,
-    locations_written: &mut HashSet<Aos<IrData>>,
+    locations_written: &mut BTreeSet<Aos<IrData>>,
     instruction_args: &[iceball::Argument],
 ) {
     match stmt {
@@ -101,7 +101,7 @@ fn collect_written_locations_recursive(
 
 fn update_location_mapping_recursive(
     stmt: &IrStatement,
-    resolved_location_to_variable_ids: &mut HashMap<Aos<IrData>, HashSet<usize>>,
+    resolved_location_to_variable_ids: &mut BTreeMap<Aos<IrData>, BTreeSet<usize>>,
     instruction_args: &[iceball::Argument],
 ) {
     match stmt {
@@ -132,7 +132,7 @@ fn update_location_mapping_recursive(
                 update_location_mapping_recursive(s, &mut false_map, instruction_args);
             }
 
-            let mut merged_map: HashMap<Aos<IrData>, HashSet<usize>> = HashMap::new();
+            let mut merged_map: BTreeMap<Aos<IrData>, BTreeSet<usize>> = BTreeMap::new();
             for (loc, ids) in true_map.into_iter().chain(false_map.into_iter()) {
                 let resolved_loc = resolve_operand(&loc, instruction_args);
                 merged_map.entry(resolved_loc).or_default().extend(ids);
@@ -145,8 +145,8 @@ fn update_location_mapping_recursive(
 
 pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static str> {
     let mut variables: Vec<IrVariable> = Vec::new();
-    let mut resolved_location_to_variable_ids: HashMap<Aos<IrData>, HashSet<usize>> =
-        HashMap::new();
+    let mut resolved_location_to_variable_ids: BTreeMap<Aos<IrData>, BTreeSet<usize>> =
+        BTreeMap::new();
     let irs = &ir_block.ir;
     let known_datatypes = ir_block
         .known_datatypes
@@ -177,7 +177,7 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
             resolve_data_accesses(data_access, ir_index, instruction_args);
 
         // --- Step 1: Identify all locations written within this IR (including nested statements) ---
-        let mut locations_written_this_ir: HashSet<Aos<IrData>> = HashSet::new();
+        let mut locations_written_this_ir: BTreeSet<Aos<IrData>> = BTreeSet::new();
         for da in data_access_at_ir_resolved.iter() {
             if *da.1.access_type() == DataAccessType::Write {
                 let resolved_loc = da.1.location();
@@ -259,6 +259,50 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
         }
         resolved_location_to_variable_ids.retain(|_, ids| !ids.is_empty());
     }
+
+    // Sort variables deterministically to ensure consistent variable naming across runs
+    // We need a comprehensive sort key to handle variables that might have the same first appearance
+    variables.sort_by(|a, b| {
+        // Primary key: first appearance (either live_in or first shown_in)
+        let a_first = a
+            .live_in
+            .or_else(|| a.shown_in.first().copied())
+            .unwrap_or(u32::MAX);
+        let b_first = b
+            .live_in
+            .or_else(|| b.shown_in.first().copied())
+            .unwrap_or(u32::MAX);
+
+        match a_first.cmp(&b_first) {
+            std::cmp::Ordering::Equal => {
+                // Secondary key: data type
+                match a.data_type.cmp(&b.data_type) {
+                    std::cmp::Ordering::Equal => {
+                        // Tertiary key: number of accesses
+                        let a_accesses: usize =
+                            a.get_data_accesses().values().map(|v| v.len()).sum();
+                        let b_accesses: usize =
+                            b.get_data_accesses().values().map(|v| v.len()).sum();
+                        match a_accesses.cmp(&b_accesses) {
+                            std::cmp::Ordering::Equal => {
+                                // Quaternary key: live_out
+                                match a.live_out.cmp(&b.live_out) {
+                                    std::cmp::Ordering::Equal => {
+                                        // Final key: all shown_in values
+                                        a.shown_in.cmp(&b.shown_in)
+                                    }
+                                    other => other,
+                                }
+                            }
+                            other => other,
+                        }
+                    }
+                    other => other,
+                }
+            }
+            other => other,
+        }
+    });
 
     Ok(variables)
 }

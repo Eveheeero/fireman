@@ -9,14 +9,14 @@ use crate::{
     utils::Aos,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct KnownDataType {
     pub location: Aos<IrData>,
     pub data_type: DataType,
     pub data_size: AccessSize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum DataType {
     Unknown,
     Bool,

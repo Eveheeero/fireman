@@ -1,4 +1,4 @@
-use hashbrown::HashMap;
+use std::collections::BTreeMap;
 
 ///
 ///
@@ -53,7 +53,7 @@ impl IrStatementDescriptor {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IrStatementDescriptorMap<T> {
-    inner: HashMap<u64, T>,
+    inner: std::collections::BTreeMap<u64, T>,
 }
 
 // Note: No Default implementation - descriptors must be explicitly created
@@ -69,7 +69,7 @@ impl<T> IrStatementDescriptorMap<T> {
     #[inline]
     pub fn new() -> Self {
         Self {
-            inner: HashMap::new(),
+            inner: BTreeMap::new(),
         }
     }
     #[inline]
@@ -86,7 +86,13 @@ impl<T> IrStatementDescriptorMap<T> {
     }
     #[inline]
     pub fn insert_checked(&mut self, key: IrStatementDescriptor, value: T) -> bool {
-        self.inner.try_insert(key.to_u64(), value).is_ok()
+        let key_u64 = key.to_u64();
+        if self.inner.contains_key(&key_u64) {
+            false
+        } else {
+            self.inner.insert(key_u64, value);
+            true
+        }
     }
     #[inline]
     pub fn remove(&mut self, key: IrStatementDescriptor) -> Option<T> {
@@ -109,7 +115,7 @@ impl<T> IrStatementDescriptorMap<T> {
         self.inner.is_empty()
     }
     #[inline]
-    pub fn values(&self) -> hashbrown::hash_map::Values<u64, T> {
+    pub fn values(&self) -> std::collections::btree_map::Values<u64, T> {
         self.inner.values()
     }
     #[inline]

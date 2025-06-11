@@ -3,14 +3,14 @@ use crate::{
     utils::Aos,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum UnaryOperator {
     Not,
     Negation,
     SignExtend,
     ZeroExtend,
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum BinaryOperator {
     And,
     Or,
@@ -37,7 +37,7 @@ pub enum BinaryOperator {
 }
 
 /// Unified operator enum for atomic operations
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Operator {
     // Basic operations
     Add,

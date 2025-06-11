@@ -6,8 +6,10 @@ pub mod decoder;
 pub mod instruction_analyze;
 pub mod lifter;
 pub mod register;
+pub mod register_mapper;
 
 pub use register::str_to_arm32_register;
+pub use register_mapper::arm32_register_to_ir_data;
 
 /// ARM32-specific errors
 #[derive(Debug, Clone)]

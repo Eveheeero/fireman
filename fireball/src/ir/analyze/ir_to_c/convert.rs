@@ -16,8 +16,8 @@ use crate::{
     prelude::*,
     utils::Aos,
 };
-use hashbrown::HashMap;
 use num_bigint::BigInt;
+use std::collections::BTreeMap;
 
 /// Wrap Statement
 pub(super) fn ws(statement: Statement, from: AstDescriptor) -> WrappedStatement {
@@ -48,7 +48,7 @@ pub(super) fn convert_expr(
     function_id: FunctionId,
     root_expr: &Aos<IrData>,
     data: &Aos<IrData>,
-    var_map: &HashMap<Aos<IrData>, VariableId>,
+    var_map: &BTreeMap<Aos<IrData>, VariableId>,
 ) -> Result<Wrapped<Expression>, DecompileError> {
     let w = |x: Expression| wd(x, root_expr);
 
@@ -222,7 +222,7 @@ pub(super) fn convert_stmt(
     stmt: &IrStatement,
     stmt_position: &AstDescriptor,
     root_expr: Option<&Aos<IrData>>,
-    var_map: &HashMap<Aos<IrData>, VariableId>,
+    var_map: &BTreeMap<Aos<IrData>, VariableId>,
     instruction_args: &[iceball::Argument],
 ) -> Result<WrappedStatement, DecompileError> {
     let result = match stmt {
@@ -534,7 +534,7 @@ pub(super) fn convert_unary(
     root_expr: &Aos<IrData>,
     operator: &IrUnaryOp,
     arg: &Aos<IrData>,
-    var_map: &HashMap<Aos<IrData>, VariableId>,
+    var_map: &BTreeMap<Aos<IrData>, VariableId>,
 ) -> Result<Wrapped<Expression>, DecompileError> {
     let w = |x: Expression| wd(x, root_expr);
 
@@ -555,7 +555,7 @@ pub(super) fn convert_binary(
     operator: &IrBinaryOp,
     arg1: &Aos<IrData>,
     arg2: &Aos<IrData>,
-    var_map: &HashMap<Aos<IrData>, VariableId>,
+    var_map: &BTreeMap<Aos<IrData>, VariableId>,
 ) -> Result<Wrapped<Expression>, DecompileError> {
     let w = |x: Expression| wd(x, root_expr);
 
@@ -664,7 +664,7 @@ pub(super) fn convert_size(
     function_id: FunctionId,
     root_expr: &Aos<IrData>,
     size: &AccessSize,
-    var_map: &HashMap<Aos<IrData>, VariableId>,
+    var_map: &BTreeMap<Aos<IrData>, VariableId>,
 ) -> Result<Wrapped<Expression>, DecompileError> {
     let w = |x: Expression| wd(x, root_expr);
 
@@ -685,7 +685,7 @@ pub(super) fn calc_flags_automatically(
     stmt_position: &AstDescriptor,
     root_expr: &Aos<IrData>,
     affected_registers: &[Aos<IrData>],
-    var_map: &HashMap<Aos<IrData>, VariableId>,
+    var_map: &BTreeMap<Aos<IrData>, VariableId>,
 ) -> Result<Vec<WrappedStatement>, DecompileError> {
     let w = |x: Expression| wd(x, root_expr);
 

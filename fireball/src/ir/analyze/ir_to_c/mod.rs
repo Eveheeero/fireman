@@ -21,7 +21,7 @@ use crate::{
     utils::Aos,
 };
 use convert::*;
-use hashbrown::HashMap;
+use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
 /// Generate C AST from targets
@@ -54,8 +54,8 @@ pub fn generate_c_ast_function(ast: &mut CAst, data: MergedIr) -> Result<(), Dec
     let data = Arc::new(data);
     let func_id = ast.generate_default_function(data.get_ir().first().map(|x| &x.address).unwrap());
 
-    let mut locals = HashMap::new();
-    let mut var_map: HashMap<Aos<IrData>, VariableId> = HashMap::new();
+    let mut locals = BTreeMap::new();
+    let mut var_map: BTreeMap<Aos<IrData>, VariableId> = BTreeMap::new();
     for var in data.get_variables().iter() {
         let var_id = ast.new_variable_id(&func_id);
         let c_type = match var.data_type {
