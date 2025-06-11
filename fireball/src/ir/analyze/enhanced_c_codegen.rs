@@ -680,11 +680,7 @@ impl EnhancedCGenerator {
             Value::Local(local) => self.convert_local_id(local),
             Value::Constant(constant) => match constant {
                 Constant::Int { value, .. } => {
-                    if self.config.use_fixed_width_types {
-                        format!("{}", value)
-                    } else {
-                        format!("{}", value)
-                    }
+                    format!("{}", value)
                 }
                 Constant::Float { bits, .. } => format!("0x{:x}", bits),
                 _ => "/* const */".to_string(),

@@ -364,20 +364,6 @@ impl AstOptimizer {
 }
 
 impl EnhancedCConfig {
-    /// Default configuration
-    pub fn default() -> Self {
-        Self {
-            use_auto: true,
-            use_nullptr: true,
-            use_fixed_width_types: true,
-            use_range_for: true,
-            generate_uncertainty_comments: true,
-            use_anonymous_structs: true,
-            max_line_width: 100,
-            confidence_threshold: 0.7,
-        }
-    }
-
     /// Conservative configuration (more C-like)
     pub fn conservative() -> Self {
         Self {

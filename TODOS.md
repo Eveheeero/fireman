@@ -71,7 +71,7 @@ improved readability while preserving low-level details.
     - [x] Model memory barriers/fences ✅
     - [x] Support for atomic variants (LOCK CMPXCHG, LOCK XADD, etc.) ✅
 
-#### ✅ Sprint 5: Architecture-Agnostic AST Generation (COMPLETED)
+#### ✅ Sprint 5: Architecture-Agnostic AST Generation (PARTIAL)
 
 **Goal**: Implement unified architecture support at the AST level with configurable output
 
@@ -101,7 +101,7 @@ improved readability while preserving low-level details.
     - [ ] Test numeric format switching
     - [ ] Validate AST structure preservation
 
-#### ✅ Sprint 1: C Code Generation Quality (COMPLETED)
+#### ✅ Sprint 1: C Code Generation Quality (PARTIAL)
 
 **Goal**: Produce compilable, readable C code from binaries
 
@@ -547,7 +547,7 @@ Day 3: Test and verify all outputs compile
 - Variable naming from LocalId purpose ✅
 - Type declarations and return statements ✅
 
-**Sprint 2 (COMPLETED)**: x86_64 Instruction Coverage ✅
+**Sprint 2 (PARTIAL)**: x86_64 Instruction Coverage ✅
 
 - Week 2: Fix remaining x86_64 instructions (sahf, xchg, lock cmpxchg) ✅
   - SAHF: Already implemented in s.rs ✅

@@ -101,10 +101,7 @@ impl Arm32Decoder {
 
         // Check if this is a 32-bit Thumb-2 instruction
         let first_halfword = u16::from_le_bytes([data[0], data[1]]);
-        let is_32bit = match first_halfword >> 11 {
-            0b11101..=0b11111 => true,
-            _ => false,
-        };
+        let is_32bit = matches!(first_halfword >> 11, 0b11101..=0b11111);
 
         if is_32bit {
             if data.len() < 4 {
@@ -304,7 +301,7 @@ impl Arm32Decoder {
         // Memory operand
         let mut mem_str = format!("[{}", register_name(rn));
 
-        if (imm12 != 0 || !pre_index) && pre_index {
+        if imm12 != 0 && pre_index {
             // Pre-indexed: [Rn, #offset]
             if add_offset {
                 mem_str.push_str(&format!(", #{}", imm12));
@@ -727,7 +724,6 @@ impl Arm32Decoder {
 
     /// Additional Thumb decoding methods would go here...
     /// For brevity, I'll include a few more key ones:
-
     /// Decode Thumb data processing
     fn decode_thumb_data_processing(&self, encoding: u16) -> Result<Instruction, Arm32Error> {
         let opcode = (encoding >> 6) & 0xF;

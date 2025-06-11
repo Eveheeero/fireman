@@ -136,11 +136,11 @@ impl Pe {
                     }
                 } else {
                     // Check if this is RIP-relative addressing
-                    let is_rip_relative = match &mem.base {
+                    let is_rip_relative = matches!(
+                        &mem.base,
                         Some(iceball::Register::X64(iceball::X64Register::Eip))
-                        | Some(iceball::Register::X64(iceball::X64Register::Rip)) => true,
-                        _ => false,
-                    } && mem.index.is_none();
+                            | Some(iceball::Register::X64(iceball::X64Register::Rip))
+                    ) && mem.index.is_none();
 
                     if is_rip_relative {
                         // Calculate absolute address for RIP-relative operand
