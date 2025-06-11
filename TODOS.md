@@ -1,6 +1,6 @@
 # Fireman - Features & Plans
 
-Working In Progress (2025.01 Updated)
+Working In Progress
 
 ## 🎯 Project Status Overview
 
@@ -20,33 +20,33 @@ improved readability while preserving low-level details.
 - [x] Add confidence scoring system
 - [x] Add high-level construct generation
 - [x] Implement IR → C code generator (Simple version)
-- [x] Advanced Type Recovery System (Jan 2025)
+- [x] Advanced Type Recovery System
   - [x] Confidence-based type inference
   - [x] Library function signature matching
   - [x] Array and struct detection
   - [x] Type constraint propagation
-- [x] Variable Naming Heuristics (Jan 2025)
+- [x] Variable Naming Heuristics
   - [x] Type-based naming
   - [x] Usage pattern detection
   - [x] Reserved keyword avoidance
-- [x] Struct/Class Reconstruction (Jan 2025)
+- [x] Struct/Class Reconstruction
   - [x] Field layout detection
   - [x] Access pattern analysis
   - [x] Field type inference
-- [x] Enhanced C Code Generation (Jan 2025)
+- [x] Enhanced C Code Generation
   - [x] Auto type inference for complex types
   - [x] Fixed-width integer types (uint32_t, int64_t)
   - [x] nullptr instead of NULL
   - [x] Range-based for loops where applicable
   - [x] Inline variable declarations
   - [x] Confidence-based feature usage
-- [x] Expression Simplification Module (Jan 2025)
+- [x] Expression Simplification Module
     - [x] Redundant parentheses removal
     - [x] Double negation elimination
     - [x] Identity operation removal
     - [x] Basic constant folding
     - [x] Redundant cast removal
-- [x] Major Code Quality Improvements (Jan 2025)
+- [x] Major Code Quality Improvements
     - [x] Fixed 788+ clippy warnings (mostly in iceball)
     - [x] Fixed test infrastructure (PE format wrappers)
     - [x] Improved code consistency across workspace

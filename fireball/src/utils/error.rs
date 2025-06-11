@@ -6,9 +6,8 @@ pub mod ir_analyze_assertion_error;
 // Re-export DecompileError for convenience
 pub use decompile_error::DecompileError;
 
-#[derive(Debug, Clone, Default, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum FireballError {
-    #[default]
     Unknown,
     IoError(io_error::IoError),
     InvalidBinary(String),

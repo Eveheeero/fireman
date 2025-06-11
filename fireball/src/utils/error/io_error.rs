@@ -1,6 +1,5 @@
-#[derive(Debug, Clone, Default, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum IoError {
-    #[default]
     Unknown,
     UnknwonWithMessage(String),
     FileCannotRead,

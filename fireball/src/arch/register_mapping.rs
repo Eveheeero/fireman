@@ -245,12 +245,6 @@ pub struct Arm32RegisterMapper {
     register_map: BTreeMap<&'static str, Register>,
 }
 
-impl Default for Arm32RegisterMapper {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Arm32RegisterMapper {
     pub fn new() -> Self {
         let mut register_map = BTreeMap::new();
@@ -319,12 +313,6 @@ impl RegisterMapper for Arm32RegisterMapper {
 /// ARM64 register mapper
 pub struct Arm64RegisterMapper {
     register_map: BTreeMap<&'static str, Register>,
-}
-
-impl Default for Arm64RegisterMapper {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl Arm64RegisterMapper {
