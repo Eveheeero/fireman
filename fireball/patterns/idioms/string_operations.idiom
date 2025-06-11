@@ -1,0 +1,186 @@
+# Pattern File Metadata
+# Version: 1.0
+# Author: Fireball Team
+# Date: 2025-01-11
+# Platform: generic
+# Architecture: any
+
+# Common string operation idioms
+
+IDIOM: strlen_manual_loop
+  DESCRIPTION: Manual string length calculation using pointer iteration
+  CONFIDENCE_BOOST: +25
+  PATTERN:
+    # Initialize pointer to string start
+    INIT: ptr = string_base
+
+    # Loop while character is not null
+    LOOP:
+      CONDITION: (*ptr != 0) | (LOAD(ptr) != 0)
+      BODY:
+        INCREMENT: ptr = ptr + 1
+
+    # Result is difference between end and start
+    RESULT: length = ptr - string_base
+  END_PATTERN
+
+IDIOM: strcpy_manual_loop
+  DESCRIPTION: Manual string copy implementation
+  CONFIDENCE_BOOST: +20
+  PATTERN:
+    # Initialize pointers
+    INIT:
+      dest_ptr = dest_base
+      src_ptr = src_base
+
+    # Copy loop
+    LOOP:
+      # Load character
+      char = LOAD(src_ptr)
+
+      # Store character
+      STORE(dest_ptr, char)
+
+      # Check if null terminator
+      IF: char == 0
+        BREAK
+
+      # Increment pointers
+      INCREMENT:
+        src_ptr = src_ptr + 1
+        dest_ptr = dest_ptr + 1
+
+    RESULT: dest_base
+  END_PATTERN
+
+IDIOM: null_check_string
+  DESCRIPTION: Check string pointer before operation
+  CONFIDENCE_BOOST: +15
+  PATTERN:
+    # Check if pointer is null
+    IF_CONDITION: (string_ptr == NULL) | (string_ptr == 0)
+    THEN_BRANCH:
+      RETURN: 0 | -1 | NULL
+    ELSE_BRANCH:
+      # Perform string operation
+      CALL_OR_INLINE: string_operation(string_ptr)
+  END_PATTERN
+
+IDIOM: string_comparison_loop
+  DESCRIPTION: Manual string comparison implementation
+  CONFIDENCE_BOOST: +20
+  PATTERN:
+    # Initialize pointers
+    INIT:
+      ptr1 = string1
+      ptr2 = string2
+
+    # Compare loop
+    LOOP:
+      # Load characters
+      char1 = LOAD(ptr1)
+      char2 = LOAD(ptr2)
+
+      # Check if different
+      IF: char1 != char2
+        RETURN: char1 - char2
+
+      # Check if end of string
+      IF: char1 == 0
+        RETURN: 0
+
+      # Increment pointers
+      INCREMENT:
+        ptr1 = ptr1 + 1
+        ptr2 = ptr2 + 1
+  END_PATTERN
+
+IDIOM: bounded_string_copy
+  DESCRIPTION: String copy with length limit (strncpy-like)
+  CONFIDENCE_BOOST: +18
+  PATTERN:
+    # Initialize
+    INIT:
+      dest_ptr = dest_base
+      src_ptr = src_base
+      count = max_length
+
+    # Copy loop with bounds check
+    LOOP:
+      # Check bounds
+      IF: count == 0
+        BREAK
+
+      # Load and store character
+      char = LOAD(src_ptr)
+      STORE(dest_ptr, char)
+
+      # Check null terminator
+      IF: char == 0
+        BREAK
+
+      # Update pointers and counter
+      INCREMENT:
+        src_ptr = src_ptr + 1
+        dest_ptr = dest_ptr + 1
+        count = count - 1
+
+    # Null-pad remaining space (optional)
+    OPTIONAL:
+      WHILE: count > 0
+        STORE(dest_ptr, 0)
+        dest_ptr = dest_ptr + 1
+        count = count - 1
+  END_PATTERN
+
+IDIOM: string_search_loop
+  DESCRIPTION: Search for character in string (strchr-like)
+  CONFIDENCE_BOOST: +18
+  PATTERN:
+    # Initialize pointer
+    INIT: ptr = string_base
+
+    # Search loop
+    LOOP:
+      # Load character
+      current = LOAD(ptr)
+
+      # Check if found
+      IF: current == search_char
+        RETURN: ptr
+
+      # Check if end of string
+      IF: current == 0
+        RETURN: NULL
+
+      # Increment pointer
+      INCREMENT: ptr = ptr + 1
+  END_PATTERN
+
+# Test cases
+TEST_CASE: strlen_manual_detection
+  INPUT_IR:
+    ptr = string_arg
+    loop_start:
+      char = load i8, ptr
+      cmp char, 0
+      je loop_end
+      ptr = add ptr, 1
+      jmp loop_start
+    loop_end:
+      result = sub ptr, string_arg
+  EXPECTED_MATCH: strlen_manual_loop
+  EXPECTED_CONFIDENCE: 75
+END_TEST
+
+TEST_CASE: null_check_detection
+  INPUT_IR:
+    cmp string_ptr, 0
+    jne continue
+    mov rax, -1
+    ret
+    continue:
+      ; string operation
+  EXPECTED_MATCH: null_check_string
+  EXPECTED_CONFIDENCE: 65
+END_TEST

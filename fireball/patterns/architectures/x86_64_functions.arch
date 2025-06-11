@@ -1,0 +1,168 @@
+# Pattern File Metadata
+# Version: 1.0
+# Author: Fireball Team
+# Date: 2025-01-11
+# Platform: generic
+# Architecture: x86_64
+
+# x86_64 function-related patterns
+
+ARCH_PATTERN: standard_prologue
+  ARCHITECTURE: x86_64
+  DESCRIPTION: Standard function prologue with frame pointer
+  SEQUENCE:
+    push rbp
+    mov rbp, rsp
+    ?sub rsp, <frame_size>    # Optional stack allocation
+  END_SEQUENCE
+  CONFIDENCE_BOOST: +30
+
+ARCH_PATTERN: optimized_prologue
+  ARCHITECTURE: x86_64
+  DESCRIPTION: Optimized function prologue without frame pointer
+  SEQUENCE:
+    ?sub rsp, <frame_size>    # Optional stack allocation
+    ?push <reg>               # Optional register saves
+    ?push <reg>
+    ?push <reg>
+  END_SEQUENCE
+  CONFIDENCE_BOOST: +25
+
+ARCH_PATTERN: standard_epilogue
+  ARCHITECTURE: x86_64
+  DESCRIPTION: Standard function epilogue with frame pointer
+  SEQUENCE:
+    ?mov rsp, rbp            # Optional if no locals
+    pop rbp
+    ret
+  END_SEQUENCE
+  CONFIDENCE_BOOST: +30
+
+ARCH_PATTERN: optimized_epilogue
+  ARCHITECTURE: x86_64
+  DESCRIPTION: Optimized function epilogue
+  SEQUENCE:
+    ?pop <reg>               # Optional register restores
+    ?pop <reg>
+    ?pop <reg>
+    ?add rsp, <frame_size>   # Optional stack deallocation
+    ret
+  END_SEQUENCE
+  CONFIDENCE_BOOST: +25
+
+ARCH_PATTERN: leaf_function
+  ARCHITECTURE: x86_64
+  DESCRIPTION: Leaf function (no calls to other functions)
+  SEQUENCE:
+    # No prologue needed for simple leaf functions
+    <instructions>           # Function body without calls
+    ret
+  END_SEQUENCE
+  CONFIDENCE_BOOST: +20
+
+ARCH_PATTERN: pic_got_access
+  ARCHITECTURE: x86_64
+  DESCRIPTION: Position-independent code GOT access
+  SEQUENCE:
+    lea <reg>, [rip + <offset>]    # Load GOT address
+    mov <reg2>, [<reg>]            # Dereference GOT entry
+  END_SEQUENCE
+  CONFIDENCE_BOOST: +15
+
+ARCH_PATTERN: switch_jump_table
+  ARCHITECTURE: x86_64
+  DESCRIPTION: Switch statement using jump table
+  SEQUENCE:
+    cmp <reg>, <max_case>
+    ja <default_label>
+    lea <reg2>, [rip + <table_offset>]
+    movsxd <reg3>, dword ptr [<reg2> + <reg>*4]
+    add <reg3>, <reg2>
+    jmp <reg3>
+  END_SEQUENCE
+  CONFIDENCE_BOOST: +35
+
+ARCH_PATTERN: stack_canary_check
+  ARCHITECTURE: x86_64
+  DESCRIPTION: Stack canary security check
+  SEQUENCE:
+    mov <reg>, qword ptr fs:[0x28]     # Load canary
+    mov qword ptr [rbp - <offset>], <reg>
+    # ... function body ...
+    mov <reg2>, qword ptr [rbp - <offset>]
+    xor <reg2>, qword ptr fs:[0x28]
+    ?jne <stack_fail_label>|je <continue_label>
+  END_SEQUENCE
+  CONFIDENCE_BOOST: +40
+
+ARCH_PATTERN: system_call
+  ARCHITECTURE: x86_64
+  DESCRIPTION: Linux system call pattern
+  SEQUENCE:
+    mov rax, <syscall_number>    # System call number
+    ?mov rdi, <arg1>            # Optional arguments
+    ?mov rsi, <arg2>
+    ?mov rdx, <arg3>
+    ?mov r10, <arg4>
+    ?mov r8, <arg5>
+    ?mov r9, <arg6>
+    syscall
+  END_SEQUENCE
+  CONFIDENCE_BOOST: +45
+
+ARCH_PATTERN: string_operation_rep
+  ARCHITECTURE: x86_64
+  DESCRIPTION: String operation using REP prefix
+  SEQUENCE:
+    ?cld                        # Clear direction flag
+    ?mov rdi, <dest>           # Destination
+    ?mov rsi, <src>            # Source
+    ?mov rcx, <count>          # Count
+    rep movsb|rep movsw|rep movsd|rep movsq|rep stosb|rep stosw|rep stosd|rep stosq
+  END_SEQUENCE
+  CONFIDENCE_BOOST: +30
+
+ARCH_PATTERN: simd_aligned_load
+  ARCHITECTURE: x86_64
+  DESCRIPTION: SIMD aligned memory load
+  SEQUENCE:
+    movaps|movapd|movdqa <xmm_reg>, [<mem>]
+  END_SEQUENCE
+  CONFIDENCE_BOOST: +20
+
+ARCH_PATTERN: simd_unaligned_load
+  ARCHITECTURE: x86_64
+  DESCRIPTION: SIMD unaligned memory load
+  SEQUENCE:
+    movups|movupd|movdqu <xmm_reg>, [<mem>]
+  END_SEQUENCE
+  CONFIDENCE_BOOST: +20
+
+# Test cases
+TEST_CASE: standard_prologue_detection
+  INPUT_ASM:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 0x20
+  EXPECTED_MATCH: standard_prologue
+  EXPECTED_CONFIDENCE: 80
+END_TEST
+
+TEST_CASE: pic_got_detection
+  INPUT_ASM:
+    lea rax, [rip + 0x200bf8]
+    mov rdx, [rax]
+  EXPECTED_MATCH: pic_got_access
+  EXPECTED_CONFIDENCE: 65
+END_TEST
+
+TEST_CASE: syscall_detection
+  INPUT_ASM:
+    mov rax, 1        ; sys_write
+    mov rdi, 1        ; stdout
+    mov rsi, rbx      ; buffer
+    mov rdx, 14       ; length
+    syscall
+  EXPECTED_MATCH: system_call
+  EXPECTED_CONFIDENCE: 95
+END_TEST

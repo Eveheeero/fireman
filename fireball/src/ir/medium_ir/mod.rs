@@ -11,7 +11,14 @@ use std::collections::BTreeMap;
 pub mod analyzer;
 pub mod confidence;
 pub mod pattern_database;
+pub mod pattern_matcher;
+pub mod pattern_parser;
 pub mod patterns;
+
+// Re-export commonly used items
+pub use pattern_database::{PatternDatabaseBuilder, create_standard_pattern_database};
+pub use pattern_matcher::PatternMatcher as PatternMatcherEngine;
+pub use pattern_parser::{ParsedPattern, PatternParser};
 
 /// Pattern match confidence level
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

@@ -564,6 +564,9 @@ pub fn create_standard_pattern_database() -> PatternDatabase {
     // Add POSIX patterns
     add_posix_patterns(&mut builder);
 
+    // Add standard idioms
+    builder.add_standard_idioms();
+
     builder.build()
 }
 
