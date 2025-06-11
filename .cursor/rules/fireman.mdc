@@ -1,3 +1,8 @@
+---
+description:
+globs:
+alwaysApply: true
+---
 # Agentic Instructions
 
 This file provides guidance to the coding AGENT when working with code in this repository.

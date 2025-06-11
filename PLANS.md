@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Fireman aims to be the decompiler that reverse engineers actually want to use. We're building on what works (Hex-Rays' production quality, Ghidra's openness, Binary Ninja's modern architecture) while fixing what doesn't (speed, accuracy, usability). Our secret weapon? Rust's performance + safety, and a pragmatic approach to innovation.
+Fireman aims to be the decompiler that reverse engineers actually want to use. We're building on what works (Hex-Rays' production quality, Ghidra's openness, Binary Ninja's modern architecture) while fixing what doesn't (speed, accuracy, usability). Our secret weapon? Rust's performance + safety, Unicorn Engine's battle-tested emulation, and a pragmatic approach to innovation.
 
 ## The Problems We're Actually Solving
 
@@ -59,6 +59,14 @@ Instead of complex academic approaches, we use:
 - **Statistical Learning**: Learn patterns from real binaries
 - **User Feedback Loop**: Let users correct and teach
 
+#### 4. Dynamic Analysis with Unicorn Engine
+Instead of building custom simulation from scratch:
+- **[Unicorn Engine Integration](https://docs.rs/unicorn-engine/latest/unicorn_engine/)**: Official Rust bindings (v2.1.3)
+- **Multi-Architecture Support**: x86, x86_64, ARM, ARM64, MIPS, RISC-V in one framework
+- **Hook-Based Analysis**: Memory access tracking, instruction tracing, syscall interception
+- **Safe Execution**: Sandboxed environment for analyzing potentially malicious code
+- **Performance**: Optimized CPU emulation for large binary analysis
+
 ## Development Roadmap (Practical Edition)
 
 ### Phase 1: Make It Work (Q1 2025)
@@ -102,11 +110,38 @@ Instead of complex academic approaches, we use:
 
 Real innovation: Use compiler fingerprinting to guide recovery
 
+**Unicorn Engine Example for Type Recovery**:
+```rust
+use unicorn_engine::{Unicorn, RegisterX86};
+use unicorn_engine::unicorn_const::{Arch, Mode, Permission};
+
+// Hook memory access to understand struct layouts
+let mut emu = Unicorn::new(Arch::X86, Mode::MODE_64)?;
+emu.mem_map(0x400000, 0x1000, Permission::ALL)?;
+
+// Hook to track memory accesses for type inference
+let hook = emu.add_mem_hook(HookType::MEM_READ | HookType::MEM_WRITE,
+    0x400000, 0x401000, |_uc, mem_type, address, size, value| {
+        // Track access patterns to infer struct fields
+        println!("Memory access: {:x} size {} type {:?}", address, size, mem_type);
+    })?;
+
+// Execute and learn from dynamic behavior
+emu.emu_start(0x400000, 0x400100, 10 * SECOND_SCALE, 1000)?;
+```
+
 #### Month 2: Type System That Works
 - **Start Simple**: int, pointer, struct, array
 - **Constraint Solving**: But with timeouts and fallbacks
 - **Import Signatures**: Steal type info from headers
 - **Dynamic Hints**: Use runtime behavior when available
+
+#### Unicorn Engine Integration (Concurrent with Phase 2)
+- **Replace Custom Simulation**: Migrate from `fireball/src/simulation/` to `unicorn_engine` crate
+- **Hook Implementation**: Memory access, instruction execution, syscall interception
+- **Multi-Architecture Support**: Unified interface for x86/ARM dynamic analysis
+- **Type Recovery Enhancement**: Use dynamic analysis to improve static type inference
+- **Malware Analysis**: Safe execution environment for reverse engineering hostile code
 
 #### Month 3: Output Quality
 - **Readable Names**: v1, v2 → counter, buffer, result
@@ -131,6 +166,7 @@ Binary → [Parallel Disasm] → [Queue] → [Parallel Analysis] → [Merge] →
 - Streaming architecture: Don't load entire binary
 - Compressed IR: 10x smaller than raw instructions
 - Lazy evaluation: Analyze on demand
+- Unicorn Engine optimization: JIT compilation for repeated execution paths
 
 ### Phase 4: Make It Awesome (Q4 2025)
 
@@ -139,6 +175,19 @@ Binary → [Parallel Disasm] → [Queue] → [Parallel Analysis] → [Merge] →
 2. **Collaborative RE**: Google Docs for reverse engineering
 3. **AI Assistant**: Not replacing RE, but handling tedious parts
 4. **Cross-Binary Diffing**: What changed between versions?
+
+#### Migration Timeline: Custom Simulation → Unicorn Engine
+
+**Current State**: `fireball/src/simulation/` module is marked as DEPRECATED
+**Target State**: Replace with `unicorn_engine` crate integration
+
+**Migration Steps**:
+1. **Add Dependency**: Include `unicorn_engine = "2.1.3"` in Cargo.toml
+2. **Create Wrapper**: Build safe Rust wrapper around Unicorn for our use cases
+3. **Hook Implementation**: Memory access tracking, instruction tracing, syscall hooks
+4. **API Compatibility**: Maintain existing `SimulationContext` interface where possible
+5. **Remove Legacy**: Delete custom simulation module after verification
+6. **Testing**: Ensure deterministic behavior across architectures
 
 ## Secret Sauce: Industry Techniques
 
@@ -156,3 +205,9 @@ Binary → [Parallel Disasm] → [Queue] → [Parallel Analysis] → [Merge] →
 - Sleigh's idea but better syntax
 - Overlapping instruction handling
 - Architecture description files
+
+### From Unicorn Engine
+- **Cross-platform CPU emulation**: Support for 8 architectures in one framework
+- **Hook-based analysis**: Intercept and analyze execution at instruction/memory/exception level
+- **Production quality**: Used by major security tools and malware analysis platforms
+- **Rust integration**: Official bindings with safe wrappers around C engine

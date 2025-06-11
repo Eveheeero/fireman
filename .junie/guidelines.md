@@ -30,8 +30,12 @@ fireman/                 # Workspace root
 └── fireman_macro/      # Procedural macros
 ```
 
-The project uses Cargo workspace features with centralized dependency management. All common dependencies are defined in
-the root `Cargo.toml` and inherited by subcrates using `.workspace = true`.
+The project uses Cargo workspace features with centralized dependency management. All common dependencies are defined in the root `Cargo.toml` and inherited by subcrates using `.workspace = true`.
+
+**Key Dependencies**:
+- `unicorn_engine = "2.1.3"`: Official Rust bindings for Unicorn CPU emulator engine
+- `goblin`: Binary format parsing (PE, ELF, Mach-O)
+- `capstone`: Disassembly engine (transitioning to Intel XED for better x86 support)
 
 Note: The `iceball/architecture_doc_extractor` subcrate is excluded from the workspace as it has special dependency
 requirements.
@@ -78,8 +82,9 @@ npm run tauri build
 The decompilation process follows a sophisticated multi-stage pipeline:
 ```
 Binary File → PE Parser → Disassembler → IR Generation → Analysis → AST Generation → Enhanced C Output
-                                              ↓                           ↓
-                                        GUI Visualization          AST Optimizations
+                                              ↓                           ↓                    ↓
+                                        GUI Visualization          AST Optimizations    Unicorn Engine
+                                                                                        (Dynamic Analysis)
 ```
 
 **Key Point**: Optimizations happen at the AST level, not during IR processing. The IR levels are for analysis only.
@@ -123,14 +128,15 @@ representation.
 - Complete x86_64 instruction coverage
 - Advanced IR optimizations
 - Symbol resolution
+- Unicorn Engine integration (replacing custom simulation module)
 
 📋 Planned:
 - ARM architecture support
 - Unify 32-bit and 64-bit implementations for ARM to reduce code duplication by 60-80%
 - ELF file format support
 - Advanced decompilation patterns
-- Code simulation capabilities
-- Clean old redunduncies
+- Unicorn Engine integration for dynamic analysis
+- Clean old simulation module redundancies
 
 ### Architecture Support Strategy
 
@@ -275,6 +281,7 @@ _ => generic_handler(),
 3. Add comprehensive tests including edge cases
 4. Verify determinism with repetition tests
 5. Update the instruction coverage
+6. Consider Unicorn Engine support for dynamic validation
 
 ### When modifying IR:
 
@@ -286,30 +293,41 @@ _ => generic_handler(),
 
 ## Simulation & Emulation Strategy
 
-**IMPORTANT**: Custom simulation code will be replaced with Unicorn Engine:
+**DECISION MADE**: Using the official [unicorn_engine](https://docs.rs/unicorn-engine/latest/unicorn_engine/) Rust crate (v2.1.3):
 
 1. **Why Unicorn Engine**:
+   - Battle-tested emulation framework with bindings for the Unicorn CPU emulator engine
+   - Supports all target architectures (x86, x86_64, ARM, ARM64, MIPS, RISC-V, etc.)
+   - Better performance and accuracy than custom implementation
+   - Active maintenance and extensive testing
+   - GPL-2.0 licensed, compatible with our open-source goals
 
-- Battle-tested emulation framework
-- Supports all target architectures (x86, ARM, MIPS, etc.)
-- Better performance and accuracy
-- Active maintenance and community
-
-2. **Migration Plan**:
+2. **Unicorn Engine Integration**:
    ```rust
-   // Current (to be deprecated)
-   use crate::simulation::{CpuState, Memory, Executor};
+   // Using official Rust bindings
+   use unicorn_engine::{Unicorn, RegisterX86, RegisterARM64};
+   use unicorn_engine::unicorn_const::{Arch, Mode, Permission, SECOND_SCALE};
 
-   // Future (Unicorn-based)
-   use unicorn_engine::{Unicorn, RegisterX86, RegisterARM};
+   // Example: ARM emulation for dynamic analysis
+   let mut emu = Unicorn::new(Arch::ARM, Mode::LITTLE_ENDIAN)
+       .expect("failed to initialize Unicorn instance");
+   emu.mem_map(0x1000, 0x4000, Permission::ALL)
+       .expect("failed to map code page");
    ```
 
-3. **Hook-Based Analysis**:
+3. **Capabilities for Decompilation**:
+   - **Memory access tracking**: Hook memory reads/writes for type recovery
+   - **Instruction tracing**: Coverage analysis and path exploration
+   - **Multi-architecture support**: Unified interface for x86, ARM, etc.
+   - **Accurate CPU state**: Register and flag tracking
+   - **Safe execution**: Sandboxed environment for malware analysis
 
-- Memory access tracking for type recovery
-- Instruction tracing for coverage
-- Syscall interception for API detection
-- Branch tracking for control flow validation
+4. **Integration Points**:
+   - Replace `fireball/src/simulation/` module with Unicorn-based implementation
+   - Hook-based analysis for dynamic type inference
+   - Syscall interception for API behavior analysis
+   - Branch tracking for control flow validation
+   - Memory layout analysis for struct reconstruction
 
 ## Working with Enhanced C AST
 
