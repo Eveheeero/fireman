@@ -13,16 +13,16 @@ name = "firebat_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build.workspace = true
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
 fireball.workspace = true
-tauri.workspace = true
+tauri = { version = "2", features = [] }
 serde.workspace = true
 serde_json.workspace = true
-tauri-plugin-shell.workspace = true
-tauri-plugin-dialog.workspace = true
-ts-bind.workspace = true
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+ts-bind = "0.1.7"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

@@ -30,11 +30,8 @@ dryice = { path = "dryice" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-regex = "1.11.1"
-
-# CLI dependencies
-clap = { version = "4.5", features = ["derive"] }
+tracing-subscriber = "0.3"
+regex = "1.11"
 
 # Binary parsing and analysis
 goblin = "0.10"
@@ -46,17 +43,3 @@ cpp_demangle = "0.4"
 bitvec = "1"
 hashbrown = "0.15"
 num-bigint = "0.4"
-
-# GUI dependencies (Tauri ecosystem)
-tauri = { version = "2", features = [] }
-tauri-build = { version = "2", features = [] }
-tauri-plugin-dialog = "2"
-tauri-plugin-process = "2"
-tauri-plugin-shell = "2"
-tauri-plugin-fs = "2"
-ts-bind = "0.1.7"
-
-# Procedural macro dependencies
-syn = { version = "2.0", features = ["full", "extra-traits"] }
-quote = "1.0"
-proc-macro2 = "1.0"
