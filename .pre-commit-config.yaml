@@ -26,7 +26,7 @@ repos:
       - id: cargo-clippy
         name: cargo clippy
         description: Run cargo clippy on files.
-        entry: cargo clippy --workspace --tests --fix
+        entry: cargo clippy --workspace --tests
         language: system
         types: [ rust ]
         pass_filenames: false

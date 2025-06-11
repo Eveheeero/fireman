@@ -5,7 +5,9 @@
 //! capabilities and conventions.
 
 use crate::arch::{ArchType, ArchitectureInfo};
+use crate::ir::analyze::dead_code_elimination::DeadCodeEliminator;
 use crate::ir::analyze::enhanced_c_codegen::EnhancedCConfig;
+use crate::ir::analyze::expression_simplifier::ExpressionSimplifier;
 use crate::ir::analyze::ir_to_c::c_abstract_syntax_tree::{
     BinaryOperator, CAst, CType, Expression, Function, Literal, Statement, Wrapped,
     WrappedStatement,
@@ -26,6 +28,10 @@ pub struct ArchOptimizationConfig {
     pub enable_arch_idioms: bool,
     /// Enable calling convention optimizations
     pub enable_cc_optimizations: bool,
+    /// Enable expression simplification
+    pub enable_expression_simplification: bool,
+    /// Enable dead code elimination
+    pub enable_dead_code_elimination: bool,
 }
 
 impl Default for ArchOptimizationConfig {
@@ -43,6 +49,8 @@ impl Default for ArchOptimizationConfig {
             enable_simd_patterns: true,
             enable_arch_idioms: true,
             enable_cc_optimizations: true,
+            enable_expression_simplification: true,
+            enable_dead_code_elimination: true,
         }
     }
 }
@@ -88,6 +96,16 @@ impl AstOptimizer {
 
         // Always run type optimization based on architecture
         self.optimize_types_for_architecture(ast);
+
+        // Run expression simplification if enabled
+        if self.config.enable_expression_simplification {
+            self.simplify_expressions(ast);
+        }
+
+        // Run dead code elimination if enabled
+        if self.config.enable_dead_code_elimination {
+            self.eliminate_dead_code(ast);
+        }
     }
 
     /// Recognize and convert SIMD patterns
@@ -361,21 +379,39 @@ impl AstOptimizer {
     pub fn stats(&self) -> &OptimizationStats {
         &self.stats
     }
-}
 
-impl EnhancedCConfig {
-    /// Conservative configuration (more C-like)
-    pub fn conservative() -> Self {
-        Self {
-            use_auto: false,
-            use_nullptr: false,
-            use_fixed_width_types: true,
-            use_range_for: false,
-            generate_uncertainty_comments: true,
-            use_anonymous_structs: false,
-            max_line_width: 80,
-            confidence_threshold: 0.9,
+    /// Simplify expressions in the AST
+    fn simplify_expressions(&mut self, ast: &mut CAst) {
+        let mut simplifier = ExpressionSimplifier::new();
+
+        // Simplify expressions in all functions
+        let function_ids: Vec<_> = ast.functions.read().unwrap().keys().cloned().collect();
+        for id in function_ids {
+            if let Some(mut func) = ast.functions.write().unwrap().remove(&id) {
+                // Simplify expressions in function body
+                for stmt in &mut func.body {
+                    simplifier.simplify_statement(stmt);
+                }
+                ast.functions.write().unwrap().insert(id, func);
+            }
         }
+
+        // Update stats with simplification results
+        let simpl_stats = simplifier.stats();
+        self.stats.simd_patterns_recognized += simpl_stats.redundant_parentheses_removed;
+        self.stats.type_improvements += simpl_stats.constant_expressions_folded;
+    }
+
+    /// Eliminate dead code from the AST
+    fn eliminate_dead_code(&mut self, ast: &mut CAst) {
+        let mut eliminator = DeadCodeEliminator::new();
+        eliminator.eliminate(ast);
+
+        // Update stats with elimination results
+        let elim_stats = eliminator.stats();
+        // Add dead code stats to existing fields for now
+        self.stats.arch_idioms_applied += elim_stats.unreachable_statements_removed;
+        self.stats.cc_optimizations += elim_stats.unused_variables_removed;
     }
 }
 
@@ -398,6 +434,8 @@ mod tests {
             enable_simd_patterns: true,
             enable_arch_idioms: true,
             enable_cc_optimizations: true,
+            enable_expression_simplification: true,
+            enable_dead_code_elimination: true,
         };
 
         let optimizer = AstOptimizer::new(config);

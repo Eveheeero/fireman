@@ -64,13 +64,17 @@ improved readability while preserving low-level details.
     - [x] Identity operation removal (x + 0, x * 1)
     - [x] Basic constant folding
     - [x] Redundant cast removal
-    - [ ] Integration into AST optimization pipeline
+   - [x] Integration into AST optimization pipeline ✅
 
 2. **Code Quality Improvements** [IN PROGRESS]
-    - [ ] Dead code elimination
+    - [x] Dead code elimination ✅
+        - [x] Created dead code eliminator module
+        - [x] Remove unreachable statements
+        - [x] Remove unused variables
+        - [x] Remove empty blocks
+        - [x] Integration into AST optimization pipeline
     - [ ] Advanced constant folding
     - [ ] Common subexpression elimination
-    - [ ] Integration with existing optimization framework
 
 3. **Clippy Lint Fixes** [COMPLETED] ✅
     - [x] Fixed 788 documentation formatting warnings in iceball
