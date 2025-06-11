@@ -3,7 +3,7 @@
 //! This module provides structures to represent CPU registers and flags
 //! during simulation. It supports x86_64 architecture initially.
 
-use crate::simulation::SimulationResult;
+use crate::simulation::{FpuState, SimulationResult};
 use std::collections::BTreeMap;
 
 /// Represents the state of CPU registers and flags
@@ -17,6 +17,8 @@ pub struct CpuState {
     pub rip: u64,
     /// Stack pointer
     pub rsp: u64,
+    /// FPU state (x87)
+    pub fpu: FpuState,
 }
 
 impl CpuState {
@@ -27,6 +29,7 @@ impl CpuState {
             flags: BTreeMap::new(),
             rip: 0,
             rsp: 0x7fff_ffff_ffff_0000, // Default stack pointer
+            fpu: FpuState::new(),
         };
 
         // Initialize x86_64 registers
@@ -76,6 +79,17 @@ impl CpuState {
             _ => {}
         }
 
+        // Handle FPU registers (st0-st7)
+        if name.starts_with("st") && name.len() == 3 {
+            if let Ok(index) = name[2..].parse::<u8>() {
+                if index <= 7 {
+                    // Convert f64 to u64 bits for compatibility
+                    let value = self.fpu.get(index)?;
+                    return Ok(value.to_bits());
+                }
+            }
+        }
+
         // Handle sub-registers (e.g., eax, ax, al for rax)
         let (full_reg, mask, shift) = self.resolve_register_name(name)?;
 
@@ -101,6 +115,18 @@ impl CpuState {
                 return Ok(());
             }
             _ => {}
+        }
+
+        // Handle FPU registers (st0-st7)
+        if name.starts_with("st") && name.len() == 3 {
+            if let Ok(index) = name[2..].parse::<u8>() {
+                if index <= 7 {
+                    // Convert u64 bits to f64
+                    let float_value = f64::from_bits(value);
+                    self.fpu.set(index, float_value)?;
+                    return Ok(());
+                }
+            }
         }
 
         // Handle sub-registers

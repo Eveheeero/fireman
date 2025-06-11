@@ -354,7 +354,16 @@ Day 3: Test and verify all outputs compile
     - [x] Model memory barriers/fences ✅
     - [x] Support for atomic variants (LOCK CMPXCHG, LOCK XADD, etc.) ✅
 - [ ] **Remaining x64 Instructions**
-  - [ ] FPU instructions (FLD, FST, FADD, etc.)
+  - [ ] **FPU instructions** [IN PROGRESS]
+      - [x] Basic FPU instructions implemented (FLD, FST, FSTP, FADD, FSUB, FMUL, FDIV)
+      - [x] FPU utility instructions (FABS, FCHS, FSQRT, FXCH, FCOM)
+      - [x] Integer conversion (FILD, FIST, FISTP)
+      - [ ] Fix FPU stack semantics (push/pop operations)
+      - [ ] Add FPU status word updates (C0, C1, C2, C3 flags)
+      - [ ] Implement FPU control word operations (FLDCW, FSTCW)
+      - [ ] Add transcendental functions (FSIN, FCOS, FTAN, etc.)
+      - [ ] Handle special values (NaN, infinity, denormals)
+      - [ ] Integrate with FpuState for proper stack tracking
   - [ ] Advanced SSE4/AVX2/AVX-512 instructions
   - [ ] System instructions (CPUID, RDTSC, etc.)
   - [ ] Rare/undocumented instructions
@@ -418,18 +427,37 @@ Day 3: Test and verify all outputs compile
   - [x] CPU state emulation for x64
   - [x] Memory management simulation
   - [x] Basic symbolic execution
-- [ ] **Unicorn Engine(v2.0+) Integration** [PLANNED]
-    - [ ] Replace custom simulation with Unicorn Engine
+  - [x] FPU state emulation
+- [ ] **Unicorn Engine (v2.1.3) Integration** [IN PROGRESS]
+    - [x] Add unicorn-engine dependency to workspace
+    - [ ] Create emulation module structure
+        - [x] Main emulator interface (emulation/mod.rs)
+        - [ ] Context save/restore module (emulation/context.rs)
+        - [ ] Hook management system (emulation/hooks.rs)
+        - [ ] Memory region tracking (emulation/memory.rs)
+        - [ ] Emulator state management (emulation/state.rs)
+    - [ ] Implement register mapping (IR ↔ Unicorn)
+    - [ ] Add memory management wrapper
+    - [ ] Create execution control interface
     - [ ] Support all architectures (x86, x86_64, ARM32, ARM64)
-    - [ ] Leverage Unicorn's accurate CPU emulation
     - [ ] Hook-based instrumentation for analysis
     - [ ] Snapshot/restore for path exploration
+    - [ ] Integration tests with real binaries
+    - [ ] Migration path from old simulation module
+    - [ ] Performance benchmarking vs custom simulation
 - [ ] **Enhanced Analysis on Unicorn**
     - [ ] Taint analysis via Unicorn hooks
     - [ ] Dynamic type recovery during execution
     - [ ] Constraint collection for symbolic execution
     - [ ] Integration with Z3/CVC5 for path conditions
-  - [ ] Concrete execution validation
+    - [ ] Concrete execution validation
+    - [ ] API behavior analysis through syscall hooks
+    - [ ] Memory access pattern detection
+    - [ ] Call graph validation
+- [ ] **Deprecation Plan**
+    - [ ] Feature flag for Unicorn vs legacy simulation
+    - [ ] Gradual migration of dependent code
+    - [ ] Remove old simulation module once stable
 
 ### 🟡 P2: User Interface & Tools
 

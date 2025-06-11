@@ -17,13 +17,17 @@ use crate::ir::statements::*;
 
 pub mod cpu_state;
 pub mod executor;
+pub mod fpu_state;
 pub mod memory;
 pub mod symbolic;
+pub mod unicorn;
 
 pub use cpu_state::CpuState;
 pub use executor::Executor;
+pub use fpu_state::FpuState;
 pub use memory::Memory;
 pub use symbolic::{SymbolicEngine, SymbolicValue};
+pub use unicorn::{UnicornSimulator, create_arm_memory_layout, create_x86_64_memory_layout};
 
 /// Result type for simulation operations
 pub type SimulationResult<T> = Result<T, SimulationError>;
@@ -45,6 +49,12 @@ pub enum SimulationError {
     UnknownRegister(String),
     /// Type mismatch
     TypeMismatch { expected: String, found: String },
+    /// FPU stack overflow
+    FpuStackOverflow,
+    /// FPU stack underflow
+    FpuStackUnderflow,
+    /// Invalid FPU register index
+    InvalidFpuRegister(u8),
 }
 
 impl std::fmt::Display for SimulationError {
@@ -65,39 +75,75 @@ impl std::fmt::Display for SimulationError {
             SimulationError::TypeMismatch { expected, found } => {
                 write!(f, "Type mismatch: expected {}, found {}", expected, found)
             }
+            SimulationError::FpuStackOverflow => write!(f, "FPU stack overflow"),
+            SimulationError::FpuStackUnderflow => write!(f, "FPU stack underflow"),
+            SimulationError::InvalidFpuRegister(index) => {
+                write!(f, "Invalid FPU register index: {}", index)
+            }
         }
     }
 }
 
 impl std::error::Error for SimulationError {}
 
+/// Simulation backend type
+pub enum SimulationBackend {
+    /// Legacy custom simulation
+    Legacy,
+    /// Unicorn Engine-based simulation
+    Unicorn,
+}
+
 /// Simulation context containing CPU state and memory
 pub struct SimulationContext {
-    /// CPU state (registers, flags)
+    /// CPU state (registers, flags) - legacy mode only
     pub cpu_state: CpuState,
-    /// Memory state
+    /// Memory state - legacy mode only
     pub memory: Memory,
-    /// Symbolic execution engine (if enabled)
+    /// Symbolic execution engine (if enabled) - legacy mode only
     pub symbolic_engine: Option<SymbolicEngine>,
+    /// Unicorn simulator (if using Unicorn backend)
+    pub unicorn_simulator: Option<UnicornSimulator<'static>>,
+    /// Current backend being used
+    pub backend: SimulationBackend,
 }
 
 impl SimulationContext {
-    /// Create a new simulation context
+    /// Create a new simulation context (legacy mode)
     pub fn new() -> Self {
         Self {
             cpu_state: CpuState::new(),
             memory: Memory::new(),
             symbolic_engine: None,
+            unicorn_simulator: None,
+            backend: SimulationBackend::Legacy,
         }
     }
 
-    /// Create a new simulation context with symbolic execution enabled
+    /// Create a new simulation context with symbolic execution enabled (legacy mode)
     pub fn with_symbolic() -> Self {
         Self {
             cpu_state: CpuState::new(),
             memory: Memory::new(),
             symbolic_engine: Some(SymbolicEngine::new()),
+            unicorn_simulator: None,
+            backend: SimulationBackend::Legacy,
         }
+    }
+
+    /// Create a new simulation context with Unicorn backend
+    pub fn with_unicorn(
+        architecture: crate::arch::architecture::ArchitectureInfo,
+    ) -> SimulationResult<Self> {
+        let unicorn_sim = UnicornSimulator::new(architecture)?;
+
+        Ok(Self {
+            cpu_state: CpuState::new(), // Keep for compatibility
+            memory: Memory::new(),      // Keep for compatibility
+            symbolic_engine: None,
+            unicorn_simulator: Some(unicorn_sim),
+            backend: SimulationBackend::Unicorn,
+        })
     }
 
     /// Execute a single IR statement

@@ -8,7 +8,7 @@ use crate::ir::{low_ir, statements::IrStatement};
 use std::sync::Arc;
 
 /// Architecture information and capabilities
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArchitectureInfo {
     /// Architecture type
     pub arch_type: ArchType,

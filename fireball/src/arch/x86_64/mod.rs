@@ -1,6 +1,7 @@
 //! Module that converts x86_64 architecture instructions into IR
 
 pub mod atomic;
+pub mod fpu_stack;
 pub mod instruction_analyze;
 pub mod lifter;
 mod lifter_types;

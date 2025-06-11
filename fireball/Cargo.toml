@@ -29,6 +29,8 @@ bitvec.workspace = true
 fireman_macro.workspace = true
 hashbrown.workspace = true
 num-bigint.workspace = true
+unicorn-engine.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
 tracing-subscriber.workspace = true
