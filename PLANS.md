@@ -8,7 +8,7 @@ Fireman aims to be the decompiler that reverse engineers actually want to use. W
 
 ### What's Wrong with Current Decompilers?
 1. **Hex-Rays**: Expensive, closed-source, slow on large binaries
-2. **Ghidra**: Java overhead, complex P-code, steep learning curve  
+2. **Ghidra**: Java overhead, complex P-code, steep learning curve
 3. **Binary Ninja**: Better but still proprietary, limited free version
 4. **RetDec**: Overly complex, poor output quality
 5. **Radare2**: Powerful but fragmented, inconsistent
@@ -44,7 +44,7 @@ t1 = add r1, r2
 cf = carry_flag(t1)
 zf = zero_flag(t1)
 
-// Good: Practical abstraction  
+// Good: Practical abstraction
 t1 = add r1, r2 with_flags [carry, zero]
 ```
 
@@ -63,20 +63,35 @@ Instead of complex academic approaches, we use:
 
 ### Phase 1: Make It Work (Q1 2025)
 
-#### Week 1-4: IR That Doesn't Suck
-- Design IR for real x86/x64 (not textbook RISC)
-- Handle the weird stuff: partial register updates, flags, segments
-- Make it debuggable: good pretty-printing, verification
+#### Week 1-4: IR That Doesn't Suck ✅
 
-#### Week 5-8: Complete x64 Support
+- Design IR for real x86/x64 (not textbook RISC) ✅
+- Handle the weird stuff: partial register updates, flags, segments ✅
+- Make it debuggable: good pretty-printing, verification ✅
+
+#### Week 5-8: Complete x64 Support (In Progress)
 - Use Intel XED for decoding (better than Capstone for x86)
-- Handle ALL instructions, even the weird ones
+- Handle ALL instructions, even the weird ones (Partially complete)
 - Test on real malware, packers, obfuscated code
 
-#### Week 9-12: Analysis That Matters
-- **Data Flow**: But only what helps readability
-- **Type Recovery**: Focus on structs and arrays first
-- **Variable Names**: Use debug info when available, ML-assisted otherwise
+#### Week 9-12: Analysis That Matters (In Progress)
+
+- **Data Flow**: But only what helps readability ✅
+- **Type Recovery**: Focus on structs and arrays first ✅
+- **Variable Names**: Use debug info when available, ML-assisted otherwise ✅
+
+#### Sprint 6: Unified Instruction Handling & Testing ✅
+
+**Status: COMPLETED**
+
+- Created common instruction interface for all architectures ✅
+- Mapped architecture-specific instructions to common IR ✅
+- Handled architecture-specific calling conventions ✅
+- Supported architecture-specific optimizations at AST level ✅
+- Implemented x86-64 as superset handler for x86-32 ✅
+- Added atomic operation support (LOCK prefix) ✅
+- Created comprehensive test suite ✅
+- Verified deterministic output across architectures ✅
 
 ### Phase 2: Make It Good (Q2 2025)
 

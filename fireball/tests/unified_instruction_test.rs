@@ -55,7 +55,7 @@ fn test_unified_analyzer_creation() {
 #[test]
 fn test_base_operations_enum() {
     // Test that base operations are properly defined
-    let operations = vec![
+    let operations = [
         BaseOperation::Add,
         BaseOperation::Subtract,
         BaseOperation::And,
@@ -168,7 +168,7 @@ fn test_architecture_detection() {
 #[test]
 fn test_condition_code_mapping() {
     // Test that condition codes are properly defined
-    let conditions = vec![
+    let conditions = [
         ConditionCode::Equal,
         ConditionCode::NotEqual,
         ConditionCode::SignedLess,
@@ -190,7 +190,7 @@ fn test_condition_code_mapping() {
 #[test]
 fn test_instruction_categories() {
     // Test that instruction categories are properly defined
-    let categories = vec![
+    let categories = [
         InstructionCategory::Arithmetic,
         InstructionCategory::Logic,
         InstructionCategory::DataTransfer,

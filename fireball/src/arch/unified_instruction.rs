@@ -36,7 +36,7 @@ pub enum InstructionCategory {
 }
 
 /// Architecture-specific features and modifiers
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct InstructionModifiers {
     /// x86/x86_64: LOCK prefix for atomic operations
     pub lock_prefix: bool,
@@ -195,6 +195,12 @@ pub enum BaseOperation {
 pub struct UnifiedInstructionAnalyzer {
     /// Mapping of common operations across architectures
     operation_map: BTreeMap<(ArchType, String), BaseOperation>,
+}
+
+impl Default for UnifiedInstructionAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl UnifiedInstructionAnalyzer {
@@ -538,18 +544,6 @@ impl UnifiedInstructionAnalyzer {
                 )))
             }
             _ => None,
-        }
-    }
-}
-
-impl Default for InstructionModifiers {
-    fn default() -> Self {
-        Self {
-            lock_prefix: false,
-            rep_prefix: None,
-            condition: None,
-            update_flags: false,
-            size_override: None,
         }
     }
 }

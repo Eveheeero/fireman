@@ -1,3 +1,4 @@
+pub mod ast_optimization;
 pub mod control_flow_graph;
 pub mod data_access;
 pub mod datatype;
@@ -11,6 +12,7 @@ pub mod type_recovery;
 pub mod variable_naming;
 pub mod variables;
 
+pub use ast_optimization::{ArchOptimizationConfig, AstOptimizer};
 pub use control_flow_graph::{ControlFlowGraph, ControlFlowGraphAnalyzer};
 pub use data_access::analyze_data_access;
 pub use datatype::{DataType, KnownDataType, analyze_datatype};

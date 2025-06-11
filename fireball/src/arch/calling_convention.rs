@@ -125,7 +125,7 @@ impl CallingConventionInfo {
                     && *used_int_regs < self.int_arg_registers.len()
                 {
                     // Small aggregates might be passed in registers
-                    let regs_needed = (size + 7) / 8; // Round up to 8-byte chunks
+                    let regs_needed = size.div_ceil(8); // Round up to 8-byte chunks
                     if *used_int_regs + regs_needed <= self.int_arg_registers.len() {
                         let mut registers = Vec::new();
                         for _ in 0..regs_needed {
