@@ -440,6 +440,7 @@ impl AdvancedConstantFolder {
     }
 
     /// Check if expression is pure (no side effects)
+    #[allow(clippy::only_used_in_recursion)]
     fn is_pure_expression(&self, expr: &Expression) -> bool {
         match expr {
             Expression::Literal(_) | Expression::Variable(_, _) => true,

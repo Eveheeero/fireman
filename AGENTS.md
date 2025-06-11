@@ -58,10 +58,10 @@ cargo test --workspace -- --nocapture
 cargo fmt --all
 
 # Lint code
-cargo clippy --workspace --tests
+cargo clippy --workspace --tests --all-features
 
 # Check compilation without building
-cargo check --workspace --tests
+cargo check --workspace --tests --all-features
 ```
 
 ### GUI Development
@@ -249,6 +249,10 @@ _ => generic_handler(),
 - Only implement `Default` when empty/zero state makes semantic sense
 - Document why `Default` exists if not obvious
 - Consider factory methods instead of `Default`
+- **In decompiler context**: Avoid `Default` for analysis passes and transformations
+    - Analysis structures should be explicitly constructed with context
+    - Use `new()` or `with_context()` factory methods instead
+    - Empty/default state often doesn't make sense for decompilation stages
 
 3. **Constructor Visibility**:
 

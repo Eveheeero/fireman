@@ -91,7 +91,7 @@ impl CommonSubexpressionEliminator {
         }
 
         // Count redundant computations
-        for (_, locations) in &self.expression_cache {
+        for locations in self.expression_cache.values() {
             if locations.len() > 1 {
                 self.stats.redundant_computations_removed += locations.len() - 1;
                 self.stats.subexpressions_eliminated += 1;
@@ -99,13 +99,13 @@ impl CommonSubexpressionEliminator {
         }
 
         // Add comments to identify CSE opportunities
-        for (_expr_hash, locations) in &self.expression_cache {
+        for locations in self.expression_cache.values() {
             if locations.len() > 1 {
                 // Add comments to the statements where CSE could be applied
                 for (i, loc) in locations.iter().enumerate() {
                     if let Some(stmt) = func.body.get_mut(loc.statement_index) {
                         let comment = if i == 0 {
-                            format!("CSE opportunity: first occurrence of expression")
+                            "CSE opportunity: first occurrence of expression".to_string()
                         } else {
                             format!(
                                 "CSE opportunity: could reuse expression from statement {}",
@@ -140,7 +140,7 @@ impl CommonSubexpressionEliminator {
                     if let Some(hash) = self.compute_expression_hash(&rhs.item) {
                         self.expression_cache
                             .entry(hash)
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(ExpressionLocation {
                                 statement_index: stmt_idx,
                                 is_rhs: true,
@@ -154,7 +154,7 @@ impl CommonSubexpressionEliminator {
                     if let Some(hash) = self.compute_expression_hash(&cond.item) {
                         self.expression_cache
                             .entry(hash)
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(ExpressionLocation {
                                 statement_index: stmt_idx,
                                 is_rhs: false,
@@ -168,7 +168,7 @@ impl CommonSubexpressionEliminator {
                     if let Some(hash) = self.compute_expression_hash(&cond.item) {
                         self.expression_cache
                             .entry(hash)
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(ExpressionLocation {
                                 statement_index: stmt_idx,
                                 is_rhs: false,
@@ -181,7 +181,7 @@ impl CommonSubexpressionEliminator {
                     if let Some(hash) = self.compute_expression_hash(&expr.item) {
                         self.expression_cache
                             .entry(hash)
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(ExpressionLocation {
                                 statement_index: stmt_idx,
                                 is_rhs: false,
@@ -211,6 +211,7 @@ impl CommonSubexpressionEliminator {
     }
 
     /// Compute a hash representation of an expression
+    #[allow(clippy::only_used_in_recursion)]
     fn compute_expression_hash(&self, expr: &Expression) -> Option<ExpressionHash> {
         match expr {
             Expression::Literal(lit) => Some(ExpressionHash::Literal(match lit {
@@ -273,6 +274,7 @@ impl CommonSubexpressionEliminator {
     }
 
     /// Check if an expression hash uses a specific variable
+    #[allow(clippy::only_used_in_recursion)]
     fn expression_uses_var(&self, expr_hash: &ExpressionHash, var_id: VariableId) -> bool {
         match expr_hash {
             ExpressionHash::Variable(vid) => *vid == var_id,
