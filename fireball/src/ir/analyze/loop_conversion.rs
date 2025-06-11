@@ -218,6 +218,7 @@ fn convert_do_while_loop(
 }
 
 /// Convert a for loop pattern
+#[allow(clippy::too_many_arguments)]
 fn convert_for_loop(
     ast: &mut CAst,
     function_id: FunctionId,

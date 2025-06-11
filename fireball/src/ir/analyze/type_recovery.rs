@@ -535,33 +535,31 @@ impl TypeRecoveryEngine {
 
             // Process each constraint
             for (addr1, addr2, constraint) in self.constraints.clone() {
-                match constraint {
-                    TypeConstraint::Compatible(_) => {
-                        // If one side has a type, propagate to the other
-                        if let Some(type1) = self.types.get(&addr1).cloned() {
-                            if !self.types.contains_key(&addr2) {
-                                self.add_type_info(
-                                    addr2,
-                                    type1.ty.clone(),
-                                    type1.confidence * 0.9,
-                                    TypeSource::Propagated(addr1),
-                                );
-                                changed = true;
-                            }
-                        } else if let Some(type2) = self.types.get(&addr2).cloned() {
-                            if !self.types.contains_key(&addr1) {
-                                self.add_type_info(
-                                    addr1,
-                                    type2.ty.clone(),
-                                    type2.confidence * 0.9,
-                                    TypeSource::Propagated(addr2),
-                                );
-                                changed = true;
-                            }
+                if let TypeConstraint::Compatible(_) = constraint {
+                    // If one side has a type, propagate to the other
+                    if let Some(type1) = self.types.get(&addr1).cloned() {
+                        if !self.types.contains_key(&addr2) {
+                            self.add_type_info(
+                                addr2,
+                                type1.ty.clone(),
+                                type1.confidence * 0.9,
+                                TypeSource::Propagated(addr1),
+                            );
+                            changed = true;
+                        }
+                    } else if let Some(type2) = self.types.get(&addr2).cloned() {
+                        if !self.types.contains_key(&addr1) {
+                            self.add_type_info(
+                                addr1,
+                                type2.ty.clone(),
+                                type2.confidence * 0.9,
+                                TypeSource::Propagated(addr2),
+                            );
+                            changed = true;
                         }
                     }
-                    _ => {} // TODO: Handle other constraints
                 }
+                // TODO: Handle other constraints
             }
         }
     }

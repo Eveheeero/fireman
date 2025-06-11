@@ -1,4 +1,5 @@
 //! Complex loop analysis module for identifying and analyzing different loop patterns
+#![allow(clippy::mutable_key_type)]
 //!
 //! This module provides advanced loop analysis capabilities including:
 //! - Loop pattern recognition (for, while, do-while)
