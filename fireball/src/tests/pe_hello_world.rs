@@ -91,12 +91,11 @@ fn pe_hello_world_detect_block_etc() {
     let entry = Address::from_virtual_address(&sections, gl.entry as u64);
     for offset in std::iter::once(-6).chain(2..=7) {
         info!("Parsing at offset {}", offset);
-        let address;
-        if offset < 0 {
-            address = &entry - (-offset) as u64;
+        let address = if offset < 0 {
+            &entry - (-offset) as u64
         } else {
-            address = &entry + offset as u64;
-        }
+            &entry + offset as u64
+        };
         let block = pe.generate_block_from_address(&address);
         assert_eq!(&block.get_section().unwrap().name, ".text");
         assert_eq!(*block.get_start_address(), address);

@@ -209,6 +209,7 @@ impl SymbolicEngine {
     }
 
     /// Evaluate a symbolic value given concrete inputs
+    #[allow(clippy::only_used_in_recursion)]
     pub fn evaluate(
         &self,
         value: &SymbolicValue,

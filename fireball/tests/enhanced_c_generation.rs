@@ -22,9 +22,11 @@ fn test_enhanced_c_header_generation() {
 #[test]
 fn test_enhanced_c_config_options() {
     // Test with different config options
-    let mut config = EnhancedCConfig::default();
-    config.use_nullptr = false;
-    config.use_fixed_width_types = false;
+    let config = EnhancedCConfig {
+        use_nullptr: false,
+        use_fixed_width_types: false,
+        ..Default::default()
+    };
 
     let mut generator = EnhancedCGenerator::new(config);
     let patterns: Vec<Pattern> = vec![];

@@ -124,7 +124,8 @@ impl ConfidenceCalculator {
 
     /// Check if pattern has a specific characteristic
     fn pattern_has_characteristic(&self, pattern: &Pattern, characteristic: &str) -> bool {
-        match (pattern, characteristic) {
+        matches!(
+            (pattern, characteristic),
             (
                 Pattern::ForLoop {
                     init: Some(_),
@@ -132,37 +133,36 @@ impl ConfidenceCalculator {
                     ..
                 },
                 "complete_for_loop",
-            ) => true,
-            (Pattern::ForLoop { init: None, .. }, "while_style_for") => true,
-            (
-                Pattern::FunctionCall {
-                    target: FunctionRef::Library { .. },
-                    ..
-                },
-                "library_call",
-            ) => true,
-            (
-                Pattern::FunctionCall {
-                    target: FunctionRef::Indirect(_),
-                    ..
-                },
-                "indirect_call",
-            ) => true,
-            (
-                Pattern::SwitchCase {
-                    default: Some(_), ..
-                },
-                "has_default",
-            ) => true,
-            (
-                Pattern::IfElse {
-                    else_branch: Some(_),
-                    ..
-                },
-                "has_else",
-            ) => true,
-            _ => false,
-        }
+            ) | (Pattern::ForLoop { init: None, .. }, "while_style_for")
+                | (
+                    Pattern::FunctionCall {
+                        target: FunctionRef::Library { .. },
+                        ..
+                    },
+                    "library_call",
+                )
+                | (
+                    Pattern::FunctionCall {
+                        target: FunctionRef::Indirect(_),
+                        ..
+                    },
+                    "indirect_call",
+                )
+                | (
+                    Pattern::SwitchCase {
+                        default: Some(_),
+                        ..
+                    },
+                    "has_default",
+                )
+                | (
+                    Pattern::IfElse {
+                        else_branch: Some(_),
+                        ..
+                    },
+                    "has_else",
+                )
+        )
     }
 
     /// Check if pattern matches a known idiom

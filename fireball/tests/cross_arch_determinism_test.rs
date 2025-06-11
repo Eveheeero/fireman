@@ -224,10 +224,10 @@ fn test_parallel_determinism_simple() {
     let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
 
     // All threads should produce deterministic results
-    for i in 0..results.len() {
-        assert_eq!(results[i].len(), 10);
-        for j in 0..10 {
-            assert_eq!(results[i][j].0, j);
+    for result in &results {
+        assert_eq!(result.len(), 10);
+        for (j, item) in result.iter().enumerate() {
+            assert_eq!(item.0, j);
         }
     }
 }

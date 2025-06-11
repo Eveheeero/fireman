@@ -33,23 +33,21 @@ fn test_for_loop_pattern_detection() {
             Pattern::Expression { operands, .. } => {
                 // Check operands for for loop
                 for op_ref in operands {
-                    if let Some(op_pattern) = func.patterns.get(*op_ref) {
-                        if let Pattern::ForLoop {
-                            init,
-                            condition: _,
-                            increment,
-                            confidence,
-                            ..
-                        } = op_pattern
-                        {
-                            found_for_loop = true;
-                            assert!(init.is_some(), "For loop should have initialization");
-                            assert!(increment.is_some(), "For loop should have increment");
-                            assert!(
-                                confidence >= &Confidence::LOW,
-                                "Confidence should be at least LOW"
-                            );
-                        }
+                    if let Some(Pattern::ForLoop {
+                        init,
+                        condition: _,
+                        increment,
+                        confidence,
+                        ..
+                    }) = func.patterns.get(*op_ref)
+                    {
+                        found_for_loop = true;
+                        assert!(init.is_some(), "For loop should have initialization");
+                        assert!(increment.is_some(), "For loop should have increment");
+                        assert!(
+                            confidence >= &Confidence::LOW,
+                            "Confidence should be at least LOW"
+                        );
                     }
                 }
             }
@@ -92,19 +90,17 @@ fn test_while_loop_pattern_detection() {
             Pattern::Expression { operands, .. } => {
                 // Check operands for while loop
                 for op_ref in operands {
-                    if let Some(op_pattern) = func.patterns.get(*op_ref) {
-                        if let Pattern::WhileLoop {
-                            condition: _,
-                            confidence,
-                            ..
-                        } = op_pattern
-                        {
-                            found_while_loop = true;
-                            assert!(
-                                confidence >= &Confidence::LOW,
-                                "Confidence should be at least LOW"
-                            );
-                        }
+                    if let Some(Pattern::WhileLoop {
+                        condition: _,
+                        confidence,
+                        ..
+                    }) = func.patterns.get(*op_ref)
+                    {
+                        found_while_loop = true;
+                        assert!(
+                            confidence >= &Confidence::LOW,
+                            "Confidence should be at least LOW"
+                        );
                     }
                 }
             }

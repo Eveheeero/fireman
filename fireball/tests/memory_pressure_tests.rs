@@ -353,7 +353,7 @@ fn test_allocation_pattern_determinism() {
     let binary = create_complex_binary();
 
     // Different allocation patterns that might affect internal allocator behavior
-    let patterns = vec![
+    let patterns = [
         vec![1, 2, 4, 8, 16, 32, 64], // Exponential growth
         vec![64, 32, 16, 8, 4, 2, 1], // Exponential shrink
         vec![10, 10, 10, 10, 10],     // Constant

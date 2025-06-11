@@ -21,21 +21,19 @@ fn test_switch_case_pattern_detection() {
     let mut found_switch = false;
     let body_ref = func.body;
 
-    if let Some(pattern) = func.patterns.get(body_ref) {
-        if let Pattern::Expression { operands, .. } = pattern {
-            // Check operands for switch patterns
-            for op_ref in operands {
-                if let Some(Pattern::SwitchCase {
-                    cases, confidence, ..
-                }) = func.patterns.get(*op_ref)
-                {
-                    found_switch = true;
-                    assert!(!cases.is_empty(), "Switch should have cases");
-                    assert!(
-                        confidence >= &Confidence::MEDIUM,
-                        "Switch patterns should have at least medium confidence"
-                    );
-                }
+    if let Some(Pattern::Expression { operands, .. }) = func.patterns.get(body_ref) {
+        // Check operands for switch patterns
+        for op_ref in operands {
+            if let Some(Pattern::SwitchCase {
+                cases, confidence, ..
+            }) = func.patterns.get(*op_ref)
+            {
+                found_switch = true;
+                assert!(!cases.is_empty(), "Switch should have cases");
+                assert!(
+                    confidence >= &Confidence::MEDIUM,
+                    "Switch patterns should have at least medium confidence"
+                );
             }
         }
     }
