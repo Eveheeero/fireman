@@ -5,6 +5,7 @@ mod ir_panel;
 
 use crate::tui::{FiremanCtx, MutexCtx};
 use ratatui::{
+    crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     prelude::{Constraint::*, Layout, Rect},
     Frame,
 };
@@ -70,4 +71,55 @@ pub fn get_keybinding(_ctx: &FiremanCtx) -> &'static [(&'static str, &'static st
         ("tab", "Autocomplete"),
         ("esc", "Quit"),
     ]
+}
+
+/// true if handled
+fn handle_focus_move(ctx_: &MutexCtx, key: KeyEvent) -> bool {
+    let ctr_pressed = key.modifiers == KeyModifiers::CONTROL;
+    if !ctr_pressed {
+        return false;
+    }
+
+    let pressed_key = key.code;
+    if !matches!(
+        pressed_key,
+        KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right
+    ) {
+        return false;
+    }
+
+    let mut ctx = ctx_.write().unwrap();
+    let selected_panel = ctx.main_context.selected_panel;
+    let now_selected_panel = match pressed_key {
+        KeyCode::Up => match selected_panel {
+            SelectedPanel::BlockPanel => selected_panel,
+            SelectedPanel::AsmPanel => SelectedPanel::BlockPanel,
+            SelectedPanel::IrPanel => SelectedPanel::BlockPanel,
+            SelectedPanel::AstPanel => selected_panel,
+        },
+        KeyCode::Down => match selected_panel {
+            SelectedPanel::BlockPanel => SelectedPanel::AsmPanel,
+            SelectedPanel::AsmPanel => selected_panel,
+            SelectedPanel::IrPanel => SelectedPanel::AsmPanel,
+            SelectedPanel::AstPanel => selected_panel,
+        },
+        KeyCode::Left => match selected_panel {
+            SelectedPanel::BlockPanel => selected_panel,
+            SelectedPanel::AsmPanel => selected_panel,
+            SelectedPanel::IrPanel => SelectedPanel::BlockPanel,
+            SelectedPanel::AstPanel => SelectedPanel::IrPanel,
+        },
+        KeyCode::Right => match selected_panel {
+            SelectedPanel::BlockPanel => SelectedPanel::IrPanel,
+            SelectedPanel::AsmPanel => SelectedPanel::IrPanel,
+            SelectedPanel::IrPanel => SelectedPanel::AstPanel,
+            SelectedPanel::AstPanel => selected_panel,
+        },
+        _ => selected_panel,
+    };
+    if selected_panel != now_selected_panel {
+        ctx.main_context.selected_panel = now_selected_panel;
+        return true;
+    }
+    false
 }
