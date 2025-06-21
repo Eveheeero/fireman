@@ -41,6 +41,7 @@ pub struct FiremanCtx {
     scope: FiremanScope,
     redraw_queue: VecDeque<()>,
 
+    top_message: String,
     new_context: new::Context,
     main_context: main::Context,
 }
@@ -51,6 +52,7 @@ impl FiremanCtx {
             fireball: None,
             scope: FiremanScope::New,
             redraw_queue: VecDeque::new(),
+            top_message: String::new(),
             new_context: new::Context::new(),
             main_context: main::Context::new(),
         })))
@@ -92,11 +94,11 @@ fn draw(frame: &mut Frame, ctx: &MutexCtx) {
     }
 }
 
-fn display_title(frame: &mut Frame, area: Rect, _ctx: &FiremanCtx) {
+fn display_title(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     let widgets = widgets::Block::new()
         .borders(widgets::Borders::TOP)
-        .title("Fireball TUI");
-    // TODO Display scope
+        .title("Fireball TUI")
+        .title(ctx.top_message.as_str());
     frame.render_widget(widgets, area);
 }
 fn display_keybindings(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {

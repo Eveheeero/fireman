@@ -6,7 +6,7 @@ mod ir_panel;
 use crate::tui::{FiremanCtx, MutexCtx};
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
-    prelude::{Constraint::*, *},
+    prelude::*,
     Frame,
 };
 
@@ -35,10 +35,14 @@ impl Context {
 }
 
 pub fn display(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
-    let [left_area, ir_area, ast_area] =
-        Layout::horizontal([Percentage(20), Percentage(30), Percentage(50)]).areas(area);
+    let [left_area, ir_area, ast_area] = Layout::horizontal([
+        Constraint::Percentage(20),
+        Constraint::Percentage(30),
+        Constraint::Percentage(50),
+    ])
+    .areas(area);
     let [block_area, asm_area] =
-        Layout::vertical([Percentage(50), Percentage(50)]).areas(left_area);
+        Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]).areas(left_area);
 
     block_panel::render_block_section(frame, block_area, ctx);
     asm_panel::render_asm_section(frame, asm_area, ctx);

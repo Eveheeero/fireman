@@ -1,14 +1,14 @@
 use crate::tui::FiremanCtx;
 use ratatui::{
-    prelude::{Constraint::*, *},
+    prelude::*,
     widgets::{self, List, ListItem, ListState, Paragraph},
 };
 
 pub fn display(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     let main_layout = Layout::vertical([
-        Fill(1),   // File tree area
-        Length(3), // Input area
-        Length(3), // Error message area (if needed)
+        Constraint::Fill(1),   // File tree area
+        Constraint::Length(3), // Input area
+        Constraint::Length(3), // Error message area (if needed)
     ]);
     let [tree_area, input_area, error_area] = main_layout.areas(area);
 

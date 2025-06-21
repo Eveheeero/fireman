@@ -1,20 +1,17 @@
+use ratatui::widgets;
+
 pub struct Context {
-    list: Vec<String>,
-    input: String,
+    pub list: Vec<String>,
+    pub list_selected: widgets::ListState,
+    pub input: String,
 }
 
 impl Context {
     pub fn new() -> Self {
         Context {
             list: Vec::new(),
+            list_selected: widgets::ListState::default(),
             input: String::new(),
         }
-    }
-
-    pub fn get_input(&self) -> &String {
-        &self.input
-    }
-    pub fn get_input_mut(&mut self) -> &mut String {
-        &mut self.input
     }
 }

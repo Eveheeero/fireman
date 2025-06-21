@@ -11,17 +11,12 @@ pub fn handle_events(ctx_: &MutexCtx) -> std::io::Result<bool> {
                     .unwrap()
                     .main_context
                     .block_context
-                    .get_input_mut()
+                    .input
                     .push(c);
                 Ok(false)
             }
             KeyCode::Backspace => {
-                ctx_.write()
-                    .unwrap()
-                    .main_context
-                    .block_context
-                    .get_input_mut()
-                    .pop();
+                ctx_.write().unwrap().main_context.block_context.input.pop();
                 Ok(false)
             }
             _ => Ok(false),
