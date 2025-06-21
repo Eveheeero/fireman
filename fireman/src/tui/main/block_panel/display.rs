@@ -30,7 +30,8 @@ fn render_block_inner(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
         Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(area);
 
     /* list */
-    let mut list_selected = panel_ctx.list_selected.clone();
+    let mut list_selected = widgets::ListState::default();
+    list_selected.select(panel_ctx.list_cursor);
     let list_items = panel_ctx
         .list
         .iter()
