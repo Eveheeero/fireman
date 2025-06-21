@@ -8,13 +8,11 @@ pub fn display(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     let main_layout = Layout::vertical([
         Constraint::Fill(1),   // File tree area
         Constraint::Length(3), // Input area
-        Constraint::Length(3), // Error message area (if needed)
     ]);
-    let [tree_area, input_area, error_area] = main_layout.areas(area);
+    let [tree_area, input_area] = main_layout.areas(area);
 
     render_file_tree(frame, tree_area, ctx);
     render_input_box(frame, input_area, ctx);
-    render_error_message(frame, error_area, ctx);
 }
 
 fn render_file_tree(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
@@ -46,13 +44,4 @@ fn render_input_box(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
         .block(widgets::Block::bordered().title("File Path"))
         .style(Style::default().fg(Color::Yellow));
     frame.render_widget(input_widget, area);
-}
-
-fn render_error_message(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
-    if let Some(ref error) = ctx.new_context.message {
-        let error_widget = Paragraph::new(error.as_str())
-            .block(widgets::Block::bordered().title("Status"))
-            .style(Style::default().fg(Color::Red));
-        frame.render_widget(error_widget, area);
-    }
 }

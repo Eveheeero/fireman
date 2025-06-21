@@ -98,7 +98,11 @@ fn display_title(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     let widgets = widgets::Block::new()
         .borders(widgets::Borders::TOP)
         .title("Fireball TUI")
-        .title(ctx.top_message.as_str());
+        .title(widgets::block::Title {
+            content: ctx.top_message.as_str().into(),
+            alignment: Some(Alignment::Right),
+            position: None,
+        });
     frame.render_widget(widgets, area);
 }
 fn display_keybindings(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {

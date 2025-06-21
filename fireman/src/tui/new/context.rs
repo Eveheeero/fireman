@@ -8,7 +8,6 @@ pub const PREFIX_FILE: &str = "📄 ";
 
 pub struct Context {
     pub path: String,
-    pub message: Option<String>,
     pub file_tree: Vec<String>,
     pub selected_index: usize,
 }
@@ -17,7 +16,6 @@ impl Context {
     pub fn new() -> Self {
         let mut ctx = Context {
             path: String::new(),
-            message: None,
             file_tree: Vec::new(),
             selected_index: 0,
         };

@@ -64,7 +64,7 @@ pub fn handle_events(ctx_: &MutexCtx) -> std::io::Result<bool> {
 fn handle_char_input(ctx_: &MutexCtx, c: char) {
     let mut ctx = ctx_.write().unwrap();
     ctx.new_context.path.push(c);
-    ctx.new_context.message = None;
+    ctx.top_message.clear();
     ctx.new_context.update_file_tree();
 
     // 문자 입력 후 첫 번째 매칭 항목으로 선택 인덱스 이동
@@ -82,7 +82,7 @@ fn handle_char_input(ctx_: &MutexCtx, c: char) {
 fn handle_backspace(ctx_: &MutexCtx) {
     let mut ctx = ctx_.write().unwrap();
     ctx.new_context.path.pop();
-    ctx.new_context.message = None;
+    ctx.top_message.clear();
     ctx.new_context.update_file_tree();
 }
 
@@ -91,7 +91,7 @@ fn handle_enter(ctx_: &MutexCtx) {
     let path = ctx.new_context.path.clone();
 
     if path.is_empty() {
-        ctx.new_context.message = Some("Please enter a file path".to_string());
+        ctx.top_message = "Please enter a file path".to_string();
     } else {
         match fs::File::open(&path) {
             Ok(_) => {
@@ -100,7 +100,7 @@ fn handle_enter(ctx_: &MutexCtx) {
                 ctx.scope = FiremanScope::Main;
             }
             Err(e) => {
-                ctx.new_context.message = Some(format!("Failed to open file: {}", e));
+                ctx.top_message = format!("Failed to open file: {}", e);
             }
         }
     }
@@ -138,7 +138,7 @@ fn handle_tab_completion(ctx_: &MutexCtx) {
     }
 
     ctx.new_context.update_file_tree();
-    ctx.new_context.message = None;
+    ctx.top_message.clear();
 }
 
 fn complete_first_item(ctx: &mut crate::tui::FiremanCtx, current_path: &Path) {
