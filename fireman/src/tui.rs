@@ -112,7 +112,7 @@ fn display_keybindings(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     let keybindings = {
         match ctx.scope {
             FiremanScope::New => new::get_keybinding(ctx),
-            FiremanScope::Main => main::get_keybinding(ctx),
+            FiremanScope::Main => &main::get_keybinding(ctx),
         }
     };
     for (k, v) in keybindings {

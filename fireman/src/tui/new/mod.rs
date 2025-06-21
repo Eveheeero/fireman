@@ -7,7 +7,7 @@ pub use context::Context;
 pub use display::display;
 pub use events::handle_events;
 
-pub fn get_keybinding(_ctx: &FiremanCtx) -> &'static [(&'static str, &'static str)] {
+pub const fn get_keybinding(_ctx: &FiremanCtx) -> &'static [(&'static str, &'static str)] {
     &[
         ("↑↓/Home/End/Pu/Pd", "Navigate"),
         ("type", "Enter path"),

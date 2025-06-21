@@ -70,14 +70,15 @@ enum SelectedPanel {
     AstPanel,
 }
 
-pub fn get_keybinding(_ctx: &FiremanCtx) -> &'static [(&'static str, &'static str)] {
-    &[
-        ("↑↓/Home/End/Pu/Pd", "Navigate"),
-        ("type", "Enter path"),
-        ("enter", "Open File"),
-        ("tab", "Autocomplete"),
-        ("esc", "Quit"),
-    ]
+pub fn get_keybinding(ctx: &FiremanCtx) -> Vec<(&'static str, &'static str)> {
+    let left = &[("ctrl↑↓←→", "Navigate panels"), ("esc", "Quit")];
+    let right = match ctx.main_context.selected_panel {
+        SelectedPanel::BlockPanel => block_panel::get_keybinding(ctx),
+        SelectedPanel::AsmPanel => asm_panel::get_keybinding(ctx),
+        SelectedPanel::IrPanel => ir_panel::get_keybinding(ctx),
+        SelectedPanel::AstPanel => ast_panel::get_keybinding(ctx),
+    };
+    [left, right].concat()
 }
 
 /// true if handled

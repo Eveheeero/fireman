@@ -43,14 +43,14 @@ fn render_block_inner(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     frame.render_stateful_widget(list, list_area, &mut list_selected);
 
     /* input */
-    let input_str = {
+    let input_widget = {
         let input = &panel_ctx.input;
         if input.is_empty() {
-            "Address"
+            widgets::Paragraph::new("entry")
+                .style(Style::new().add_modifier(Modifier::ITALIC).fg(Color::Gray))
         } else {
-            input.as_str()
+            widgets::Paragraph::new(input.as_str())
         }
     };
-    let input_widget = widgets::Paragraph::new(input_str);
     frame.render_widget(input_widget, input_area);
 }
