@@ -6,9 +6,12 @@ mod ir_panel;
 use crate::tui::{FiremanCtx, MutexCtx};
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
-    prelude::{Constraint::*, Layout, Rect},
+    prelude::{Constraint::*, *},
     Frame,
 };
+
+const SCOPED_STYLE: Style = Style::new().fg(Color::Yellow);
+const DEFAULT_STYLE: Style = Style::new().fg(Color::White);
 
 pub struct Context {
     selected_panel: SelectedPanel,
