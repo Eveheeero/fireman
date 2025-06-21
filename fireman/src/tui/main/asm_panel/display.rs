@@ -8,16 +8,21 @@ use ratatui::{
 };
 
 pub fn render_asm_section(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
-    let asm_title = "ASM Panel";
     let style = if ctx.main_context.selected_panel == SelectedPanel::AsmPanel {
         SCOPED_STYLE
     } else {
         DEFAULT_STYLE
     };
-    frame.render_widget(
-        Paragraph::new(asm_title)
-            .block(widgets::Block::bordered().style(style))
-            .style(DEFAULT_STYLE),
-        area,
-    );
+    frame.render_widget(widgets::Block::bordered().style(style), area);
+    let block_inner_area = area.inner(Margin {
+        horizontal: 1,
+        vertical: 1,
+    });
+    frame.render_widget(Paragraph::new("").style(DEFAULT_STYLE), block_inner_area);
+    render_block_inner(frame, block_inner_area, ctx);
+}
+
+fn render_block_inner(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
+    let temp = Paragraph::new("ASM Panel");
+    frame.render_widget(temp, area);
 }

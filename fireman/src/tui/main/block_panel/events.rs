@@ -6,6 +6,24 @@ pub fn handle_events(ctx_: &MutexCtx) -> std::io::Result<bool> {
         Event::Key(key) if key.kind == KeyEventKind::Press => match key.code {
             _ if super::super::handle_focus_move(ctx_, key) => Ok(false),
             KeyCode::Esc => Ok(true),
+            KeyCode::Char(c) => {
+                ctx_.write()
+                    .unwrap()
+                    .main_context
+                    .block_context
+                    .get_input_mut()
+                    .push(c);
+                Ok(false)
+            }
+            KeyCode::Backspace => {
+                ctx_.write()
+                    .unwrap()
+                    .main_context
+                    .block_context
+                    .get_input_mut()
+                    .pop();
+                Ok(false)
+            }
             _ => Ok(false),
         },
         _ => Ok(false),

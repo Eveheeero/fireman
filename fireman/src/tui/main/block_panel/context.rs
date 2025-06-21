@@ -10,4 +10,11 @@ impl Context {
             input: String::new(),
         }
     }
+
+    pub fn get_input(&self) -> &String {
+        &self.input
+    }
+    pub fn get_input_mut(&mut self) -> &mut String {
+        &mut self.input
+    }
 }
