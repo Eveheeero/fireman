@@ -88,6 +88,10 @@ impl Address {
         self.virtual_offset
     }
 
+    pub fn get_virtual_address_str(&self) -> String {
+        format!("0x{:x}", self.virtual_offset)
+    }
+
     /// Returns the section information.
     ///
     /// ### Returns

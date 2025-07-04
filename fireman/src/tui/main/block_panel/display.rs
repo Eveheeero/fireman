@@ -1,6 +1,6 @@
 use crate::tui::{
-    main::{SelectedPanel, DEFAULT_STYLE, SCOPED_STYLE},
     FiremanCtx,
+    main::{DEFAULT_STYLE, SCOPED_STYLE, SelectedPanel},
 };
 use ratatui::{prelude::*, widgets};
 
@@ -32,23 +32,22 @@ fn render_block_inner(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     /* list */
     let mut list_selected = widgets::ListState::default();
     list_selected.select(panel_ctx.list_cursor);
-    let list_items = panel_ctx
-        .list
-        .iter()
-        .map(|item| widgets::ListItem::new(item.as_str()));
-    let list = widgets::List::new(list_items).highlight_style(
-        Style::default()
-            .fg(Color::LightBlue)
-            .add_modifier(Modifier::BOLD),
-    );
+    let list_items = panel_ctx.list.iter().map(|item| item.list_item());
+    let list = widgets::List::new(list_items).highlight_symbol(">> ");
     frame.render_stateful_widget(list, list_area, &mut list_selected);
 
     /* input */
     let input_widget = {
         let input = &panel_ctx.input;
+        let cursor = panel_ctx.list_cursor.map(|x| &panel_ctx.list[x]);
         if input.is_empty() {
-            widgets::Paragraph::new("entry")
-                .style(Style::new().add_modifier(Modifier::ITALIC).fg(Color::Gray))
+            if let Some(cursor) = cursor {
+                widgets::Paragraph::new(cursor.start_address.get_virtual_address_str())
+                    .style(Style::new().add_modifier(Modifier::ITALIC).fg(Color::Gray))
+            } else {
+                widgets::Paragraph::new("entry")
+                    .style(Style::new().add_modifier(Modifier::ITALIC).fg(Color::Gray))
+            }
         } else {
             widgets::Paragraph::new(input.as_str())
         }

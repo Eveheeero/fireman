@@ -5,8 +5,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub fn handle_events(ctx_: &MutexCtx) -> std::io::Result<bool> {
-    match event::read()? {
+pub fn handle_events(event: event::Event, ctx_: &MutexCtx) -> std::io::Result<bool> {
+    match event {
         Event::Key(key) if key.kind == KeyEventKind::Press => match key.code {
             KeyCode::Esc => Ok(true),
             KeyCode::Up => {

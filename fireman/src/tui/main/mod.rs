@@ -5,9 +5,9 @@ mod ir_panel;
 
 use crate::tui::{FiremanCtx, MutexCtx};
 use ratatui::{
+    Frame,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     prelude::*,
-    Frame,
 };
 
 const SCOPED_STYLE: Style = Style::new().fg(Color::Yellow);
@@ -50,15 +50,18 @@ pub fn display(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     ast_panel::render_ast_section(frame, ast_area, ctx);
 }
 
-pub fn handle_events(ctx_: &MutexCtx) -> std::io::Result<bool> {
+pub fn handle_events(
+    event: ratatui::crossterm::event::Event,
+    ctx_: &MutexCtx,
+) -> std::io::Result<bool> {
     let ctx = ctx_.read().unwrap();
     let selected_panel = ctx.main_context.selected_panel;
     drop(ctx);
     match selected_panel {
-        SelectedPanel::BlockPanel => block_panel::handle_events(ctx_),
-        SelectedPanel::AsmPanel => asm_panel::handle_events(ctx_),
-        SelectedPanel::IrPanel => ir_panel::handle_events(ctx_),
-        SelectedPanel::AstPanel => ast_panel::handle_events(ctx_),
+        SelectedPanel::BlockPanel => block_panel::handle_events(event, ctx_),
+        SelectedPanel::AsmPanel => asm_panel::handle_events(event, ctx_),
+        SelectedPanel::IrPanel => ir_panel::handle_events(event, ctx_),
+        SelectedPanel::AstPanel => ast_panel::handle_events(event, ctx_),
     }
 }
 

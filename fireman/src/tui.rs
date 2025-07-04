@@ -3,12 +3,13 @@ mod new;
 
 use crate::utils::log::init_log;
 use ratatui::{
+    Frame,
     crossterm::event,
     prelude::{
         Constraint::{Length, Min},
         *,
     },
-    widgets, Frame,
+    widgets,
 };
 use std::{
     collections::VecDeque,
@@ -36,7 +37,7 @@ impl std::ops::Deref for MutexCtx {
 }
 pub struct FiremanCtx {
     /// If not none, fireball is busy
-    worker: Option<std::thread::JoinHandle<()>>,
+    _worker: Option<std::thread::JoinHandle<()>>,
     fireball: Option<fireball::Fireball>,
     scope: FiremanScope,
     redraw_queue: VecDeque<()>,
@@ -48,7 +49,7 @@ pub struct FiremanCtx {
 impl FiremanCtx {
     pub fn new() -> MutexCtx {
         MutexCtx(Arc::new(RwLock::new(FiremanCtx {
-            worker: None,
+            _worker: None,
             fireball: None,
             scope: FiremanScope::New,
             redraw_queue: VecDeque::new(),
@@ -56,6 +57,9 @@ impl FiremanCtx {
             new_context: new::Context::new(),
             main_context: main::Context::new(),
         })))
+    }
+    pub fn fireball(&self) -> &fireball::Fireball {
+        self.fireball.as_ref().unwrap()
     }
 }
 #[derive(PartialEq, Clone, Copy)]
@@ -127,11 +131,17 @@ fn display_keybindings(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     frame.render_widget(widgets, area);
 }
 pub fn handle_events(ctx_: &MutexCtx) -> std::io::Result<bool> {
-    let ctx = ctx_.read().unwrap();
+    let mut ctx = ctx_.write().unwrap();
     let scope = ctx.scope;
+    let event = event::read()?;
+    if let event::Event::Key(key) = event
+        && key.kind == event::KeyEventKind::Press
+    {
+        ctx.top_message.clear();
+    }
     drop(ctx);
     match scope {
-        FiremanScope::New => new::handle_events(ctx_),
-        FiremanScope::Main => main::handle_events(ctx_),
+        FiremanScope::New => new::handle_events(event, ctx_),
+        FiremanScope::Main => main::handle_events(event, ctx_),
     }
 }

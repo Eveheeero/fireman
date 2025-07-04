@@ -9,7 +9,7 @@ pub use events::handle_events;
 
 pub const fn get_keybinding(_ctx: &FiremanCtx) -> &'static [(&'static str, &'static str)] {
     &[
-        ("↑↓/Home/End/Pu/Pd", "Navigate"),
+        ("↑↓/Home/End/PgUp/PgDn", "Navigate"),
         ("type", "Enter path"),
         ("enter", "Open File"),
         ("tab", "Autocomplete"),
