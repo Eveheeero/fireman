@@ -6,6 +6,40 @@ members = [
     "firebat/src-tauri",
     "iceball",
     "dryice",
-    "iceball/architecture_doc_extractor",
     "fireman_macro",
 ]
+exclude = ["iceball/architecture_doc_extractor"]
+
+[workspace.package]
+version = "0.0.1"
+authors = ["Eveheeero <xhve00000@gmail.com>"]
+edition = "2024"
+license = "GPL-2.0"
+repository = "https://github.com/Eveheeero/fireman"
+homepage = "https://github.com/Eveheeero/fireman"
+readme = "README.md"
+
+[workspace.dependencies]
+# Internal crates
+fireball = { path = "fireball" }
+fireman_macro = { path = "fireman_macro" }
+iceball = { path = "iceball" }
+dryice = { path = "dryice" }
+
+# Common external dependencies
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+regex = "1.11"
+
+# Binary parsing and analysis
+goblin = "0.10"
+capstone = "0.13"
+pdb = "0.8"
+cpp_demangle = "0.4"
+
+# Data structures
+bitvec = "1"
+hashbrown = "0.15"
+num-bigint = "0.4"
