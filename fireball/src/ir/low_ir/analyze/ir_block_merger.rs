@@ -1,6 +1,8 @@
 use crate::{
     core::{Block, Instruction},
-    ir::{analyze::DataType, data::DataAccess, utils::IrStatementDescriptorMap, Ir, IrBlock},
+    ir::low_ir::{
+        Ir, IrBlock, analyze::DataType, data::DataAccess, utils::IrStatementDescriptorMap,
+    },
     prelude::*,
 };
 use std::sync::Arc;

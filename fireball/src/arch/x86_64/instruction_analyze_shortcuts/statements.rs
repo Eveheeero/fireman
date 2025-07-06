@@ -45,7 +45,7 @@ pub(in crate::arch) fn jump_by_call(target: impl Into<Aos<IrData>>) -> IrStateme
 pub(in crate::arch) fn type_specified(
     location: impl Into<Aos<IrData>>,
     size: impl Into<AccessSize>,
-    data_type: crate::ir::analyze::DataType,
+    data_type: crate::ir::low_ir::analyze::DataType,
 ) -> IrStatement {
     IrStatement::Special(IrStatementSpecial::TypeSpecified {
         location: location.into(),

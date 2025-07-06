@@ -1,17 +1,17 @@
 use crate::{
     core::Address,
     ir::{
-        analyze::{
-            ir_to_c::c_abstract_syntax_tree::{
-                AstDescriptor, BinaryOperator, CAst, CValue, Expression, FunctionId, JumpTarget,
-                Literal, PrintWithConfig, Statement, UnaryOperator, VariableId, Wrapped,
-                WrappedStatement,
-            },
-            variables::resolve_operand,
+        abstract_syntax_tree::{
+            AstDescriptor, BinaryOperator, CAst, CValue, Expression, FunctionId, JumpTarget,
+            Literal, PrintWithConfig, Statement, UnaryOperator, VariableId, Wrapped,
+            WrappedStatement,
         },
-        data::{AccessSize, IrData, IrDataOperation, IrIntrinsic, NumCondition},
-        operator::{BinaryOperator as IrBinaryOp, UnaryOperator as IrUnaryOp},
-        statements::{IrStatement, IrStatementSpecial},
+        low_ir::{
+            analyze::variables::resolve_operand,
+            data::{AccessSize, IrData, IrDataOperation, IrIntrinsic, NumCondition},
+            operator::{BinaryOperator as IrBinaryOp, UnaryOperator as IrUnaryOp},
+            statements::{IrStatement, IrStatementSpecial},
+        },
     },
     prelude::*,
     utils::Aos,
@@ -203,7 +203,7 @@ pub(super) fn convert_expr(
         },
         IrData::Operation(op) => match op {
             IrDataOperation::Unary { operator, arg } => {
-                return convert_unary(ast, function_id, root_expr, operator, arg, var_map)
+                return convert_unary(ast, function_id, root_expr, operator, arg, var_map);
             }
             IrDataOperation::Binary {
                 operator,
@@ -495,7 +495,7 @@ pub(super) fn convert_size(
 
     let result = match size {
         AccessSize::ResultOfBit(d) | AccessSize::ResultOfByte(d) | AccessSize::RelativeWith(d) => {
-            return convert_expr(ast, function_id, root_expr, d, var_map)
+            return convert_expr(ast, function_id, root_expr, d, var_map);
         }
         AccessSize::ArchitectureSize => Expression::ArchitectureByteSize,
         AccessSize::Unlimited => Expression::Unknown,

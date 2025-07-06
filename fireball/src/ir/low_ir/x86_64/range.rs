@@ -1,4 +1,4 @@
-use crate::ir::{x86_64::X64Range, Register, VirtualMachine};
+use crate::ir::low_ir::{Register, VirtualMachine, x86_64::X64Range};
 
 macro_rules! generate_range {
     ($name:ident, $block:literal, $from:literal, $to:literal) => {
