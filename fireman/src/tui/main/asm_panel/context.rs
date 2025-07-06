@@ -11,7 +11,7 @@ pub struct Context {
 }
 
 pub struct Data {
-    pub origin: Arc<[Instruction]>,
+    pub _origin: Arc<[Instruction]>,
     pub displayed: Arc<Mutex<Vec<String>>>,
 }
 
@@ -19,7 +19,7 @@ impl Data {
     pub fn new(origin: Arc<[Instruction]>) -> Self {
         let displayed = origin.iter().map(|x| x.to_string()).collect();
         Data {
-            origin,
+            _origin: origin,
             displayed: Arc::new(Mutex::new(displayed)),
         }
     }

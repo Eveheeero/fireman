@@ -14,8 +14,8 @@ pub struct Context {
 }
 
 pub struct Data {
-    pub instructions: Arc<[Instruction]>,
-    pub origin: Vec<Ir>,
+    pub _instructions: Arc<[Instruction]>,
+    pub _origin: Vec<Ir>,
     pub displayed: Arc<Mutex<Vec<String>>>,
 }
 
@@ -37,8 +37,8 @@ impl Data {
             }
         }
         Data {
-            instructions,
-            origin,
+            _instructions: instructions,
+            _origin: origin,
             displayed: Arc::new(Mutex::new(displayed)),
         }
     }

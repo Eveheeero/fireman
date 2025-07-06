@@ -256,9 +256,31 @@ pub fn generate_ast(ctx_: &MutexCtx) -> std::io::Result<()> {
         ctx.top_message = "Select block first".to_string();
         return Ok(());
     }
-    // TODO
-    // fireball::ir::analyze::generate_c_ast;
-    // let ast;
+    let key =
+        super::super::ast_panel::Key(selected.iter().map(|x| &x.start_address).cloned().collect());
+
+    match ctx.main_context.ast_context.data.get(&key) {
+        Some(data) => {
+            ctx.main_context.ast_context.list = data.displayed.clone();
+        }
+        None => {
+            let blocks = fireball.get_blocks();
+            let selected_blocks = selected
+                .iter()
+                .map(|x| &x.start_address)
+                .map(|address| blocks.get_by_start_address(address).unwrap());
+            let ast = fireball::ir::analyze::generate_c_ast(selected_blocks);
+            if let Err(e) = ast {
+                ctx.top_message = e.to_string();
+                return Ok(());
+            }
+            let ast = ast.unwrap();
+            let data = super::super::ast_panel::Data::new(ast);
+            let displayed = data.displayed.clone();
+            ctx.main_context.ast_context.data.insert(key, data);
+            ctx.main_context.ast_context.list = displayed;
+        }
+    }
 
     Ok(())
 }

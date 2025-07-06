@@ -29,8 +29,8 @@ fn render_block_inner(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     /* list */
     let mut list_selected = widgets::ListState::default();
     list_selected.select(panel_ctx.list_cursor);
-    let list_items = panel_ctx
-        .list
+    let list = panel_ctx.list.lock().unwrap();
+    let list_items = list
         .iter()
         .map(|item| widgets::ListItem::new(item.as_str()));
     let list = widgets::List::new(list_items).highlight_style(
