@@ -9,7 +9,7 @@ description = "Running Binary of Fireball"
 homepage = "https://crates.io/crates/fireman"
 
 [dependencies]
-fireball = { workspace = true, version = "0.0.1" }
+fireball.workspace = true
 clap = { version = "4.5", features = ["derive"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true

@@ -1,6 +1,6 @@
 use crate::tui::{
-    main::{SelectedPanel, DEFAULT_STYLE, SCOPED_STYLE},
     FiremanCtx,
+    main::{DEFAULT_STYLE, SCOPED_STYLE, SelectedPanel},
 };
 use ratatui::{prelude::*, widgets};
 
@@ -27,7 +27,8 @@ fn render_block_inner(frame: &mut Frame, area: Rect, ctx: &FiremanCtx) {
     let panel_ctx = &scope_ctx.ast_context;
 
     /* list */
-    let mut list_selected = panel_ctx.list_selected.clone();
+    let mut list_selected = widgets::ListState::default();
+    list_selected.select(panel_ctx.list_cursor);
     let list_items = panel_ctx
         .list
         .iter()

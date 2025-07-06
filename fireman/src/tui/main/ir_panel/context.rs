@@ -2,7 +2,6 @@ use fireball::{
     core::{Address, Instruction},
     ir::Ir,
 };
-use ratatui::widgets;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -11,7 +10,7 @@ use std::{
 pub struct Context {
     pub data: HashMap<Address, Data>,
     pub list: Arc<Mutex<Vec<String>>>,
-    pub list_selected: widgets::ListState,
+    pub list_cursor: Option<usize>,
 }
 
 pub struct Data {
@@ -50,7 +49,7 @@ impl Context {
         Context {
             data: HashMap::new(),
             list: Arc::new(Mutex::new(Vec::new())),
-            list_selected: widgets::ListState::default(),
+            list_cursor: None,
         }
     }
 }

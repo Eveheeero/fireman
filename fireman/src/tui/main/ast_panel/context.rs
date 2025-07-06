@@ -1,11 +1,10 @@
 use fireball::core::Address;
-use ratatui::widgets;
 use std::collections::{HashMap, HashSet};
 
 pub struct Context {
     pub data: HashMap<HashSet<Address>, Data>,
     pub list: Vec<String>,
-    pub list_selected: widgets::ListState,
+    pub list_cursor: Option<usize>,
 }
 
 pub struct Data {}
@@ -15,7 +14,7 @@ impl Context {
         Context {
             data: HashMap::new(),
             list: Vec::new(),
-            list_selected: widgets::ListState::default(),
+            list_cursor: None,
         }
     }
 }
