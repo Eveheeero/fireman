@@ -300,9 +300,9 @@ impl std::fmt::Display for IrData {
 impl std::fmt::Display for AccessSize {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AccessSize::ResultOfBit(aos) => write!(f, "({})bit", aos),
-            AccessSize::ResultOfByte(aos) => write!(f, "({})byte", aos),
-            AccessSize::RelativeWith(aos) => write!(f, "({})of", aos),
+            AccessSize::ResultOfBit(aos) => write!(f, "{}bit", aos),
+            AccessSize::ResultOfByte(aos) => write!(f, "{}byte", aos),
+            AccessSize::RelativeWith(aos) => write!(f, "sizeof({})", aos),
             AccessSize::ArchitectureSize => write!(f, "arch_len"),
             AccessSize::Unlimited => write!(f, "unlimited"),
         }
