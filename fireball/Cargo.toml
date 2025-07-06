@@ -20,7 +20,7 @@ pdb.workspace = true
 tracing = { workspace = true, features = [
   "log",
   "max_level_trace",
-  "release_max_level_off",
+  "release_max_level_debug",
 ] }
 bitvec.workspace = true
 fireman_macro.workspace = true

@@ -1,0 +1,51 @@
+use fireball::{core::Address, ir::analyze::ir_to_c::c_abstract_syntax_tree::CAst};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{Arc, Mutex},
+};
+
+pub struct Context {
+    pub data: HashMap<Key, Data>,
+    pub list: Arc<Mutex<Vec<String>>>,
+    pub list_cursor: Option<usize>,
+}
+#[derive(Eq, PartialEq)]
+pub struct Key(pub HashSet<Address>);
+
+pub struct Data {
+    pub _origin: CAst,
+    pub displayed: Arc<Mutex<Vec<String>>>,
+}
+
+impl Data {
+    pub fn new(origin: CAst) -> Self {
+        let displayed = origin
+            .to_c_code(None)
+            .trim()
+            .lines()
+            .map(|x| x.to_owned())
+            .collect();
+        Data {
+            _origin: origin,
+            displayed: Arc::new(Mutex::new(displayed)),
+        }
+    }
+}
+
+impl Context {
+    pub fn new() -> Self {
+        Context {
+            data: HashMap::new(),
+            list: Arc::new(Mutex::new(Vec::new())),
+            list_cursor: None,
+        }
+    }
+}
+
+impl std::hash::Hash for Key {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        for address in &self.0 {
+            address.hash(state);
+        }
+    }
+}

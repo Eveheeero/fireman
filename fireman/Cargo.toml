@@ -11,5 +11,11 @@ homepage = "https://crates.io/crates/fireman"
 [dependencies]
 fireball.workspace = true
 clap = { version = "4.5", features = ["derive"] }
-serde.workspace = true
+serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+ratatui = "0.29"
+tracing-subscriber.workspace = true
+tracing = { workspace = true, features = [
+  "max_level_trace",
+  "release_max_level_debug",
+] }
