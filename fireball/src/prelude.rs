@@ -2,10 +2,10 @@
 
 #![allow(unused_imports)]
 
+pub(crate) use crate::utils::error::FireballError;
 pub(crate) use crate::utils::error::decompile_error::DecompileError;
 pub(crate) use crate::utils::error::disassemble_error::DisassembleError;
 pub(crate) use crate::utils::error::io_error::IoError;
-pub(crate) use crate::utils::error::FireballError;
 pub(crate) use tracing::{debug, error, info, trace, warn};
 
 pub(crate) type BitBox = bitvec::prelude::BitBox<usize>;

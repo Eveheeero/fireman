@@ -2,7 +2,7 @@ pub mod prelude;
 mod tui;
 pub mod utils;
 
-use fireball::{core::FireRaw, Fireball};
+use fireball::{Fireball, core::FireRaw};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Setting {

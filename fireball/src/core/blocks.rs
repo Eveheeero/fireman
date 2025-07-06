@@ -1,7 +1,7 @@
 //! Module defining a structure that collects "Block"s resulting from program analysis
 
 use crate::core::{
-    relation::DestinationType, Address, Block, Instruction, Relation, RelationType, Relations,
+    Address, Block, Instruction, Relation, RelationType, Relations, relation::DestinationType,
 };
 use std::sync::Arc;
 

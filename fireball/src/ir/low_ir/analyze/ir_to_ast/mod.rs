@@ -1,19 +1,19 @@
-pub mod c_abstract_syntax_tree;
 mod convert;
 
 use crate::{
     core::Block,
     ir::{
-        analyze::{
-            ir_block_merger::merge_blocks,
-            ir_to_c::c_abstract_syntax_tree::{
-                AstDescriptor, CAst, CType, CValue, PrintWithConfig, Statement, Variable,
-                VariableId, Wrapped,
-            },
-            ControlFlowGraphAnalyzer, DataType, MergedIr,
+        abstract_syntax_tree::{
+            AstDescriptor, CAst, CType, CValue, PrintWithConfig, Statement, Variable, VariableId,
+            Wrapped,
         },
-        data::IrData,
-        utils::IrStatementDescriptor,
+        low_ir::{
+            analyze::{
+                ControlFlowGraphAnalyzer, DataType, MergedIr, ir_block_merger::merge_blocks,
+            },
+            data::IrData,
+            utils::IrStatementDescriptor,
+        },
     },
     prelude::*,
     utils::Aos,

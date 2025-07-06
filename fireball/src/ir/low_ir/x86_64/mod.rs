@@ -4,7 +4,7 @@ mod base;
 mod r#mut;
 mod range;
 
-use crate::ir::Register;
+use crate::ir::low_ir::Register;
 use crate::prelude::BitSlice;
 
 macro_rules! generate_register {
