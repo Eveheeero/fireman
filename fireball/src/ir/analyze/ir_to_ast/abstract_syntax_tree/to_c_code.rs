@@ -1,8 +1,8 @@
 use super::*;
 use hashbrown::HashSet;
 
-impl CAst {
-    pub fn to_c_code(&self, config: Option<CAstPrintConfig>) -> String {
+impl Ast {
+    pub fn to_c_code(&self, config: Option<AstPrintConfig>) -> String {
         let config = config.unwrap_or_default();
         let mut output = String::new();
 

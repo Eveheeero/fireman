@@ -17,7 +17,7 @@ use crate::{
     },
     prelude::BitBox,
     prelude::*,
-    utils::{error::ir_analyze_assertion_error::IrAnalyzeAssertionFailure, Aos},
+    utils::{Aos, error::ir_analyze_assertion_error::IrAnalyzeAssertionFailure},
 };
 pub use register::Register;
 use statements::IrStatement;

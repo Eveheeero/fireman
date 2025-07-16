@@ -1,6 +1,6 @@
 use super::*;
 
-impl CAst {
+impl Ast {
     pub fn optimize(&mut self) {
         // TODO: Implement optimization passes:
         // 1. Dead code elimination

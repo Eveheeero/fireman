@@ -1,9 +1,9 @@
 use crate::{
     ir::{
+        Ir,
         data::{AccessSize, IrData, IrDataContainable},
         statements::{IrStatement, IrStatementSpecial},
         utils::{IrStatementDescriptor, IrStatementDescriptorMap},
-        Ir,
     },
     prelude::*,
     utils::Aos,

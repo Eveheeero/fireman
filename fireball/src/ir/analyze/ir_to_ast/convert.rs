@@ -2,8 +2,8 @@ use crate::{
     core::Address,
     ir::{
         analyze::{
-            ir_to_c::c_abstract_syntax_tree::{
-                AstDescriptor, BinaryOperator, CAst, CValue, Expression, FunctionId, JumpTarget,
+            ir_to_ast::abstract_syntax_tree::{
+                Ast, AstDescriptor, BinaryOperator, CValue, Expression, FunctionId, JumpTarget,
                 Literal, PrintWithConfig, Statement, UnaryOperator, ValueOrigin, VariableId,
                 Wrapped, WrappedStatement,
             },
@@ -44,7 +44,7 @@ pub(super) fn wdn<T>(item: T) -> Wrapped<T> {
 }
 
 pub(super) fn convert_expr(
-    ast: &mut CAst,
+    ast: &mut Ast,
     function_id: FunctionId,
     root_expr: &Aos<IrData>,
     data: &Aos<IrData>,
@@ -217,7 +217,7 @@ pub(super) fn convert_expr(
 }
 
 pub(super) fn convert_stmt(
-    ast: &mut CAst,
+    ast: &mut Ast,
     function_id: FunctionId,
     stmt: &IrStatement,
     stmt_position: &AstDescriptor,
@@ -354,7 +354,7 @@ pub(super) fn convert_stmt(
 }
 
 pub(super) fn convert_unary(
-    ast: &mut CAst,
+    ast: &mut Ast,
     function_id: FunctionId,
     root_expr: &Aos<IrData>,
     operator: &IrUnaryOp,
@@ -374,7 +374,7 @@ pub(super) fn convert_unary(
 }
 
 pub(super) fn convert_binary(
-    ast: &mut CAst,
+    ast: &mut Ast,
     function_id: FunctionId,
     root_expr: &Aos<IrData>,
     operator: &IrBinaryOp,
@@ -485,7 +485,7 @@ pub(super) fn convert_binary(
 }
 
 pub(super) fn convert_size(
-    ast: &mut CAst,
+    ast: &mut Ast,
     function_id: FunctionId,
     root_expr: &Aos<IrData>,
     size: &AccessSize,
@@ -504,7 +504,7 @@ pub(super) fn convert_size(
 }
 
 pub(super) fn calc_flags_automatically(
-    ast: &mut CAst,
+    ast: &mut Ast,
     function_id: FunctionId,
     operation: &Aos<IrData>,
     stmt_position: &AstDescriptor,

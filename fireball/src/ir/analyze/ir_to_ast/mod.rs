@@ -1,16 +1,16 @@
-pub mod c_abstract_syntax_tree;
+pub mod abstract_syntax_tree;
 mod convert;
 
 use crate::{
     core::Block,
     ir::{
         analyze::{
-            ir_block_merger::merge_blocks,
-            ir_to_c::c_abstract_syntax_tree::{
-                AstDescriptor, CAst, CType, CValue, PrintWithConfig, Statement, Variable,
+            ControlFlowGraphAnalyzer, DataType, IrFunction,
+            ir_function::generate_ir_function,
+            ir_to_ast::abstract_syntax_tree::{
+                Ast, AstDescriptor, CType, CValue, PrintWithConfig, Statement, Variable,
                 VariableId, Wrapped,
             },
-            ControlFlowGraphAnalyzer, DataType, MergedIr,
         },
         data::IrData,
         utils::IrStatementDescriptor,
@@ -22,35 +22,27 @@ use convert::*;
 use hashbrown::HashMap;
 use std::sync::{Arc, RwLock};
 
-/// Generate C AST from targets
-pub fn generate_c_ast(
-    targets: impl IntoIterator<Item = Arc<Block>>,
-) -> Result<CAst, DecompileError> {
-    let mut ast = CAst::new();
+/// Generate AST from targets
+pub fn generate_ast(targets: impl IntoIterator<Item = Arc<Block>>) -> Result<Ast, DecompileError> {
+    let mut ast = Ast::new();
     let mut cfg_analyzer = ControlFlowGraphAnalyzer::new();
     cfg_analyzer.add_targets(targets);
     let cfgs = cfg_analyzer.analyze();
     for cfg in cfgs.into_iter() {
-        let merged = merge_blocks(&cfg.get_blocks());
-        generate_c_ast_function(&mut ast, merged)?;
+        let merged = generate_ir_function(&cfg.get_blocks());
+        generate_ast_function(&mut ast, merged)?;
     }
     Ok(ast)
 }
 
-/// Generate C function and add it to AST
-///
-/// ```rust, ignore
-/// let mut ast = fireball::ir::analyze::ir_to_c::c_abstract_syntax_tree::CAst::new();
-/// let merged = fireball::ir::analyze::ir_block_merger::merge_blocks(want_to_merge);
-/// generate_c_function(&mut ast, &merged);
-/// ```
+/// Generate AST function and add it to AST
 ///
 /// ### Arguments
-/// * `ast: &mut CAst` - The C AST to which the function will be added.
-/// * `data: MergedIr` - The merged IR data containing the function's instructions and variables.
-pub fn generate_c_ast_function(ast: &mut CAst, data: MergedIr) -> Result<(), DecompileError> {
+/// * `ast: &mut Ast` - The AST to which the function will be added.
+/// * `data: IrFunction` - The merged IR data containing the function's instructions and variables.
+pub fn generate_ast_function(ast: &mut Ast, data: IrFunction) -> Result<(), DecompileError> {
     let data = Arc::new(data);
-    let func_id = ast.generate_default_function(data.get_ir().first().map(|x| &x.address).unwrap());
+    let func_id = ast.generate_default_function(data.clone());
 
     let mut locals = HashMap::new();
     let mut var_map: HashMap<Aos<IrData>, VariableId> = HashMap::new();

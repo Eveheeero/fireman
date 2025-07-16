@@ -3,7 +3,7 @@ use super::*;
 // to_string_with_config(Some(config))
 
 impl PrintWithConfig for CType {
-    fn to_string_with_config(&self, option: Option<CAstPrintConfig>) -> String {
+    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
         output
@@ -11,7 +11,7 @@ impl PrintWithConfig for CType {
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
-        config: Option<CAstPrintConfig>,
+        config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
         match self {
@@ -42,7 +42,7 @@ impl PrintWithConfig for CType {
 }
 
 impl PrintWithConfig for Statement {
-    fn to_string_with_config(&self, option: Option<CAstPrintConfig>) -> String {
+    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
         output
@@ -50,7 +50,7 @@ impl PrintWithConfig for Statement {
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
-        config: Option<CAstPrintConfig>,
+        config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
         match self {
@@ -172,7 +172,7 @@ impl PrintWithConfig for Statement {
 }
 
 impl PrintWithConfig for Expression {
-    fn to_string_with_config(&self, option: Option<CAstPrintConfig>) -> String {
+    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
         output
@@ -180,7 +180,7 @@ impl PrintWithConfig for Expression {
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
-        config: Option<CAstPrintConfig>,
+        config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
         match self {
@@ -247,7 +247,7 @@ impl PrintWithConfig for Expression {
     }
 }
 impl PrintWithConfig for Literal {
-    fn to_string_with_config(&self, option: Option<CAstPrintConfig>) -> String {
+    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
         output
@@ -255,7 +255,7 @@ impl PrintWithConfig for Literal {
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
-        config: Option<CAstPrintConfig>,
+        config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
         match self {
@@ -269,7 +269,7 @@ impl PrintWithConfig for Literal {
     }
 }
 impl PrintWithConfig for UnaryOperator {
-    fn to_string_with_config(&self, option: Option<CAstPrintConfig>) -> String {
+    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
         output
@@ -277,7 +277,7 @@ impl PrintWithConfig for UnaryOperator {
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
-        config: Option<CAstPrintConfig>,
+        config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
         match self {
@@ -294,7 +294,7 @@ impl PrintWithConfig for UnaryOperator {
     }
 }
 impl PrintWithConfig for BinaryOperator {
-    fn to_string_with_config(&self, option: Option<CAstPrintConfig>) -> String {
+    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
         output
@@ -302,7 +302,7 @@ impl PrintWithConfig for BinaryOperator {
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
-        config: Option<CAstPrintConfig>,
+        config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
         match self {
@@ -328,7 +328,7 @@ impl PrintWithConfig for BinaryOperator {
     }
 }
 impl PrintWithConfig for Variable {
-    fn to_string_with_config(&self, option: Option<CAstPrintConfig>) -> String {
+    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
         output
@@ -336,7 +336,7 @@ impl PrintWithConfig for Variable {
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
-        config: Option<CAstPrintConfig>,
+        config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
         write!(
@@ -348,7 +348,7 @@ impl PrintWithConfig for Variable {
     }
 }
 impl PrintWithConfig for WrappedStatement {
-    fn to_string_with_config(&self, option: Option<CAstPrintConfig>) -> String {
+    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
         output
@@ -356,7 +356,7 @@ impl PrintWithConfig for WrappedStatement {
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
-        config: Option<CAstPrintConfig>,
+        config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
         if let Some(comment) = &self.comment {
@@ -366,7 +366,7 @@ impl PrintWithConfig for WrappedStatement {
     }
 }
 impl<T: PrintWithConfig> PrintWithConfig for Wrapped<T> {
-    fn to_string_with_config(&self, option: Option<CAstPrintConfig>) -> String {
+    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
         output
@@ -374,7 +374,7 @@ impl<T: PrintWithConfig> PrintWithConfig for Wrapped<T> {
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
-        config: Option<CAstPrintConfig>,
+        config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
         match self.comment {
@@ -390,7 +390,7 @@ impl<T: PrintWithConfig> PrintWithConfig for Wrapped<T> {
 }
 
 impl PrintWithConfig for JumpTarget {
-    fn to_string_with_config(&self, option: Option<CAstPrintConfig>) -> String {
+    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
         output
@@ -398,7 +398,7 @@ impl PrintWithConfig for JumpTarget {
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
-        config: Option<CAstPrintConfig>,
+        config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
         match self {
@@ -412,7 +412,7 @@ impl PrintWithConfig for JumpTarget {
     }
 }
 impl PrintWithConfig for CValue {
-    fn to_string_with_config(&self, option: Option<CAstPrintConfig>) -> String {
+    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
         output
@@ -420,7 +420,7 @@ impl PrintWithConfig for CValue {
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
-        config: Option<CAstPrintConfig>,
+        config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
         match self {

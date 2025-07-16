@@ -5,8 +5,7 @@ mod optimize;
 mod to_c_code;
 
 use crate::{
-    core::Address,
-    ir::{analyze::MergedIr, data::IrData, utils::IrStatementDescriptor},
+    ir::{analyze::IrFunction, data::IrData, utils::IrStatementDescriptor},
     prelude::*,
     utils::Aos,
 };
@@ -18,19 +17,19 @@ use std::{
 };
 
 #[derive(Debug, Clone)]
-pub struct CAst {
+pub struct Ast {
     pub static_variables: ArcVariableMap,
     pub functions: ArcFunctionMap,
     pub last_variable_id: HashMap<FunctionId, u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CAstPrintConfig {
+pub struct AstPrintConfig {
     pub print_instruction: bool,
     pub print_ir: bool,
     pub print_empty_statement: bool,
 }
-impl Default for CAstPrintConfig {
+impl Default for AstPrintConfig {
     fn default() -> Self {
         Self {
             print_instruction: true,
@@ -40,11 +39,11 @@ impl Default for CAstPrintConfig {
     }
 }
 pub trait PrintWithConfig {
-    fn to_string_with_config(&self, option: Option<CAstPrintConfig>) -> String;
+    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String;
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
-        config: Option<CAstPrintConfig>,
+        config: Option<AstPrintConfig>,
     ) -> std::fmt::Result;
 }
 
@@ -53,13 +52,14 @@ pub type ArcVariableMap = Arc<RwLock<HashMap<VariableId, Variable>>>;
 
 #[derive(Debug, Clone)]
 pub struct AstDescriptor {
-    ir: Arc<MergedIr>,
+    ir: Arc<IrFunction>,
     descriptor: IrStatementDescriptor,
 }
 #[derive(Debug, Clone)]
 pub struct Function {
     pub name: String,
     pub id: FunctionId,
+    pub ir: Arc<IrFunction>,
     pub return_type: CType,
     pub parameters: Vec<Variable>,
     pub variables: ArcVariableMap,
@@ -252,7 +252,7 @@ pub enum BinaryOperator {
     RightShift,
 }
 
-impl CAst {
+impl Ast {
     pub fn new() -> Self {
         Self {
             functions: Arc::new(RwLock::new(HashMap::new())),
@@ -261,7 +261,8 @@ impl CAst {
         }
     }
 
-    pub fn generate_default_function(&mut self, start_address: &Address) -> FunctionId {
+    pub fn generate_default_function(&mut self, ir: Arc<IrFunction>) -> FunctionId {
+        let start_address = ir.get_ir().first().map(|x| &x.address).unwrap();
         let id = FunctionId {
             address: start_address.get_virtual_address(),
         };
@@ -269,6 +270,7 @@ impl CAst {
         let func = Function {
             name,
             id,
+            ir,
             return_type: CType::Void,
             parameters: Vec::new(),
             variables: Arc::new(RwLock::new(HashMap::new())),
@@ -369,10 +371,10 @@ impl FunctionId {
 }
 
 impl AstDescriptor {
-    pub fn new(ir: Arc<MergedIr>, descriptor: IrStatementDescriptor) -> Self {
+    pub fn new(ir: Arc<IrFunction>, descriptor: IrStatementDescriptor) -> Self {
         Self { ir, descriptor }
     }
-    pub fn ir(&self) -> &Arc<MergedIr> {
+    pub fn ir(&self) -> &Arc<IrFunction> {
         &self.ir
     }
     pub fn descriptor(&self) -> &IrStatementDescriptor {
