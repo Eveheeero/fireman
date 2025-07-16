@@ -18,7 +18,7 @@ impl<Version: Ord + Hash, V> VersionMap<Version, V> {
         &self.inner
     }
     #[inline]
-    pub fn raw_mut(&mut self) -> &mut HashMap<Version, V> {
+    pub unsafe fn raw_mut(&mut self) -> &mut HashMap<Version, V> {
         &mut self.inner
     }
     #[inline]
@@ -26,7 +26,7 @@ impl<Version: Ord + Hash, V> VersionMap<Version, V> {
         self.inner.get(version)
     }
     #[inline]
-    pub fn get_mut(&mut self, version: &Version) -> Option<&mut V> {
+    pub(crate) fn get_mut(&mut self, version: &Version) -> Option<&mut V> {
         self.inner.get_mut(version)
     }
     #[inline]

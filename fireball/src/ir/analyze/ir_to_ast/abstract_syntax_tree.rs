@@ -38,6 +38,13 @@ impl Default for AstPrintConfig {
         }
     }
 }
+#[derive(Debug, Clone)]
+pub struct AstOptimizationConfig {}
+impl Default for AstOptimizationConfig {
+    fn default() -> Self {
+        Self {}
+    }
+}
 pub trait PrintWithConfig {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String;
     fn print(
