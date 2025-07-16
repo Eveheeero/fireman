@@ -7,7 +7,7 @@ mod print;
 use crate::{
     ir::{analyze::IrFunction, data::IrData, utils::IrStatementDescriptor},
     prelude::*,
-    utils::Aos,
+    utils::{Aos, version_map::VersionMap},
 };
 use hashbrown::HashMap;
 use num_bigint::{BigInt, Sign};
@@ -18,7 +18,7 @@ use std::{
 
 #[derive(Debug, Clone)]
 pub struct Ast {
-    pub static_variables: ArcAstVariableMap,
+    pub function_versions: HashMap<AstFunctionId, AstFunctionVersion>,
     pub functions: ArcAstFunctionMap,
     pub last_variable_id: HashMap<AstFunctionId, u32>,
 }
@@ -47,7 +47,8 @@ pub trait PrintWithConfig {
     ) -> std::fmt::Result;
 }
 
-pub type ArcAstFunctionMap = Arc<RwLock<HashMap<AstFunctionId, AstFunction>>>;
+pub type ArcAstFunctionMap =
+    Arc<RwLock<HashMap<AstFunctionId, VersionMap<AstFunctionVersion, AstFunction>>>>;
 pub type ArcAstVariableMap = Arc<RwLock<HashMap<AstVariableId, AstVariable>>>;
 
 #[derive(Debug, Clone)]
@@ -99,6 +100,7 @@ pub struct AstVariable {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy, Hash)]
 pub struct AstVariableId {
+    /// nth variable
     index: u32,
     parent: Option<AstFunctionId>,
 }
@@ -106,6 +108,8 @@ pub struct AstVariableId {
 pub struct AstFunctionId {
     address: u64,
 }
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy, Hash)]
+pub struct AstFunctionVersion(pub usize);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstValueType {
@@ -262,8 +266,8 @@ pub enum AstBinaryOperator {
 impl Ast {
     pub fn new() -> Self {
         Self {
+            function_versions: HashMap::new(),
             functions: Arc::new(RwLock::new(HashMap::new())),
-            static_variables: Arc::new(RwLock::new(HashMap::new())),
             last_variable_id: HashMap::new(),
         }
     }
@@ -283,7 +287,11 @@ impl Ast {
             variables: Arc::new(RwLock::new(HashMap::new())),
             body: Vec::new(),
         };
-        self.functions.write().unwrap().insert(id, func.clone());
+        self.functions
+            .write()
+            .unwrap()
+            .insert(id, VersionMap::new(AstFunctionVersion(1), func));
+        self.function_versions.insert(id, AstFunctionVersion(1));
         id
     }
     pub fn new_variable_id(&mut self, current_function: &AstFunctionId) -> AstVariableId {
@@ -297,13 +305,16 @@ impl Ast {
     pub fn get_variables(
         &self,
         function_id: &AstFunctionId,
+        function_version: &AstFunctionVersion,
     ) -> Result<ArcAstVariableMap, DecompileError> {
-        if let Some(func) = self.functions.read().unwrap().get(function_id) {
+        if let Some(version_map) = self.functions.read().unwrap().get(function_id)
+            && let Some(func) = version_map.get(function_version)
+        {
             Ok(func.variables.clone())
         } else {
             error!(
-                "Tried to get variables from a non-existing function: {:?}",
-                function_id
+                ?function_version,
+                "Tried to get variables from a non-existing function: {:?}", function_id
             );
             Err(DecompileError::Unknown(Some(
                 "Tried to get variables from a non-existing function".to_string(),

@@ -5,29 +5,12 @@ impl Ast {
     pub fn print(&self, config: Option<AstPrintConfig>) -> String {
         let config = config.unwrap_or_default();
         let mut output = String::new();
-
-        // Global variables
-        for var in self.static_variables.read().unwrap().values() {
-            if let Some(const_value) = &var.const_value {
-                output.push_str(&format!(
-                    "const {} {} = {};\n",
-                    var.var_type.to_string_with_config(Some(config)),
-                    var.name,
-                    const_value.to_string_with_config(Some(config))
-                ));
-            } else {
-                output.push_str(&format!(
-                    "{} {};\n",
-                    var.var_type.to_string_with_config(Some(config)),
-                    var.name
-                ));
-            }
-        }
-
-        output.push_str("\n");
+        let function_versions = &self.function_versions;
 
         // Functions
-        for func in self.functions.read().unwrap().values() {
+        for (func_id, version_map) in self.functions.read().unwrap().iter() {
+            let version = function_versions.get(func_id).unwrap();
+            let func = version_map.get(version).unwrap();
             output.push_str(&format!(
                 "{} {}(",
                 func.return_type.to_string_with_config(Some(config)),

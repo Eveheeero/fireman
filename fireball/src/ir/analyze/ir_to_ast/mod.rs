@@ -43,6 +43,7 @@ pub fn generate_ast(targets: impl IntoIterator<Item = Arc<Block>>) -> Result<Ast
 pub fn generate_ast_function(ast: &mut Ast, data: IrFunction) -> Result<(), DecompileError> {
     let data = Arc::new(data);
     let func_id = ast.generate_default_function(data.clone());
+    let function_version = *ast.function_versions.get(&func_id).unwrap();
 
     let mut locals = HashMap::new();
     let mut var_map: HashMap<Aos<IrData>, AstVariableId> = HashMap::new();
@@ -105,6 +106,8 @@ pub fn generate_ast_function(ast: &mut Ast, data: IrFunction) -> Result<(), Deco
         .unwrap()
         .get_mut(&func_id)
         .unwrap()
+        .get_mut(&function_version)
+        .unwrap()
         .variables = Arc::new(RwLock::new(locals));
 
     let mut func_body = Vec::new();
@@ -126,6 +129,7 @@ pub fn generate_ast_function(ast: &mut Ast, data: IrFunction) -> Result<(), Deco
                 func_body.push(convert_stmt(
                     ast,
                     func_id,
+                    function_version,
                     stmt,
                     &stmt_position,
                     None,
@@ -144,6 +148,8 @@ pub fn generate_ast_function(ast: &mut Ast, data: IrFunction) -> Result<(), Deco
         .write()
         .unwrap()
         .get_mut(&func_id)
+        .unwrap()
+        .get_mut(&function_version)
         .unwrap()
         .body = func_body;
 
