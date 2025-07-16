@@ -131,15 +131,23 @@ impl std::fmt::Display for IrStatement {
             } => {
                 write!(f, "if {}", condition)?;
                 write!(f, "{{")?;
-                for statement in true_branch {
-                    write!(f, "\n    {}", statement)?;
+                for (i, statement) in true_branch.iter().enumerate() {
+                    if i == 0 {
+                        write!(f, " {}", statement)?;
+                    } else {
+                        write!(f, "; {}", statement)?;
+                    }
                 }
-                write!(f, "\n}}")?;
+                write!(f, " }}")?;
                 write!(f, "else {{")?;
-                for statement in false_branch {
-                    write!(f, "\n    {}", statement)?;
+                for (i, statement) in false_branch.iter().enumerate() {
+                    if i == 0 {
+                        write!(f, " {}", statement)?;
+                    } else {
+                        write!(f, "; {}", statement)?;
+                    }
                 }
-                write!(f, "\n}}")
+                write!(f, " }}")
             }
             IrStatement::Special(ir_statement_special) => write!(f, "{}", ir_statement_special),
             IrStatement::Undefined => write!(f, "undefined"),
