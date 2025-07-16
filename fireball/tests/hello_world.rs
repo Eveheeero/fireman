@@ -42,6 +42,8 @@ fn hello_world() {
     let binary = get_binary();
 
     let pe = Pe::from_binary(binary.to_vec()).unwrap();
-    println!("{}", pe.decompile_all().unwrap());
+    let result = pe.decompile_all().unwrap();
+    println!("{}", &result);
+    std::fs::write("hello_world_result.log", &result).unwrap();
     assert!(true);
 }
