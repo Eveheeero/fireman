@@ -76,8 +76,17 @@ pub struct WrappedStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Wrapped<T> {
     pub item: T,
-    pub origin_expr: Option<Aos<IrData>>,
+    pub origin: ValueOrigin,
     pub comment: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ValueOrigin {
+    UserInput,
+    /// TODO predefined by files. like `func libc::strlen(str: char*) -> usize for ir [o1 = o1 + o2; ...]...` or `for asm [...]...`
+    PreDefined,
+    Expression(Aos<IrData>),
+    Unknown,
 }
 
 #[derive(Debug, Clone, PartialEq)]

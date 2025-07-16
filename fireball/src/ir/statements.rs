@@ -140,7 +140,7 @@ impl std::fmt::Display for IrStatement {
                 }
                 write!(f, " }}")?;
                 if !false_branch.is_empty() {
-                    write!(f, "else {{")?;
+                    write!(f, " else {{")?;
                     for (i, statement) in false_branch.iter().enumerate() {
                         if i == 0 {
                             write!(f, " {}", statement)?;

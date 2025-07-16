@@ -4,8 +4,8 @@ use crate::{
         analyze::{
             ir_to_c::c_abstract_syntax_tree::{
                 AstDescriptor, BinaryOperator, CAst, CValue, Expression, FunctionId, JumpTarget,
-                Literal, PrintWithConfig, Statement, UnaryOperator, VariableId, Wrapped,
-                WrappedStatement,
+                Literal, PrintWithConfig, Statement, UnaryOperator, ValueOrigin, VariableId,
+                Wrapped, WrappedStatement,
             },
             variables::resolve_operand,
         },
@@ -31,14 +31,14 @@ pub(super) fn ws(statement: Statement, from: AstDescriptor) -> WrappedStatement 
 pub(super) fn wd<T>(item: T, origin_expr: &Aos<IrData>) -> Wrapped<T> {
     Wrapped {
         item,
-        origin_expr: Some(origin_expr.clone()),
+        origin: ValueOrigin::Expression(origin_expr.clone()),
         comment: None,
     }
 }
 pub(super) fn wdn<T>(item: T) -> Wrapped<T> {
     Wrapped {
         item,
-        origin_expr: None,
+        origin: ValueOrigin::Unknown,
         comment: None,
     }
 }
@@ -203,7 +203,7 @@ pub(super) fn convert_expr(
         },
         IrData::Operation(op) => match op {
             IrDataOperation::Unary { operator, arg } => {
-                return convert_unary(ast, function_id, root_expr, operator, arg, var_map)
+                return convert_unary(ast, function_id, root_expr, operator, arg, var_map);
             }
             IrDataOperation::Binary {
                 operator,
@@ -495,7 +495,7 @@ pub(super) fn convert_size(
 
     let result = match size {
         AccessSize::ResultOfBit(d) | AccessSize::ResultOfByte(d) | AccessSize::RelativeWith(d) => {
-            return convert_expr(ast, function_id, root_expr, d, var_map)
+            return convert_expr(ast, function_id, root_expr, d, var_map);
         }
         AccessSize::ArchitectureSize => Expression::ArchitectureByteSize,
         AccessSize::Unlimited => Expression::Unknown,
