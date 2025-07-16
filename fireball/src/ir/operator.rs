@@ -1,5 +1,5 @@
 use crate::{
-    ir::low_ir::data::{AccessSize, IrData, IrDataContainable},
+    ir::data::{AccessSize, IrData, IrDataContainable},
     utils::Aos,
 };
 

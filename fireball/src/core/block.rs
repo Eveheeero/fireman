@@ -1,7 +1,7 @@
 //! Module defining `Block`s generated per section by program analysis.
 
 use super::{Address, Relation, Section};
-use crate::{core::Instruction, ir::low_ir::IrBlock};
+use crate::{core::Instruction, ir::IrBlock};
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 /// IR-level block created by analysis.

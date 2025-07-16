@@ -1,6 +1,6 @@
 use fireball::{
     core::{Address, Instruction},
-    ir::low_ir::Ir,
+    ir::Ir,
 };
 use std::{
     collections::HashMap,

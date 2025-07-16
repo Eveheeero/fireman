@@ -1,7 +1,7 @@
 use crate::{
-    Fire,
     core::{Address, Block, Blocks, PreDefinedOffsets, Relations, Sections},
     prelude::DecompileError,
+    Fire,
 };
 use std::sync::Arc;
 

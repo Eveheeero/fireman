@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use quote::{ToTokens, quote};
-use syn::{DeriveInput, parse_macro_input};
+use quote::{quote, ToTokens};
+use syn::{parse_macro_input, DeriveInput};
 
 /// impl FromStr for enum, case will be ignored
 #[proc_macro_derive(StrToEnum, attributes(str_to_enum_type, str_to_enum_item))]

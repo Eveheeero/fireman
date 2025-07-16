@@ -23,28 +23,25 @@ impl Fire for Pe {
     }
 
     fn decompile_all(&self) -> Result<String, DecompileError> {
-        Ok(crate::ir::low_ir::analyze::generate_c_ast(self.analyze_all()?)?.to_c_code(None))
+        Ok(crate::ir::analyze::generate_c_ast(self.analyze_all()?)?.to_c_code(None))
     }
 
     fn decompile_from_entry(&self) -> Result<String, DecompileError> {
-        Ok(
-            crate::ir::low_ir::analyze::generate_c_ast([self.analyze_from_entry()?])?
-                .to_c_code(None),
-        )
+        Ok(crate::ir::analyze::generate_c_ast([self.analyze_from_entry()?])?.to_c_code(None))
     }
 
     fn decompile_from_file_offset(&self, address: u64) -> Result<String, DecompileError> {
         Ok(
-            crate::ir::low_ir::analyze::generate_c_ast([self.analyze_from_file_offset(address)?])?
+            crate::ir::analyze::generate_c_ast([self.analyze_from_file_offset(address)?])?
                 .to_c_code(None),
         )
     }
 
     fn decompile_from_virtual_address(&self, address: u64) -> Result<String, DecompileError> {
-        Ok(crate::ir::low_ir::analyze::generate_c_ast([
-            self.analyze_from_virtual_address(address)?
-        ])?
-        .to_c_code(None))
+        Ok(
+            crate::ir::analyze::generate_c_ast([self.analyze_from_virtual_address(address)?])?
+                .to_c_code(None),
+        )
     }
 }
 impl FireRaw for Pe {

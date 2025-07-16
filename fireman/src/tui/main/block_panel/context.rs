@@ -3,7 +3,7 @@ use ratatui::widgets;
 pub struct Context {
     pub list: Vec<BlockListItem>,
     pub list_cursor: Option<usize>,
-    pub entry_analyzed: bool,
+    pub entry_analyzed :bool,
     pub input: String,
 }
 

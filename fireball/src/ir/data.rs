@@ -1,5 +1,5 @@
 use crate::{
-    ir::low_ir::operator::{BinaryOperator, UnaryOperator},
+    ir::operator::{BinaryOperator, UnaryOperator},
     utils::Aos,
 };
 use std::num::NonZeroU8;
@@ -12,7 +12,7 @@ pub enum IrData {
     /// Special data (undefined, residual data)
     Intrinsic(IrIntrinsic),
     /// The register operand (e.g., ebx) in `mov eax, ebx`
-    Register(crate::ir::low_ir::Register),
+    Register(crate::ir::Register),
     /// The memory operand (e.g., dword ptr [eax]) in `mov eax, dword ptr [eax]`
     Dereference(Aos<IrData>),
     /// An IR data operation
@@ -96,8 +96,8 @@ impl From<&AccessSize> for AccessSize {
         value.clone()
     }
 }
-impl From<&crate::ir::low_ir::Register> for Aos<IrData> {
-    fn from(value: &crate::ir::low_ir::Register) -> Self {
+impl From<&crate::ir::Register> for Aos<IrData> {
+    fn from(value: &crate::ir::Register) -> Self {
         IrData::Register(*value).into()
     }
 }

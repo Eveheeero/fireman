@@ -1,11 +1,11 @@
 use crate::{
-    ir::low_ir::{
-        IrBlock,
+    ir::{
         analyze::{DataType, KnownDataType},
         data::{AccessSize, DataAccess, DataAccessType, IrData, IrDataOperation, IrIntrinsic},
         operator::BinaryOperator,
         statements::IrStatement,
         utils::{IrStatementDescriptor, IrStatementDescriptorMap},
+        IrBlock,
     },
     utils::Aos,
 };

@@ -6,7 +6,7 @@ mod to_c_code;
 
 use crate::{
     core::Address,
-    ir::low_ir::{analyze::MergedIr, data::IrData, utils::IrStatementDescriptor},
+    ir::{analyze::MergedIr, data::IrData, utils::IrStatementDescriptor},
     prelude::*,
     utils::Aos,
 };

@@ -1,7 +1,7 @@
 use super::Pe;
 use crate::{
     core::{Address, Block},
-    ir::low_ir::{Ir, IrBlock},
+    ir::{Ir, IrBlock},
     prelude::*,
 };
 use std::sync::Arc;

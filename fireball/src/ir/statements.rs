@@ -1,7 +1,7 @@
 //! Module containing IR statements
 
 use crate::{
-    ir::low_ir::data::{AccessSize, IrData, IrDataContainable},
+    ir::data::{AccessSize, IrData, IrDataContainable},
     utils::Aos,
 };
 
@@ -45,7 +45,7 @@ pub enum IrStatementSpecial {
     TypeSpecified {
         location: Aos<IrData>,
         size: AccessSize,
-        data_type: crate::ir::low_ir::analyze::DataType,
+        data_type: crate::ir::analyze::DataType,
     },
     CalcFlagsAutomatically {
         operation: Aos<IrData>,

@@ -269,7 +269,7 @@ pub fn generate_ast(ctx_: &MutexCtx) -> std::io::Result<()> {
                 .iter()
                 .map(|x| &x.start_address)
                 .map(|address| blocks.get_by_start_address(address).unwrap());
-            let ast = fireball::ir::low_ir::analyze::generate_c_ast(selected_blocks);
+            let ast = fireball::ir::analyze::generate_c_ast(selected_blocks);
             if let Err(e) = ast {
                 ctx.top_message = e.to_string();
                 return Ok(());

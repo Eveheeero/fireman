@@ -5,7 +5,7 @@ pub mod instruction_analyze;
 mod static_register {
     #![allow(non_upper_case_globals, unused)]
     use crate::{
-        ir::low_ir::{Register, VirtualMachine, data::IrData, x86_64::X64Range as X64},
+        ir::{data::IrData, x86_64::X64Range as X64, Register, VirtualMachine},
         utils::Aos,
     };
     use std::sync::LazyLock;
@@ -375,9 +375,7 @@ mod static_register {
     static_register!(tmp4_512);
 }
 
-pub(crate) fn str_to_x64_register(
-    data: &str,
-) -> crate::utils::Aos<crate::ir::low_ir::data::IrData> {
+pub(crate) fn str_to_x64_register(data: &str) -> crate::utils::Aos<crate::ir::data::IrData> {
     let data = data.to_ascii_lowercase();
     macro_rules! str_to_reg {
         ($name:ident) => {

@@ -1,28 +1,31 @@
 use crate::{
-    ir::low_ir::{
+    ir::{
+        x86_64::{X64Range, X64},
         VirtualMachine,
-        x86_64::{X64Mut, X64Range},
     },
     prelude::BitSlice,
 };
+use std::cell::UnsafeCell;
 
-/// ```ignore
-/// generate_register!(rax);
-/// // equals
-/// fn rax(&mut self) -> &mut BitSlice {
-///     Self::const_bitslice_to_mut(X64::rax(self))
-/// }
-/// ```
 macro_rules! generate_register {
-    ($reg:ident) => {
+    ($name:ident) => {
         #[inline(always)]
-        fn $reg(&mut self) -> &mut BitSlice {
-            &mut self.get_raw_mut()[<VirtualMachine as X64Range>::$reg().bit_range()]
+        fn $name(&self) -> &BitSlice {
+            &self.get_raw()[<VirtualMachine as X64Range>::$name().bit_range()]
         }
     };
 }
 
-impl X64Mut for VirtualMachine {
+impl X64 for VirtualMachine {
+    #[inline(always)]
+    fn new() -> Self {
+        let mut register = bitvec::prelude::BitVec::new();
+        register.resize(192 * 64, false);
+        Self {
+            register: UnsafeCell::new(register.into_boxed_bitslice()),
+        }
+    }
+
     generate_register!(rax);
     generate_register!(eax);
     generate_register!(ax);
