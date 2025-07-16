@@ -5,7 +5,7 @@ use super::*;
 pub(in crate::arch) fn assign(
     from: impl Into<Aos<IrData>>,
     to: impl Into<Aos<IrData>>,
-    size: impl Into<AccessSize>,
+    size: impl Into<IrAccessSize>,
 ) -> IrStatement {
     IrStatement::Assignment {
         from: from.into(),
@@ -44,7 +44,7 @@ pub(in crate::arch) fn jump_by_call(target: impl Into<Aos<IrData>>) -> IrStateme
 #[must_use]
 pub(in crate::arch) fn type_specified(
     location: impl Into<Aos<IrData>>,
-    size: impl Into<AccessSize>,
+    size: impl Into<IrAccessSize>,
     data_type: crate::ir::analyze::DataType,
 ) -> IrStatement {
     IrStatement::Special(IrStatementSpecial::TypeSpecified {
@@ -61,7 +61,7 @@ pub(in crate::arch) fn type_specified(
 #[must_use]
 pub(in crate::arch) fn calc_flags_automatically(
     operation: impl Into<Aos<IrData>>,
-    size: impl Into<AccessSize>,
+    size: impl Into<IrAccessSize>,
     affected_registers: &[&Aos<IrData>],
 ) -> IrStatement {
     use crate::arch::x86_64::static_register::*;

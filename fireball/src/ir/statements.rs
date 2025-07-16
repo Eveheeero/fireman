@@ -1,7 +1,7 @@
 //! Module containing IR statements
 
 use crate::{
-    ir::data::{AccessSize, IrData, IrDataContainable},
+    ir::data::{IrAccessSize, IrData, IrDataContainable},
     utils::Aos,
 };
 
@@ -19,7 +19,7 @@ pub enum IrStatement {
     Assignment {
         from: Aos<IrData>,
         to: Aos<IrData>,
-        size: AccessSize,
+        size: IrAccessSize,
     },
     /// Jump instruction
     Jump {
@@ -44,12 +44,12 @@ pub enum IrStatement {
 pub enum IrStatementSpecial {
     TypeSpecified {
         location: Aos<IrData>,
-        size: AccessSize,
+        size: IrAccessSize,
         data_type: crate::ir::analyze::DataType,
     },
     CalcFlagsAutomatically {
         operation: Aos<IrData>,
-        size: AccessSize,
+        size: IrAccessSize,
         flags: Vec<Aos<IrData>>,
     },
     Assertion {

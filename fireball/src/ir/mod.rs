@@ -13,7 +13,7 @@ use crate::{
     core::{Address, Instruction},
     ir::{
         analyze::{IrVariable, KnownDataType},
-        data::{DataAccess, IrData},
+        data::{IrData, IrDataAccess},
     },
     prelude::BitBox,
     prelude::*,
@@ -53,7 +53,7 @@ impl VirtualMachine {
 pub struct IrBlock {
     ir: Box<[Ir]>,
     instructions: Arc<[Instruction]>,
-    pub data_access: Option<IrStatementDescriptorMap<Vec<DataAccess>>>,
+    pub data_access: Option<IrStatementDescriptorMap<Vec<IrDataAccess>>>,
     /// Analyzed Datatypes.
     pub known_datatypes: Option<IrStatementDescriptorMap<Vec<KnownDataType>>>,
     /// Analyzed Variables

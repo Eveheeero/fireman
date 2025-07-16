@@ -18,9 +18,9 @@ use std::{
 
 #[derive(Debug, Clone)]
 pub struct Ast {
-    pub static_variables: ArcVariableMap,
-    pub functions: ArcFunctionMap,
-    pub last_variable_id: HashMap<FunctionId, u32>,
+    pub static_variables: ArcAstVariableMap,
+    pub functions: ArcAstFunctionMap,
+    pub last_variable_id: HashMap<AstFunctionId, u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,8 +47,8 @@ pub trait PrintWithConfig {
     ) -> std::fmt::Result;
 }
 
-pub type ArcFunctionMap = Arc<RwLock<HashMap<FunctionId, Function>>>;
-pub type ArcVariableMap = Arc<RwLock<HashMap<VariableId, Variable>>>;
+pub type ArcAstFunctionMap = Arc<RwLock<HashMap<AstFunctionId, AstFunction>>>;
+pub type ArcAstVariableMap = Arc<RwLock<HashMap<AstVariableId, AstVariable>>>;
 
 #[derive(Debug, Clone)]
 pub struct AstDescriptor {
@@ -56,19 +56,19 @@ pub struct AstDescriptor {
     descriptor: IrStatementDescriptor,
 }
 #[derive(Debug, Clone)]
-pub struct Function {
+pub struct AstFunction {
     pub name: String,
-    pub id: FunctionId,
+    pub id: AstFunctionId,
     pub ir: Arc<IrFunction>,
-    pub return_type: CType,
-    pub parameters: Vec<Variable>,
-    pub variables: ArcVariableMap,
-    pub body: Vec<WrappedStatement>,
+    pub return_type: AstValueType,
+    pub parameters: Vec<AstVariable>,
+    pub variables: ArcAstVariableMap,
+    pub body: Vec<WrappedAstStatement>,
 }
 
 #[derive(Debug, Clone)]
-pub struct WrappedStatement {
-    pub statement: Statement,
+pub struct WrappedAstStatement {
+    pub statement: AstStatement,
     pub from: Option<AstDescriptor>,
     pub comment: Option<String>,
 }
@@ -76,12 +76,12 @@ pub struct WrappedStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Wrapped<T> {
     pub item: T,
-    pub origin: ValueOrigin,
+    pub origin: AstValueOrigin,
     pub comment: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ValueOrigin {
+pub enum AstValueOrigin {
     UserInput,
     /// TODO predefined by files. like `func libc::strlen(str: char*) -> usize for ir [o1 = o1 + o2; ...]...` or `for asm [...]...`
     PreDefined,
@@ -90,25 +90,25 @@ pub enum ValueOrigin {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Variable {
+pub struct AstVariable {
     pub name: String,
-    pub id: VariableId,
-    pub var_type: CType,
-    pub const_value: Option<Wrapped<CValue>>,
+    pub id: AstVariableId,
+    pub var_type: AstValueType,
+    pub const_value: Option<Wrapped<AstValue>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy, Hash)]
-pub struct VariableId {
+pub struct AstVariableId {
     index: u32,
-    parent: Option<FunctionId>,
+    parent: Option<AstFunctionId>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy, Hash)]
-pub struct FunctionId {
+pub struct AstFunctionId {
     address: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum CType {
+pub enum AstValueType {
     Void,
     Unknown,
     Int,
@@ -125,14 +125,14 @@ pub enum CType {
     Float,
     Double,
     Bool,
-    Pointer(Box<CType>),
-    Array(Box<CType>, usize),
-    Struct(String, Vec<Variable>),
-    Union(String, Vec<Variable>),
+    Pointer(Box<AstValueType>),
+    Array(Box<AstValueType>, usize),
+    Struct(String, Vec<AstVariable>),
+    Union(String, Vec<AstVariable>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum CValue {
+pub enum AstValue {
     Void,
     Unknown,
     Undefined,
@@ -142,12 +142,12 @@ pub enum CValue {
     Char(char),
     Double(f64),
     Bool(bool),
-    Pointer(Box<Wrapped<CValue>>),
-    Array(Vec<Wrapped<CValue>>),
+    Pointer(Box<Wrapped<AstValue>>),
+    Array(Vec<Wrapped<AstValue>>),
 }
 
 #[derive(Debug, Clone)]
-pub enum Literal {
+pub enum AstLiteral {
     Int(i64),
     UInt(u64),
     Float(f64),
@@ -157,26 +157,26 @@ pub enum Literal {
 }
 
 #[derive(Debug, Clone)]
-pub enum Statement {
-    Declaration(Variable, Option<Wrapped<Expression>>),
-    Assignment(Wrapped<Expression>, Wrapped<Expression>),
+pub enum AstStatement {
+    Declaration(AstVariable, Option<Wrapped<AstExpression>>),
+    Assignment(Wrapped<AstExpression>, Wrapped<AstExpression>),
     If(
-        Wrapped<Expression>,
-        Vec<WrappedStatement>,
-        Option<Vec<WrappedStatement>>,
+        Wrapped<AstExpression>,
+        Vec<WrappedAstStatement>,
+        Option<Vec<WrappedAstStatement>>,
     ),
-    While(Wrapped<Expression>, Vec<WrappedStatement>),
+    While(Wrapped<AstExpression>, Vec<WrappedAstStatement>),
     For(
-        Box<WrappedStatement>,
-        Wrapped<Expression>,
-        Box<WrappedStatement>,
-        Vec<WrappedStatement>,
+        Box<WrappedAstStatement>,
+        Wrapped<AstExpression>,
+        Box<WrappedAstStatement>,
+        Vec<WrappedAstStatement>,
     ),
-    Return(Option<Wrapped<Expression>>),
-    Call(JumpTarget, Vec<Wrapped<Expression>>),
+    Return(Option<Wrapped<AstExpression>>),
+    Call(AstJumpTarget, Vec<Wrapped<AstExpression>>),
     Label(String /* TODO need to change */),
-    Goto(JumpTarget),
-    Block(Vec<WrappedStatement>),
+    Goto(AstJumpTarget),
+    Block(Vec<WrappedAstStatement>),
     Assembly(String),
     Undefined,
     Exception(&'static str),
@@ -184,37 +184,44 @@ pub enum Statement {
     Empty,
 }
 #[derive(Debug, Clone)]
-pub enum JumpTarget {
-    Variable { scope: FunctionId, id: VariableId },
-    Function { target: FunctionId },
-    Instruction { target: AstDescriptor },
+pub enum AstJumpTarget {
+    Variable {
+        scope: AstFunctionId,
+        id: AstVariableId,
+    },
+    Function {
+        target: AstFunctionId,
+    },
+    Instruction {
+        target: AstDescriptor,
+    },
     Unknown(String),
 }
 
 #[derive(Debug, Clone)]
-pub enum Expression {
+pub enum AstExpression {
     Unknown,
     Undefined,
     ArchitectureBitSize,
     ArchitectureByteSize,
-    Literal(Literal),
-    Variable(ArcVariableMap, VariableId),
-    UnaryOp(UnaryOperator, Box<Wrapped<Expression>>),
+    Literal(AstLiteral),
+    Variable(ArcAstVariableMap, AstVariableId),
+    UnaryOp(AstUnaryOperator, Box<Wrapped<AstExpression>>),
     BinaryOp(
-        BinaryOperator,
-        Box<Wrapped<Expression>>,
-        Box<Wrapped<Expression>>,
+        AstBinaryOperator,
+        Box<Wrapped<AstExpression>>,
+        Box<Wrapped<AstExpression>>,
     ),
-    Call(String, Vec<Wrapped<Expression>>),
-    Cast(CType, Box<Wrapped<Expression>>),
-    Deref(Box<Wrapped<Expression>>),
-    AddressOf(Box<Wrapped<Expression>>),
-    ArrayAccess(Box<Wrapped<Expression>>, Box<Wrapped<Expression>>),
-    MemberAccess(Box<Wrapped<Expression>>, String),
+    Call(String, Vec<Wrapped<AstExpression>>),
+    Cast(AstValueType, Box<Wrapped<AstExpression>>),
+    Deref(Box<Wrapped<AstExpression>>),
+    AddressOf(Box<Wrapped<AstExpression>>),
+    ArrayAccess(Box<Wrapped<AstExpression>>, Box<Wrapped<AstExpression>>),
+    MemberAccess(Box<Wrapped<AstExpression>>, String),
 }
 
 #[derive(Debug, Clone)]
-pub enum UnaryOperator {
+pub enum AstUnaryOperator {
     Negate,  // -
     Not,     // !
     BitNot,  // ~
@@ -227,7 +234,7 @@ pub enum UnaryOperator {
 }
 
 #[derive(Debug, Clone)]
-pub enum BinaryOperator {
+pub enum AstBinaryOperator {
     Add,
     Sub,
     Mul,
@@ -261,17 +268,17 @@ impl Ast {
         }
     }
 
-    pub fn generate_default_function(&mut self, ir: Arc<IrFunction>) -> FunctionId {
+    pub fn generate_default_function(&mut self, ir: Arc<IrFunction>) -> AstFunctionId {
         let start_address = ir.get_ir().first().map(|x| &x.address).unwrap();
-        let id = FunctionId {
+        let id = AstFunctionId {
             address: start_address.get_virtual_address(),
         };
         let name = id.get_default_name();
-        let func = Function {
+        let func = AstFunction {
             name,
             id,
             ir,
-            return_type: CType::Void,
+            return_type: AstValueType::Void,
             parameters: Vec::new(),
             variables: Arc::new(RwLock::new(HashMap::new())),
             body: Vec::new(),
@@ -279,18 +286,18 @@ impl Ast {
         self.functions.write().unwrap().insert(id, func.clone());
         id
     }
-    pub fn new_variable_id(&mut self, current_function: &FunctionId) -> VariableId {
+    pub fn new_variable_id(&mut self, current_function: &AstFunctionId) -> AstVariableId {
         let last_index = self.last_variable_id.entry(*current_function).or_insert(0);
         *last_index += 1;
-        VariableId {
+        AstVariableId {
             index: *last_index,
             parent: Some(*current_function),
         }
     }
     pub fn get_variables(
         &self,
-        function_id: &FunctionId,
-    ) -> Result<ArcVariableMap, DecompileError> {
+        function_id: &AstFunctionId,
+    ) -> Result<ArcAstVariableMap, DecompileError> {
         if let Some(func) = self.functions.read().unwrap().get(function_id) {
             Ok(func.variables.clone())
         } else {
@@ -305,39 +312,39 @@ impl Ast {
     }
 }
 
-impl CValue {
+impl AstValue {
     pub fn num(&self) -> Option<&BigInt> {
         match self {
-            CValue::Num(i) => Some(i),
+            AstValue::Num(i) => Some(i),
             _ => None,
         }
     }
     pub fn char(&self) -> Option<&char> {
         match self {
-            CValue::Char(c) => Some(c),
+            AstValue::Char(c) => Some(c),
             _ => None,
         }
     }
     pub fn double(&self) -> Option<&f64> {
         match self {
-            CValue::Double(d) => Some(d),
+            AstValue::Double(d) => Some(d),
             _ => None,
         }
     }
     pub fn bool(&self) -> Option<&bool> {
         match self {
-            CValue::Bool(b) => Some(b),
+            AstValue::Bool(b) => Some(b),
             _ => None,
         }
     }
 }
-impl AsRef<Statement> for WrappedStatement {
-    fn as_ref(&self) -> &Statement {
+impl AsRef<AstStatement> for WrappedAstStatement {
+    fn as_ref(&self) -> &AstStatement {
         &self.statement
     }
 }
-impl Deref for WrappedStatement {
-    type Target = Statement;
+impl Deref for WrappedAstStatement {
+    type Target = AstStatement;
 
     fn deref(&self) -> &Self::Target {
         &self.statement
@@ -355,7 +362,7 @@ impl<T> Deref for Wrapped<T> {
         &self.item
     }
 }
-impl VariableId {
+impl AstVariableId {
     pub fn get_default_name(&self) -> String {
         if self.parent.is_some() {
             format!("v{}", self.index)
@@ -364,7 +371,7 @@ impl VariableId {
         }
     }
 }
-impl FunctionId {
+impl AstFunctionId {
     pub fn get_default_name(&self) -> String {
         format!("f{}", self.address)
     }

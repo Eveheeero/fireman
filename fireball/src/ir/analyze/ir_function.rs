@@ -1,6 +1,6 @@
 use crate::{
     core::{Block, Instruction},
-    ir::{Ir, IrBlock, analyze::DataType, data::DataAccess, utils::IrStatementDescriptorMap},
+    ir::{Ir, IrBlock, analyze::DataType, data::IrDataAccess, utils::IrStatementDescriptorMap},
     prelude::*,
 };
 use std::sync::Arc;
@@ -82,12 +82,12 @@ impl IrFunction {
 
 #[derive(Debug, Clone)]
 pub struct IrFunctionVariable {
-    data_accesses: IrStatementDescriptorMap<Vec<DataAccess>>,
+    data_accesses: IrStatementDescriptorMap<Vec<IrDataAccess>>,
     pub data_type: DataType,
 }
 
 impl IrFunctionVariable {
-    pub fn get_data_accesses(&self) -> &IrStatementDescriptorMap<Vec<DataAccess>> {
+    pub fn get_data_accesses(&self) -> &IrStatementDescriptorMap<Vec<IrDataAccess>> {
         &self.data_accesses
     }
 }

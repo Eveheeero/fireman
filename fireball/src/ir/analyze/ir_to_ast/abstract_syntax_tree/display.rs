@@ -2,7 +2,7 @@ use super::*;
 
 // to_string_with_config(Some(config))
 
-impl PrintWithConfig for CType {
+impl PrintWithConfig for AstValueType {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
@@ -15,33 +15,33 @@ impl PrintWithConfig for CType {
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
         match self {
-            CType::Void => write!(f, "void"),
-            CType::Unknown => write!(f, "unknown_t"),
-            CType::Int => write!(f, "int"),
-            CType::Int8 => write!(f, "int8_t"),
-            CType::Int16 => write!(f, "int16_t"),
-            CType::Int32 => write!(f, "int32_t"),
-            CType::Int64 => write!(f, "int64_t"),
-            CType::UInt => write!(f, "uint"),
-            CType::UInt8 => write!(f, "uint8_t"),
-            CType::UInt16 => write!(f, "uint16_t"),
-            CType::UInt32 => write!(f, "uint32_t"),
-            CType::UInt64 => write!(f, "uint64_t"),
-            CType::Char => write!(f, "char"),
-            CType::Float => write!(f, "float"),
-            CType::Double => write!(f, "double"),
-            CType::Bool => write!(f, "bool"),
-            CType::Pointer(t) => write!(f, "{}*", t.to_string_with_config(Some(config))),
-            CType::Array(t, size) => {
+            AstValueType::Void => write!(f, "void"),
+            AstValueType::Unknown => write!(f, "unknown_t"),
+            AstValueType::Int => write!(f, "int"),
+            AstValueType::Int8 => write!(f, "int8_t"),
+            AstValueType::Int16 => write!(f, "int16_t"),
+            AstValueType::Int32 => write!(f, "int32_t"),
+            AstValueType::Int64 => write!(f, "int64_t"),
+            AstValueType::UInt => write!(f, "uint"),
+            AstValueType::UInt8 => write!(f, "uint8_t"),
+            AstValueType::UInt16 => write!(f, "uint16_t"),
+            AstValueType::UInt32 => write!(f, "uint32_t"),
+            AstValueType::UInt64 => write!(f, "uint64_t"),
+            AstValueType::Char => write!(f, "char"),
+            AstValueType::Float => write!(f, "float"),
+            AstValueType::Double => write!(f, "double"),
+            AstValueType::Bool => write!(f, "bool"),
+            AstValueType::Pointer(t) => write!(f, "{}*", t.to_string_with_config(Some(config))),
+            AstValueType::Array(t, size) => {
                 write!(f, "{}[{}]", t.to_string_with_config(Some(config)), size)
             }
-            CType::Struct(name, _) => write!(f, "struct {}", name),
-            CType::Union(name, _) => write!(f, "union {}", name),
+            AstValueType::Struct(name, _) => write!(f, "struct {}", name),
+            AstValueType::Union(name, _) => write!(f, "union {}", name),
         }
     }
 }
 
-impl PrintWithConfig for Statement {
+impl PrintWithConfig for AstStatement {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
@@ -54,13 +54,13 @@ impl PrintWithConfig for Statement {
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
         match self {
-            Statement::Declaration(var, None) => write!(
+            AstStatement::Declaration(var, None) => write!(
                 f,
                 "{} {};",
                 var.var_type.to_string_with_config(Some(config)),
                 var.name
             ),
-            Statement::Declaration(var, Some(expr)) => {
+            AstStatement::Declaration(var, Some(expr)) => {
                 write!(
                     f,
                     "{} {} = {};",
@@ -69,13 +69,13 @@ impl PrintWithConfig for Statement {
                     expr.to_string_with_config(Some(config))
                 )
             }
-            Statement::Assignment(left, right) => write!(
+            AstStatement::Assignment(left, right) => write!(
                 f,
                 "{} = {};",
                 left.to_string_with_config(Some(config)),
                 right.to_string_with_config(Some(config))
             ),
-            Statement::If(cond, then_body, else_body) => {
+            AstStatement::If(cond, then_body, else_body) => {
                 write!(f, "if ({}) {{ ", cond.to_string_with_config(Some(config)))?;
                 for stmt in then_body {
                     write!(f, "{} ", stmt.to_string_with_config(Some(config)))?;
@@ -88,7 +88,7 @@ impl PrintWithConfig for Statement {
                 }
                 write!(f, "}}")
             }
-            Statement::While(cond, body) => {
+            AstStatement::While(cond, body) => {
                 write!(
                     f,
                     "while ({}) {{ ",
@@ -99,9 +99,9 @@ impl PrintWithConfig for Statement {
                 }
                 write!(f, "}}")
             }
-            Statement::For(init, cond, update, body) => {
+            AstStatement::For(init, cond, update, body) => {
                 write!(f, "for (")?;
-                if let Statement::Declaration(var, _) = init.as_ref().as_ref() {
+                if let AstStatement::Declaration(var, _) = init.as_ref().as_ref() {
                     write!(
                         f,
                         "{} {};",
@@ -112,7 +112,7 @@ impl PrintWithConfig for Statement {
                     write!(f, "{};", init.to_string_with_config(Some(config)))?;
                 }
                 write!(f, " {};", cond.to_string_with_config(Some(config)))?;
-                if let Statement::Assignment(left, right) = update.as_ref().as_ref() {
+                if let AstStatement::Assignment(left, right) = update.as_ref().as_ref() {
                     write!(
                         f,
                         "{} = {};",
@@ -128,14 +128,14 @@ impl PrintWithConfig for Statement {
                 }
                 write!(f, "}}")
             }
-            Statement::Return(expr) => {
+            AstStatement::Return(expr) => {
                 if let Some(expr) = expr {
                     write!(f, "return {};", expr.to_string_with_config(Some(config)))
                 } else {
                     write!(f, "return;")
                 }
             }
-            Statement::Call(name, args) => {
+            AstStatement::Call(name, args) => {
                 write!(f, "{}(", name.to_string_with_config(Some(config)))?;
                 for (i, arg) in args.iter().enumerate() {
                     if i > 0 {
@@ -145,33 +145,33 @@ impl PrintWithConfig for Statement {
                 }
                 write!(f, ");")
             }
-            Statement::Label(name) => write!(f, "{}:", name),
-            Statement::Goto(name) => {
+            AstStatement::Label(name) => write!(f, "{}:", name),
+            AstStatement::Goto(name) => {
                 write!(f, "goto {}; ", name.to_string_with_config(Some(config)))
             }
-            Statement::Block(stmts) => {
+            AstStatement::Block(stmts) => {
                 write!(f, "{{ ")?;
                 for stmt in stmts {
                     write!(f, "{} ", stmt.to_string_with_config(Some(config)))?;
                 }
                 write!(f, "}}")
             }
-            Statement::Empty => {
+            AstStatement::Empty => {
                 if config.print_empty_statement {
                     write!(f, ";")
                 } else {
                     Ok(())
                 }
             }
-            Statement::Undefined => write!(f, "<UNDEFINED BEHAVIOR>"),
-            Statement::Exception(e) => write!(f, "<EXCEPTION: {e}>"),
-            Statement::Assembly(code) => write!(f, "<ASSEMBLY: {code}>"),
-            Statement::Comment(comment) => write!(f, "/* {} */", comment),
+            AstStatement::Undefined => write!(f, "<UNDEFINED BEHAVIOR>"),
+            AstStatement::Exception(e) => write!(f, "<EXCEPTION: {e}>"),
+            AstStatement::Assembly(code) => write!(f, "<ASSEMBLY: {code}>"),
+            AstStatement::Comment(comment) => write!(f, "/* {} */", comment),
         }
     }
 }
 
-impl PrintWithConfig for Expression {
+impl PrintWithConfig for AstExpression {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
@@ -184,26 +184,26 @@ impl PrintWithConfig for Expression {
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
         match self {
-            Expression::Literal(lit) => write!(f, "{}", lit.to_string_with_config(Some(config))),
-            Expression::Variable(var_map, id) => {
+            AstExpression::Literal(lit) => write!(f, "{}", lit.to_string_with_config(Some(config))),
+            AstExpression::Variable(var_map, id) => {
                 let var_map = var_map.read().unwrap();
                 let var = var_map.get(id).unwrap();
                 write!(f, "{}", var.name)
             }
-            Expression::UnaryOp(op, expr) => write!(
+            AstExpression::UnaryOp(op, expr) => write!(
                 f,
                 "{}{}",
                 op.to_string_with_config(Some(config)),
                 expr.to_string_with_config(Some(config))
             ),
-            Expression::BinaryOp(op, left, right) => write!(
+            AstExpression::BinaryOp(op, left, right) => write!(
                 f,
                 "({} {} {})",
                 left.to_string_with_config(Some(config)),
                 op.to_string_with_config(Some(config)),
                 right.to_string_with_config(Some(config))
             ),
-            Expression::Call(name, args) => {
+            AstExpression::Call(name, args) => {
                 write!(f, "{}(", name)?;
                 for (i, arg) in args.iter().enumerate() {
                     if i > 0 {
@@ -213,21 +213,21 @@ impl PrintWithConfig for Expression {
                 }
                 write!(f, ")")
             }
-            Expression::Unknown => write!(f, "<UNKNOWN DATA>"),
-            Expression::Undefined => write!(f, "<UNDEFINED DATA>"),
-            Expression::Cast(ctype, expression) => write!(
+            AstExpression::Unknown => write!(f, "<UNKNOWN DATA>"),
+            AstExpression::Undefined => write!(f, "<UNDEFINED DATA>"),
+            AstExpression::Cast(ctype, expression) => write!(
                 f,
                 "({}){}",
                 ctype.to_string_with_config(Some(config)),
                 expression.to_string_with_config(Some(config))
             ),
-            Expression::Deref(expression) => {
+            AstExpression::Deref(expression) => {
                 write!(f, "*{}", expression.to_string_with_config(Some(config)))
             }
-            Expression::AddressOf(expression) => {
+            AstExpression::AddressOf(expression) => {
                 write!(f, "&{}", expression.to_string_with_config(Some(config)))
             }
-            Expression::ArrayAccess(expression, expression1) => {
+            AstExpression::ArrayAccess(expression, expression1) => {
                 write!(
                     f,
                     "{}[{}]",
@@ -235,18 +235,18 @@ impl PrintWithConfig for Expression {
                     expression1.to_string_with_config(Some(config))
                 )
             }
-            Expression::MemberAccess(expression, member) => write!(
+            AstExpression::MemberAccess(expression, member) => write!(
                 f,
                 "{}.{}",
                 expression.to_string_with_config(Some(config)),
                 member
             ),
-            Expression::ArchitectureBitSize => write!(f, "ARCH_BIT_SIZE"),
-            Expression::ArchitectureByteSize => write!(f, "ARCH_BYTE_SIZE"),
+            AstExpression::ArchitectureBitSize => write!(f, "ARCH_BIT_SIZE"),
+            AstExpression::ArchitectureByteSize => write!(f, "ARCH_BYTE_SIZE"),
         }
     }
 }
-impl PrintWithConfig for Literal {
+impl PrintWithConfig for AstLiteral {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
@@ -259,16 +259,16 @@ impl PrintWithConfig for Literal {
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
         match self {
-            Literal::Int(i) => write!(f, "{}", i),
-            Literal::UInt(u) => write!(f, "{}", u),
-            Literal::Float(fl) => write!(f, "{}", fl),
-            Literal::String(s) => write!(f, "\"{}\"", s),
-            Literal::Char(c) => write!(f, "'{}'", c),
-            Literal::Bool(b) => write!(f, "{}", b),
+            AstLiteral::Int(i) => write!(f, "{}", i),
+            AstLiteral::UInt(u) => write!(f, "{}", u),
+            AstLiteral::Float(fl) => write!(f, "{}", fl),
+            AstLiteral::String(s) => write!(f, "\"{}\"", s),
+            AstLiteral::Char(c) => write!(f, "'{}'", c),
+            AstLiteral::Bool(b) => write!(f, "{}", b),
         }
     }
 }
-impl PrintWithConfig for UnaryOperator {
+impl PrintWithConfig for AstUnaryOperator {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
@@ -281,19 +281,19 @@ impl PrintWithConfig for UnaryOperator {
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
         match self {
-            UnaryOperator::Negate => write!(f, "-"),
-            UnaryOperator::Not => write!(f, "!"),
-            UnaryOperator::BitNot => write!(f, "~"),
-            UnaryOperator::PreInc => write!(f, "++"),
-            UnaryOperator::PreDec => write!(f, "--"),
-            UnaryOperator::PostInc => write!(f, "++"),
-            UnaryOperator::PostDec => write!(f, "--"),
-            UnaryOperator::CastSigned => write!(f, "(signed)"),
-            UnaryOperator::CastUnsigned => write!(f, "(unsigned)"),
+            AstUnaryOperator::Negate => write!(f, "-"),
+            AstUnaryOperator::Not => write!(f, "!"),
+            AstUnaryOperator::BitNot => write!(f, "~"),
+            AstUnaryOperator::PreInc => write!(f, "++"),
+            AstUnaryOperator::PreDec => write!(f, "--"),
+            AstUnaryOperator::PostInc => write!(f, "++"),
+            AstUnaryOperator::PostDec => write!(f, "--"),
+            AstUnaryOperator::CastSigned => write!(f, "(signed)"),
+            AstUnaryOperator::CastUnsigned => write!(f, "(unsigned)"),
         }
     }
 }
-impl PrintWithConfig for BinaryOperator {
+impl PrintWithConfig for AstBinaryOperator {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
@@ -306,28 +306,28 @@ impl PrintWithConfig for BinaryOperator {
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
         match self {
-            BinaryOperator::Add => write!(f, "+"),
-            BinaryOperator::Sub => write!(f, "-"),
-            BinaryOperator::Mul => write!(f, "*"),
-            BinaryOperator::Div => write!(f, "/"),
-            BinaryOperator::Mod => write!(f, "%"),
-            BinaryOperator::BitAnd => write!(f, "&"),
-            BinaryOperator::BitOr => write!(f, "|"),
-            BinaryOperator::BitXor => write!(f, "^"),
-            BinaryOperator::LogicAnd => write!(f, "&&"),
-            BinaryOperator::LogicOr => write!(f, "||"),
-            BinaryOperator::Equal => write!(f, "=="),
-            BinaryOperator::NotEqual => write!(f, "!="),
-            BinaryOperator::Less => write!(f, "<"),
-            BinaryOperator::LessEqual => write!(f, "<="),
-            BinaryOperator::Greater => write!(f, ">"),
-            BinaryOperator::GreaterEqual => write!(f, ">="),
-            BinaryOperator::LeftShift => write!(f, "<<"),
-            BinaryOperator::RightShift => write!(f, ">>"),
+            AstBinaryOperator::Add => write!(f, "+"),
+            AstBinaryOperator::Sub => write!(f, "-"),
+            AstBinaryOperator::Mul => write!(f, "*"),
+            AstBinaryOperator::Div => write!(f, "/"),
+            AstBinaryOperator::Mod => write!(f, "%"),
+            AstBinaryOperator::BitAnd => write!(f, "&"),
+            AstBinaryOperator::BitOr => write!(f, "|"),
+            AstBinaryOperator::BitXor => write!(f, "^"),
+            AstBinaryOperator::LogicAnd => write!(f, "&&"),
+            AstBinaryOperator::LogicOr => write!(f, "||"),
+            AstBinaryOperator::Equal => write!(f, "=="),
+            AstBinaryOperator::NotEqual => write!(f, "!="),
+            AstBinaryOperator::Less => write!(f, "<"),
+            AstBinaryOperator::LessEqual => write!(f, "<="),
+            AstBinaryOperator::Greater => write!(f, ">"),
+            AstBinaryOperator::GreaterEqual => write!(f, ">="),
+            AstBinaryOperator::LeftShift => write!(f, "<<"),
+            AstBinaryOperator::RightShift => write!(f, ">>"),
         }
     }
 }
-impl PrintWithConfig for Variable {
+impl PrintWithConfig for AstVariable {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
@@ -347,7 +347,7 @@ impl PrintWithConfig for Variable {
         )
     }
 }
-impl PrintWithConfig for WrappedStatement {
+impl PrintWithConfig for WrappedAstStatement {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
@@ -389,7 +389,7 @@ impl<T: PrintWithConfig> PrintWithConfig for Wrapped<T> {
     }
 }
 
-impl PrintWithConfig for JumpTarget {
+impl PrintWithConfig for AstJumpTarget {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
@@ -402,16 +402,16 @@ impl PrintWithConfig for JumpTarget {
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
         match self {
-            JumpTarget::Variable { scope: _, id } => write!(f, "var{:?}", id),
-            JumpTarget::Function { target } => write!(f, "function{:?}", target),
-            JumpTarget::Instruction { target } => {
+            AstJumpTarget::Variable { scope: _, id } => write!(f, "var{:?}", id),
+            AstJumpTarget::Function { target } => write!(f, "function{:?}", target),
+            AstJumpTarget::Instruction { target } => {
                 write!(f, "ir{}", target.descriptor().ir_index())
             }
-            JumpTarget::Unknown(name) => write!(f, "{}", name),
+            AstJumpTarget::Unknown(name) => write!(f, "{}", name),
         }
     }
 }
-impl PrintWithConfig for CValue {
+impl PrintWithConfig for AstValue {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
         self.print(&mut output, option).unwrap();
@@ -424,12 +424,12 @@ impl PrintWithConfig for CValue {
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
         match self {
-            CValue::Void => write!(f, "()"),
-            CValue::Unknown => write!(f, "unknown_v"),
-            CValue::Undefined => write!(f, "undefined"),
-            CValue::Max => write!(f, "max"),
-            CValue::Min => write!(f, "min"),
-            CValue::Num(i) => {
+            AstValue::Void => write!(f, "()"),
+            AstValue::Unknown => write!(f, "unknown_v"),
+            AstValue::Undefined => write!(f, "undefined"),
+            AstValue::Max => write!(f, "max"),
+            AstValue::Min => write!(f, "min"),
+            AstValue::Num(i) => {
                 let i = i.to_u64_digits();
                 if i.0 == Sign::Minus {
                     write!(f, "-0x{:X}", i.1.get(0).unwrap_or(&0))
@@ -437,11 +437,11 @@ impl PrintWithConfig for CValue {
                     write!(f, "0x{:X}", i.1.get(0).unwrap_or(&0))
                 }
             }
-            CValue::Char(c) => write!(f, "'{}'", c),
-            CValue::Double(d) => write!(f, "{}", d),
-            CValue::Bool(b) => write!(f, "{}", b),
-            CValue::Pointer(p) => write!(f, "*{}", p.to_string_with_config(Some(config))),
-            CValue::Array(arr) => {
+            AstValue::Char(c) => write!(f, "'{}'", c),
+            AstValue::Double(d) => write!(f, "{}", d),
+            AstValue::Bool(b) => write!(f, "{}", b),
+            AstValue::Pointer(p) => write!(f, "*{}", p.to_string_with_config(Some(config))),
+            AstValue::Array(arr) => {
                 let arr_str: Vec<String> = arr
                     .iter()
                     .map(|v| v.to_string_with_config(Some(config)))

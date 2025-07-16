@@ -1,7 +1,7 @@
 use crate::{
     ir::{
         Ir,
-        data::{AccessSize, IrData, IrDataContainable},
+        data::{IrAccessSize, IrData, IrDataContainable},
         statements::{IrStatement, IrStatementSpecial},
         utils::{IrStatementDescriptor, IrStatementDescriptorMap},
     },
@@ -13,7 +13,7 @@ use crate::{
 pub struct KnownDataType {
     pub location: Aos<IrData>,
     pub data_type: DataType,
-    pub data_size: AccessSize,
+    pub data_size: IrAccessSize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -69,14 +69,14 @@ pub fn analyze_datatype_raw(insert: &mut impl FnMut(KnownDataType), statement: &
             insert(KnownDataType {
                 location: target.clone(),
                 data_type: DataType::Address,
-                data_size: AccessSize::ArchitectureSize,
+                data_size: IrAccessSize::ArchitectureSize,
             });
         }
         IrStatement::JumpByCall { target } => {
             insert(KnownDataType {
                 location: target.clone(),
                 data_type: DataType::Address,
-                data_size: AccessSize::ArchitectureSize,
+                data_size: IrAccessSize::ArchitectureSize,
             });
         }
         IrStatement::Condition {

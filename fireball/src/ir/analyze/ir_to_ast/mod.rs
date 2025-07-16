@@ -8,8 +8,8 @@ use crate::{
             ControlFlowGraphAnalyzer, DataType, IrFunction,
             ir_function::generate_ir_function,
             ir_to_ast::abstract_syntax_tree::{
-                Ast, AstDescriptor, CType, CValue, PrintWithConfig, Statement, Variable,
-                VariableId, Wrapped,
+                Ast, AstDescriptor, AstStatement, AstValue, AstValueType, AstVariable,
+                AstVariableId, PrintWithConfig, Wrapped,
             },
         },
         data::IrData,
@@ -45,19 +45,19 @@ pub fn generate_ast_function(ast: &mut Ast, data: IrFunction) -> Result<(), Deco
     let func_id = ast.generate_default_function(data.clone());
 
     let mut locals = HashMap::new();
-    let mut var_map: HashMap<Aos<IrData>, VariableId> = HashMap::new();
+    let mut var_map: HashMap<Aos<IrData>, AstVariableId> = HashMap::new();
     for var in data.get_variables().iter() {
         let var_id = ast.new_variable_id(&func_id);
         let c_type = match var.data_type {
-            DataType::Unknown => CType::Unknown,
-            DataType::Bool => CType::Bool,
-            DataType::Int => CType::Int,
-            DataType::Float => CType::Double,
-            DataType::StringPointer => CType::Pointer(Box::new(CType::Char)),
-            DataType::Char => CType::Char,
-            DataType::Address => CType::Pointer(Box::new(CType::Void)),
+            DataType::Unknown => AstValueType::Unknown,
+            DataType::Bool => AstValueType::Bool,
+            DataType::Int => AstValueType::Int,
+            DataType::Float => AstValueType::Double,
+            DataType::StringPointer => AstValueType::Pointer(Box::new(AstValueType::Char)),
+            DataType::Char => AstValueType::Char,
+            DataType::Address => AstValueType::Pointer(Box::new(AstValueType::Void)),
         };
-        let mut const_value: Option<Wrapped<CValue>> = None;
+        let mut const_value: Option<Wrapped<AstValue>> = None;
         for (position, accesses) in var.get_data_accesses().iter() {
             let instruction_arg_size = data.get_instructions()[position.ir_index() as usize]
                 .inner
@@ -92,7 +92,7 @@ pub fn generate_ast_function(ast: &mut Ast, data: IrFunction) -> Result<(), Deco
         }
         locals.insert(
             var_id,
-            Variable {
+            AstVariable {
                 name: var_id.get_default_name(),
                 id: var_id,
                 var_type: c_type,
@@ -135,7 +135,7 @@ pub fn generate_ast_function(ast: &mut Ast, data: IrFunction) -> Result<(), Deco
             }
         } else {
             func_body.push(ws(
-                Statement::Assembly(instruction.inner.to_string()),
+                AstStatement::Assembly(instruction.inner.to_string()),
                 AstDescriptor::new(data.clone(), IrStatementDescriptor::new(ir_index, None)),
             ));
         }
