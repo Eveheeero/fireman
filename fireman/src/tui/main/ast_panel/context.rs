@@ -20,7 +20,7 @@ pub struct Data {
 impl Data {
     pub fn new(origin: Ast) -> Self {
         let displayed = origin
-            .to_c_code(None)
+            .print(None)
             .trim()
             .lines()
             .map(|x| x.to_owned())

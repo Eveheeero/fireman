@@ -2,7 +2,7 @@ use super::*;
 use hashbrown::HashSet;
 
 impl Ast {
-    pub fn to_c_code(&self, config: Option<AstPrintConfig>) -> String {
+    pub fn print(&self, config: Option<AstPrintConfig>) -> String {
         let config = config.unwrap_or_default();
         let mut output = String::new();
 

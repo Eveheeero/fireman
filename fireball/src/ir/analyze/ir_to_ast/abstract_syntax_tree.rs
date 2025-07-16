@@ -2,7 +2,7 @@
 
 mod display;
 mod optimize;
-mod to_c_code;
+mod print;
 
 use crate::{
     ir::{analyze::IrFunction, data::IrData, utils::IrStatementDescriptor},
