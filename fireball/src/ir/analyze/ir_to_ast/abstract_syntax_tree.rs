@@ -69,11 +69,21 @@ impl Default for AstPrintConfig {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AstOptimizationConfig {
     analyze_ir: bool,
+    collapse_unused_varaible: bool,
 }
 impl AstOptimizationConfig {
-    pub const DEFAULT: Self = Self { analyze_ir: true };
-    pub const ALL: Self = Self { analyze_ir: true };
-    pub const NONE: Self = Self { analyze_ir: false };
+    pub const DEFAULT: Self = Self {
+        analyze_ir: true,
+        collapse_unused_varaible: true,
+    };
+    pub const ALL: Self = Self {
+        analyze_ir: true,
+        collapse_unused_varaible: true,
+    };
+    pub const NONE: Self = Self {
+        analyze_ir: false,
+        collapse_unused_varaible: false,
+    };
 
     pub fn analyze_ir(mut self, value: bool) -> Self {
         self.analyze_ir = value;

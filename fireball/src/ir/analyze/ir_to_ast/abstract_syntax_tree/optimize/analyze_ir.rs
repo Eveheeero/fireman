@@ -135,6 +135,7 @@ pub(super) fn analyze_ir_function(
         stmt.comment = ws.comment.clone();
         *ws = stmt;
     }
+
     {
         let mut functions = ast.functions.write().unwrap();
         let function = functions
@@ -144,6 +145,5 @@ pub(super) fn analyze_ir_function(
         function.body = body;
         function.analyzed = true;
     }
-
     Ok(())
 }

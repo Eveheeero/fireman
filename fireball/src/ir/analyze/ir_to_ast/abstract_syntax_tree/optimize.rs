@@ -1,4 +1,5 @@
 mod analyze_ir;
+mod collapse_unused_varaible;
 
 use super::*;
 
@@ -36,6 +37,13 @@ impl Ast {
 
             if config.analyze_ir {
                 analyze_ir::analyze_ir_function(&mut ast, function_id, to_version)?;
+            }
+            if config.collapse_unused_varaible {
+                collapse_unused_varaible::collapse_unused_variables(
+                    &mut ast,
+                    function_id,
+                    to_version,
+                )?;
             }
         }
 
