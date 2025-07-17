@@ -31,22 +31,58 @@ pub struct AstPrintConfig {
     pub print_ir: bool,
     pub print_empty_statement: bool,
 }
+impl AstPrintConfig {
+    pub const DEFAULT: Self = Self {
+        print_instruction: true,
+        print_ir: true,
+        print_empty_statement: false,
+    };
+    pub const ALL: Self = Self {
+        print_instruction: true,
+        print_ir: true,
+        print_empty_statement: true,
+    };
+    pub const NONE: Self = Self {
+        print_instruction: false,
+        print_ir: false,
+        print_empty_statement: false,
+    };
+
+    pub fn print_instruction(mut self, value: bool) -> Self {
+        self.print_instruction = value;
+        self
+    }
+    pub fn print_ir(mut self, value: bool) -> Self {
+        self.print_ir = value;
+        self
+    }
+    pub fn print_empty_statement(mut self, value: bool) -> Self {
+        self.print_empty_statement = value;
+        self
+    }
+}
 impl Default for AstPrintConfig {
     fn default() -> Self {
-        Self {
-            print_instruction: true,
-            print_ir: true,
-            print_empty_statement: false,
-        }
+        Self::DEFAULT
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AstOptimizationConfig {
     analyze_ir: bool,
 }
+impl AstOptimizationConfig {
+    pub const DEFAULT: Self = Self { analyze_ir: true };
+    pub const ALL: Self = Self { analyze_ir: true };
+    pub const NONE: Self = Self { analyze_ir: false };
+
+    pub fn analyze_ir(mut self, value: bool) -> Self {
+        self.analyze_ir = value;
+        self
+    }
+}
 impl Default for AstOptimizationConfig {
     fn default() -> Self {
-        Self { analyze_ir: true }
+        Self::DEFAULT
     }
 }
 pub trait PrintWithConfig {
