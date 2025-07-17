@@ -72,27 +72,27 @@ impl Ast {
                     continue;
                 }
                 if config.print_instruction {
-                    if let Some(descriptor) = &stmt.from {
-                        if !visited_ir.contains(&descriptor.descriptor().ir_index()) {
-                            let instruction = &descriptor.ir.get_instructions()
-                                [descriptor.descriptor().ir_index() as usize];
-                            output.push_str(&format!("  // {}\n", instruction));
-                            visited_ir.insert(descriptor.descriptor().ir_index());
-                        }
+                    if let Some(descriptor) = &stmt.from
+                        && !visited_ir.contains(&descriptor.descriptor().ir_index())
+                    {
+                        let instruction = &descriptor.ir.get_instructions()
+                            [descriptor.descriptor().ir_index() as usize];
+                        output.push_str(&format!("  // {}\n", instruction));
+                        visited_ir.insert(descriptor.descriptor().ir_index());
                     }
                 }
                 if config.print_ir {
-                    if let Some(descriptor) = &stmt.from {
-                        if let Some(statement_index) = descriptor.descriptor().statement_index() {
-                            if prev_stmt != Some(descriptor.descriptor()) {
-                                let stmt = &descriptor.ir.get_ir()
-                                    [descriptor.descriptor().ir_index() as usize]
-                                    .statements
-                                    .as_ref()
-                                    .unwrap()[*statement_index as usize];
-                                output.push_str(&format!("    /* {} */\n", stmt));
-                                prev_stmt = Some(descriptor.descriptor());
-                            }
+                    if let Some(descriptor) = &stmt.from
+                        && let Some(statement_index) = descriptor.descriptor().statement_index()
+                    {
+                        if prev_stmt != Some(descriptor.descriptor()) {
+                            let stmt = &descriptor.ir.get_ir()
+                                [descriptor.descriptor().ir_index() as usize]
+                                .statements
+                                .as_ref()
+                                .unwrap()[*statement_index as usize];
+                            output.push_str(&format!("    /* {} */\n", stmt));
+                            prev_stmt = Some(descriptor.descriptor());
                         }
                     }
                 }

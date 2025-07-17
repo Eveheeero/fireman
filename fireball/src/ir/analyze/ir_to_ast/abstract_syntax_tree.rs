@@ -5,7 +5,9 @@ mod optimize;
 mod print;
 
 use crate::{
-    ir::{analyze::IrFunction, data::IrData, utils::IrStatementDescriptor},
+    ir::{
+        analyze::IrFunction, data::IrData, statements::IrStatement, utils::IrStatementDescriptor,
+    },
     prelude::*,
     utils::{Aos, version_map::VersionMap},
 };
@@ -38,11 +40,13 @@ impl Default for AstPrintConfig {
         }
     }
 }
-#[derive(Debug, Clone)]
-pub struct AstOptimizationConfig {}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AstOptimizationConfig {
+    analyze_ir: bool,
+}
 impl Default for AstOptimizationConfig {
     fn default() -> Self {
-        Self {}
+        Self { analyze_ir: true }
     }
 }
 pub trait PrintWithConfig {
@@ -72,6 +76,8 @@ pub struct AstFunction {
     pub parameters: Vec<AstVariable>,
     pub variables: ArcAstVariableMap,
     pub body: Vec<WrappedAstStatement>,
+
+    pub analyzed: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -192,6 +198,7 @@ pub enum AstStatement {
     Undefined,
     Exception(&'static str),
     Comment(String),
+    Ir(Box<IrStatement>),
     Empty,
 }
 #[derive(Debug, Clone)]
@@ -279,20 +286,51 @@ impl Ast {
         }
     }
 
-    pub fn generate_default_function(&mut self, ir: Arc<IrFunction>) -> AstFunctionId {
-        let start_address = ir.get_ir().first().map(|x| &x.address).unwrap();
+    /// 1. generate default function
+    /// 2. set ast to pointing that version
+    pub fn generate_default_function(&mut self, data: Arc<IrFunction>) -> AstFunctionId {
+        let start_address = data.get_ir().first().map(|x| &x.address).unwrap();
         let id = AstFunctionId {
             address: start_address.get_virtual_address(),
         };
         let name = id.get_default_name();
+        let mut body = Vec::new();
+        for (ir_index, (ir, instruction)) in data
+            .get_ir()
+            .iter()
+            .zip(data.get_instructions().iter())
+            .enumerate()
+        {
+            let ir_index = ir_index as u32;
+            if let Some(stmts) = ir.statements {
+                for (stmt_index, stmt) in stmts.iter().enumerate() {
+                    let stmt_index = stmt_index as u8;
+                    let stmt_position = AstDescriptor::new(
+                        data.clone(),
+                        IrStatementDescriptor::new(ir_index, Some(stmt_index)),
+                    );
+                    body.push(super::ws(
+                        AstStatement::Ir(Box::new(stmt.clone())),
+                        stmt_position,
+                    ));
+                }
+            } else {
+                body.push(super::ws(
+                    AstStatement::Assembly(instruction.inner.to_string()),
+                    AstDescriptor::new(data.clone(), IrStatementDescriptor::new(ir_index, None)),
+                ));
+            }
+        }
         let func = AstFunction {
             name,
             id,
-            ir,
+            ir: data,
             return_type: AstValueType::Void,
             parameters: Vec::new(),
             variables: Arc::new(RwLock::new(HashMap::new())),
-            body: Vec::new(),
+            body,
+
+            analyzed: false,
         };
         self.functions
             .write()
@@ -300,6 +338,24 @@ impl Ast {
             .insert(id, VersionMap::new(AstFunctionVersion(1), func));
         self.function_versions.insert(id, AstFunctionVersion(1));
         id
+    }
+    /// clone function and get cloned function version
+    pub fn clone_function(
+        &mut self,
+        id: &AstFunctionId,
+        from_version: &AstFunctionVersion,
+    ) -> Option<AstFunctionVersion> {
+        let mut functions = self.functions.write().unwrap();
+        let function = functions
+            .get(id)
+            .and_then(|x| x.get(from_version))
+            .cloned()?;
+        let version_map = functions.get_mut(&function.id).unwrap();
+        let new_version = AstFunctionVersion(version_map.last_version().0 + 1);
+
+        self.function_versions.insert(function.id, new_version);
+        version_map.insert(new_version, function).unwrap();
+        Some(new_version)
     }
     pub fn new_variable_id(&mut self, current_function: &AstFunctionId) -> AstVariableId {
         let last_index = self.last_variable_id.entry(*current_function).or_insert(0);

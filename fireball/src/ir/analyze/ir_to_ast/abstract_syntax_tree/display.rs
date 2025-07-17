@@ -167,6 +167,7 @@ impl PrintWithConfig for AstStatement {
             AstStatement::Exception(e) => write!(f, "<EXCEPTION: {e}>"),
             AstStatement::Assembly(code) => write!(f, "<ASSEMBLY: {code}>"),
             AstStatement::Comment(comment) => write!(f, "/* {} */", comment),
+            AstStatement::Ir(ir) => write!(f, "<IR: {ir}>)"),
         }
     }
 }
