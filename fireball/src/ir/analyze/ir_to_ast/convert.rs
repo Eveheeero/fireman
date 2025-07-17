@@ -4,9 +4,9 @@ use crate::{
         analyze::{
             ir_to_ast::abstract_syntax_tree::{
                 Ast, AstBinaryOperator, AstDescriptor, AstExpression, AstFunctionId,
-                AstFunctionVersion, AstJumpTarget, AstLiteral, AstStatement, AstUnaryOperator,
-                AstValue, AstValueOrigin, AstVariableId, PrintWithConfig, Wrapped,
-                WrappedAstStatement,
+                AstFunctionVersion, AstJumpTarget, AstLiteral, AstStatement, AstStatementOrigin,
+                AstUnaryOperator, AstValue, AstValueOrigin, AstVariableId, PrintWithConfig,
+                Wrapped, WrappedAstStatement,
             },
             variables::resolve_operand,
         },
@@ -24,7 +24,7 @@ use num_bigint::BigInt;
 pub(super) fn ws(statement: AstStatement, from: AstDescriptor) -> WrappedAstStatement {
     WrappedAstStatement {
         statement,
-        from: Some(from),
+        origin: AstStatementOrigin::Ir(from),
         comment: None,
     }
 }

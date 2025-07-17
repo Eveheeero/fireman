@@ -72,7 +72,7 @@ impl Ast {
                     continue;
                 }
                 if config.print_instruction {
-                    if let Some(descriptor) = &stmt.from
+                    if let AstStatementOrigin::Ir(descriptor) = &stmt.origin
                         && !visited_ir.contains(&descriptor.descriptor().ir_index())
                     {
                         let instruction = &descriptor.ir.get_instructions()
@@ -82,7 +82,7 @@ impl Ast {
                     }
                 }
                 if config.print_ir {
-                    if let Some(descriptor) = &stmt.from
+                    if let AstStatementOrigin::Ir(descriptor) = &stmt.origin
                         && let Some(statement_index) = descriptor.descriptor().statement_index()
                     {
                         if prev_stmt != Some(descriptor.descriptor()) {

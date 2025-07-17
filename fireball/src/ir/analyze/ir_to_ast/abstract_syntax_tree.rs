@@ -83,10 +83,17 @@ pub struct AstFunction {
 #[derive(Debug, Clone)]
 pub struct WrappedAstStatement {
     pub statement: AstStatement,
-    pub from: Option<AstDescriptor>,
+    pub origin: AstStatementOrigin,
     pub comment: Option<String>,
 }
-
+#[derive(Debug, Clone)]
+pub enum AstStatementOrigin {
+    UserInput,
+    PreDefined,
+    Ir(AstDescriptor),
+    Combination(Vec<AstStatementOrigin>),
+    Unknown,
+}
 #[derive(Debug, Clone, PartialEq)]
 pub struct Wrapped<T> {
     pub item: T,
@@ -100,6 +107,7 @@ pub enum AstValueOrigin {
     /// TODO predefined by files. like `func libc::strlen(str: char*) -> usize for ir [o1 = o1 + o2; ...]...` or `for asm [...]...`
     PreDefined,
     Expression(Aos<IrData>),
+    Combination(Vec<AstValueOrigin>),
     Unknown,
 }
 
