@@ -122,7 +122,7 @@ pub(super) fn analyze_ir_function(
             .expect("does your architecture smaller than 32bit?")];
         let instruction_args = &instruction.inner.arguments;
         /* analyze and turn into ast */
-        let stmt = convert_stmt(
+        let mut stmt = convert_stmt(
             ast,
             function_id,
             function_version,
@@ -132,6 +132,7 @@ pub(super) fn analyze_ir_function(
             &var_map,
             instruction_args,
         )?;
+        stmt.comment = ws.comment.clone();
         *ws = stmt;
     }
     {
