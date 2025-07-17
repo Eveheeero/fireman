@@ -1,11 +1,13 @@
 use crate::{
     ir::{
+        IrBlock,
         analyze::{DataType, KnownDataType},
-        data::{AccessSize, DataAccess, DataAccessType, IrData, IrDataOperation, IrIntrinsic},
-        operator::BinaryOperator,
+        data::{
+            IrAccessSize, IrData, IrDataAccess, IrDataAccessType, IrDataOperation, IrIntrinsic,
+        },
+        operator::IrBinaryOperator,
         statements::IrStatement,
         utils::{IrStatementDescriptor, IrStatementDescriptorMap},
-        IrBlock,
     },
     utils::Aos,
 };
@@ -22,7 +24,7 @@ mod private {
         pub live_in: Option<u32>,
         pub shown_in: Vec<u32>,
         pub live_out: Option<u32>,
-        accesses: IrStatementDescriptorMap<Vec<DataAccess>>,
+        accesses: IrStatementDescriptorMap<Vec<IrDataAccess>>,
         pub data_type: DataType,
     }
     impl IrVariable {
@@ -37,11 +39,11 @@ mod private {
             }
         }
         #[inline]
-        pub fn get_data_accesses(&self) -> &IrStatementDescriptorMap<Vec<DataAccess>> {
+        pub fn get_data_accesses(&self) -> &IrStatementDescriptorMap<Vec<IrDataAccess>> {
             &self.accesses
         }
         #[inline]
-        pub(crate) fn into_data_accesses(self) -> IrStatementDescriptorMap<Vec<DataAccess>> {
+        pub(crate) fn into_data_accesses(self) -> IrStatementDescriptorMap<Vec<IrDataAccess>> {
             self.accesses
         }
         #[inline]
@@ -49,14 +51,14 @@ mod private {
             &mut self,
             ir_index: u32,
             statement_index: impl Into<Option<u8>>,
-            access: DataAccess,
+            access: IrDataAccess,
         ) {
             let key = IrStatementDescriptor::new(ir_index, statement_index);
             self.accesses.insert_checked(key, Vec::new());
             self.accesses.get_mut(key).unwrap().push(access);
         }
         #[inline]
-        pub fn get_all_data_accesses(&self) -> Vec<(IrStatementDescriptor, &[DataAccess])> {
+        pub fn get_all_data_accesses(&self) -> Vec<(IrStatementDescriptor, &[IrDataAccess])> {
             let keys = self.accesses.keys();
             keys.into_iter()
                 .map(|key| (key, self.accesses.get(key).unwrap().as_slice()))
@@ -179,7 +181,7 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
         // --- Step 1: Identify all locations written within this IR (including nested statements) ---
         let mut locations_written_this_ir: HashSet<Aos<IrData>> = HashSet::new();
         for da in data_access_at_ir_resolved.iter() {
-            if *da.1.access_type() == DataAccessType::Write {
+            if *da.1.access_type() == IrDataAccessType::Write {
                 let resolved_loc = da.1.location();
                 locations_written_this_ir.insert(resolved_loc.clone());
             }
@@ -214,8 +216,8 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
             if ids.is_empty() {
                 let new_id = variables.len();
                 let live_in = match access_type {
-                    DataAccessType::Write => Some(ir_index),
-                    DataAccessType::Read => None, // Live-in from block start (simplified assumption)
+                    IrDataAccessType::Write => Some(ir_index),
+                    IrDataAccessType::Read => None, // Live-in from block start (simplified assumption)
                 };
 
                 let data_type = known_datatypes_at_ir_resolved
@@ -241,7 +243,7 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
                 }
                 variables[var_id].add_data_access(ir_index, *da.0.statement_index(), da.1.clone());
 
-                if *access_type == DataAccessType::Read
+                if *access_type == IrDataAccessType::Read
                     && variables[var_id].live_out == Some(ir_index)
                 {
                     variables[var_id].live_out = None;
@@ -264,20 +266,20 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
 }
 
 fn resolve_access_size(
-    access_size: &AccessSize,
+    access_size: &IrAccessSize,
     instruction_args: &[iceball::Argument],
-) -> AccessSize {
+) -> IrAccessSize {
     match access_size {
-        AccessSize::ResultOfBit(data) => {
-            AccessSize::ResultOfBit(resolve_operand(data, instruction_args))
+        IrAccessSize::ResultOfBit(data) => {
+            IrAccessSize::ResultOfBit(resolve_operand(data, instruction_args))
         }
-        AccessSize::ResultOfByte(data) => {
-            AccessSize::ResultOfByte(resolve_operand(data, instruction_args))
+        IrAccessSize::ResultOfByte(data) => {
+            IrAccessSize::ResultOfByte(resolve_operand(data, instruction_args))
         }
-        AccessSize::RelativeWith(data) => {
-            AccessSize::RelativeWith(resolve_operand(data, instruction_args))
+        IrAccessSize::RelativeWith(data) => {
+            IrAccessSize::RelativeWith(resolve_operand(data, instruction_args))
         }
-        AccessSize::ArchitectureSize | AccessSize::Unlimited => access_size.clone(),
+        IrAccessSize::ArchitectureSize | IrAccessSize::Unlimited => access_size.clone(),
     }
 }
 
@@ -326,36 +328,38 @@ fn resolve_ir_intrinsic(
 }
 
 fn resolve_binary_operator(
-    op: &BinaryOperator,
+    op: &IrBinaryOperator,
     instruction_args: &[iceball::Argument],
-) -> BinaryOperator {
+) -> IrBinaryOperator {
     match op {
-        BinaryOperator::Equal(s) => BinaryOperator::Equal(resolve_access_size(s, instruction_args)),
-        BinaryOperator::SignedLess(s) => {
-            BinaryOperator::SignedLess(resolve_access_size(s, instruction_args))
+        IrBinaryOperator::Equal(s) => {
+            IrBinaryOperator::Equal(resolve_access_size(s, instruction_args))
         }
-        BinaryOperator::SignedLessOrEqual(s) => {
-            BinaryOperator::SignedLessOrEqual(resolve_access_size(s, instruction_args))
+        IrBinaryOperator::SignedLess(s) => {
+            IrBinaryOperator::SignedLess(resolve_access_size(s, instruction_args))
         }
-        BinaryOperator::UnsignedLess(s) => {
-            BinaryOperator::UnsignedLess(resolve_access_size(s, instruction_args))
+        IrBinaryOperator::SignedLessOrEqual(s) => {
+            IrBinaryOperator::SignedLessOrEqual(resolve_access_size(s, instruction_args))
         }
-        BinaryOperator::UnsignedLessOrEqual(s) => {
-            BinaryOperator::UnsignedLessOrEqual(resolve_access_size(s, instruction_args))
+        IrBinaryOperator::UnsignedLess(s) => {
+            IrBinaryOperator::UnsignedLess(resolve_access_size(s, instruction_args))
         }
-        BinaryOperator::And
-        | BinaryOperator::Or
-        | BinaryOperator::Xor
-        | BinaryOperator::Shl
-        | BinaryOperator::Shr
-        | BinaryOperator::Sar
-        | BinaryOperator::Add
-        | BinaryOperator::Sub
-        | BinaryOperator::Mul
-        | BinaryOperator::SignedDiv
-        | BinaryOperator::SignedRem
-        | BinaryOperator::UnsignedDiv
-        | BinaryOperator::UnsignedRem => op.clone(),
+        IrBinaryOperator::UnsignedLessOrEqual(s) => {
+            IrBinaryOperator::UnsignedLessOrEqual(resolve_access_size(s, instruction_args))
+        }
+        IrBinaryOperator::And
+        | IrBinaryOperator::Or
+        | IrBinaryOperator::Xor
+        | IrBinaryOperator::Shl
+        | IrBinaryOperator::Shr
+        | IrBinaryOperator::Sar
+        | IrBinaryOperator::Add
+        | IrBinaryOperator::Sub
+        | IrBinaryOperator::Mul
+        | IrBinaryOperator::SignedDiv
+        | IrBinaryOperator::SignedRem
+        | IrBinaryOperator::UnsignedDiv
+        | IrBinaryOperator::UnsignedRem => op.clone(),
     }
 }
 
@@ -412,10 +416,10 @@ pub fn resolve_operand(data: &Aos<IrData>, instruction_args: &[iceball::Argument
 }
 
 fn resolve_data_accesses(
-    data_access: &IrStatementDescriptorMap<Vec<DataAccess>>,
+    data_access: &IrStatementDescriptorMap<Vec<IrDataAccess>>,
     ir_index: u32,
     instruction_args: &[iceball::Argument],
-) -> Vec<(IrStatementDescriptor, DataAccess)> {
+) -> Vec<(IrStatementDescriptor, IrDataAccess)> {
     data_access
         .iter()
         .filter(|(k, _v)| k.ir_index() == ir_index)
@@ -425,7 +429,7 @@ fn resolve_data_accesses(
                 let resolved_size = resolve_access_size(da.size(), instruction_args);
                 (
                     k,
-                    DataAccess::new(resolved_loc, *da.access_type(), resolved_size),
+                    IrDataAccess::new(resolved_loc, *da.access_type(), resolved_size),
                 )
             })
         })

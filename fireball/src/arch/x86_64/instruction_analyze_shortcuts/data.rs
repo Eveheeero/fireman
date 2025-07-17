@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 
 #[inline]
 #[must_use]
-pub(in crate::arch) fn size_result_bit(data: impl Into<Aos<IrData>>) -> AccessSize {
+pub(in crate::arch) fn size_result_bit(data: impl Into<Aos<IrData>>) -> IrAccessSize {
     let data: Aos<_> = data.into();
     let data_ptr = Aos::as_ptr(&data);
     static O1: LazyLock<Aos<IrData>> = LazyLock::new(bit_size_of_o1);
@@ -21,11 +21,11 @@ pub(in crate::arch) fn size_result_bit(data: impl Into<Aos<IrData>>) -> AccessSi
         () if data_ptr == o4_ptr => return o4_size(),
         _ => {}
     }
-    AccessSize::ResultOfBit(data)
+    IrAccessSize::ResultOfBit(data)
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn size_result_byte(data: impl Into<Aos<IrData>>) -> AccessSize {
+pub(in crate::arch) fn size_result_byte(data: impl Into<Aos<IrData>>) -> IrAccessSize {
     let data: Aos<_> = data.into();
     let data_ptr = Aos::as_ptr(&data);
     static O1: LazyLock<Aos<IrData>> = LazyLock::new(byte_size_of_o1);
@@ -43,12 +43,12 @@ pub(in crate::arch) fn size_result_byte(data: impl Into<Aos<IrData>>) -> AccessS
         () if data_ptr == o4_ptr => return o4_size(),
         _ => {}
     }
-    AccessSize::ResultOfByte(data)
+    IrAccessSize::ResultOfByte(data)
 }
 #[test]
 fn size_result_singleton_test() {
-    let extract_arc = |x: AccessSize| match x {
-        AccessSize::RelativeWith(ir_data) => return ir_data,
+    let extract_arc = |x: IrAccessSize| match x {
+        IrAccessSize::RelativeWith(ir_data) => return ir_data,
         _ => unreachable!(),
     };
 
@@ -79,18 +79,18 @@ fn size_result_singleton_test() {
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn size_relative(data: impl Into<Aos<IrData>>) -> AccessSize {
-    AccessSize::RelativeWith(data.into())
+pub(in crate::arch) fn size_relative(data: impl Into<Aos<IrData>>) -> IrAccessSize {
+    IrAccessSize::RelativeWith(data.into())
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn size_architecture() -> AccessSize {
-    AccessSize::ArchitectureSize
+pub(in crate::arch) fn size_architecture() -> IrAccessSize {
+    IrAccessSize::ArchitectureSize
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn size_unlimited() -> AccessSize {
-    AccessSize::Unlimited
+pub(in crate::arch) fn size_unlimited() -> IrAccessSize {
+    IrAccessSize::Unlimited
 }
 
 #[inline]
@@ -103,7 +103,7 @@ pub(in crate::arch) fn o1() -> Aos<IrData> {
 /// Relative size
 #[inline]
 #[must_use]
-pub(in crate::arch) fn o1_size() -> AccessSize {
+pub(in crate::arch) fn o1_size() -> IrAccessSize {
     size_relative(o1())
 }
 #[inline]
@@ -116,7 +116,7 @@ pub(in crate::arch) fn o2() -> Aos<IrData> {
 /// Relative size
 #[inline]
 #[must_use]
-pub(in crate::arch) fn o2_size() -> AccessSize {
+pub(in crate::arch) fn o2_size() -> IrAccessSize {
     size_relative(o2())
 }
 #[inline]
@@ -129,7 +129,7 @@ pub(in crate::arch) fn o3() -> Aos<IrData> {
 /// Relative size
 #[inline]
 #[must_use]
-pub(in crate::arch) fn o3_size() -> AccessSize {
+pub(in crate::arch) fn o3_size() -> IrAccessSize {
     size_relative(o3())
 }
 #[inline]
@@ -142,7 +142,7 @@ pub(in crate::arch) fn o4() -> Aos<IrData> {
 /// Relative size
 #[inline]
 #[must_use]
-pub(in crate::arch) fn o4_size() -> AccessSize {
+pub(in crate::arch) fn o4_size() -> IrAccessSize {
     size_relative(o4())
 }
 /// Constant
@@ -220,32 +220,32 @@ pub(in crate::arch) fn undefined_data() -> Aos<IrData> {
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn signed_max(size: impl Into<AccessSize>) -> Aos<IrData> {
+pub(in crate::arch) fn signed_max(size: impl Into<IrAccessSize>) -> Aos<IrData> {
     IrData::Intrinsic(IrIntrinsic::SignedMax(size.into())).into()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn signed_min(size: impl Into<AccessSize>) -> Aos<IrData> {
+pub(in crate::arch) fn signed_min(size: impl Into<IrAccessSize>) -> Aos<IrData> {
     IrData::Intrinsic(IrIntrinsic::SignedMin(size.into())).into()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn unsigned_max(size: impl Into<AccessSize>) -> Aos<IrData> {
+pub(in crate::arch) fn unsigned_max(size: impl Into<IrAccessSize>) -> Aos<IrData> {
     IrData::Intrinsic(IrIntrinsic::UnsignedMax(size.into())).into()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn unsigned_min(size: impl Into<AccessSize>) -> Aos<IrData> {
+pub(in crate::arch) fn unsigned_min(size: impl Into<IrAccessSize>) -> Aos<IrData> {
     IrData::Intrinsic(IrIntrinsic::UnsignedMin(size.into())).into()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn bit_ones(size: impl Into<AccessSize>) -> Aos<IrData> {
+pub(in crate::arch) fn bit_ones(size: impl Into<IrAccessSize>) -> Aos<IrData> {
     IrData::Intrinsic(IrIntrinsic::BitOnes(size.into())).into()
 }
 #[inline]
 #[must_use]
-pub(in crate::arch) fn bit_zeros(size: impl Into<AccessSize>) -> Aos<IrData> {
+pub(in crate::arch) fn bit_zeros(size: impl Into<IrAccessSize>) -> Aos<IrData> {
     IrData::Intrinsic(IrIntrinsic::BitZeros(size.into())).into()
 }
 #[inline]
@@ -400,7 +400,7 @@ pub(in crate::arch) fn bit_size_of_o4() -> Aos<IrData> {
 #[must_use]
 pub(in crate::arch) fn sized(
     data: impl Into<Aos<IrData>>,
-    size: impl Into<AccessSize>,
+    size: impl Into<IrAccessSize>,
 ) -> Aos<IrData> {
     IrData::Intrinsic(IrIntrinsic::Sized(data.into(), size.into())).into()
 }
@@ -450,7 +450,7 @@ pub(in crate::arch) mod u {
 
     #[inline]
     #[must_use]
-    fn transform(operator: UnaryOperator, arg: impl Into<Aos<IrData>>) -> Aos<IrData> {
+    fn transform(operator: IrUnaryOperator, arg: impl Into<Aos<IrData>>) -> Aos<IrData> {
         IrData::Operation(IrDataOperation::Unary {
             operator,
             arg: arg.into(),
@@ -460,22 +460,22 @@ pub(in crate::arch) mod u {
     #[inline]
     #[must_use]
     pub(in crate::arch) fn not(arg: impl Into<Aos<IrData>>) -> Aos<IrData> {
-        transform(UnaryOperator::Not, arg)
+        transform(IrUnaryOperator::Not, arg)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn neg(arg: impl Into<Aos<IrData>>) -> Aos<IrData> {
-        transform(UnaryOperator::Negation, arg)
+        transform(IrUnaryOperator::Negation, arg)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn sign_extend(arg: impl Into<Aos<IrData>>) -> Aos<IrData> {
-        transform(UnaryOperator::SignExtend, arg)
+        transform(IrUnaryOperator::SignExtend, arg)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn zero_extend(arg: impl Into<Aos<IrData>>) -> Aos<IrData> {
-        transform(UnaryOperator::ZeroExtend, arg)
+        transform(IrUnaryOperator::ZeroExtend, arg)
     }
 }
 /// Binary Operation
@@ -485,7 +485,7 @@ pub(in crate::arch) mod b {
     #[inline]
     #[must_use]
     fn transform(
-        operator: BinaryOperator,
+        operator: IrBinaryOperator,
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
@@ -502,7 +502,7 @@ pub(in crate::arch) mod b {
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::And, arg1, arg2)
+        transform(IrBinaryOperator::And, arg1, arg2)
     }
     #[inline]
     #[must_use]
@@ -510,7 +510,7 @@ pub(in crate::arch) mod b {
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::Or, arg1, arg2)
+        transform(IrBinaryOperator::Or, arg1, arg2)
     }
     #[inline]
     #[must_use]
@@ -518,7 +518,7 @@ pub(in crate::arch) mod b {
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::Xor, arg1, arg2)
+        transform(IrBinaryOperator::Xor, arg1, arg2)
     }
     #[inline]
     #[must_use]
@@ -526,7 +526,7 @@ pub(in crate::arch) mod b {
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::Shl, arg1, arg2)
+        transform(IrBinaryOperator::Shl, arg1, arg2)
     }
     #[inline]
     #[must_use]
@@ -534,7 +534,7 @@ pub(in crate::arch) mod b {
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::Shr, arg1, arg2)
+        transform(IrBinaryOperator::Shr, arg1, arg2)
     }
     #[inline]
     #[must_use]
@@ -542,7 +542,7 @@ pub(in crate::arch) mod b {
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::Sar, arg1, arg2)
+        transform(IrBinaryOperator::Sar, arg1, arg2)
     }
     #[inline]
     #[must_use]
@@ -550,7 +550,7 @@ pub(in crate::arch) mod b {
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::Add, arg1, arg2)
+        transform(IrBinaryOperator::Add, arg1, arg2)
     }
     #[inline]
     #[must_use]
@@ -558,7 +558,7 @@ pub(in crate::arch) mod b {
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::Sub, arg1, arg2)
+        transform(IrBinaryOperator::Sub, arg1, arg2)
     }
     #[inline]
     #[must_use]
@@ -566,7 +566,7 @@ pub(in crate::arch) mod b {
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::Mul, arg1, arg2)
+        transform(IrBinaryOperator::Mul, arg1, arg2)
     }
     #[inline]
     #[must_use]
@@ -574,7 +574,7 @@ pub(in crate::arch) mod b {
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::SignedDiv, arg1, arg2)
+        transform(IrBinaryOperator::SignedDiv, arg1, arg2)
     }
     #[inline]
     #[must_use]
@@ -582,7 +582,7 @@ pub(in crate::arch) mod b {
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::SignedRem, arg1, arg2)
+        transform(IrBinaryOperator::SignedRem, arg1, arg2)
     }
     #[inline]
     #[must_use]
@@ -590,7 +590,7 @@ pub(in crate::arch) mod b {
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::UnsignedDiv, arg1, arg2)
+        transform(IrBinaryOperator::UnsignedDiv, arg1, arg2)
     }
     #[inline]
     #[must_use]
@@ -598,51 +598,55 @@ pub(in crate::arch) mod b {
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::UnsignedRem, arg1, arg2)
+        transform(IrBinaryOperator::UnsignedRem, arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn equal(
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
-        size: impl Into<AccessSize>,
+        size: impl Into<IrAccessSize>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::Equal(size.into()), arg1, arg2)
+        transform(IrBinaryOperator::Equal(size.into()), arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn signed_less(
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
-        size: impl Into<AccessSize>,
+        size: impl Into<IrAccessSize>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::SignedLess(size.into()), arg1, arg2)
+        transform(IrBinaryOperator::SignedLess(size.into()), arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn signed_less_or_euqla(
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
-        size: impl Into<AccessSize>,
+        size: impl Into<IrAccessSize>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::SignedLessOrEqual(size.into()), arg1, arg2)
+        transform(IrBinaryOperator::SignedLessOrEqual(size.into()), arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn unsigned_less(
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
-        size: impl Into<AccessSize>,
+        size: impl Into<IrAccessSize>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::UnsignedLess(size.into()), arg1, arg2)
+        transform(IrBinaryOperator::UnsignedLess(size.into()), arg1, arg2)
     }
     #[inline]
     #[must_use]
     pub(in crate::arch) fn unsigned_less_or_equal(
         arg1: impl Into<Aos<IrData>>,
         arg2: impl Into<Aos<IrData>>,
-        size: impl Into<AccessSize>,
+        size: impl Into<IrAccessSize>,
     ) -> Aos<IrData> {
-        transform(BinaryOperator::UnsignedLessOrEqual(size.into()), arg1, arg2)
+        transform(
+            IrBinaryOperator::UnsignedLessOrEqual(size.into()),
+            arg1,
+            arg2,
+        )
     }
 }

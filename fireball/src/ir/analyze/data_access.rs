@@ -1,15 +1,15 @@
 use crate::{
     ir::{
-        data::{AccessSize, DataAccess, DataAccessType},
+        Ir,
+        data::{IrAccessSize, IrDataAccess, IrDataAccessType},
         statements::{IrStatement, IrStatementSpecial},
         utils::{IrStatementDescriptor, IrStatementDescriptorMap},
-        Ir,
     },
     prelude::*,
 };
 
 pub fn analyze_data_access(
-    out: &mut IrStatementDescriptorMap<Vec<DataAccess>>,
+    out: &mut IrStatementDescriptorMap<Vec<IrDataAccess>>,
     ir_index: u32,
     ir: &Ir,
 ) {
@@ -30,37 +30,37 @@ pub fn analyze_data_access(
     }
 }
 
-pub fn analyze_data_access_raw(insert: &mut impl FnMut(DataAccess), statement: &IrStatement) {
+pub fn analyze_data_access_raw(insert: &mut impl FnMut(IrDataAccess), statement: &IrStatement) {
     match statement {
         IrStatement::Assignment { from, to, size } => {
-            insert(DataAccess::new(
+            insert(IrDataAccess::new(
                 from.clone(),
-                DataAccessType::Read,
+                IrDataAccessType::Read,
                 size.clone(),
             ));
-            insert(DataAccess::new(
+            insert(IrDataAccess::new(
                 to.clone(),
-                DataAccessType::Write,
+                IrDataAccessType::Write,
                 size.clone(),
             ));
             match size {
-                AccessSize::ResultOfBit(aos) | AccessSize::ResultOfByte(aos) => {
-                    insert(DataAccess::new(
+                IrAccessSize::ResultOfBit(aos) | IrAccessSize::ResultOfByte(aos) => {
+                    insert(IrDataAccess::new(
                         aos.clone(),
-                        DataAccessType::Read,
-                        AccessSize::Unlimited,
+                        IrDataAccessType::Read,
+                        IrAccessSize::Unlimited,
                     ));
                 }
-                AccessSize::RelativeWith(_)
-                | AccessSize::ArchitectureSize
-                | AccessSize::Unlimited => {}
+                IrAccessSize::RelativeWith(_)
+                | IrAccessSize::ArchitectureSize
+                | IrAccessSize::Unlimited => {}
             }
         }
         IrStatement::Jump { target } | IrStatement::JumpByCall { target } => {
-            insert(DataAccess::new(
+            insert(IrDataAccess::new(
                 target.clone(),
-                DataAccessType::Read,
-                AccessSize::ArchitectureSize,
+                IrDataAccessType::Read,
+                IrAccessSize::ArchitectureSize,
             ));
         }
         IrStatement::Condition {
@@ -68,10 +68,10 @@ pub fn analyze_data_access_raw(insert: &mut impl FnMut(DataAccess), statement: &
             true_branch,
             false_branch,
         } => {
-            insert(DataAccess::new(
+            insert(IrDataAccess::new(
                 condition.clone(),
-                DataAccessType::Read,
-                AccessSize::Unlimited,
+                IrDataAccessType::Read,
+                IrAccessSize::Unlimited,
             ));
             for statement in true_branch.iter().chain(false_branch.iter()) {
                 analyze_data_access_raw(insert, statement);

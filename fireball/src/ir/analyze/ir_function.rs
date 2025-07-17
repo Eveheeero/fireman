@@ -1,13 +1,13 @@
 use crate::{
     core::{Block, Instruction},
-    ir::{analyze::DataType, data::DataAccess, utils::IrStatementDescriptorMap, Ir, IrBlock},
+    ir::{Ir, IrBlock, analyze::DataType, data::IrDataAccess, utils::IrStatementDescriptorMap},
     prelude::*,
 };
 use std::sync::Arc;
 
-pub fn merge_blocks(blocks: &[Arc<Block>]) -> MergedIr {
-    info!("Merging IR from {} blocks", blocks.len());
-    // Merge IRs from all blocks in execution order
+pub fn generate_ir_function(blocks: &[Arc<Block>]) -> IrFunction {
+    info!("Generate IR function from {} blocks", blocks.len());
+    // Merge IR from all blocks in execution order
     let mut combined_ir = Vec::new();
     let mut instructions = Vec::new();
     for block in blocks {
@@ -22,8 +22,8 @@ pub fn merge_blocks(blocks: &[Arc<Block>]) -> MergedIr {
         instructions.extend(block.get_instructions().iter().cloned());
     }
 
-    debug!("Merged IR size: {}", combined_ir.len());
-    // Analyze merged IR
+    debug!("IR Function size: {}", combined_ir.len());
+    // Analyze IR function
     let mut ir_block = IrBlock::new(combined_ir.clone(), instructions.into());
     let instructions = ir_block.instructions().clone();
     ir_block.analyze_data_access();
@@ -36,14 +36,14 @@ pub fn merge_blocks(blocks: &[Arc<Block>]) -> MergedIr {
     let vars = ir_block.variables.unwrap();
     let merged_vars = vars
         .into_iter()
-        .map(|v| MergedIrVariable {
+        .map(|v| IrFunctionVariable {
             data_type: v.data_type,
             data_accesses: v.into_data_accesses(),
         })
         .collect();
 
-    info!("Merge completed");
-    MergedIr {
+    info!("IrFunction generation completed");
+    IrFunction {
         instructions,
         ir: combined_ir,
         variables: merged_vars,
@@ -51,17 +51,17 @@ pub fn merge_blocks(blocks: &[Arc<Block>]) -> MergedIr {
 }
 
 #[derive(Debug, Clone)]
-pub struct MergedIr {
+pub struct IrFunction {
     instructions: Arc<[Instruction]>,
     ir: Vec<Ir>,
-    variables: Vec<MergedIrVariable>,
+    variables: Vec<IrFunctionVariable>,
 }
 
-impl MergedIr {
+impl IrFunction {
     pub fn new(
         instructions: Arc<[Instruction]>,
         ir: Vec<Ir>,
-        variables: Vec<MergedIrVariable>,
+        variables: Vec<IrFunctionVariable>,
     ) -> Self {
         Self {
             instructions,
@@ -75,19 +75,19 @@ impl MergedIr {
     pub fn get_instructions(&self) -> &Arc<[Instruction]> {
         &self.instructions
     }
-    pub fn get_variables(&self) -> &Vec<MergedIrVariable> {
+    pub fn get_variables(&self) -> &Vec<IrFunctionVariable> {
         &self.variables
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct MergedIrVariable {
-    data_accesses: IrStatementDescriptorMap<Vec<DataAccess>>,
+pub struct IrFunctionVariable {
+    data_accesses: IrStatementDescriptorMap<Vec<IrDataAccess>>,
     pub data_type: DataType,
 }
 
-impl MergedIrVariable {
-    pub fn get_data_accesses(&self) -> &IrStatementDescriptorMap<Vec<DataAccess>> {
+impl IrFunctionVariable {
+    pub fn get_data_accesses(&self) -> &IrStatementDescriptorMap<Vec<IrDataAccess>> {
         &self.data_accesses
     }
 }

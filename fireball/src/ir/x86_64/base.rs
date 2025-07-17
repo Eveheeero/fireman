@@ -1,7 +1,7 @@
 use crate::{
     ir::{
-        x86_64::{X64Range, X64},
         VirtualMachine,
+        x86_64::{X64, X64Range},
     },
     prelude::BitSlice,
 };

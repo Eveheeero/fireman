@@ -1,5 +1,5 @@
 use crate::{
-    ir::operator::{BinaryOperator, UnaryOperator},
+    ir::operator::{IrBinaryOperator, IrUnaryOperator},
     utils::Aos,
 };
 use std::num::NonZeroU8;
@@ -25,19 +25,19 @@ pub enum IrData {
 pub enum IrIntrinsic {
     Unknown,
     Undefined,
-    SignedMax(AccessSize),
-    SignedMin(AccessSize),
-    UnsignedMax(AccessSize),
-    UnsignedMin(AccessSize),
-    BitOnes(AccessSize),
-    BitZeros(AccessSize),
+    SignedMax(IrAccessSize),
+    SignedMin(IrAccessSize),
+    UnsignedMax(IrAccessSize),
+    UnsignedMin(IrAccessSize),
+    BitOnes(IrAccessSize),
+    BitZeros(IrAccessSize),
     ArchitectureByteSize,
     ArchitectureBitSize,
     ArchitectureBitPerByte,
     InstructionByteSize,
     ByteSizeOf(Aos<IrData>),
     BitSizeOf(Aos<IrData>),
-    Sized(Aos<IrData>, AccessSize),
+    Sized(Aos<IrData>, IrAccessSize),
     OperandExists(NonZeroU8),
     ArchitectureByteSizeCondition(NumCondition),
 }
@@ -54,13 +54,13 @@ pub enum NumCondition {
     ExcludesRange(u16, u16),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DataAccess {
+pub struct IrDataAccess {
     location: Aos<IrData>,
-    access_type: DataAccessType,
-    size: AccessSize,
+    access_type: IrDataAccessType,
+    size: IrAccessSize,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
-pub enum DataAccessType {
+pub enum IrDataAccessType {
     Read,
     Write,
 }
@@ -68,18 +68,18 @@ pub enum DataAccessType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IrDataOperation {
     Unary {
-        operator: UnaryOperator,
+        operator: IrUnaryOperator,
         arg: Aos<IrData>,
     },
     Binary {
-        operator: BinaryOperator,
+        operator: IrBinaryOperator,
         arg1: Aos<IrData>,
         arg2: Aos<IrData>,
     },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AccessSize {
+pub enum IrAccessSize {
     ResultOfBit(Aos<IrData>),
     ResultOfByte(Aos<IrData>),
     RelativeWith(Aos<IrData>),
@@ -91,8 +91,8 @@ pub trait IrDataContainable {
     fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>);
 }
 
-impl From<&AccessSize> for AccessSize {
-    fn from(value: &AccessSize) -> Self {
+impl From<&IrAccessSize> for IrAccessSize {
+    fn from(value: &IrAccessSize) -> Self {
         value.clone()
     }
 }
@@ -102,8 +102,8 @@ impl From<&crate::ir::Register> for Aos<IrData> {
     }
 }
 
-impl DataAccess {
-    pub fn new(location: Aos<IrData>, access_type: DataAccessType, size: AccessSize) -> Self {
+impl IrDataAccess {
+    pub fn new(location: Aos<IrData>, access_type: IrDataAccessType, size: IrAccessSize) -> Self {
         Self {
             location,
             access_type,
@@ -113,10 +113,10 @@ impl DataAccess {
     pub fn location(&self) -> &Aos<IrData> {
         &self.location
     }
-    pub fn access_type(&self) -> &DataAccessType {
+    pub fn access_type(&self) -> &IrDataAccessType {
         &self.access_type
     }
-    pub fn size(&self) -> &AccessSize {
+    pub fn size(&self) -> &IrAccessSize {
         &self.size
     }
 }
@@ -152,19 +152,19 @@ impl IrDataContainable for IrData {
     }
 }
 
-impl IrDataContainable for DataAccess {
+impl IrDataContainable for IrDataAccess {
     fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>) {
         self.location.get_related_ir_data(v);
         v.push(&self.location);
     }
 }
 
-impl IrDataContainable for AccessSize {
+impl IrDataContainable for IrAccessSize {
     fn get_related_ir_data<'d>(&'d self, v: &mut Vec<&'d Aos<IrData>>) {
         match self {
-            AccessSize::ResultOfBit(aos)
-            | AccessSize::ResultOfByte(aos)
-            | AccessSize::RelativeWith(aos) => {
+            IrAccessSize::ResultOfBit(aos)
+            | IrAccessSize::ResultOfByte(aos)
+            | IrAccessSize::RelativeWith(aos) => {
                 aos.get_related_ir_data(v);
                 v.push(aos);
             }
@@ -228,7 +228,7 @@ impl From<&iceball::Argument> for Aos<IrData> {
                             IrData::Constant((*c).try_into().unwrap()).into()
                         } else {
                             IrData::Operation(IrDataOperation::Unary {
-                                operator: UnaryOperator::Negation,
+                                operator: IrUnaryOperator::Negation,
                                 arg: IrData::Constant((0 - *c).try_into().unwrap()).into(),
                             })
                             .into()
@@ -252,7 +252,7 @@ impl From<&iceball::Argument> for Aos<IrData> {
                                 IrData::Constant((*c).try_into().unwrap()).into()
                             } else {
                                 IrData::Operation(IrDataOperation::Unary {
-                                    operator: UnaryOperator::Negation,
+                                    operator: IrUnaryOperator::Negation,
                                     arg: IrData::Constant((0 - *c).try_into().unwrap()).into(),
                                 })
                                 .into()
@@ -262,9 +262,9 @@ impl From<&iceball::Argument> for Aos<IrData> {
                     };
 
                     let binary_op_ir = match operator {
-                        AddressingOperator::Add => BinaryOperator::Add,
-                        AddressingOperator::Sub => BinaryOperator::Sub,
-                        AddressingOperator::Mul => BinaryOperator::Mul,
+                        AddressingOperator::Add => IrBinaryOperator::Add,
+                        AddressingOperator::Sub => IrBinaryOperator::Sub,
+                        AddressingOperator::Mul => IrBinaryOperator::Mul,
                     };
 
                     current_expr = IrData::Operation(IrDataOperation::Binary {
@@ -297,14 +297,14 @@ impl std::fmt::Display for IrData {
         }
     }
 }
-impl std::fmt::Display for AccessSize {
+impl std::fmt::Display for IrAccessSize {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AccessSize::ResultOfBit(aos) => write!(f, "{}bit", aos),
-            AccessSize::ResultOfByte(aos) => write!(f, "{}byte", aos),
-            AccessSize::RelativeWith(aos) => write!(f, "sizeof({})", aos),
-            AccessSize::ArchitectureSize => write!(f, "arch_len"),
-            AccessSize::Unlimited => write!(f, "unlimited"),
+            IrAccessSize::ResultOfBit(aos) => write!(f, "{}bit", aos),
+            IrAccessSize::ResultOfByte(aos) => write!(f, "{}byte", aos),
+            IrAccessSize::RelativeWith(aos) => write!(f, "sizeof({})", aos),
+            IrAccessSize::ArchitectureSize => write!(f, "arch_len"),
+            IrAccessSize::Unlimited => write!(f, "unlimited"),
         }
     }
 }
@@ -347,16 +347,16 @@ impl std::fmt::Display for IrDataOperation {
         }
     }
 }
-impl std::fmt::Display for DataAccess {
+impl std::fmt::Display for IrDataAccess {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}({}) {}", self.access_type, self.location, self.size)
     }
 }
-impl std::fmt::Display for DataAccessType {
+impl std::fmt::Display for IrDataAccessType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DataAccessType::Read => write!(f, "r"),
-            DataAccessType::Write => write!(f, "w"),
+            IrDataAccessType::Read => write!(f, "r"),
+            IrDataAccessType::Write => write!(f, "w"),
         }
     }
 }
