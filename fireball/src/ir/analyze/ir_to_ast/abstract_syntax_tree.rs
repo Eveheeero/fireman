@@ -6,18 +6,21 @@ mod print;
 
 use crate::{
     ir::{
-        analyze::IrFunction, data::IrData, statements::IrStatement, utils::IrStatementDescriptor,
+        analyze::{IrFunction, ir_to_ast::abstract_syntax_tree::pattern_matching::AstPattern},
+        data::IrData,
+        statements::IrStatement,
+        utils::IrStatementDescriptor,
     },
     prelude::*,
     utils::{Aos, version_map::VersionMap},
 };
 use hashbrown::HashMap;
 use num_bigint::{BigInt, Sign};
+pub use optimize::pattern_matching;
 use std::{
     ops::Deref,
     sync::{Arc, RwLock},
 };
-
 #[derive(Debug, Clone)]
 pub struct Ast {
     pub function_versions: HashMap<AstFunctionId, AstFunctionVersion>,
@@ -66,27 +69,45 @@ impl Default for AstPrintConfig {
         Self::DEFAULT
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AstOptimizationConfig {
-    analyze_ir: bool,
+    ir_analyzation: bool,
     collapse_unused_varaible: bool,
+    pattern_matching: Vec<AstPattern>, // TODO, should we set this vec?
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProcessedOptimization {
+    IrAnalyzation,
+    CollapseUnusedVariables,
+    PatternMatching,
 }
 impl AstOptimizationConfig {
     pub const DEFAULT: Self = Self {
-        analyze_ir: true,
+        ir_analyzation: true,
         collapse_unused_varaible: true,
+        pattern_matching: AstPattern::ALL,
     };
     pub const ALL: Self = Self {
-        analyze_ir: true,
+        ir_analyzation: true,
         collapse_unused_varaible: true,
+        pattern_matching: AstPattern::ALL,
     };
     pub const NONE: Self = Self {
-        analyze_ir: false,
+        ir_analyzation: false,
         collapse_unused_varaible: false,
+        pattern_matching: Vec::new(),
     };
 
-    pub fn analyze_ir(mut self, value: bool) -> Self {
-        self.analyze_ir = value;
+    pub fn ir_analyzation(mut self, value: bool) -> Self {
+        self.ir_analyzation = value;
+        self
+    }
+    pub fn collapse_unused_varaible(mut self, value: bool) -> Self {
+        self.collapse_unused_varaible = value;
+        self
+    }
+    pub fn pattern_matching(mut self, value: Vec<AstPattern>) -> Self {
+        self.pattern_matching = value;
         self
     }
 }
@@ -123,7 +144,7 @@ pub struct AstFunction {
     pub variables: ArcAstVariableMap,
     pub body: Vec<WrappedAstStatement>,
 
-    pub analyzed: bool,
+    pub processed_optimizations: Vec<ProcessedOptimization>,
 }
 
 #[derive(Debug, Clone)]
@@ -384,7 +405,7 @@ impl Ast {
             variables: Arc::new(RwLock::new(HashMap::new())),
             body,
 
-            analyzed: false,
+            processed_optimizations: Vec::new(),
         };
         self.functions
             .write()

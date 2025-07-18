@@ -1,5 +1,6 @@
-mod analyze_ir;
 mod collapse_unused_varaible;
+mod ir_analyzation;
+pub mod pattern_matching;
 
 use super::*;
 
@@ -35,8 +36,8 @@ impl Ast {
             let from_version = *ast.function_versions.get(&function_id).unwrap();
             let to_version = ast.clone_function(&function_id, &from_version).unwrap();
 
-            if config.analyze_ir {
-                analyze_ir::analyze_ir_function(&mut ast, function_id, to_version)?;
+            if config.ir_analyzation {
+                ir_analyzation::analyze_ir_function(&mut ast, function_id, to_version)?;
             }
             if config.collapse_unused_varaible {
                 collapse_unused_varaible::collapse_unused_variables(

@@ -7,7 +7,8 @@ use crate::{
             ir_to_ast::{
                 abstract_syntax_tree::{
                     Ast, AstFunctionId, AstFunctionVersion, AstStatement, AstStatementOrigin,
-                    AstValue, AstValueType, AstVariable, AstVariableId, PrintWithConfig, Wrapped,
+                    AstValue, AstValueType, AstVariable, AstVariableId, PrintWithConfig,
+                    ProcessedOptimization, Wrapped,
                 },
                 convert_stmt, resolve_constant,
             },
@@ -35,7 +36,10 @@ pub(super) fn analyze_ir_function(
             .unwrap();
 
         // if analyzed, pass
-        if function.analyzed {
+        if function
+            .processed_optimizations
+            .contains(&ProcessedOptimization::IrAnalyzation)
+        {
             return Ok(());
         }
 
@@ -143,7 +147,9 @@ pub(super) fn analyze_ir_function(
             .and_then(|x| x.get_mut(&function_version))
             .unwrap();
         function.body = body;
-        function.analyzed = true;
+        function
+            .processed_optimizations
+            .push(ProcessedOptimization::IrAnalyzation);
     }
     Ok(())
 }
