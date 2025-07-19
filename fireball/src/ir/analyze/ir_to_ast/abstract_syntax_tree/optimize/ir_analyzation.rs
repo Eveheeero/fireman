@@ -122,7 +122,7 @@ pub(super) fn analyze_ir_function(
             continue;
         };
 
-        let instruction = &map[usize::try_from(stmt_position.descriptor.ir_index())
+        let instruction = &map[usize::try_from(stmt_position.descriptor().ir_index())
             .expect("does your architecture smaller than 32bit?")];
         let instruction_args = &instruction.inner.arguments;
         /* analyze and turn into ast */

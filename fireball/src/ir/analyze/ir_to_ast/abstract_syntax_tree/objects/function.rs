@@ -1,0 +1,26 @@
+use crate::ir::analyze::{
+            IrFunction,
+            ir_to_ast::abstract_syntax_tree::objects::*,
+        };
+use std::sync::Arc;
+
+#[derive(Debug, Clone)]
+pub struct AstFunction {
+    pub name: Option<String>,
+    pub id: AstFunctionId,
+    pub ir: Arc<IrFunction>,
+    pub return_type: AstValueType,
+    pub parameters: Vec<AstVariable>,
+    pub variables: ArcAstVariableMap,
+    pub body: Vec<WrappedAstStatement>,
+
+    pub processed_optimizations: Vec<ProcessedOptimization>,
+}
+
+impl AstFunction {
+    pub fn name(&self) -> String {
+        self.name
+            .clone()
+            .unwrap_or_else(|| self.id.get_default_name())
+    }
+}

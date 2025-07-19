@@ -26,7 +26,7 @@ pub(super) fn collapse_unused_variables(
         ir_function = function.ir.clone();
     }
 
-    let mut used_vars: HashSet<AstVariableId> = HashSet::new();
+    let used_vars: HashSet<AstVariableId> = HashSet::new();
     for ast_statement in body.iter().rev() {}
 
     {

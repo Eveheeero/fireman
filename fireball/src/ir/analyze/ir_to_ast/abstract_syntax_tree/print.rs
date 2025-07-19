@@ -75,7 +75,7 @@ impl Ast {
                     if let AstStatementOrigin::Ir(descriptor) = &stmt.origin
                         && !visited_ir.contains(&descriptor.descriptor().ir_index())
                     {
-                        let instruction = &descriptor.ir.get_instructions()
+                        let instruction = &descriptor.ir().get_instructions()
                             [descriptor.descriptor().ir_index() as usize];
                         output.push_str(&format!("  // {}\n", instruction));
                         visited_ir.insert(descriptor.descriptor().ir_index());
@@ -86,7 +86,7 @@ impl Ast {
                         && let Some(statement_index) = descriptor.descriptor().statement_index()
                     {
                         if prev_stmt != Some(descriptor.descriptor()) {
-                            let stmt = &descriptor.ir.get_ir()
+                            let stmt = &descriptor.ir().get_ir()
                                 [descriptor.descriptor().ir_index() as usize]
                                 .statements
                                 .as_ref()
