@@ -7,7 +7,7 @@ use super::*;
 impl Ast {
     pub fn optimize(&self, config: Option<AstOptimizationConfig>) -> Result<Self, DecompileError> {
         let function_ids: Vec<_> = self.function_versions.keys().cloned().collect();
-        self.optimize_functions(function_ids, config)
+        self.optimize_functions(&function_ids, config)
     }
 
     pub fn optimize_function(
@@ -15,7 +15,7 @@ impl Ast {
         function_id: AstFunctionId,
         config: Option<AstOptimizationConfig>,
     ) -> Result<Self, DecompileError> {
-        self.optimize_functions([function_id].into(), config)
+        self.optimize_functions(&[function_id], config)
     }
 
     // TODO: Implement optimization passes:
@@ -26,13 +26,13 @@ impl Ast {
     // 5. Function inlining
     pub fn optimize_functions(
         &self,
-        function_ids: Vec<AstFunctionId>,
+        function_ids: &[AstFunctionId],
         config: Option<AstOptimizationConfig>,
     ) -> Result<Self, DecompileError> {
         let mut ast = self.clone();
         let config = config.unwrap_or_default();
 
-        for function_id in function_ids {
+        for function_id in function_ids.iter().copied() {
             let from_version = *ast.function_versions.get(&function_id).unwrap();
             let to_version = ast.clone_function(&function_id, &from_version).unwrap();
 

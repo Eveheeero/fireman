@@ -443,16 +443,16 @@ impl Ast {
     pub fn get_variables(
         &self,
         function_id: &AstFunctionId,
-        function_version: &AstFunctionVersion,
+        _function_version: &AstFunctionVersion,
     ) -> Result<ArcAstVariableMap, DecompileError> {
-        if let Some(version_map) = self.functions.read().unwrap().get(function_id)
-            && let Some(func) = version_map.get(function_version)
-        {
+        if let Some(version_map) = self.functions.read().unwrap().get(function_id) {
+            // get any version of function because all function with same id has same variable map
+            let func = version_map.get_last_version();
             Ok(func.variables.clone())
         } else {
             error!(
-                ?function_version,
-                "Tried to get variables from a non-existing function: {:?}", function_id
+                "Tried to get variables from a non-existing function: {:?}",
+                function_id
             );
             Err(DecompileError::Unknown(Some(
                 "Tried to get variables from a non-existing function".to_string(),
