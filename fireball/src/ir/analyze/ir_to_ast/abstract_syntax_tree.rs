@@ -1,5 +1,3 @@
-//! Unusued are for optimization process
-
 mod display;
 mod objects;
 mod optimize;

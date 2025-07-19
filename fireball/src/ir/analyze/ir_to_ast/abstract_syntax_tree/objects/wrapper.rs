@@ -1,18 +1,12 @@
 use crate::{
     ir::{
-        analyze::{
-            IrFunction,
-            ir_to_ast::abstract_syntax_tree::objects::*,
-        },
+        analyze::{IrFunction, ir_to_ast::abstract_syntax_tree::objects::*},
         data::IrData,
         utils::IrStatementDescriptor,
     },
     utils::Aos,
 };
-use std::{
-    ops::Deref,
-    sync::Arc,
-};
+use std::{ops::Deref, sync::Arc};
 
 #[derive(Debug, Clone)]
 pub struct WrappedAstStatement {

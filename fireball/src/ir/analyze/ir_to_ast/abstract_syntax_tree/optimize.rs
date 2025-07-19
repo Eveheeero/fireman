@@ -1,5 +1,6 @@
 mod collapse_unused_varaible;
 mod ir_analyzation;
+mod loop_analyzation;
 pub mod pattern_matching;
 
 use super::*;

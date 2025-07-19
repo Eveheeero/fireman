@@ -1,7 +1,4 @@
-use crate::ir::{
-        analyze::ir_to_ast::abstract_syntax_tree::objects::*,
-        statements::IrStatement,
-    };
+use crate::ir::{analyze::ir_to_ast::abstract_syntax_tree::objects::*, statements::IrStatement};
 
 #[derive(Debug, Clone)]
 pub enum AstStatement {

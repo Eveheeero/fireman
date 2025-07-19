@@ -2,10 +2,7 @@ use crate::{
     ir::{
         analyze::{
             IrFunction,
-            ir_to_ast::{
-                abstract_syntax_tree::objects::*,
-                ws,
-            },
+            ir_to_ast::{abstract_syntax_tree::objects::*, ws},
         },
         utils::IrStatementDescriptor,
     },

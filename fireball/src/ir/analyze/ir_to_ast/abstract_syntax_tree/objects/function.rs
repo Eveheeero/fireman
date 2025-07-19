@@ -1,7 +1,4 @@
-use crate::ir::analyze::{
-            IrFunction,
-            ir_to_ast::abstract_syntax_tree::objects::*,
-        };
+use crate::ir::analyze::{IrFunction, ir_to_ast::abstract_syntax_tree::objects::*};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
