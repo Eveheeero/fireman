@@ -14,7 +14,7 @@ impl Ast {
             output.push_str(&format!(
                 "{} {}(",
                 func.return_type.to_string_with_config(Some(config)),
-                func.name
+                func.name()
             ));
 
             // Parameters
@@ -27,14 +27,14 @@ impl Ast {
                             format!(
                                 "const {} {} = {};\n",
                                 var.var_type.to_string_with_config(Some(config)),
-                                var.name,
+                                var.name(),
                                 const_value.to_string_with_config(Some(config))
                             )
                         } else {
                             format!(
                                 "{} {};\n",
                                 var.var_type.to_string_with_config(Some(config)),
-                                var.name
+                                var.name()
                             )
                         }
                     })
@@ -50,14 +50,14 @@ impl Ast {
                     output.push_str(&format!(
                         "const {} {} = {};\n",
                         var.var_type.to_string_with_config(Some(config)),
-                        var.name,
+                        var.name(),
                         const_value.to_string_with_config(Some(config))
                     ));
                 } else {
                     output.push_str(&format!(
                         "{} {};\n",
                         var.var_type.to_string_with_config(Some(config)),
-                        var.name
+                        var.name()
                     ));
                 }
             }

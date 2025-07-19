@@ -357,7 +357,7 @@ pub(super) fn convert_stmt(
                 AstExpression::Variable(vars, id) => {
                     let vars = vars.read().unwrap();
                     let var = vars.get(id).unwrap();
-                    var.name.to_string()
+                    var.name()
                 }
                 _ => {
                     warn!("Uncovered call target");
@@ -380,7 +380,7 @@ pub(super) fn convert_stmt(
                 AstExpression::Variable(vars, id) => {
                     let vars = vars.read().unwrap();
                     let var = vars.get(id).unwrap();
-                    var.name.to_string()
+                    var.name()
                 }
                 _ => {
                     warn!("Uncovered jump target");

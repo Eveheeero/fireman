@@ -58,14 +58,14 @@ impl PrintWithConfig for AstStatement {
                 f,
                 "{} {};",
                 var.var_type.to_string_with_config(Some(config)),
-                var.name
+                var.name()
             ),
             AstStatement::Declaration(var, Some(expr)) => {
                 write!(
                     f,
                     "{} {} = {};",
                     var.var_type.to_string_with_config(Some(config)),
-                    var.name,
+                    var.name(),
                     expr.to_string_with_config(Some(config))
                 )
             }
@@ -106,7 +106,7 @@ impl PrintWithConfig for AstStatement {
                         f,
                         "{} {};",
                         var.var_type.to_string_with_config(Some(config)),
-                        var.name
+                        var.name()
                     )?;
                 } else {
                     write!(f, "{};", init.to_string_with_config(Some(config)))?;
@@ -189,7 +189,7 @@ impl PrintWithConfig for AstExpression {
             AstExpression::Variable(var_map, id) => {
                 let var_map = var_map.read().unwrap();
                 let var = var_map.get(id).unwrap();
-                write!(f, "{}", var.name)
+                write!(f, "{}", var.name())
             }
             AstExpression::UnaryOp(op, expr) => write!(
                 f,
@@ -344,7 +344,7 @@ impl PrintWithConfig for AstVariable {
             f,
             "{} {}",
             self.var_type.to_string_with_config(Some(config)),
-            self.name
+            self.name()
         )
     }
 }

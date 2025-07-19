@@ -27,7 +27,6 @@ pub(super) fn collapse_unused_variables(
     }
 
     let mut used_vars: HashSet<AstVariableId> = HashSet::new();
-    let mut removable_vars: HashSet<AstVariableId> = HashSet::new();
     for ast_statement in body.iter().rev() {}
 
     {

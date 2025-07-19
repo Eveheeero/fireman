@@ -136,7 +136,7 @@ pub struct AstDescriptor {
 }
 #[derive(Debug, Clone)]
 pub struct AstFunction {
-    pub name: String,
+    pub name: Option<String>,
     pub id: AstFunctionId,
     pub ir: Arc<IrFunction>,
     pub return_type: AstValueType,
@@ -180,7 +180,7 @@ pub enum AstValueOrigin {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AstVariable {
-    pub name: String,
+    pub name: Option<String>,
     pub id: AstVariableId,
     pub var_type: AstValueType,
     pub const_value: Option<Wrapped<AstValue>>,
@@ -368,7 +368,6 @@ impl Ast {
         let id = AstFunctionId {
             address: start_address.get_virtual_address(),
         };
-        let name = id.get_default_name();
         let mut body = Vec::new();
         for (ir_index, (ir, instruction)) in data
             .get_ir()
@@ -397,7 +396,7 @@ impl Ast {
             }
         }
         let func = AstFunction {
-            name,
+            name: None,
             id,
             ir: data,
             return_type: AstValueType::Void,
@@ -535,5 +534,19 @@ impl AstDescriptor {
     }
     pub fn descriptor(&self) -> &IrStatementDescriptor {
         &self.descriptor
+    }
+}
+impl AstFunction {
+    pub fn name(&self) -> String {
+        self.name
+            .clone()
+            .unwrap_or_else(|| self.id.get_default_name())
+    }
+}
+impl AstVariable {
+    pub fn name(&self) -> String {
+        self.name
+            .clone()
+            .unwrap_or_else(|| self.id.get_default_name())
     }
 }

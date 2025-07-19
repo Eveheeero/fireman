@@ -96,7 +96,7 @@ pub(super) fn analyze_ir_function(
         locals.insert(
             var_id,
             AstVariable {
-                name: var_id.get_default_name(),
+                name: None,
                 id: var_id,
                 var_type: c_type,
                 const_value,
