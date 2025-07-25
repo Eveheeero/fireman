@@ -1,4 +1,4 @@
-use crate::ir::analyze::ir_to_ast::abstract_syntax_tree::objects::*;
+use crate::abstract_syntax_tree::objects::*;
 
 #[derive(Debug, Clone)]
 pub enum AstExpression {

@@ -1,4 +1,4 @@
-use crate::ir::analyze::ir_to_ast::abstract_syntax_tree::pattern_matching::AstPattern;
+use crate::abstract_syntax_tree::pattern_matching::AstPattern;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AstOptimizationConfig {

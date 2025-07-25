@@ -1,9 +1,6 @@
 use crate::{
-    ir::{
-        analyze::{IrFunction, ir_to_ast::abstract_syntax_tree::objects::*},
-        data::IrData,
-        utils::IrStatementDescriptor,
-    },
+    abstract_syntax_tree::objects::*,
+    ir::{analyze::IrFunction, data::IrData, utils::IrStatementDescriptor},
     utils::Aos,
 };
 use std::{ops::Deref, sync::Arc};

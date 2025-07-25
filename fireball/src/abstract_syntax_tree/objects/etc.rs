@@ -1,6 +1,4 @@
-use crate::{
-    ir::analyze::ir_to_ast::abstract_syntax_tree::objects::*, utils::version_map::VersionMap,
-};
+use crate::{abstract_syntax_tree::objects::*, utils::version_map::VersionMap};
 use hashbrown::HashMap;
 use std::sync::{Arc, RwLock};
 

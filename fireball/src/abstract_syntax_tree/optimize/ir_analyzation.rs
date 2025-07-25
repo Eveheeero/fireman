@@ -1,18 +1,12 @@
 mod convert;
 
 use crate::{
-    ir::{
-        analyze::{
-            DataType,
-            ir_to_ast::abstract_syntax_tree::{
-                Ast, AstFunctionId, AstFunctionVersion, AstStatement, AstStatementOrigin, AstValue,
-                AstValueType, AstVariable, AstVariableId, PrintWithConfig, ProcessedOptimization,
-                Wrapped,
-                optimize::ir_analyzation::convert::{convert_stmt, resolve_constant},
-            },
-        },
-        data::IrData,
+    abstract_syntax_tree::{
+        Ast, AstFunctionId, AstFunctionVersion, AstStatement, AstStatementOrigin, AstValue,
+        AstValueType, AstVariable, AstVariableId, PrintWithConfig, ProcessedOptimization, Wrapped,
+        optimize::ir_analyzation::convert::{convert_stmt, resolve_constant},
     },
+    ir::{analyze::DataType, data::IrData},
     prelude::{DecompileError, *},
     utils::Aos,
 };

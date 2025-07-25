@@ -1,8 +1,6 @@
 use crate::{
-    ir::{
-        analyze::{IrFunction, ir_to_ast::abstract_syntax_tree::objects::*},
-        utils::IrStatementDescriptor,
-    },
+    abstract_syntax_tree::objects::*,
+    ir::{analyze::IrFunction, utils::IrStatementDescriptor},
     prelude::*,
     utils::version_map::VersionMap,
 };

@@ -1,6 +1,6 @@
-use crate::ir::{
-    analyze::ir_to_ast::abstract_syntax_tree::objects::*, data::IrDataAccess,
-    utils::IrStatementDescriptorMap,
+use crate::{
+    abstract_syntax_tree::objects::*,
+    ir::{data::IrDataAccess, utils::IrStatementDescriptorMap},
 };
 
 #[derive(Debug, Clone, PartialEq)]

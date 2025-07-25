@@ -1,15 +1,12 @@
 use crate::{
+    abstract_syntax_tree::{
+        Ast, AstBinaryOperator, AstDescriptor, AstExpression, AstFunctionId, AstFunctionVersion,
+        AstJumpTarget, AstLiteral, AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue,
+        AstValueOrigin, AstVariableId, PrintWithConfig, Wrapped, WrappedAstStatement,
+    },
     core::Address,
     ir::{
-        analyze::{
-            ir_to_ast::abstract_syntax_tree::{
-                Ast, AstBinaryOperator, AstDescriptor, AstExpression, AstFunctionId,
-                AstFunctionVersion, AstJumpTarget, AstLiteral, AstStatement, AstStatementOrigin,
-                AstUnaryOperator, AstValue, AstValueOrigin, AstVariableId, PrintWithConfig,
-                Wrapped, WrappedAstStatement,
-            },
-            variables::resolve_operand,
-        },
+        analyze::variables::resolve_operand,
         data::{IrAccessSize, IrData, IrDataOperation, IrIntrinsic, NumCondition},
         operator::{IrBinaryOperator as IrBinaryOp, IrUnaryOperator as IrUnaryOp},
         statements::{IrStatement, IrStatementSpecial},

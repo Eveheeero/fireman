@@ -1,7 +1,5 @@
 use crate::{
-    ir::analyze::ir_to_ast::abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstVariableId,
-    },
+    abstract_syntax_tree::{Ast, AstFunctionId, AstFunctionVersion, AstVariableId},
     prelude::DecompileError,
 };
 use hashbrown::HashSet;
