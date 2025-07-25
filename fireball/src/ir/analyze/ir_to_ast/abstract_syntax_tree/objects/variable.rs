@@ -1,4 +1,7 @@
-use crate::ir::analyze::ir_to_ast::abstract_syntax_tree::objects::*;
+use crate::ir::{
+    analyze::ir_to_ast::abstract_syntax_tree::objects::*, data::IrDataAccess,
+    utils::IrStatementDescriptorMap,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AstVariable {
@@ -6,6 +9,8 @@ pub struct AstVariable {
     pub id: AstVariableId,
     pub var_type: AstValueType,
     pub const_value: Option<Wrapped<AstValue>>,
+    /// None if origin is not ir
+    pub data_access_ir: Option<IrStatementDescriptorMap<Vec<IrDataAccess>>>,
 }
 
 impl AstVariable {

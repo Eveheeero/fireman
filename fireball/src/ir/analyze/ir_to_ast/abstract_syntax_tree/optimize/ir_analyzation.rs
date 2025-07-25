@@ -100,6 +100,7 @@ pub(super) fn analyze_ir_function(
                 id: var_id,
                 var_type: c_type,
                 const_value,
+                data_access_ir: Some(var.get_data_accesses().clone()),
             },
         );
     }
