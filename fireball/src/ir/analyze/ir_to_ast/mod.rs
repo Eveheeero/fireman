@@ -1,5 +1,4 @@
 pub mod abstract_syntax_tree;
-mod convert;
 
 use crate::{
     core::Block,
@@ -9,7 +8,6 @@ use crate::{
     },
     prelude::*,
 };
-use convert::*;
 use std::sync::Arc;
 
 /// Generate AST from targets

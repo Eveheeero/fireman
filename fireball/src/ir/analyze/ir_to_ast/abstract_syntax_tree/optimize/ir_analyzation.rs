@@ -1,16 +1,14 @@
-use std::sync::{Arc, RwLock};
+mod convert;
 
 use crate::{
     ir::{
         analyze::{
             DataType,
-            ir_to_ast::{
-                abstract_syntax_tree::{
-                    Ast, AstFunctionId, AstFunctionVersion, AstStatement, AstStatementOrigin,
-                    AstValue, AstValueType, AstVariable, AstVariableId, PrintWithConfig,
-                    ProcessedOptimization, Wrapped,
-                },
-                convert_stmt, resolve_constant,
+            ir_to_ast::abstract_syntax_tree::{
+                Ast, AstFunctionId, AstFunctionVersion, AstStatement, AstStatementOrigin, AstValue,
+                AstValueType, AstVariable, AstVariableId, PrintWithConfig, ProcessedOptimization,
+                Wrapped,
+                optimize::ir_analyzation::convert::{convert_stmt, resolve_constant},
             },
         },
         data::IrData,
@@ -19,6 +17,7 @@ use crate::{
     utils::Aos,
 };
 use hashbrown::HashMap;
+use std::sync::{Arc, RwLock};
 
 /// Generate Ast function body with given ir function
 pub(super) fn analyze_ir_function(

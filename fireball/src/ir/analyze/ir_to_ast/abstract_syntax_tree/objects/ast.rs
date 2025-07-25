@@ -1,9 +1,6 @@
 use crate::{
     ir::{
-        analyze::{
-            IrFunction,
-            ir_to_ast::{abstract_syntax_tree::objects::*, ws},
-        },
+        analyze::{IrFunction, ir_to_ast::abstract_syntax_tree::objects::*},
         utils::IrStatementDescriptor,
     },
     prelude::*,
@@ -50,13 +47,21 @@ impl Ast {
                         data.clone(),
                         IrStatementDescriptor::new(ir_index, Some(stmt_index)),
                     );
-                    body.push(ws(AstStatement::Ir(Box::new(stmt.clone())), stmt_position));
+                    body.push(WrappedAstStatement {
+                        statement: AstStatement::Ir(Box::new(stmt.clone())),
+                        origin: AstStatementOrigin::Ir(stmt_position),
+                        comment: None,
+                    });
                 }
             } else {
-                body.push(ws(
-                    AstStatement::Assembly(instruction.inner.to_string()),
-                    AstDescriptor::new(data.clone(), IrStatementDescriptor::new(ir_index, None)),
-                ));
+                body.push(WrappedAstStatement {
+                    statement: AstStatement::Assembly(instruction.inner.to_string()),
+                    origin: AstStatementOrigin::Ir(AstDescriptor::new(
+                        data.clone(),
+                        IrStatementDescriptor::new(ir_index, None),
+                    )),
+                    comment: None,
+                });
             }
         }
         let func = AstFunction {
