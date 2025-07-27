@@ -1,13 +1,13 @@
-use hashbrown::HashSet;
-
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstStatement, AstVariableId, WrappedAstStatement,
+        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget,
+        AstStatement, AstVariableId, PrintWithConfig, WrappedAstStatement,
     },
     ir::data::IrData,
-    prelude::DecompileError,
+    prelude::{DecompileError, *},
     utils::Aos,
 };
+use hashbrown::HashSet;
 
 /// check variables are overwritten without reading in ir level
 pub(super) fn collapse_unused_variables(
@@ -17,7 +17,6 @@ pub(super) fn collapse_unused_variables(
 ) -> Result<(), DecompileError> {
     let body;
     let variables;
-    let ir_function;
     {
         let mut functions = ast.functions.write().unwrap();
         let function = functions
@@ -27,44 +26,97 @@ pub(super) fn collapse_unused_variables(
 
         body = std::mem::take(&mut function.body);
         variables = function.variables.clone();
-        ir_function = function.ir.clone();
     }
 
-    let mut used_locations: HashSet<Aos<IrData>> = HashSet::new();
+    let mut overwritten_locations: HashSet<Aos<IrData>> = HashSet::new();
     let mut new_body: Vec<WrappedAstStatement> = Vec::new();
-    for stmt in body.into_iter().rev() {
-        match stmt.statement {
-            AstStatement::Declaration(ast_variable, wrapped) => todo!(),
-            AstStatement::Assignment(wrapped, wrapped1) => todo!(),
-            AstStatement::If(wrapped, wrapped_ast_statements, wrapped_ast_statements1) => todo!(),
-            AstStatement::While(wrapped, wrapped_ast_statements) => todo!(),
-            AstStatement::For(
-                wrapped_ast_statement,
-                wrapped,
-                wrapped_ast_statement1,
-                wrapped_ast_statements,
-            ) => todo!(),
-            AstStatement::Call(ast_jump_target, wrappeds) => todo!(),
-            AstStatement::Label(_) => todo!(),
-            AstStatement::Block(wrapped_ast_statements) => todo!(),
-            AstStatement::Assembly(_) => todo!(),
-            AstStatement::Comment(_) => todo!(),
-            AstStatement::Ir(ir_statement) => todo!(),
-            AstStatement::Empty => todo!(),
-
-            /* assignment */
+    for mut stmt in body.into_iter().rev() {
+        match &mut stmt.statement {
+            /* removable */
+            AstStatement::Declaration(lhs, _rhs) => {
+                let data_access_count: usize = lhs
+                    .data_access_ir
+                    .as_ref()
+                    .unwrap()
+                    .values()
+                    .map(|x| x.len())
+                    .sum();
+                let var_id = &lhs.id;
+                let location = var_id_to_location(&variables, *var_id);
+                let overwritten = overwritten_locations.contains(&location);
+                if data_access_count == 1 && overwritten {
+                    trace!(?lhs,?stmt.comment, "Removing declaration of unused variable");
+                    continue;
+                }
+                overwritten_locations.insert(location.clone());
+                new_body.push(stmt);
+                continue;
+            }
+            AstStatement::Assignment(lhs, _rhs) => {
+                let AstExpression::Variable(_, var_id) = lhs.item else {
+                    new_body.push(stmt);
+                    continue;
+                };
+                let location = var_id_to_location(&variables, var_id);
+                let variables = variables.read().unwrap();
+                let lhs = variables.get(&var_id).unwrap();
+                let data_access_count: usize = lhs
+                    .data_access_ir
+                    .as_ref()
+                    .unwrap()
+                    .values()
+                    .map(|x| x.len())
+                    .sum();
+                let overwritten = overwritten_locations.contains(&location);
+                if data_access_count == 1 && overwritten {
+                    trace!(?lhs,?stmt.comment, "Removing assignment of unused variable");
+                    continue;
+                }
+                overwritten_locations.insert(location.clone());
+                new_body.push(stmt);
+                continue;
+            }
             // variables.get(variable_id).unwrap().data_access_ir.unwrap() check if data access is single and access_type is write
 
             /* statement containable */
+            AstStatement::If(_cond, branch_true, branch_false) => {
+                let Some(branch_false) = branch_false else {
+                    collapse(&mut overwritten_locations, None, branch_true);
+                    new_body.push(stmt);
+                    continue;
+                };
+                // check if branch has undetectable statements
+                // if so, clone used locations and run each branch
+                // make subset reseted locations and newly used locations
+                let b1_undetectable_exist = is_undetectable_statement_exist(branch_true);
+                let b2_undetectable_exist = is_undetectable_statement_exist(branch_false);
+                todo!()
+            }
+            AstStatement::While(_cond, _stmts) => todo!("same with `for`"),
+            AstStatement::For(_init, _cond, _update, _stmts) => todo!(
+                "if for pattern used, there might be user-defined or optimization variable exists. how should we handle this?"
+            ),
+            AstStatement::Block(stmts) => {
+                collapse(&mut overwritten_locations, None, stmts);
+                new_body.push(stmt);
+                continue;
+            }
 
             /* etc */
+            AstStatement::Label(_) | AstStatement::Comment(_) | AstStatement::Empty => {
+                new_body.push(stmt);
+                continue;
+            }
 
             /* next statements undetectable */
-            AstStatement::Return(_)
-            | AstStatement::Undefined
+            AstStatement::Call(_, _)
             | AstStatement::Goto(_)
+            | AstStatement::Assembly(_)
+            | AstStatement::Ir(_)
+            | AstStatement::Return(_)
+            | AstStatement::Undefined
             | AstStatement::Exception(_) => {
-                used_locations.clear();
+                overwritten_locations.clear();
                 new_body.push(stmt);
                 continue;
             }
@@ -81,4 +133,128 @@ pub(super) fn collapse_unused_variables(
         function.body = new_body;
     }
     Ok(())
+}
+
+fn var_id_to_location(variables: &ArcAstVariableMap, var_id: AstVariableId) -> Aos<IrData> {
+    let variables = variables.read().unwrap();
+    let data_accesses = variables
+        .get(&var_id)
+        .and_then(|var| var.data_access_ir.as_ref())
+        .expect("manually manipulated variable maps?");
+
+    #[cfg(debug_assertions)]
+    {
+        let mut t_location = None;
+        data_accesses.values().flat_map(|x| x.iter()).for_each(|x| {
+            let location = x.location();
+            if let Some(loc) = &t_location {
+                debug_assert_eq!(
+                    loc, location,
+                    "variables all data access should have same location, but found different for variable id, {:?} and {:?}",
+                    loc, location
+                );
+            } else {
+                t_location = Some(location.clone());
+            }
+        });
+    }
+
+    let location = data_accesses
+        .values()
+        .flat_map(|x| x.iter())
+        .next()
+        .expect("all variable should have at least data access")
+        .location();
+    location.clone()
+}
+
+fn is_undetectable_statement_exist(stmts: &[WrappedAstStatement]) -> bool {
+    for stmt in stmts {
+        match &stmt.statement {
+            AstStatement::Call(_, _)
+            | AstStatement::Assembly(_)
+            | AstStatement::Ir(_)
+            | AstStatement::Return(_)
+            | AstStatement::Undefined
+            | AstStatement::Goto(_)
+            | AstStatement::Exception(_) => {
+                return true;
+            }
+
+            AstStatement::Declaration(_, _)
+            | AstStatement::Assignment(_, _)
+            | AstStatement::Label(_)
+            | AstStatement::Comment(_)
+            | AstStatement::Empty => continue,
+
+            AstStatement::If(_cond, branch_true, branch_false) => {
+                if is_undetectable_statement_exist(branch_true) {
+                    return true;
+                }
+                if let Some(branch_false) = branch_false {
+                    if is_undetectable_statement_exist(branch_false) {
+                        return true;
+                    }
+                }
+            }
+            AstStatement::While(_cond, stmts) => {
+                if is_undetectable_statement_exist(stmts) {
+                    return true;
+                }
+            }
+            AstStatement::For(_init, _cond, _update, stmts) => {
+                if is_undetectable_statement_exist(stmts) {
+                    return true;
+                }
+            }
+            AstStatement::Block(stmts) => {
+                if is_undetectable_statement_exist(stmts) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+fn collapse(
+    overwritten_locations: &mut HashSet<Aos<IrData>>,
+    newly_overwritten: Option<&mut HashSet<Aos<IrData>>>,
+    stmts: &mut Vec<WrappedAstStatement>,
+) {
+    enum Action {
+        Nothing,
+        Remove,
+    }
+    for i in (0..stmts.len()).rev() {
+        let stmt = &mut stmts[i];
+        match &mut stmt.statement {
+            /* removable */
+            AstStatement::Declaration(ast_variable, wrapped) => todo!(),
+            AstStatement::Assignment(wrapped, wrapped1) => todo!(),
+
+            /* stmts containable */
+            AstStatement::If(wrapped, wrapped_ast_statements, wrapped_ast_statements1) => todo!(),
+            AstStatement::While(wrapped, wrapped_ast_statements) => todo!(),
+            AstStatement::For(
+                wrapped_ast_statement,
+                wrapped,
+                wrapped_ast_statement1,
+                wrapped_ast_statements,
+            ) => todo!(),
+            AstStatement::Block(wrapped_ast_statements) => todo!(),
+
+            /* etc */
+            AstStatement::Return(_)
+            | AstStatement::Call(_, _)
+            | AstStatement::Label(_)
+            | AstStatement::Goto(_)
+            | AstStatement::Assembly(_)
+            | AstStatement::Undefined
+            | AstStatement::Exception(_)
+            | AstStatement::Comment(_)
+            | AstStatement::Ir(_)
+            | AstStatement::Empty => {}
+        }
+    }
 }
