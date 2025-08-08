@@ -31,7 +31,7 @@ impl PreDefinedOffsets {
     ///
     /// ### Returns
     /// - `RwLockReadGuard<Vec<PreDefinedOffset>>` - read guard for internal data
-    pub fn get_reader(&self) -> RwLockReadGuard<Vec<PreDefinedOffset>> {
+    pub fn get_reader(&self) -> RwLockReadGuard<'_, Vec<PreDefinedOffset>> {
         self.data.read().unwrap()
     }
 }

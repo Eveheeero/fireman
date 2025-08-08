@@ -23,7 +23,7 @@ impl Relations {
     pub(crate) fn add_relation(&self, relation: Relation) {
         self.data.write().unwrap().push(relation);
     }
-    pub fn get_relations(&self) -> RwLockReadGuard<Vec<Relation>> {
+    pub fn get_relations(&self) -> RwLockReadGuard<'_, Vec<Relation>> {
         self.data.read().unwrap()
     }
 }

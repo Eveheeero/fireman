@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+pub mod abstract_syntax_tree;
 pub mod arch;
 pub mod core;
 pub mod ir;

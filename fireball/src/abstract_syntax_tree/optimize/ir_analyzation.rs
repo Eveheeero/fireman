@@ -1,23 +1,17 @@
-use std::sync::{Arc, RwLock};
+mod convert;
 
 use crate::{
-    ir::{
-        analyze::{
-            DataType,
-            ir_to_ast::{
-                abstract_syntax_tree::{
-                    Ast, AstFunctionId, AstFunctionVersion, AstStatement, AstStatementOrigin,
-                    AstValue, AstValueType, AstVariable, AstVariableId, PrintWithConfig, Wrapped,
-                },
-                convert_stmt, resolve_constant,
-            },
-        },
-        data::IrData,
+    abstract_syntax_tree::{
+        Ast, AstFunctionId, AstFunctionVersion, AstStatement, AstStatementOrigin, AstValue,
+        AstValueType, AstVariable, AstVariableId, PrintWithConfig, ProcessedOptimization, Wrapped,
+        optimize::ir_analyzation::convert::{convert_stmt, resolve_constant},
     },
+    ir::{analyze::DataType, data::IrData},
     prelude::{DecompileError, *},
     utils::Aos,
 };
 use hashbrown::HashMap;
+use std::sync::{Arc, RwLock};
 
 /// Generate Ast function body with given ir function
 pub(super) fn analyze_ir_function(
@@ -35,7 +29,10 @@ pub(super) fn analyze_ir_function(
             .unwrap();
 
         // if analyzed, pass
-        if function.analyzed {
+        if function
+            .processed_optimizations
+            .contains(&ProcessedOptimization::IrAnalyzation)
+        {
             return Ok(());
         }
 
@@ -92,10 +89,11 @@ pub(super) fn analyze_ir_function(
         locals.insert(
             var_id,
             AstVariable {
-                name: var_id.get_default_name(),
+                name: None,
                 id: var_id,
                 var_type: c_type,
                 const_value,
+                data_access_ir: Some(var.get_data_accesses().clone()),
             },
         );
     }
@@ -118,7 +116,7 @@ pub(super) fn analyze_ir_function(
             continue;
         };
 
-        let instruction = &map[usize::try_from(stmt_position.descriptor.ir_index())
+        let instruction = &map[usize::try_from(stmt_position.descriptor().ir_index())
             .expect("does your architecture smaller than 32bit?")];
         let instruction_args = &instruction.inner.arguments;
         /* analyze and turn into ast */
@@ -135,6 +133,7 @@ pub(super) fn analyze_ir_function(
         stmt.comment = ws.comment.clone();
         *ws = stmt;
     }
+
     {
         let mut functions = ast.functions.write().unwrap();
         let function = functions
@@ -142,8 +141,9 @@ pub(super) fn analyze_ir_function(
             .and_then(|x| x.get_mut(&function_version))
             .unwrap();
         function.body = body;
-        function.analyzed = true;
+        function
+            .processed_optimizations
+            .push(ProcessedOptimization::IrAnalyzation);
     }
-
     Ok(())
 }

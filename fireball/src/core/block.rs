@@ -101,7 +101,7 @@ impl Block {
     ///
     /// ### Returns
     /// - `RwLockReadGuard<Vec<Relation>>` - connected blocks
-    pub fn get_connected_from(&self) -> RwLockReadGuard<Vec<Relation>> {
+    pub fn get_connected_from(&self) -> RwLockReadGuard<'_, Vec<Relation>> {
         self.connected_from.read().unwrap()
     }
 
@@ -109,7 +109,7 @@ impl Block {
     ///
     /// ### Returns
     /// - `RwLockReadGuard<Vec<Relation>>` - connected blocks
-    pub fn get_connected_to(&self) -> RwLockReadGuard<Vec<Relation>> {
+    pub fn get_connected_to(&self) -> RwLockReadGuard<'_, Vec<Relation>> {
         self.connected_to.read().unwrap()
     }
 
@@ -161,7 +161,7 @@ impl Block {
     ///
     /// ### Returns
     /// - `RwLockReadGuard<Option<IrBlock>>` - IR data of the block
-    pub fn get_ir(&self) -> RwLockReadGuard<Option<IrBlock>> {
+    pub fn get_ir(&self) -> RwLockReadGuard<'_, Option<IrBlock>> {
         self.ir.read().unwrap()
     }
     /// Sets the block's IR data.

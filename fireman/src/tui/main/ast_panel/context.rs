@@ -1,4 +1,4 @@
-use fireball::{core::Address, ir::analyze::ir_to_ast::abstract_syntax_tree::Ast};
+use fireball::{abstract_syntax_tree::Ast, core::Address};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},

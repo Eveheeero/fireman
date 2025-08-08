@@ -1,15 +1,9 @@
-pub mod abstract_syntax_tree;
-mod convert;
-
 use crate::{
+    abstract_syntax_tree::Ast,
     core::Block,
-    ir::analyze::{
-        ControlFlowGraphAnalyzer, ir_function::generate_ir_function,
-        ir_to_ast::abstract_syntax_tree::Ast,
-    },
+    ir::analyze::{ControlFlowGraphAnalyzer, ir_function::generate_ir_function},
     prelude::*,
 };
-use convert::*;
 use std::sync::Arc;
 
 /// Generate AST from targets

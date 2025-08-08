@@ -14,7 +14,7 @@ impl Ast {
             output.push_str(&format!(
                 "{} {}(",
                 func.return_type.to_string_with_config(Some(config)),
-                func.name
+                func.name()
             ));
 
             // Parameters
@@ -27,14 +27,14 @@ impl Ast {
                             format!(
                                 "const {} {} = {};\n",
                                 var.var_type.to_string_with_config(Some(config)),
-                                var.name,
+                                var.name(),
                                 const_value.to_string_with_config(Some(config))
                             )
                         } else {
                             format!(
                                 "{} {};\n",
                                 var.var_type.to_string_with_config(Some(config)),
-                                var.name
+                                var.name()
                             )
                         }
                     })
@@ -45,23 +45,27 @@ impl Ast {
             output.push_str(") {\n");
 
             // Local variables
+            let mut var_declarations_exist = false;
             for var in func.variables.read().unwrap().values() {
+                var_declarations_exist = true;
                 if let Some(const_value) = &var.const_value {
                     output.push_str(&format!(
-                        "const {} {} = {};\n",
+                        "  const {} {} = {};\n",
                         var.var_type.to_string_with_config(Some(config)),
-                        var.name,
+                        var.name(),
                         const_value.to_string_with_config(Some(config))
                     ));
                 } else {
                     output.push_str(&format!(
-                        "{} {};\n",
+                        "  {} {};\n",
                         var.var_type.to_string_with_config(Some(config)),
-                        var.name
+                        var.name()
                     ));
                 }
             }
-            output.push_str("\n");
+            if var_declarations_exist {
+                output.push_str("\n");
+            }
 
             // Function body
             let mut visited_ir = HashSet::new();
@@ -75,7 +79,7 @@ impl Ast {
                     if let AstStatementOrigin::Ir(descriptor) = &stmt.origin
                         && !visited_ir.contains(&descriptor.descriptor().ir_index())
                     {
-                        let instruction = &descriptor.ir.get_instructions()
+                        let instruction = &descriptor.ir().get_instructions()
                             [descriptor.descriptor().ir_index() as usize];
                         output.push_str(&format!("  // {}\n", instruction));
                         visited_ir.insert(descriptor.descriptor().ir_index());
@@ -86,7 +90,7 @@ impl Ast {
                         && let Some(statement_index) = descriptor.descriptor().statement_index()
                     {
                         if prev_stmt != Some(descriptor.descriptor()) {
-                            let stmt = &descriptor.ir.get_ir()
+                            let stmt = &descriptor.ir().get_ir()
                                 [descriptor.descriptor().ir_index() as usize]
                                 .statements
                                 .as_ref()
@@ -102,6 +106,7 @@ impl Ast {
             output.push_str("}\n\n");
         }
 
+        output.pop();
         output
     }
 }

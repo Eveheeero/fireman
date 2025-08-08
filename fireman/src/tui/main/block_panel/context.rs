@@ -23,7 +23,7 @@ impl BlockListItem {
             selected: false,
         }
     }
-    pub fn list_item(&self) -> widgets::ListItem {
+    pub fn list_item(&self) -> widgets::ListItem<'_> {
         use widgets::ListItem;
 
         let mut style = ratatui::style::Style::default();
