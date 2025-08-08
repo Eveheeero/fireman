@@ -1,4 +1,4 @@
-mod collapse_unused_varaible;
+mod collapse_unused_variable;
 mod ir_analyzation;
 mod loop_analyzation;
 pub mod pattern_matching;
@@ -41,7 +41,7 @@ impl Ast {
                 ir_analyzation::analyze_ir_function(&mut ast, function_id, to_version)?;
             }
             if config.collapse_unused_varaible {
-                collapse_unused_varaible::collapse_unused_variables(
+                collapse_unused_variable::collapse_unused_variables(
                     &mut ast,
                     function_id,
                     to_version,
