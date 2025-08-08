@@ -1,7 +1,7 @@
 use crate::{
     abstract_syntax_tree::{
-        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget,
-        AstStatement, AstVariableId, PrintWithConfig, WrappedAstStatement,
+        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement,
+        AstVariableId, WrappedAstStatement,
     },
     ir::data::IrData,
     prelude::{DecompileError, *},

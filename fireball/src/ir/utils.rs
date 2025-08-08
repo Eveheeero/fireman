@@ -100,7 +100,7 @@ impl<T> IrStatementDescriptorMap<T> {
         self.inner.is_empty()
     }
     #[inline]
-    pub fn values(&self) -> hashbrown::hash_map::Values<u64, T> {
+    pub fn values(&self) -> hashbrown::hash_map::Values<'_, u64, T> {
         self.inner.values()
     }
     #[inline]
