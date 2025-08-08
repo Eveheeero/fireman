@@ -76,6 +76,12 @@ impl PrintWithConfig for AstStatement {
                 right.to_string_with_config(Some(config))
             ),
             AstStatement::If(cond, then_body, else_body) => {
+                if then_body.is_empty() && !config.print_empty_statement {
+                    if else_body.is_none() || else_body.as_ref().unwrap().is_empty() {
+                        return Ok(());
+                    }
+                }
+
                 write!(f, "if ({}) {{ ", cond.to_string_with_config(Some(config)))?;
                 for stmt in then_body {
                     write!(f, "{} ", stmt.to_string_with_config(Some(config)))?;
@@ -89,6 +95,10 @@ impl PrintWithConfig for AstStatement {
                 write!(f, "}}")
             }
             AstStatement::While(cond, body) => {
+                if body.is_empty() && !config.print_empty_statement {
+                    return Ok(());
+                }
+
                 write!(
                     f,
                     "while ({}) {{ ",
@@ -100,6 +110,10 @@ impl PrintWithConfig for AstStatement {
                 write!(f, "}}")
             }
             AstStatement::For(init, cond, update, body) => {
+                if body.is_empty() && !config.print_empty_statement {
+                    return Ok(());
+                }
+
                 write!(f, "for (")?;
                 if let AstStatement::Declaration(var, _) = init.as_ref().as_ref() {
                     write!(
@@ -150,6 +164,10 @@ impl PrintWithConfig for AstStatement {
                 write!(f, "goto {}; ", name.to_string_with_config(Some(config)))
             }
             AstStatement::Block(stmts) => {
+                if stmts.is_empty() && !config.print_empty_statement {
+                    return Ok(());
+                }
+
                 write!(f, "{{ ")?;
                 for stmt in stmts {
                     write!(f, "{} ", stmt.to_string_with_config(Some(config)))?;

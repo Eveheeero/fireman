@@ -45,23 +45,27 @@ impl Ast {
             output.push_str(") {\n");
 
             // Local variables
+            let mut var_declarations_exist = false;
             for var in func.variables.read().unwrap().values() {
+                var_declarations_exist = true;
                 if let Some(const_value) = &var.const_value {
                     output.push_str(&format!(
-                        "const {} {} = {};\n",
+                        "  const {} {} = {};\n",
                         var.var_type.to_string_with_config(Some(config)),
                         var.name(),
                         const_value.to_string_with_config(Some(config))
                     ));
                 } else {
                     output.push_str(&format!(
-                        "{} {};\n",
+                        "  {} {};\n",
                         var.var_type.to_string_with_config(Some(config)),
                         var.name()
                     ));
                 }
             }
-            output.push_str("\n");
+            if var_declarations_exist {
+                output.push_str("\n");
+            }
 
             // Function body
             let mut visited_ir = HashSet::new();
@@ -102,6 +106,7 @@ impl Ast {
             output.push_str("}\n\n");
         }
 
+        output.pop();
         output
     }
 }
