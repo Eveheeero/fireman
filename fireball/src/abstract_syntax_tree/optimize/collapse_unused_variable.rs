@@ -81,52 +81,38 @@ pub(super) fn collapse_unused_variables(
             /* statement containable */
             AstStatement::If(_cond, branch_true, branch_false) => {
                 let Some(branch_false) = branch_false else {
-                    collapse(&variables, &mut overwritten_locations, None, branch_true);
+                    collapse(&variables, &mut overwritten_locations, branch_true);
                     if branch_true.is_empty() {
                         continue;
                     }
                     new_body.push(stmt);
                     continue;
                 };
-                // check if branch has undetectable statements
-                // if so, clone used locations and run each branch
-                // make subset reseted locations and newly used locations
-                let b1_undetectable_exist = is_undetectable_statement_exist(branch_true);
-                let mut b1_newly_overwritten = HashSet::new();
+
                 let mut b1_overwritten_locations = overwritten_locations.clone();
-                collapse(
-                    &variables,
-                    &mut b1_overwritten_locations,
-                    Some(&mut b1_newly_overwritten),
-                    branch_true,
-                );
+                collapse(&variables, &mut b1_overwritten_locations, branch_true);
 
-                let b2_undetectable_exist = is_undetectable_statement_exist(branch_false);
-                let mut b2_newly_overwritten = HashSet::new();
                 let mut b2_overwritten_locations = overwritten_locations;
-                collapse(
-                    &variables,
-                    &mut b2_overwritten_locations,
-                    Some(&mut b2_newly_overwritten),
-                    branch_false,
-                );
+                collapse(&variables, &mut b2_overwritten_locations, branch_false);
 
-                if b1_undetectable_exist && b2_undetectable_exist {
-                    /* overwritten_locations is set to subset of both newly overwritten */
-                } else if !b1_undetectable_exist && !b2_undetectable_exist {
-                    /* both branches are detectable */
-                } else {
+                overwritten_locations = b1_overwritten_locations
+                    .intersection(&b2_overwritten_locations)
+                    .cloned()
+                    .collect();
+
+                if branch_true.is_empty() && branch_false.is_empty() {
+                    continue;
                 }
                 new_body.push(stmt);
 
-                todo!()
+                continue;
             }
             AstStatement::While(_cond, _stmts) => todo!("same with `for`"),
             AstStatement::For(_init, _cond, _update, _stmts) => todo!(
                 "if for pattern used, there might be user-defined or optimization variable exists. how should we handle this?"
             ),
             AstStatement::Block(stmts) => {
-                collapse(&variables, &mut overwritten_locations, None, stmts);
+                collapse(&variables, &mut overwritten_locations, stmts);
                 new_body.push(stmt);
                 continue;
             }
@@ -250,7 +236,6 @@ fn is_undetectable_statement_exist(stmts: &[WrappedAstStatement]) -> bool {
 fn collapse(
     variables: &ArcAstVariableMap,
     overwritten_locations: &mut HashSet<Aos<IrData>>,
-    mut newly_overwritten: Option<&mut HashSet<Aos<IrData>>>,
     stmts: &mut Vec<WrappedAstStatement>,
 ) {
     let mut i = stmts.len();
@@ -277,9 +262,6 @@ fn collapse(
                     drop_needed = true;
                 } else {
                     overwritten_locations.insert(location.clone());
-                    if let Some(newly_overwritten) = &mut newly_overwritten {
-                        newly_overwritten.insert(location);
-                    }
                 }
             }
             AstStatement::Assignment(lhs, _rhs) => {
@@ -300,9 +282,6 @@ fn collapse(
                         drop_needed = true;
                     } else {
                         overwritten_locations.insert(location.clone());
-                        if let Some(newly_overwritten) = &mut newly_overwritten {
-                            newly_overwritten.insert(location);
-                        }
                     }
                 }
             }
@@ -310,13 +289,26 @@ fn collapse(
             /* stmts containable */
             AstStatement::If(_cond, branch_true, branch_false) => {
                 if let Some(branch_false) = branch_false {
-                } else {
-                    collapse(
-                        &variables,
+                    let mut b1_overwritten_locations = overwritten_locations.clone();
+                    collapse(&variables, &mut b1_overwritten_locations, branch_true);
+
+                    let mut b2_overwritten_locations = [].into();
+                    std::mem::swap(&mut b2_overwritten_locations, overwritten_locations);
+                    collapse(&variables, &mut b2_overwritten_locations, branch_false);
+
+                    std::mem::swap(
                         overwritten_locations,
-                        newly_overwritten.as_deref_mut(),
-                        branch_true,
+                        &mut b1_overwritten_locations
+                            .intersection(&b2_overwritten_locations)
+                            .cloned()
+                            .collect(),
                     );
+
+                    if branch_true.is_empty() && branch_false.is_empty() {
+                        drop_needed = true;
+                    }
+                } else {
+                    collapse(&variables, overwritten_locations, branch_true);
                 }
             }
             AstStatement::While(_cond, _stmts) => todo!("same with `for`"),
@@ -324,12 +316,7 @@ fn collapse(
                 "if for pattern used, there might be user-defined or optimization variable exists. how should we handle this?"
             ),
             AstStatement::Block(stmts) => {
-                collapse(
-                    variables,
-                    overwritten_locations,
-                    newly_overwritten.as_deref_mut(),
-                    stmts,
-                );
+                collapse(variables, overwritten_locations, stmts);
                 if stmts.is_empty() {
                     drop_needed = true;
                 }
