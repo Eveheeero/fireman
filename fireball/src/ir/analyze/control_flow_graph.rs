@@ -76,23 +76,13 @@ impl ControlFlowGraphAnalyzer {
 }
 
 #[derive(Debug, Clone)]
-pub struct LoopInfo {
-    pub loop_from: Arc<Block>,
-    pub loop_to: Arc<Block>,
-}
-
-#[derive(Debug, Clone)]
 pub struct ControlFlowGraph {
     blocks: Vec<Arc<Block>>,
-    loops: Vec<LoopInfo>,
 }
 
 impl ControlFlowGraph {
     pub fn get_blocks(&self) -> &Vec<Arc<Block>> {
         &self.blocks
-    }
-    pub fn get_loops(&self) -> &Vec<LoopInfo> {
-        &self.loops
     }
 }
 
@@ -103,41 +93,6 @@ fn find_block_id_by_address(blocks: &[Arc<Block>], address: &Address) -> Option<
         }
     }
     None
-}
-
-fn dfs_loop_detection(
-    id_to_block: &HashMap<usize, &Arc<Block>>,
-    now_id: usize,
-    components_relation_map: &HashMap<usize, Vec<usize>>,
-    dfs_visited_id: &mut HashSet<usize>,
-    stack: &mut HashSet<usize>,
-    loops: &mut Vec<LoopInfo>,
-) {
-    dfs_visited_id.insert(now_id);
-    stack.insert(now_id);
-
-    if let Some(neighbors) = components_relation_map.get(&now_id) {
-        for &neighbor_id in neighbors.iter() {
-            if !dfs_visited_id.contains(&neighbor_id) {
-                dfs_loop_detection(
-                    id_to_block,
-                    neighbor_id,
-                    components_relation_map,
-                    dfs_visited_id,
-                    stack,
-                    loops,
-                );
-            } else if stack.contains(&neighbor_id) {
-                // means neighbor already visited
-                loops.push(LoopInfo {
-                    loop_from: (*id_to_block.get(&neighbor_id).unwrap()).clone(),
-                    loop_to: (*id_to_block.get(&now_id).unwrap()).clone(),
-                });
-            }
-        }
-    }
-
-    stack.remove(&now_id);
 }
 
 pub fn analyze_control_flow_graph(
@@ -194,52 +149,8 @@ pub fn analyze_control_flow_graph(
                 .cloned()
                 .collect();
 
-            /* Analyze with component blocks */
-            // Turn relations to mapped relations for these components
-            let mut components_relation_map: HashMap<usize, Vec<usize>> = HashMap::new();
-            {
-                for &block_id in component_ids.iter() {
-                    components_relation_map.insert(block_id, Vec::new());
-                }
-                for relation in relations.iter() {
-                    let from_id = relation.from();
-                    if component_ids.contains(&from_id) {
-                        if let Some(to_address) = relation.to() {
-                            if let Some(to_id) = find_block_id_by_address(blocks, &to_address) {
-                                if component_ids.contains(&to_id) {
-                                    components_relation_map
-                                        .get_mut(&from_id)
-                                        .unwrap()
-                                        .push(to_id);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            /* Searching for looping blocks */
-            let mut component_loops: Vec<LoopInfo> = Vec::new();
-            {
-                let mut dfs_visited_id: HashSet<usize> = HashSet::new();
-                let mut stack: HashSet<usize> = HashSet::new();
-                for &start_node_id in component_ids.iter() {
-                    if !dfs_visited_id.contains(&start_node_id) {
-                        dfs_loop_detection(
-                            &id_to_block,
-                            start_node_id,
-                            &components_relation_map,
-                            &mut dfs_visited_id,
-                            &mut stack,
-                            &mut component_loops,
-                        );
-                    }
-                }
-            }
-
             cfgs.push(ControlFlowGraph {
                 blocks: component_blocks,
-                loops: component_loops,
             });
         }
     }
