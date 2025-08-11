@@ -8,7 +8,11 @@ impl Ast {
         let function_versions = &self.function_versions;
 
         // Functions
-        for (func_id, version_map) in self.functions.read().unwrap().iter() {
+        let functions = self.functions.read().unwrap();
+        let mut function_keys_sorted = functions.keys().collect::<Vec<_>>();
+        function_keys_sorted.sort_by_cached_key(|key| key.address);
+        for func_id in function_keys_sorted {
+            let version_map = functions.get(func_id).unwrap();
             let version = function_versions.get(func_id).unwrap();
             let func = version_map.get(version).unwrap();
             output.push_str(&format!(
