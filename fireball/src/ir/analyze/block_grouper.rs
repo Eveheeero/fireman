@@ -8,13 +8,13 @@ use std::{
 };
 
 #[derive(Debug, Clone)]
-pub struct ControlFlowGraphAnalyzer {
+pub struct BlockGrouper {
     targets: Vec<Arc<Block>>,
     relations: Vec<Relation>,
-    analyzed: Option<Vec<ControlFlowGraph>>,
+    analyzed: Option<Vec<BlockGroup>>,
 }
 
-impl ControlFlowGraphAnalyzer {
+impl BlockGrouper {
     pub fn new() -> Self {
         Self {
             targets: Vec::new(),
@@ -28,7 +28,7 @@ impl ControlFlowGraphAnalyzer {
             let connected_to = target.get_connected_to();
 
             debug!(
-                "CFG analyzer target block (id: {}, start address: {}) relation from: (id){:?}, to: (addr){:?}",
+                "Block grouper target block (id: {}, start address: {}) relation from: (id){:?}, to: (addr){:?}",
                 target.get_id(),
                 target.get_start_address(),
                 connected_from.iter().map(|r| r.from()).collect::<Vec<_>>(),
@@ -66,21 +66,21 @@ impl ControlFlowGraphAnalyzer {
     pub fn get_targets(&self) -> &Vec<Arc<Block>> {
         &self.targets
     }
-    pub fn get_analyzed(&self) -> Option<&Vec<ControlFlowGraph>> {
+    pub fn get_analyzed(&self) -> Option<&Vec<BlockGroup>> {
         self.analyzed.as_ref()
     }
-    pub fn analyze(&mut self) -> &Vec<ControlFlowGraph> {
-        self.analyzed = Some(analyze_control_flow_graph(&self.targets, &self.relations));
+    pub fn analyze(&mut self) -> &Vec<BlockGroup> {
+        self.analyzed = Some(analyze_block_groups(&self.targets, &self.relations));
         self.analyzed.as_ref().unwrap()
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct ControlFlowGraph {
+pub struct BlockGroup {
     blocks: Vec<Arc<Block>>,
 }
 
-impl ControlFlowGraph {
+impl BlockGroup {
     pub fn get_blocks(&self) -> &Vec<Arc<Block>> {
         &self.blocks
     }
@@ -95,10 +95,7 @@ fn find_block_id_by_address(blocks: &[Arc<Block>], address: &Address) -> Option<
     None
 }
 
-pub fn analyze_control_flow_graph(
-    blocks: &[Arc<Block>],
-    relations: &[Relation],
-) -> Vec<ControlFlowGraph> {
+pub fn analyze_block_groups(blocks: &[Arc<Block>], relations: &[Relation]) -> Vec<BlockGroup> {
     let id_to_block: HashMap<usize, &Arc<Block>> =
         blocks.iter().map(|block| (block.get_id(), block)).collect();
 
@@ -120,7 +117,7 @@ pub fn analyze_control_flow_graph(
     }
 
     let mut visited_id: HashSet<usize> = HashSet::new();
-    let mut cfgs: Vec<ControlFlowGraph> = Vec::new();
+    let mut block_groups: Vec<BlockGroup> = Vec::new();
     for start_node_id in id_to_block.keys() {
         if !visited_id.contains(start_node_id) {
             let mut component_ids: Vec<usize> = Vec::new();
@@ -149,11 +146,11 @@ pub fn analyze_control_flow_graph(
                 .cloned()
                 .collect();
 
-            cfgs.push(ControlFlowGraph {
+            block_groups.push(BlockGroup {
                 blocks: component_blocks,
             });
         }
     }
 
-    cfgs
+    block_groups
 }
