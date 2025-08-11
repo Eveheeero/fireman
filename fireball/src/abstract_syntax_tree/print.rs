@@ -45,26 +45,32 @@ impl Ast {
             output.push_str(") {\n");
 
             // Local variables
-            let mut var_declarations_exist = false;
-            for var in func.variables.read().unwrap().values() {
-                var_declarations_exist = true;
-                if let Some(const_value) = &var.const_value {
-                    output.push_str(&format!(
-                        "  const {} {} = {};\n",
-                        var.var_type.to_string_with_config(Some(config)),
-                        var.name(),
-                        const_value.to_string_with_config(Some(config))
-                    ));
-                } else {
-                    output.push_str(&format!(
-                        "  {} {};\n",
-                        var.var_type.to_string_with_config(Some(config)),
-                        var.name()
-                    ));
+            {
+                let mut var_declarations_exist = false;
+                let var_map = func.variables.read().unwrap();
+                let mut var_keys_sorted = var_map.keys().collect::<Vec<_>>();
+                var_keys_sorted.sort_by_cached_key(|key| key.index);
+                for var_key in var_keys_sorted {
+                    let var = var_map.get(var_key).unwrap();
+                    var_declarations_exist = true;
+                    if let Some(const_value) = &var.const_value {
+                        output.push_str(&format!(
+                            "  const {} {} = {};\n",
+                            var.var_type.to_string_with_config(Some(config)),
+                            var.name(),
+                            const_value.to_string_with_config(Some(config))
+                        ));
+                    } else {
+                        output.push_str(&format!(
+                            "  {} {};\n",
+                            var.var_type.to_string_with_config(Some(config)),
+                            var.name()
+                        ));
+                    }
                 }
-            }
-            if var_declarations_exist {
-                output.push_str("\n");
+                if var_declarations_exist {
+                    output.push_str("\n");
+                }
             }
 
             // Function body

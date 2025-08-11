@@ -108,7 +108,7 @@ fn find_block_id_by_address(blocks: &[Arc<Block>], address: &Address) -> Option<
 fn dfs_loop_detection(
     id_to_block: &HashMap<usize, &Arc<Block>>,
     now_id: usize,
-    componenets_relation_map: &HashMap<usize, Vec<usize>>,
+    components_relation_map: &HashMap<usize, Vec<usize>>,
     dfs_visited_id: &mut HashSet<usize>,
     stack: &mut HashSet<usize>,
     loops: &mut Vec<LoopInfo>,
@@ -116,19 +116,19 @@ fn dfs_loop_detection(
     dfs_visited_id.insert(now_id);
     stack.insert(now_id);
 
-    if let Some(neighbors) = componenets_relation_map.get(&now_id) {
+    if let Some(neighbors) = components_relation_map.get(&now_id) {
         for &neighbor_id in neighbors.iter() {
             if !dfs_visited_id.contains(&neighbor_id) {
                 dfs_loop_detection(
                     id_to_block,
                     neighbor_id,
-                    componenets_relation_map,
+                    components_relation_map,
                     dfs_visited_id,
                     stack,
                     loops,
                 );
             } else if stack.contains(&neighbor_id) {
-                // means neighbot already visited
+                // means neighbor already visited
                 loops.push(LoopInfo {
                     loop_from: (*id_to_block.get(&neighbor_id).unwrap()).clone(),
                     loop_to: (*id_to_block.get(&now_id).unwrap()).clone(),
@@ -178,11 +178,11 @@ pub fn analyze_control_flow_graph(
                 stack.push(*start_node_id);
                 while let Some(now_id) = stack.pop() {
                     if let Some(neighbors) = relations_map.get(&now_id) {
-                        for &neighbot_id in neighbors.iter() {
-                            if !visited_id.contains(&neighbot_id) {
-                                visited_id.insert(neighbot_id);
-                                stack.push(neighbot_id);
-                                component_ids.push(neighbot_id);
+                        for &neighbor_id in neighbors.iter() {
+                            if !visited_id.contains(&neighbor_id) {
+                                visited_id.insert(neighbor_id);
+                                stack.push(neighbor_id);
+                                component_ids.push(neighbor_id);
                             }
                         }
                     }
@@ -195,11 +195,11 @@ pub fn analyze_control_flow_graph(
                 .collect();
 
             /* Analyze with component blocks */
-            // Turn relations to mapped relations for this componetn
-            let mut componenets_relation_map: HashMap<usize, Vec<usize>> = HashMap::new();
+            // Turn relations to mapped relations for these components
+            let mut components_relation_map: HashMap<usize, Vec<usize>> = HashMap::new();
             {
                 for &block_id in component_ids.iter() {
-                    componenets_relation_map.insert(block_id, Vec::new());
+                    components_relation_map.insert(block_id, Vec::new());
                 }
                 for relation in relations.iter() {
                     let from_id = relation.from();
@@ -207,7 +207,7 @@ pub fn analyze_control_flow_graph(
                         if let Some(to_address) = relation.to() {
                             if let Some(to_id) = find_block_id_by_address(blocks, &to_address) {
                                 if component_ids.contains(&to_id) {
-                                    componenets_relation_map
+                                    components_relation_map
                                         .get_mut(&from_id)
                                         .unwrap()
                                         .push(to_id);
@@ -228,7 +228,7 @@ pub fn analyze_control_flow_graph(
                         dfs_loop_detection(
                             &id_to_block,
                             start_node_id,
-                            &componenets_relation_map,
+                            &components_relation_map,
                             &mut dfs_visited_id,
                             &mut stack,
                             &mut component_loops,
