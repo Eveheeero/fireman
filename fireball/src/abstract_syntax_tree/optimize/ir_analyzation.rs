@@ -107,7 +107,7 @@ pub(super) fn analyze_ir_function(
 
     let map = ir_function.get_instructions().as_ref();
     for ws in &mut body {
-        // skip if unanalyzable
+        // skip if not analyzable
         let AstStatement::Ir(stmt) = &ws.statement else {
             continue;
         };
