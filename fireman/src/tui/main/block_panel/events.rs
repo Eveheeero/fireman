@@ -1,5 +1,7 @@
 use crate::tui::{FiremanCtx, MutexCtx};
+use fireball::abstract_syntax_tree::Ast;
 use fireball::core::FireRaw;
+use fireball::utils::error::decompile_error::DecompileError;
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use std::i32;
 
@@ -274,7 +276,14 @@ pub fn generate_ast(ctx_: &MutexCtx) -> std::io::Result<()> {
                 ctx.top_message = e.to_string();
                 return Ok(());
             }
-            let ast = ast.unwrap();
+            let mut ast = ast.unwrap();
+            match ast.optimize(None) {
+                Ok(optimized) => ast = optimized,
+                Err(e) => {
+                    ctx.top_message = e.to_string();
+                    return Ok(());
+                }
+            }
             let data = super::super::ast_panel::Data::new(ast);
             let displayed = data.displayed.clone();
             ctx.main_context.ast_context.data.insert(key, data);
