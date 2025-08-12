@@ -1,7 +1,5 @@
 use crate::tui::{FiremanCtx, MutexCtx};
-use fireball::abstract_syntax_tree::Ast;
 use fireball::core::FireRaw;
-use fireball::utils::error::decompile_error::DecompileError;
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use std::i32;
 
