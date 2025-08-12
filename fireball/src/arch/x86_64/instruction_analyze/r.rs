@@ -19,5 +19,5 @@ pub(super) fn ret() -> &'static [IrStatement] {
         [],
     );
     let halt = halt();
-    [jmp, set_sp, operand_condition, halt].into()
+    [set_sp, operand_condition, jmp, halt].into()
 }
