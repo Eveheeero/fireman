@@ -420,9 +420,14 @@ fn resolve_data_accesses(
     ir_index: u32,
     instruction_args: &[iceball::Argument],
 ) -> Vec<(IrStatementDescriptor, IrDataAccess)> {
-    data_access
+    /* sorting data access for consistently ast variable sorting */
+    let mut data_access = data_access
         .iter()
         .filter(|(k, _v)| k.ir_index() == ir_index)
+        .collect::<Vec<_>>();
+    data_access.sort_by_key(|x| x.0.statement_index().unwrap());
+    data_access
+        .into_iter()
         .flat_map(|(k, da)| {
             da.iter().map(move |da| {
                 let resolved_loc = resolve_operand(da.location(), instruction_args);
