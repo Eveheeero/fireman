@@ -161,7 +161,7 @@ impl PrintWithConfig for AstStatement {
             }
             AstStatement::Label(name) => write!(f, "{}:", name),
             AstStatement::Goto(name) => {
-                write!(f, "goto {}; ", name.to_string_with_config(Some(config)))
+                write!(f, "goto {};", name.to_string_with_config(Some(config)))
             }
             AstStatement::Block(stmts) => {
                 if stmts.is_empty() && !config.print_empty_statement {
@@ -207,7 +207,13 @@ impl PrintWithConfig for AstExpression {
             AstExpression::Variable(var_map, id) => {
                 let var_map = var_map.read().unwrap();
                 let var = var_map.get(id).unwrap();
-                write!(f, "{}", var.name())
+                if config.replace_constant
+                    && let Some(const_value) = &var.const_value
+                {
+                    write!(f, "{}", const_value.to_string_with_config(Some(config)))
+                } else {
+                    write!(f, "{}", var.name())
+                }
             }
             AstExpression::UnaryOp(op, expr) => write!(
                 f,
@@ -358,12 +364,13 @@ impl PrintWithConfig for AstVariable {
         config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
-        write!(
-            f,
-            "{} {}",
-            self.var_type.to_string_with_config(Some(config)),
-            self.name()
-        )
+        if config.replace_constant
+            && let Some(const_value) = &self.const_value
+        {
+            write!(f, "{}", const_value.to_string_with_config(Some(config)))
+        } else {
+            write!(f, "{}", self.name())
+        }
     }
 }
 impl PrintWithConfig for WrappedAstStatement {
@@ -419,9 +426,17 @@ impl PrintWithConfig for AstJumpTarget {
         f: &mut impl std::fmt::Write,
         config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
-        let _config = config.unwrap_or_default();
+        let config = config.unwrap_or_default();
         match self {
-            AstJumpTarget::Variable { scope: _, id } => write!(f, "var{:?}", id),
+            AstJumpTarget::Variable {
+                scope: _,
+                var_map,
+                var_id,
+            } => {
+                let var_map = var_map.read().unwrap();
+                let var = var_map.get(var_id).unwrap();
+                write!(f, "{}", var.to_string_with_config(Some(config)))
+            }
             AstJumpTarget::Function { target } => write!(f, "function{:?}", target),
             AstJumpTarget::Instruction { target } => {
                 write!(f, "ir{}", target.descriptor().ir_index())

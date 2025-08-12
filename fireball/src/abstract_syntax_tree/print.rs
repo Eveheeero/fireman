@@ -56,15 +56,26 @@ impl Ast {
                 var_keys_sorted.sort_by_cached_key(|key| key.index);
                 for var_key in var_keys_sorted {
                     let var = var_map.get(var_key).unwrap();
-                    var_declarations_exist = true;
                     if let Some(const_value) = &var.const_value {
-                        output.push_str(&format!(
-                            "  const {} {} = {};\n",
-                            var.var_type.to_string_with_config(Some(config)),
-                            var.name(),
-                            const_value.to_string_with_config(Some(config))
-                        ));
+                        if !config.replace_constant {
+                            var_declarations_exist = true;
+                            output.push_str(&format!(
+                                "  const {} {} = {};\n",
+                                var.var_type.to_string_with_config(Some(config)),
+                                var.name(),
+                                const_value.to_string_with_config(Some(config))
+                            ));
+                        } else {
+                            debug!(
+                                function=?func.name(),
+                                "{} {} was replaced with constant value {}",
+                                var.var_type.to_string_with_config(Some(config)),
+                                var.name(),
+                                const_value.to_string_with_config(Some(config))
+                            );
+                        }
                     } else {
+                        var_declarations_exist = true;
                         output.push_str(&format!(
                             "  {} {};\n",
                             var.var_type.to_string_with_config(Some(config)),
