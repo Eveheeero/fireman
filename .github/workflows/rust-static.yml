@@ -14,7 +14,6 @@ env:
 
 jobs:
     build-test-static-windows:
-        needs: build-test
         runs-on: windows-latest
         steps:
             - uses: actions/checkout@v4
@@ -45,7 +44,6 @@ jobs:
                   cargo test --target x86_64-pc-windows-msvc --release --verbose --workspace --exclude firebat
 
     build-test-static-ubuntu:
-        needs: build-test
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -80,7 +78,6 @@ jobs:
                   cargo test --target x86_64-unknown-linux-musl --release --verbose --workspace --exclude firebat
 
     build-test-static-macos:
-        needs: build-test
         runs-on: macos-latest
         steps:
             - uses: actions/checkout@v4
