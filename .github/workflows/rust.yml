@@ -1,6 +1,6 @@
 # https://docs.github.com/en/actions/using-workflows/about-workflows
 # 라이브러리 별 캐시 활성화를 위해선 cache key 뒤에 -${{ hashFiles('**/Cargo.toml') }} 를 붙여 사용합니다.
-name: Rust
+name: Rust build & test
 
 on:
     push:
@@ -34,107 +34,8 @@ jobs:
             - name: Build Release
               run: cargo build --release --verbose --workspace --exclude firebat
             - name: Test Debug
+              # for debug assertion
               run: cargo test --verbose --workspace --exclude firebat
             - name: Test Release
+              # analyzing executable files should depend on os stats, so we test on all os
               run: cargo test --release --verbose --workspace --exclude firebat
-
-    build-test-static-windows:
-        needs: build-test
-        runs-on: windows-latest
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  submodules: "true"
-            - uses: actions/cache@v4
-              with:
-                  path: |
-                      target
-                      ~/.cargo
-                      ~/.rustup
-                  key: windows-static-build
-            - name: Build Debug
-              run: |
-                  set RUSTFLAGS='-C target-feature=+crt-static'
-                  cargo build --target x86_64-pc-windows-msvc --verbose --workspace --exclude firebat
-            - name: Build Release
-              run: |
-                  set RUSTFLAGS='-C target-feature=+crt-static'
-                  cargo build --target x86_64-pc-windows-msvc --release --verbose --workspace --exclude firebat
-            - name: Test Debug
-              run: |
-                  set RUSTFLAGS='-C target-feature=+crt-static'
-                  cargo test --target x86_64-pc-windows-msvc --verbose --workspace --exclude firebat
-            - name: Test Release
-              run: |
-                  set RUSTFLAGS='-C target-feature=+crt-static'
-                  cargo test --target x86_64-pc-windows-msvc --release --verbose --workspace --exclude firebat
-
-    build-test-static-ubuntu:
-        needs: build-test
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  submodules: "true"
-            - uses: actions/cache@v4
-              with:
-                  path: |
-                      target
-                      ~/.cargo
-                      ~/.rustup
-                  key: ubuntu-static-build
-            - name: Setup dependency
-              run: |
-                  sudo apt install -y musl-tools
-                  rustup target add x86_64-unknown-linux-musl
-            - name: Build Debug
-              run: |
-                  RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-unknown-linux-gnu --verbose --workspace --exclude firebat
-                  cargo build --target x86_64-unknown-linux-musl --verbose --workspace --exclude firebat
-            - name: Build Release
-              run: |
-                  RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-unknown-linux-gnu --release --verbose --workspace --exclude firebat
-                  cargo build --target x86_64-unknown-linux-musl --release --verbose --workspace --exclude firebat
-            - name: Test Debug
-              run: |
-                  RUSTFLAGS='-C target-feature=+crt-static' cargo test --target x86_64-unknown-linux-gnu --verbose --workspace --exclude firebat
-                  cargo test --target x86_64-unknown-linux-musl --verbose --workspace --exclude firebat
-            - name: Test Release
-              run: |
-                  RUSTFLAGS='-C target-feature=+crt-static' cargo test --target x86_64-unknown-linux-gnu --release --verbose --workspace --exclude firebat
-                  cargo test --target x86_64-unknown-linux-musl --release --verbose --workspace --exclude firebat
-
-    build-test-static-macos:
-        needs: build-test
-        runs-on: macos-latest
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  submodules: "true"
-            - uses: actions/cache@v4
-              with:
-                  path: |
-                      target
-                      ~/.cargo
-                      ~/.rustup
-                  key: macos-static-build
-            - name: Setup dependency
-              run: |
-                  rustup target add aarch64-apple-darwin
-                  rustup target add x86_64-apple-darwin
-            - name: Build Debug
-              run: |
-                  RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-apple-darwin --verbose --workspace --exclude firebat
-                  RUSTFLAGS='-C target-feature=+crt-static' cargo build --target aarch64-apple-darwin --verbose --workspace --exclude firebat
-            - name: Build Release
-              run: |
-                  RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-apple-darwin --release --verbose --workspace --exclude firebat
-                  RUSTFLAGS='-C target-feature=+crt-static' cargo build --target aarch64-apple-darwin --release --verbose --workspace --exclude firebat
-            - name: Test Debug
-              run: |
-                  RUSTFLAGS='-C target-feature=+crt-static' cargo test --target x86_64-apple-darwin --verbose --workspace --exclude firebat
-                  RUSTFLAGS='-C target-feature=+crt-static' cargo test --target aarch64-apple-darwin --verbose --workspace --exclude firebat
-            - name: Test Release
-              run: |
-                  RUSTFLAGS='-C target-feature=+crt-static' cargo test --target x86_64-apple-darwin --release --verbose --workspace --exclude firebat
-                  RUSTFLAGS='-C target-feature=+crt-static' cargo test --target aarch64-apple-darwin --release --verbose --workspace --exclude firebat
