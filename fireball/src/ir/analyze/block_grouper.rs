@@ -100,41 +100,68 @@ pub fn analyze_block_groups(blocks: &[Arc<Block>], relations: &[Relation]) -> Ve
         blocks.iter().map(|block| (block.get_id(), block)).collect();
 
     /* Turn relations to mapped relations */
-    let mut relations_map: HashMap<usize, HashSet<usize>> = HashMap::new();
+    let mut map_from_to: HashMap<usize, usize> = HashMap::new();
+    let mut map_to_from: HashMap<usize, HashSet<usize>> = HashMap::new();
     for &block_id in id_to_block.keys() {
-        relations_map.insert(block_id, HashSet::new());
+        map_to_from.insert(block_id, HashSet::new());
     }
     for relation in relations.iter() {
         let from_id = relation.from();
-        if let Some(to_address) = relation.to() {
-            if let Some(to_id) = find_block_id_by_address(blocks, &to_address) {
-                if id_to_block.contains_key(&from_id) && id_to_block.contains_key(&to_id) {
-                    relations_map.get_mut(&from_id).unwrap().insert(to_id);
-                    relations_map.get_mut(&to_id).unwrap().insert(from_id);
-                }
+        if let Some(to_address) = relation.to()
+            && let Some(to_id) = find_block_id_by_address(blocks, &to_address)
+        {
+            if id_to_block.contains_key(&from_id) && id_to_block.contains_key(&to_id) {
+                map_from_to.insert(from_id, to_id);
+                map_to_from.get_mut(&to_id).unwrap().insert(from_id);
             }
         }
     }
 
+    let mut start_node_ids: Vec<usize> = id_to_block.keys().copied().collect::<Vec<_>>();
+    let get_priority = |id: &usize| {
+        if map_to_from.get(&id).unwrap().is_empty() {
+            /* if block has single flow */
+            0
+        } else {
+            /* etc */
+            let block = id_to_block.get(id).unwrap();
+            9999 + block.get_start_address().get_virtual_address()
+        }
+    };
+    start_node_ids.sort_by_cached_key(get_priority);
     let mut visited_id: HashSet<usize> = HashSet::new();
     let mut block_groups: Vec<BlockGroup> = Vec::new();
-    for start_node_id in id_to_block.keys() {
-        if !visited_id.contains(start_node_id) {
+    for start_node_id in start_node_ids {
+        if !visited_id.contains(&start_node_id) {
             let mut component_ids: Vec<usize> = Vec::new();
-            visited_id.insert(*start_node_id);
-            component_ids.push(*start_node_id);
+            visited_id.insert(start_node_id);
+            component_ids.push(start_node_id);
 
             /* Search for related blocks */
             {
                 let mut stack: Vec<usize> = Vec::new();
-                stack.push(*start_node_id);
+
+                /* to relation */
+                stack.push(start_node_id);
                 while let Some(now_id) = stack.pop() {
-                    if let Some(neighbors) = relations_map.get(&now_id) {
-                        for &neighbor_id in neighbors.iter() {
-                            if !visited_id.contains(&neighbor_id) {
-                                visited_id.insert(neighbor_id);
-                                stack.push(neighbor_id);
-                                component_ids.push(neighbor_id);
+                    if let Some(to) = map_from_to.get(&now_id) {
+                        if !visited_id.contains(&to) {
+                            visited_id.insert(*to);
+                            stack.push(*to);
+                            component_ids.push(*to);
+                        }
+                    }
+                }
+
+                /* from relation */
+                stack.push(start_node_id);
+                while let Some(now_id) = stack.pop() {
+                    if let Some(from) = map_to_from.get(&now_id) {
+                        for from_id in from.iter() {
+                            if !visited_id.contains(&from_id) {
+                                visited_id.insert(*from_id);
+                                stack.push(*from_id);
+                                component_ids.push(*from_id);
                             }
                         }
                     }
@@ -146,6 +173,13 @@ pub fn analyze_block_groups(blocks: &[Arc<Block>], relations: &[Relation]) -> Ve
                 .cloned()
                 .collect();
 
+            debug!(
+                "Generated block group: {:?}",
+                component_blocks
+                    .iter()
+                    .map(|x| x.get_start_address().get_virtual_address())
+                    .collect::<Vec<_>>()
+            );
             block_groups.push(BlockGroup {
                 blocks: component_blocks,
             });
