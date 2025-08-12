@@ -44,7 +44,7 @@ pub(super) fn analyze_ir_function(
     let mut var_map: HashMap<Aos<IrData>, AstVariableId> = HashMap::new();
     for var in ir_function.get_variables().iter() {
         let var_id = ast.new_variable_id(&function_id);
-        let c_type = match var.data_type {
+        let mut c_type = match var.data_type {
             DataType::Unknown => AstValueType::Unknown,
             DataType::Bool => AstValueType::Bool,
             DataType::Int => AstValueType::Int,
@@ -74,8 +74,35 @@ pub(super) fn analyze_ir_function(
                         position,
                         c.to_string_with_config(None)
                     );
+                    if c_type == AstValueType::Unknown {
+                        c_type = match &c.item {
+                            AstValue::Void => AstValueType::Void,
+                            AstValue::Unknown => AstValueType::Unknown,
+                            AstValue::Undefined => AstValueType::Unknown,
+                            AstValue::Max => AstValueType::Int,
+                            AstValue::Min => AstValueType::Int,
+                            AstValue::Num(_) => AstValueType::Int,
+                            AstValue::Char(_) => AstValueType::Char,
+                            AstValue::Double(_) => AstValueType::Double,
+                            AstValue::Bool(_) => AstValueType::Bool,
+                            AstValue::Pointer(_) | AstValue::Array(_) => todo!(),
+                        };
+                        debug!(
+                            "Constant value found in {}({}) but datatype not set. init datatype to {}",
+                            position,
+                            c.to_string_with_config(None),
+                            c_type.to_string_with_config(None)
+                        );
+                    }
                     if const_value.is_some() && const_value.as_ref().unwrap() != &c {
                         warn!(
+                            "Constant value mismatch in position {}: {} != {}",
+                            position,
+                            const_value.as_ref().unwrap().to_string_with_config(None),
+                            c.to_string_with_config(None)
+                        );
+                        debug_assert!(
+                            false,
                             "Constant value mismatch in position {}: {} != {}",
                             position,
                             const_value.unwrap().to_string_with_config(None),
