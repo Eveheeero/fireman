@@ -350,18 +350,21 @@ pub(super) fn convert_stmt(
                 target,
                 var_map,
             )?;
-            let name = match e.as_ref() {
-                AstExpression::Variable(vars, id) => {
-                    let vars = vars.read().unwrap();
-                    let var = vars.get(id).unwrap();
-                    var.name()
-                }
+            match e.as_ref() {
+                AstExpression::Variable(vars, id) => AstStatement::Call(
+                    AstJumpTarget::Variable {
+                        scope: function_id,
+                        var_map: vars.clone(),
+                        var_id: *id,
+                    },
+                    Vec::new(),
+                ),
                 _ => {
                     warn!("Uncovered call target");
-                    e.to_string_with_config(None)
+                    let name = e.to_string_with_config(None);
+                    AstStatement::Call(AstJumpTarget::Unknown(name), Vec::new())
                 }
-            };
-            AstStatement::Call(AstJumpTarget::Unknown(name), Vec::new())
+            }
         }
         IrStatement::Jump { target } => {
             let target = &resolve_operand(target, instruction_args);
@@ -373,18 +376,18 @@ pub(super) fn convert_stmt(
                 target,
                 var_map,
             )?;
-            let label = match e.as_ref() {
-                AstExpression::Variable(vars, id) => {
-                    let vars = vars.read().unwrap();
-                    let var = vars.get(id).unwrap();
-                    var.name()
-                }
+            match e.as_ref() {
+                AstExpression::Variable(vars, id) => AstStatement::Goto(AstJumpTarget::Variable {
+                    scope: function_id,
+                    var_map: vars.clone(),
+                    var_id: *id,
+                }),
                 _ => {
                     warn!("Uncovered jump target");
-                    e.to_string_with_config(None)
+                    let label = e.to_string_with_config(None);
+                    AstStatement::Goto(AstJumpTarget::Unknown(label))
                 }
-            };
-            AstStatement::Goto(AstJumpTarget::Unknown(label))
+            }
         }
         IrStatement::Condition {
             condition,

@@ -10,7 +10,8 @@ pub type ArcAstVariableMap = Arc<RwLock<HashMap<AstVariableId, AstVariable>>>;
 pub enum AstJumpTarget {
     Variable {
         scope: AstFunctionId,
-        id: AstVariableId,
+        var_map: ArcAstVariableMap,
+        var_id: AstVariableId,
     },
     Function {
         target: AstFunctionId,
