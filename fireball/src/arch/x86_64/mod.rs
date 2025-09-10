@@ -2,7 +2,7 @@
 
 pub mod instruction_analyze;
 
-mod static_register {
+pub(crate) mod static_register {
     #![allow(non_upper_case_globals, unused)]
     use crate::{
         ir::{Register, VirtualMachine, data::IrData, x86_64::X64Range as X64},

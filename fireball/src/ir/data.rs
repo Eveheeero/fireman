@@ -379,3 +379,23 @@ impl std::fmt::Display for NumCondition {
         }
     }
 }
+
+impl IrData {
+    /// ### Note
+    /// Must check operands
+    pub fn is_stack_related(&self) -> bool {
+        match self {
+            IrData::Constant(_) => false,
+            IrData::Intrinsic(_) => false,
+            IrData::Register(register) => register.is_stack_related(),
+            IrData::Dereference(inner) => inner.is_stack_related(),
+            IrData::Operation(operation) => match operation {
+                IrDataOperation::Unary { arg, .. } => arg.is_stack_related(),
+                IrDataOperation::Binary { arg1, arg2, .. } => {
+                    arg1.is_stack_related() || arg2.is_stack_related()
+                }
+            },
+            IrData::Operand(_) => false,
+        }
+    }
+}

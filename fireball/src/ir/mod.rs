@@ -135,25 +135,6 @@ impl IrBlock {
 
         Ok(())
     }
-
-    /// Arg must contain self
-    #[deprecated]
-    fn is_sp_related(related_data: Vec<Aos<IrData>>) -> bool {
-        static VM_INTEL_SP_BIT_START: LazyLock<usize> = LazyLock::new(|| {
-            <VirtualMachine as crate::ir::x86_64::X64Range>::sp()
-                .bit_range()
-                .start
-        });
-
-        for item in related_data {
-            if let data::IrData::Register(register) = item.as_ref() {
-                if register.bit_range().start == *VM_INTEL_SP_BIT_START {
-                    return true;
-                }
-            }
-        }
-        false
-    }
 }
 
 /// IR statements per address
@@ -163,4 +144,9 @@ pub struct Ir {
     pub address: Address,
     /// Executed statements
     pub statements: Option<&'static [IrStatement]>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+pub enum Architecture {
+    X64,
 }
