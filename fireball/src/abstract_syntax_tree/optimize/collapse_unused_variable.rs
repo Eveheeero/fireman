@@ -42,7 +42,7 @@ pub(super) fn collapse_unused_variables(
                     .map(|x| x.len())
                     .sum();
                 let var_id = &lhs.id;
-                let location = var_id_to_location(&variables, *var_id);
+                let location = super::utils::var_id_to_access_location(&variables, *var_id);
                 let overwritten = overwritten_locations.contains(&location);
                 if data_access_count == 1 && overwritten {
                     trace!(?lhs,?stmt.comment, "Removing declaration of unused variable");
@@ -57,7 +57,7 @@ pub(super) fn collapse_unused_variables(
                     new_body.push(stmt);
                     continue;
                 };
-                let location = var_id_to_location(&variables, var_id);
+                let location = super::utils::var_id_to_access_location(&variables, var_id);
                 let variables = variables.read().unwrap();
                 let lhs = variables.get(&var_id).unwrap();
                 let data_access_count: usize = lhs
@@ -76,7 +76,6 @@ pub(super) fn collapse_unused_variables(
                 new_body.push(stmt);
                 continue;
             }
-            // variables.get(variable_id).unwrap().data_access_ir.unwrap() check if data access is single and access_type is write
 
             /* statement containable */
             AstStatement::If(_cond, branch_true, branch_false) => {
@@ -150,88 +149,6 @@ pub(super) fn collapse_unused_variables(
     Ok(())
 }
 
-fn var_id_to_location(variables: &ArcAstVariableMap, var_id: AstVariableId) -> Aos<IrData> {
-    let variables = variables.read().unwrap();
-    let data_accesses = variables
-        .get(&var_id)
-        .and_then(|var| var.data_access_ir.as_ref())
-        .expect("manually manipulated variable maps?");
-
-    #[cfg(debug_assertions)]
-    {
-        let mut t_location = None;
-        data_accesses.values().flat_map(|x| x.iter()).for_each(|x| {
-            let location = x.location();
-            if let Some(loc) = &t_location {
-                debug_assert_eq!(
-                    loc, location,
-                    "variables all data access should have same location, but found different for variable id, {:?} and {:?}",
-                    loc, location
-                );
-            } else {
-                t_location = Some(location.clone());
-            }
-        });
-    }
-
-    let location = data_accesses
-        .values()
-        .flat_map(|x| x.iter())
-        .next()
-        .expect("all variable should have at least data access")
-        .location();
-    location.clone()
-}
-
-fn is_undetectable_statement_exist(stmts: &[WrappedAstStatement]) -> bool {
-    for stmt in stmts {
-        match &stmt.statement {
-            AstStatement::Call(_, _)
-            | AstStatement::Assembly(_)
-            | AstStatement::Ir(_)
-            | AstStatement::Return(_)
-            | AstStatement::Undefined
-            | AstStatement::Goto(_)
-            | AstStatement::Exception(_) => {
-                return true;
-            }
-
-            AstStatement::Declaration(_, _)
-            | AstStatement::Assignment(_, _)
-            | AstStatement::Label(_)
-            | AstStatement::Comment(_)
-            | AstStatement::Empty => continue,
-
-            AstStatement::If(_cond, branch_true, branch_false) => {
-                if is_undetectable_statement_exist(branch_true) {
-                    return true;
-                }
-                if let Some(branch_false) = branch_false {
-                    if is_undetectable_statement_exist(branch_false) {
-                        return true;
-                    }
-                }
-            }
-            AstStatement::While(_cond, stmts) => {
-                if is_undetectable_statement_exist(stmts) {
-                    return true;
-                }
-            }
-            AstStatement::For(_init, _cond, _update, stmts) => {
-                if is_undetectable_statement_exist(stmts) {
-                    return true;
-                }
-            }
-            AstStatement::Block(stmts) => {
-                if is_undetectable_statement_exist(stmts) {
-                    return true;
-                }
-            }
-        }
-    }
-    false
-}
-
 /// stmts containable stmt handling is different
 fn collapse(
     variables: &ArcAstVariableMap,
@@ -255,7 +172,7 @@ fn collapse(
                     .map(|x| x.len())
                     .sum();
                 let var_id = &lhs.id;
-                let location = var_id_to_location(&variables, *var_id);
+                let location = super::utils::var_id_to_access_location(&variables, *var_id);
                 let overwritten = overwritten_locations.contains(&location);
                 if data_access_count == 1 && overwritten {
                     trace!(?lhs,?stmt.comment, "Removing declaration of unused variable");
@@ -266,7 +183,7 @@ fn collapse(
             }
             AstStatement::Assignment(lhs, _rhs) => {
                 if let AstExpression::Variable(_, var_id) = lhs.item {
-                    let location = var_id_to_location(&variables, var_id);
+                    let location = super::utils::var_id_to_access_location(&variables, var_id);
                     let variables = variables.read().unwrap();
                     let lhs = variables.get(&var_id).unwrap();
                     let data_access_count: usize = lhs
@@ -334,7 +251,7 @@ fn collapse(
             | AstStatement::Undefined
             | AstStatement::Exception(_) => {
                 overwritten_locations.clear();
-                // newly overwritten won't cleared, it will used in out of recursive calls
+                // newly overwritten won't clear, it will use in out of recursive calls
             }
         }
 
