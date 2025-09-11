@@ -1,8 +1,8 @@
-use crate::abstract_syntax_tree::{
-    ArcAstVariableMap, AstStatement, AstVariableId, WrappedAstStatement,
+use crate::{
+    abstract_syntax_tree::{ArcAstVariableMap, AstStatement, AstVariableId, WrappedAstStatement},
+    ir::data::IrData,
+    utils::Aos,
 };
-use crate::ir::data::IrData;
-use crate::utils::Aos;
 
 /// ### Note
 /// the inner recursive call uses reversed iteration because it is likely to be at the back

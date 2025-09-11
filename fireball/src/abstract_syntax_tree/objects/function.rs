@@ -7,7 +7,7 @@ pub struct AstFunction {
     pub id: AstFunctionId,
     pub ir: Arc<IrFunction>,
     pub return_type: AstValueType,
-    pub parameters: Vec<AstVariable>,
+    pub parameters: Vec<AstParameter>,
     pub variables: ArcAstVariableMap,
     pub body: Vec<WrappedAstStatement>,
 

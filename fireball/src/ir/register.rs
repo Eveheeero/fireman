@@ -1,7 +1,5 @@
 use crate::ir::Architecture;
-use std::hash::Hasher;
-use std::ops::Range;
-use std::sync::LazyLock;
+use std::{hash::Hasher, ops::Range, sync::LazyLock};
 
 #[derive(Debug, Clone, Eq, Copy)]
 pub struct Register {

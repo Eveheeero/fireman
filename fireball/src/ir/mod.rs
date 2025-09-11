@@ -15,8 +15,7 @@ use crate::{
         analyze::{IrVariable, KnownDataType},
         data::{IrData, IrDataAccess},
     },
-    prelude::BitBox,
-    prelude::*,
+    prelude::{BitBox, *},
     utils::{Aos, error::ir_analyze_assertion_error::IrAnalyzeAssertionFailure},
 };
 pub use register::Register;

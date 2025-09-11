@@ -27,20 +27,11 @@ impl Ast {
                     .parameters
                     .iter()
                     .map(|var| {
-                        if let Some(const_value) = &var.const_value {
-                            format!(
-                                "const {} {} = {};\n",
-                                var.var_type.to_string_with_config(Some(config)),
-                                var.name(),
-                                const_value.to_string_with_config(Some(config))
-                            )
-                        } else {
-                            format!(
-                                "{} {};\n",
-                                var.var_type.to_string_with_config(Some(config)),
-                                var.name()
-                            )
-                        }
+                        format!(
+                            "{} {}\n",
+                            var.var_type.to_string_with_config(Some(config)),
+                            var.name
+                        )
                     })
                     .collect();
                 output.push_str(&params.join(", "));
