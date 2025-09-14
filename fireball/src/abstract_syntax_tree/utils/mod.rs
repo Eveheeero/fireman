@@ -62,12 +62,12 @@ pub fn get_first_arg_undetectable_statement_index<'a>(
 pub fn var_id_to_access_location(
     variables: &ArcAstVariableMap,
     var_id: AstVariableId,
-) -> Aos<IrData> {
+) -> Option<Aos<IrData>> {
     let variables = variables.read().unwrap();
-    let data_accesses = variables
+    let variable = variables
         .get(&var_id)
-        .and_then(|var| var.data_access_ir.as_ref())
         .expect("manually manipulated variable maps?");
+    let data_accesses = variable.data_access_ir.as_ref()?;
 
     #[cfg(debug_assertions)]
     {
@@ -92,5 +92,5 @@ pub fn var_id_to_access_location(
         .next()
         .expect("all variable should have at least data access")
         .location();
-    location.clone()
+    Some(location.clone())
 }
