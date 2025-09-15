@@ -13,17 +13,14 @@ use crate::{
     core::{Address, Instruction},
     ir::{
         analyze::{IrVariable, KnownDataType},
-        data::{IrData, IrDataAccess},
+        data::IrDataAccess,
     },
     prelude::{BitBox, *},
-    utils::{Aos, error::ir_analyze_assertion_error::IrAnalyzeAssertionFailure},
+    utils::error::ir_analyze_assertion_error::IrAnalyzeAssertionFailure,
 };
 pub use register::Register;
 use statements::IrStatement;
-use std::{
-    cell::UnsafeCell,
-    sync::{Arc, LazyLock},
-};
+use std::{cell::UnsafeCell, sync::Arc};
 use utils::IrStatementDescriptorMap;
 
 /// A structure to simulate the computer's behavior

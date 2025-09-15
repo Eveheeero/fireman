@@ -1,4 +1,4 @@
-use crate::ir::Architecture;
+use crate::ir::{Architecture, VirtualMachine, x86_64::X64Range};
 use std::{hash::Hasher, ops::Range, sync::LazyLock};
 
 #[derive(Debug, Clone, Eq, Copy)]
@@ -51,6 +51,30 @@ impl Register {
                 *SP_BIT_START == register_start || *BP_BIT_START == register_start
             }
         }
+    }
+    pub const BP_MATCHLIST: LazyLock<Box<[Register]>> = LazyLock::new(|| {
+        [
+            <VirtualMachine as X64Range>::rbp(),
+            <VirtualMachine as X64Range>::ebp(),
+            <VirtualMachine as X64Range>::bp(),
+            <VirtualMachine as X64Range>::bpl(),
+        ]
+        .into()
+    });
+    pub const SP_MATCHLIST: LazyLock<Box<[Register]>> = LazyLock::new(|| {
+        [
+            <VirtualMachine as X64Range>::rsp(),
+            <VirtualMachine as X64Range>::esp(),
+            <VirtualMachine as X64Range>::sp(),
+            <VirtualMachine as X64Range>::spl(),
+        ]
+        .into()
+    });
+    pub fn is_bp(&self) -> bool {
+        Self::BP_MATCHLIST.iter().any(|x| x == self)
+    }
+    pub fn is_sp(&self) -> bool {
+        Self::SP_MATCHLIST.iter().any(|x| x == self)
     }
 }
 

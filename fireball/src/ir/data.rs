@@ -398,4 +398,82 @@ impl IrData {
             IrData::Operand(_) => false,
         }
     }
+    /// return offset from stack pointer.
+    ///
+    /// return `0x10` if `IrData` is `rsp + 0x10`.
+    ///
+    /// return `-0x10` if `IrData` is `rsp - 0x10`.
+    ///
+    /// return `None` if not `add` or `sub`. `neg` is `None` too
+    ///
+    /// return `None` if `IrData` is deref. ex) `[rsp + 0x10]`
+    pub fn get_offset_from_stack_pointer(&self) -> Option<Aos<IrData>> {
+        match self {
+            IrData::Operation(IrDataOperation::Binary {
+                operator: IrBinaryOperator::Add,
+                arg1,
+                arg2,
+            }) if arg1.is_sp() => Some(arg2.clone()),
+            IrData::Operation(IrDataOperation::Binary {
+                operator: IrBinaryOperator::Sub,
+                arg1,
+                arg2,
+            }) if arg1.is_sp() => Some(Aos::new(IrData::Operation(IrDataOperation::Unary {
+                operator: IrUnaryOperator::Negation,
+                arg: arg2.clone(),
+            }))),
+            IrData::Operation(_)
+            | IrData::Constant(_)
+            | IrData::Intrinsic(_)
+            | IrData::Register(_)
+            | IrData::Dereference(_)
+            | IrData::Operand(_) => None,
+        }
+    }
+    /// return offset from base pointer.
+    ///
+    /// return `0x10` if `IrData` is `rbp + 0x10`.
+    ///
+    /// return `-0x10` if `IrData` is `rbp - 0x10`.
+    ///
+    /// return `None` if not `add` or `sub`. `neg` is `None` too
+    ///
+    /// return `None` if `IrData` is deref. ex) `[rbp + 0x10]`
+    pub fn get_offset_from_base_pointer(&self) -> Option<Aos<IrData>> {
+        match self {
+            IrData::Operation(IrDataOperation::Binary {
+                operator: IrBinaryOperator::Add,
+                arg1,
+                arg2,
+            }) if arg1.is_bp() => Some(arg2.clone()),
+            IrData::Operation(IrDataOperation::Binary {
+                operator: IrBinaryOperator::Sub,
+                arg1,
+                arg2,
+            }) if arg1.is_bp() => Some(Aos::new(IrData::Operation(IrDataOperation::Unary {
+                operator: IrUnaryOperator::Negation,
+                arg: arg2.clone(),
+            }))),
+            IrData::Operation(_)
+            | IrData::Constant(_)
+            | IrData::Intrinsic(_)
+            | IrData::Register(_)
+            | IrData::Dereference(_)
+            | IrData::Operand(_) => None,
+        }
+    }
+    pub fn is_bp(&self) -> bool {
+        if let IrData::Register(register) = self {
+            register.is_bp()
+        } else {
+            false
+        }
+    }
+    pub fn is_sp(&self) -> bool {
+        if let IrData::Register(register) = self {
+            register.is_sp()
+        } else {
+            false
+        }
+    }
 }
