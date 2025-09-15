@@ -476,4 +476,25 @@ impl IrData {
             false
         }
     }
+    pub fn constant(&self) -> Option<usize> {
+        if let IrData::Constant(c) = self {
+            Some(*c)
+        } else {
+            None
+        }
+    }
+    pub fn register(&self) -> Option<crate::ir::Register> {
+        if let IrData::Register(reg) = self {
+            Some(*reg)
+        } else {
+            None
+        }
+    }
+    pub fn dereference(&self) -> Option<Aos<IrData>> {
+        if let IrData::Dereference(data) = self {
+            Some(data.clone())
+        } else {
+            None
+        }
+    }
 }
