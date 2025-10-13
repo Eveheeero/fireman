@@ -9,6 +9,7 @@ use crate::{
         statements::IrStatement,
         utils::{IrStatementDescriptor, IrStatementDescriptorMap},
     },
+    prelude::*,
     utils::Aos,
 };
 pub use private::IrVariable;
@@ -262,6 +263,20 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
             );
         }
         operand_resolved_location_to_variable_ids.retain(|_, ids| !ids.is_empty());
+    }
+
+    for variable in variables.iter() {
+        trace!(
+            "Variable({}) analyzed. shown in following Nth asm instruction: {:?}",
+            variable.data_type, variable.shown_in
+        );
+        for da in variable
+            .get_all_data_accesses()
+            .iter()
+            .flat_map(|x| x.1.iter())
+        {
+            trace!("DataAccess({:?}) {:?}", da.access_type(), da.location());
+        }
     }
 
     Ok(variables)
