@@ -1,11 +1,17 @@
 use std::{ops::Deref, sync::Arc};
 
+type IdType = usize;
+fn generate_id() -> IdType {
+    static ID_COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    ID_COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+}
+
 /// Arc or static
 #[derive(Debug)]
 pub enum Aos<T: ?Sized + 'static> {
-    Arc(Arc<T>),
-    StaticRef(&'static T),
-    StaticOwned(*const T),
+    Arc { id: IdType, inner: Arc<T> },
+    StaticRef { id: IdType, inner: &'static T },
+    StaticOwned { inner: *const T },
 }
 
 unsafe impl<T> Send for Aos<T> {}
@@ -16,9 +22,9 @@ impl<T> Deref for Aos<T> {
 
     fn deref(&self) -> &Self::Target {
         match self {
-            Aos::Arc(inner) => inner,
-            Aos::StaticRef(inner) => inner,
-            Aos::StaticOwned(inner) => unsafe { inner.as_ref().unwrap() },
+            Aos::Arc { inner, .. } => inner,
+            Aos::StaticRef { inner, .. } => inner,
+            Aos::StaticOwned { inner, .. } => unsafe { inner.as_ref().unwrap() },
         }
     }
 }
@@ -31,25 +37,36 @@ impl<T> AsRef<T> for Aos<T> {
 impl<T> Clone for Aos<T> {
     fn clone(&self) -> Self {
         match self {
-            Self::Arc(arg0) => Self::Arc(arg0.clone()),
-            Self::StaticRef(arg0) => Self::StaticRef(arg0),
-            Self::StaticOwned(arg0) => Self::StaticRef(unsafe { arg0.as_ref().unwrap() }),
+            Self::Arc { id, inner } => Self::Arc {
+                id: *id,
+                inner: inner.clone(),
+            },
+            Self::StaticRef { id, inner } => Self::StaticRef { id: *id, inner },
+            Self::StaticOwned { inner } => Self::StaticRef {
+                id: generate_id(),
+                inner: unsafe { inner.as_ref().unwrap() },
+            },
         }
     }
 }
 
 impl<T> Aos<T> {
     pub fn new_static(t: T) -> Self {
-        Self::StaticOwned(Box::into_raw(Box::new(t)))
+        Self::StaticOwned {
+            inner: Box::into_raw(Box::new(t)),
+        }
     }
     pub fn new(t: T) -> Self {
-        Self::Arc(Arc::new(t))
+        Self::Arc {
+            id: generate_id(),
+            inner: Arc::new(t),
+        }
     }
     pub fn as_ptr(this: &Self) -> *const T {
         match this {
-            Self::Arc(inner) => Arc::as_ptr(inner),
-            Self::StaticRef(inner) => *inner as *const T,
-            Self::StaticOwned(inner) => *inner,
+            Self::Arc { inner, .. } => Arc::as_ptr(inner),
+            Self::StaticRef { inner, .. } => *inner as *const T,
+            Self::StaticOwned { inner, .. } => *inner,
         }
     }
 }
