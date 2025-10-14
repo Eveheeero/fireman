@@ -102,13 +102,17 @@ fn collect_written_locations_recursive(
     }
 }
 
-fn update_location_mapping_recursive(
+/// when assign statement comes, overwrite related variables
+///
+/// when condition statement comes, merge all data accesses and variables of branches statements
+fn overwrite_related_variables_based_on_statement_recursive(
     stmt: &IrStatement,
     resolved_location_to_variable_ids: &mut HashMap<Aos<IrData>, HashSet<usize>>,
     instruction_args: &[iceball::Argument],
 ) {
     match stmt {
         IrStatement::Assignment { from, to, .. } => {
+            /* when assign statement comes, overwrite related variables */
             let resolved_to = resolve_operand(to, instruction_args);
             let resolved_from = resolve_operand(from, instruction_args);
 
@@ -126,13 +130,22 @@ fn update_location_mapping_recursive(
             false_branch,
             ..
         } => {
+            /* when condition statement comes, merge all data accesses and variables of branches statements */
             let mut true_map = resolved_location_to_variable_ids.clone();
             for s in true_branch.iter() {
-                update_location_mapping_recursive(s, &mut true_map, instruction_args);
+                overwrite_related_variables_based_on_statement_recursive(
+                    s,
+                    &mut true_map,
+                    instruction_args,
+                );
             }
             let mut false_map = resolved_location_to_variable_ids.clone();
             for s in false_branch.iter() {
-                update_location_mapping_recursive(s, &mut false_map, instruction_args);
+                overwrite_related_variables_based_on_statement_recursive(
+                    s,
+                    &mut false_map,
+                    instruction_args,
+                );
             }
 
             let mut merged_map: HashMap<Aos<IrData>, HashSet<usize>> = HashMap::new();
@@ -254,9 +267,9 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
             }
         }
 
-        // --- Step 4: Update location mapping based on assignments (recursively) ---
+        // --- Step 4: Update location mapping based on statements (recursively) ---
         for stmt in statements.iter() {
-            update_location_mapping_recursive(
+            overwrite_related_variables_based_on_statement_recursive(
                 stmt,
                 &mut operand_resolved_location_to_variable_ids,
                 instruction_args,
