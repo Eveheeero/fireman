@@ -1,9 +1,17 @@
 use std::{ops::Deref, sync::Arc};
 
+#[cfg(debug_assertions)]
 type IdType = usize;
+#[cfg(debug_assertions)]
 fn generate_id() -> IdType {
     static ID_COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     ID_COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+}
+#[cfg(not(debug_assertions))]
+type IdType = ();
+#[cfg(not(debug_assertions))]
+fn generate_id() -> IdType {
+    ()
 }
 
 /// Arc or static
