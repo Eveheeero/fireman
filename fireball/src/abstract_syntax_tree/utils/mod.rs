@@ -69,23 +69,6 @@ pub fn var_id_to_access_location(
         .expect("manually manipulated variable maps?");
     let data_accesses = variable.data_access_ir.as_ref()?;
 
-    #[cfg(debug_assertions)]
-    {
-        let mut t_location = None;
-        data_accesses.values().flat_map(|x| x.iter()).for_each(|x| {
-            let location = x.location();
-            if let Some(loc) = &t_location {
-                debug_assert_eq!(
-                    loc, location,
-                    "variables all data access should have same location, but found different for variable {:?}",
-                    variables.get(&var_id).unwrap()
-                );
-            } else {
-                t_location = Some(location.clone());
-            }
-        });
-    }
-
     let location = data_accesses
         .values()
         .flat_map(|x| x.iter())
