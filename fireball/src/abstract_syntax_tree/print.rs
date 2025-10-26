@@ -26,15 +26,17 @@ impl Ast {
                 let params: Vec<String> = func
                     .parameters
                     .iter()
-                    .map(|var| {
-                        format!(
-                            "{} {}\n",
-                            var.var_type.to_string_with_config(Some(config)),
-                            var.name
-                        )
+                    .map(|param| {
+                        let ty_str = param
+                            .read_type(&func.variables).expect("invalid variable map")
+                            .to_string_with_config(Some(config));
+                        let name_str = param.name(&func.variables).expect("invalid variable map");
+                        format!("{} {}", ty_str, name_str)
                     })
                     .collect();
-                output.push_str(&params.join(", "));
+                output.push_str("\n  ");
+                output.push_str(&params.join(",\n  "));
+                output.push('\n');
             }
 
             output.push_str(") {\n");
