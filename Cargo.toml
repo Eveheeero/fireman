@@ -32,6 +32,7 @@ serde_json = "1.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 regex = "1.11"
+either = "1.15"
 
 # Binary parsing and analysis
 goblin = "0.10"

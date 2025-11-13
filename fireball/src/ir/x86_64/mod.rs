@@ -4,8 +4,7 @@ mod base;
 mod r#mut;
 mod range;
 
-use crate::ir::Register;
-use crate::prelude::BitSlice;
+use crate::{ir::Register, prelude::BitSlice};
 
 macro_rules! generate_register {
     ($name:ident) => {

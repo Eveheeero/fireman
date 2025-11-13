@@ -1,10 +1,11 @@
-use crate::ir::{Register, VirtualMachine, x86_64::X64Range};
+use crate::ir::{Architecture, Register, VirtualMachine, x86_64::X64Range};
 
 macro_rules! generate_range {
     ($name:ident, $block:literal, $from:literal, $to:literal) => {
         #[inline(always)]
         fn $name() -> Register {
             Register::new(
+                Architecture::X64,
                 stringify!($name),
                 (($block * 64 + $from)..($block * 64 + $to)),
             )

@@ -16,18 +16,12 @@ pub struct AstVariable {
 
 impl std::fmt::Debug for AstVariable {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "AstVariable {{ name: {:?}, id: {:?}, type: {:?}{}}}",
-            self.name(),
-            self.id,
-            self.var_type,
-            if let Some(val) = &self.const_value {
-                format!(", const_value: {:?}", val)
-            } else {
-                String::new()
-            }
-        )
+        f.debug_struct("AstVariable")
+            .field("name", &self.name)
+            .field("id", &self.id)
+            .field("type", &self.var_type)
+            .field("const_value", &self.const_value)
+            .finish()
     }
 }
 

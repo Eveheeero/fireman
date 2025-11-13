@@ -24,8 +24,7 @@ mod shortcuts {
     mod macros;
     mod statements;
 
-    pub(in crate::arch) use crate::ir::analyze::DataType;
-    pub(in crate::arch) use crate::ir::{data::*, operator::*, statements::*};
+    pub(in crate::arch) use crate::ir::{analyze::DataType, data::*, operator::*, statements::*};
     use crate::utils::Aos;
     pub(in crate::arch) use data::*;
     pub(in crate::arch) use fireman_macro::box_to_static_reference;

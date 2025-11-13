@@ -1,6 +1,7 @@
 mod collapse_unused_variable;
 mod ir_analyzation;
 mod loop_analyzation;
+mod parameter_analyzation;
 pub mod pattern_matching;
 
 use super::*;
@@ -39,6 +40,9 @@ impl Ast {
 
             if config.ir_analyzation {
                 ir_analyzation::analyze_ir_function(&mut ast, function_id, to_version)?;
+            }
+            if config.parameter_analyzation {
+                parameter_analyzation::analyze_parameters(&mut ast, function_id, to_version)?;
             }
             if config.collapse_unused_varaible {
                 collapse_unused_variable::collapse_unused_variables(

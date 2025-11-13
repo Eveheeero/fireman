@@ -3,6 +3,7 @@ use crate::abstract_syntax_tree::pattern_matching::AstPattern;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AstOptimizationConfig {
     pub ir_analyzation: bool,
+    pub parameter_analyzation: bool,
     pub collapse_unused_varaible: bool,
     pub pattern_matching: Vec<AstPattern>, // TODO, should we set this vec?
     pub loop_analyzation: bool,
@@ -10,6 +11,7 @@ pub struct AstOptimizationConfig {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProcessedOptimization {
     IrAnalyzation,
+    ParameterAnalyzation,
     CollapseUnusedVariables,
     PatternMatching,
     LoopAnalyzation,
@@ -17,18 +19,21 @@ pub enum ProcessedOptimization {
 impl AstOptimizationConfig {
     pub const DEFAULT: Self = Self {
         ir_analyzation: true,
+        parameter_analyzation: true,
         collapse_unused_varaible: true,
         pattern_matching: AstPattern::ALL,
         loop_analyzation: true,
     };
     pub const ALL: Self = Self {
         ir_analyzation: true,
+        parameter_analyzation: true,
         collapse_unused_varaible: true,
         pattern_matching: AstPattern::ALL,
         loop_analyzation: true,
     };
     pub const NONE: Self = Self {
         ir_analyzation: false,
+        parameter_analyzation: false,
         collapse_unused_varaible: false,
         pattern_matching: Vec::new(),
         loop_analyzation: false,
@@ -36,6 +41,10 @@ impl AstOptimizationConfig {
 
     pub fn ir_analyzation(mut self, value: bool) -> Self {
         self.ir_analyzation = value;
+        self
+    }
+    pub fn parameter_analyzation(mut self, value: bool) -> Self {
+        self.parameter_analyzation = value;
         self
     }
     pub fn collapse_unused_varaible(mut self, value: bool) -> Self {
