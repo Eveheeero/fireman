@@ -11,7 +11,7 @@ pub fn get_first_arg_undetectable_statement_index<'a>(
 ) -> Option<usize> {
     for (i, stmt) in stmts.enumerate() {
         match &stmt.statement {
-            AstStatement::Call(_, _)
+            AstStatement::Call(_)
             | AstStatement::Assembly(_)
             | AstStatement::Ir(_)
             | AstStatement::Return(_)

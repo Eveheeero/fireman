@@ -1,8 +1,9 @@
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstBinaryOperator, AstDescriptor, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstJumpTarget, AstLiteral, AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue,
-        AstValueOrigin, AstVariableId, PrintWithConfig, Wrapped, WrappedAstStatement,
+        Ast, AstBinaryOperator, AstBuiltinFunction, AstBuiltinFunctionArgument, AstCall,
+        AstDescriptor, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget, AstLiteral,
+        AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue, AstValueOrigin,
+        AstVariableId, PrintWithConfig, Wrapped, WrappedAstStatement,
     },
     core::Address,
     ir::{
@@ -69,36 +70,42 @@ pub(super) fn convert_expr(
         IrData::Intrinsic(intr) => match intr {
             IrIntrinsic::ArchitectureByteSize => AstExpression::ArchitectureByteSize,
             IrIntrinsic::ArchitectureBitSize => AstExpression::ArchitectureBitSize,
-            IrIntrinsic::ArchitectureBitPerByte => {
-                AstExpression::Call("ARCH_BIT_PER_BYTE".into(), [].to_vec())
-            }
-            IrIntrinsic::InstructionByteSize => {
-                AstExpression::Call("INSTRUCTION_BYTE_SIZE".into(), [].to_vec())
-            }
-            IrIntrinsic::ByteSizeOf(inner) => AstExpression::Call(
-                "byte_size_of".into(),
-                [convert_expr(
+            IrIntrinsic::ArchitectureBitPerByte => AstExpression::Call(AstCall::Builtin(
+                AstBuiltinFunction::ArchBitPerByte,
+                Box::new(AstBuiltinFunctionArgument::None),
+            )),
+            IrIntrinsic::InstructionByteSize => AstExpression::Call(AstCall::Builtin(
+                AstBuiltinFunction::InstructionByteSize,
+                Box::new(AstBuiltinFunctionArgument::None),
+            )),
+            IrIntrinsic::ByteSizeOf(inner) => {
+                let inner = convert_expr(
                     ast,
                     function_id,
                     function_version,
                     root_expr,
                     inner,
                     var_map,
-                )?]
-                .to_vec(),
-            ),
-            IrIntrinsic::BitSizeOf(inner) => AstExpression::Call(
-                "bit_size_of".into(),
-                [convert_expr(
+                )?;
+                AstExpression::Call(AstCall::Builtin(
+                    AstBuiltinFunction::ByteSizeOf,
+                    Box::new(AstBuiltinFunctionArgument::ByteSizeOf(inner)),
+                ))
+            }
+            IrIntrinsic::BitSizeOf(inner) => {
+                let inner = convert_expr(
                     ast,
                     function_id,
                     function_version,
                     root_expr,
                     inner,
                     var_map,
-                )?]
-                .to_vec(),
-            ),
+                )?;
+                AstExpression::Call(AstCall::Builtin(
+                    AstBuiltinFunction::BitSizeOf,
+                    Box::new(AstBuiltinFunctionArgument::BitSizeOf(inner)),
+                ))
+            }
             IrIntrinsic::Sized(inner, size) => {
                 let arg = convert_expr(
                     ast,
@@ -110,86 +117,68 @@ pub(super) fn convert_expr(
                 )?;
                 let sz =
                     convert_size(ast, function_id, function_version, root_expr, size, var_map)?;
-                AstExpression::Call("sized".into(), [arg, sz].to_vec())
+                AstExpression::Call(AstCall::Builtin(
+                    AstBuiltinFunction::Sized,
+                    Box::new(AstBuiltinFunctionArgument::Sized(arg, sz)),
+                ))
             }
-            IrIntrinsic::OperandExists(n) => AstExpression::Call(
-                "operand_exists".into(),
-                [w(AstExpression::Literal(AstLiteral::UInt(n.get() as u64)))].to_vec(),
-            ),
+            IrIntrinsic::OperandExists(n) => {
+                let n = w(AstExpression::Literal(AstLiteral::UInt(n.get() as u64)));
+                AstExpression::Call(AstCall::Builtin(
+                    AstBuiltinFunction::OperandExists,
+                    Box::new(AstBuiltinFunctionArgument::OperandExists(n)),
+                ))
+            }
             IrIntrinsic::Unknown => AstExpression::Unknown,
             IrIntrinsic::Undefined => AstExpression::Undefined,
-            IrIntrinsic::SignedMax(size) => AstExpression::Call(
-                "signed_max".into(),
-                [convert_size(
-                    ast,
-                    function_id,
-                    function_version,
-                    root_expr,
-                    size,
-                    var_map,
-                )?]
-                .to_vec(),
-            ),
-            IrIntrinsic::SignedMin(size) => AstExpression::Call(
-                "signed_min".into(),
-                [convert_size(
-                    ast,
-                    function_id,
-                    function_version,
-                    root_expr,
-                    size,
-                    var_map,
-                )?]
-                .to_vec(),
-            ),
-            IrIntrinsic::UnsignedMax(size) => AstExpression::Call(
-                "unsigned_max".into(),
-                [convert_size(
-                    ast,
-                    function_id,
-                    function_version,
-                    root_expr,
-                    size,
-                    var_map,
-                )?]
-                .to_vec(),
-            ),
-            IrIntrinsic::UnsignedMin(size) => AstExpression::Call(
-                "unsigned_min".into(),
-                [convert_size(
-                    ast,
-                    function_id,
-                    function_version,
-                    root_expr,
-                    size,
-                    var_map,
-                )?]
-                .to_vec(),
-            ),
-            IrIntrinsic::BitOnes(size) => AstExpression::Call(
-                "bit_ones".into(),
-                [convert_size(
-                    ast,
-                    function_id,
-                    function_version,
-                    root_expr,
-                    size,
-                    var_map,
-                )?]
-                .to_vec(),
-            ),
-            IrIntrinsic::BitZeros(size) => AstExpression::Call(
-                "bit_zeros".into(),
-                [convert_size(
-                    ast,
-                    function_id,
-                    function_version,
-                    root_expr,
-                    size,
-                    var_map,
-                )?]
-                .to_vec(),
-            ),
+            IrIntrinsic::SignedMax(size) => {
+                let sz =
+                    convert_size(ast, function_id, function_version, root_expr, size, var_map)?;
+                AstExpression::Call(AstCall::Builtin(
+                    AstBuiltinFunction::SignedMax,
+                    Box::new(AstBuiltinFunctionArgument::SignedMax(sz)),
+                ))
+            }
+            IrIntrinsic::SignedMin(size) => {
+                let sz =
+                    convert_size(ast, function_id, function_version, root_expr, size, var_map)?;
+                AstExpression::Call(AstCall::Builtin(
+                    AstBuiltinFunction::SignedMin,
+                    Box::new(AstBuiltinFunctionArgument::SignedMin(sz)),
+                ))
+            }
+            IrIntrinsic::UnsignedMax(size) => {
+                let sz =
+                    convert_size(ast, function_id, function_version, root_expr, size, var_map)?;
+                AstExpression::Call(AstCall::Builtin(
+                    AstBuiltinFunction::UnsignedMax,
+                    Box::new(AstBuiltinFunctionArgument::UnsignedMax(sz)),
+                ))
+            }
+            IrIntrinsic::UnsignedMin(size) => {
+                let sz =
+                    convert_size(ast, function_id, function_version, root_expr, size, var_map)?;
+                AstExpression::Call(AstCall::Builtin(
+                    AstBuiltinFunction::UnsignedMin,
+                    Box::new(AstBuiltinFunctionArgument::UnsignedMin(sz)),
+                ))
+            }
+            IrIntrinsic::BitOnes(size) => {
+                let sz =
+                    convert_size(ast, function_id, function_version, root_expr, size, var_map)?;
+                AstExpression::Call(AstCall::Builtin(
+                    AstBuiltinFunction::BitOnes,
+                    Box::new(AstBuiltinFunctionArgument::BitOnes(sz)),
+                ))
+            }
+            IrIntrinsic::BitZeros(size) => {
+                let sz =
+                    convert_size(ast, function_id, function_version, root_expr, size, var_map)?;
+                AstExpression::Call(AstCall::Builtin(
+                    AstBuiltinFunction::BitZeros,
+                    Box::new(AstBuiltinFunctionArgument::BitZeros(sz)),
+                ))
+            }
             IrIntrinsic::ArchitectureByteSizeCondition(num_condition) => {
                 let u = |v: &u16| AstExpression::Literal(AstLiteral::UInt(*v as u64));
                 let result = match num_condition {
@@ -351,18 +340,16 @@ pub(super) fn convert_stmt(
                 var_map,
             )?;
             match e.as_ref() {
-                AstExpression::Variable(vars, id) => AstStatement::Call(
-                    AstJumpTarget::Variable {
-                        scope: function_id,
-                        var_map: vars.clone(),
-                        var_id: *id,
-                    },
-                    Vec::new(),
-                ),
+                AstExpression::Variable(vars, id) => AstStatement::Call(AstCall::Variable {
+                    scope: function_id,
+                    var_map: vars.clone(),
+                    var_id: *id,
+                    args: Vec::new(),
+                }),
                 _ => {
                     warn!("Uncovered call target");
                     let name = e.to_string_with_config(None);
-                    AstStatement::Call(AstJumpTarget::Unknown(name), Vec::new())
+                    AstStatement::Call(AstCall::Unknown(name, Vec::new()))
                 }
             }
         }
@@ -563,8 +550,14 @@ pub(super) fn convert_binary(
         }
         IrBinaryOp::Equal(size) => {
             let sz = convert_size(ast, function_id, function_version, root_expr, size, var_map)?;
-            let lhs_s = AstExpression::Call("sized".into(), [lhs.clone(), sz.clone()].to_vec());
-            let rhs_s = AstExpression::Call("sized".into(), [rhs.clone(), sz].to_vec());
+            let lhs_s = AstExpression::Call(AstCall::Builtin(
+                AstBuiltinFunction::Sized,
+                Box::new(AstBuiltinFunctionArgument::Sized(lhs.clone(), sz.clone())),
+            ));
+            let rhs_s = AstExpression::Call(AstCall::Builtin(
+                AstBuiltinFunction::Sized,
+                Box::new(AstBuiltinFunctionArgument::Sized(rhs.clone(), sz)),
+            ));
             AstExpression::BinaryOp(
                 AstBinaryOperator::Equal,
                 Box::new(w(lhs_s)),
@@ -573,8 +566,14 @@ pub(super) fn convert_binary(
         }
         IrBinaryOp::SignedLess(size) => {
             let sz = convert_size(ast, function_id, function_version, root_expr, size, var_map)?;
-            let lhs_s = AstExpression::Call("sized".into(), [lhs.clone(), sz.clone()].to_vec()); // TODO does lhs need to be sized?
-            let rhs_s = AstExpression::Call("sized".into(), [rhs.clone(), sz].to_vec());
+            let lhs_s = AstExpression::Call(AstCall::Builtin(
+                AstBuiltinFunction::Sized,
+                Box::new(AstBuiltinFunctionArgument::Sized(lhs.clone(), sz.clone())),
+            )); // TODO does lhs need to be sized?
+            let rhs_s = AstExpression::Call(AstCall::Builtin(
+                AstBuiltinFunction::Sized,
+                Box::new(AstBuiltinFunctionArgument::Sized(rhs.clone(), sz)),
+            ));
             AstExpression::BinaryOp(
                 AstBinaryOperator::Less,
                 Box::new(w(lhs_s)),
@@ -583,8 +582,14 @@ pub(super) fn convert_binary(
         }
         IrBinaryOp::UnsignedLess(size) => {
             let sz = convert_size(ast, function_id, function_version, root_expr, size, var_map)?;
-            let lhs_s = AstExpression::Call("sized".into(), [lhs.clone(), sz.clone()].to_vec());
-            let rhs_s = AstExpression::Call("sized".into(), [rhs.clone(), sz].to_vec());
+            let lhs_s = AstExpression::Call(AstCall::Builtin(
+                AstBuiltinFunction::Sized,
+                Box::new(AstBuiltinFunctionArgument::Sized(lhs.clone(), sz.clone())),
+            ));
+            let rhs_s = AstExpression::Call(AstCall::Builtin(
+                AstBuiltinFunction::Sized,
+                Box::new(AstBuiltinFunctionArgument::Sized(rhs.clone(), sz)),
+            ));
             let rhs_c = AstExpression::UnaryOp(AstUnaryOperator::CastUnsigned, Box::new(w(rhs_s)));
             AstExpression::BinaryOp(
                 AstBinaryOperator::Less,
@@ -594,8 +599,14 @@ pub(super) fn convert_binary(
         }
         IrBinaryOp::SignedLessOrEqual(size) => {
             let sz = convert_size(ast, function_id, function_version, root_expr, size, var_map)?;
-            let lhs_s = AstExpression::Call("sized".into(), [lhs.clone(), sz.clone()].to_vec());
-            let rhs_s = AstExpression::Call("sized".into(), [rhs.clone(), sz].to_vec());
+            let lhs_s = AstExpression::Call(AstCall::Builtin(
+                AstBuiltinFunction::Sized,
+                Box::new(AstBuiltinFunctionArgument::Sized(lhs.clone(), sz.clone())),
+            ));
+            let rhs_s = AstExpression::Call(AstCall::Builtin(
+                AstBuiltinFunction::Sized,
+                Box::new(AstBuiltinFunctionArgument::Sized(rhs.clone(), sz)),
+            ));
             AstExpression::BinaryOp(
                 AstBinaryOperator::LessEqual,
                 Box::new(w(lhs_s)),
@@ -604,8 +615,14 @@ pub(super) fn convert_binary(
         }
         IrBinaryOp::UnsignedLessOrEqual(size) => {
             let sz = convert_size(ast, function_id, function_version, root_expr, size, var_map)?;
-            let lhs_s = AstExpression::Call("sized".into(), [lhs.clone(), sz.clone()].to_vec());
-            let rhs_s = AstExpression::Call("sized".into(), [rhs.clone(), sz].to_vec());
+            let lhs_s = AstExpression::Call(AstCall::Builtin(
+                AstBuiltinFunction::Sized,
+                Box::new(AstBuiltinFunctionArgument::Sized(lhs.clone(), sz.clone())),
+            ));
+            let rhs_s = AstExpression::Call(AstCall::Builtin(
+                AstBuiltinFunction::Sized,
+                Box::new(AstBuiltinFunctionArgument::Sized(rhs.clone(), sz)),
+            ));
             let rhs_c = AstExpression::UnaryOp(AstUnaryOperator::CastUnsigned, Box::new(w(rhs_s)));
             AstExpression::BinaryOp(
                 AstBinaryOperator::LessEqual,

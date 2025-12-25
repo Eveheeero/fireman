@@ -129,7 +129,7 @@ pub(super) fn collapse_unused_variables(
             }
 
             /* next statements undetectable */
-            AstStatement::Call(_, _)
+            AstStatement::Call(_)
             | AstStatement::Goto(_)
             | AstStatement::Assembly(_)
             | AstStatement::Ir(_)
@@ -261,7 +261,7 @@ fn collapse(
                 AstStatement::Label(_) | AstStatement::Comment(_) | AstStatement::Empty => {}
 
                 /* next statements undetectable */
-                AstStatement::Call(_, _)
+                AstStatement::Call(_)
                 | AstStatement::Goto(_)
                 | AstStatement::Assembly(_)
                 | AstStatement::Ir(_)

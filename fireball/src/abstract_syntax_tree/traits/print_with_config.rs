@@ -149,16 +149,77 @@ impl PrintWithConfig for AstStatement {
                     write!(f, "return;")
                 }
             }
-            AstStatement::Call(name, args) => {
-                write!(f, "{}(", name.to_string_with_config(Some(config)))?;
-                for (i, arg) in args.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
+            AstStatement::Call(call) => match call {
+                AstCall::Variable {
+                    var_map,
+                    var_id,
+                    args,
+                    ..
+                } => {
+                    let var_map = var_map.read().unwrap();
+                    let var = var_map.get(var_id).unwrap();
+                    write!(f, "{}(", var.name())?;
+                    for (i, arg) in args.iter().enumerate() {
+                        if i > 0 {
+                            write!(f, ", ")?;
+                        }
+                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
                     }
-                    write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                    write!(f, ");")
                 }
-                write!(f, ");")
-            }
+                AstCall::Function { target } => write!(f, "{:?}();", target),
+                AstCall::Builtin(func, arg) => {
+                    let name: &str = match func {
+                        AstBuiltinFunction::Print => "print",
+                        AstBuiltinFunction::ArchBitPerByte => "ARCH_BIT_PER_BYTE",
+                        AstBuiltinFunction::InstructionByteSize => "INSTRUCTION_BYTE_SIZE",
+                        AstBuiltinFunction::ByteSizeOf => "byte_size_of",
+                        AstBuiltinFunction::BitSizeOf => "bit_size_of",
+                        AstBuiltinFunction::Sized => "sized",
+                        AstBuiltinFunction::OperandExists => "operand_exists",
+                        AstBuiltinFunction::SignedMax => "signed_max",
+                        AstBuiltinFunction::SignedMin => "signed_min",
+                        AstBuiltinFunction::UnsignedMax => "unsigned_max",
+                        AstBuiltinFunction::UnsignedMin => "unsigned_min",
+                        AstBuiltinFunction::BitOnes => "bit_ones",
+                        AstBuiltinFunction::BitZeros => "bit_zeros",
+                    };
+
+                    let args: Vec<&Wrapped<AstExpression>> = match arg.as_ref() {
+                        AstBuiltinFunctionArgument::None => Vec::new(),
+                        AstBuiltinFunctionArgument::Print(args) => args.iter().collect(),
+                        AstBuiltinFunctionArgument::ByteSizeOf(e)
+                        | AstBuiltinFunctionArgument::BitSizeOf(e)
+                        | AstBuiltinFunctionArgument::OperandExists(e)
+                        | AstBuiltinFunctionArgument::SignedMax(e)
+                        | AstBuiltinFunctionArgument::SignedMin(e)
+                        | AstBuiltinFunctionArgument::UnsignedMax(e)
+                        | AstBuiltinFunctionArgument::UnsignedMin(e)
+                        | AstBuiltinFunctionArgument::BitOnes(e)
+                        | AstBuiltinFunctionArgument::BitZeros(e) => vec![e],
+                        AstBuiltinFunctionArgument::Sized(e1, e2) => vec![e1, e2],
+                    };
+
+                    write!(f, "{}(", name)?;
+                    for (i, arg) in args.iter().enumerate() {
+                        if i > 0 {
+                            write!(f, ", ")?;
+                        }
+                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                    }
+                    write!(f, ");")
+                }
+                AstCall::Unknown(name, args) => {
+                    write!(f, "{}(", name)?;
+                    for (i, arg) in args.iter().enumerate() {
+                        if i > 0 {
+                            write!(f, ", ")?;
+                        }
+                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                    }
+                    write!(f, ");")
+                }
+            },
             AstStatement::Label(name) => write!(f, "{}:", name),
             AstStatement::Goto(name) => {
                 write!(f, "goto {};", name.to_string_with_config(Some(config)))
@@ -228,16 +289,77 @@ impl PrintWithConfig for AstExpression {
                 op.to_string_with_config(Some(config)),
                 right.to_string_with_config(Some(config))
             ),
-            AstExpression::Call(name, args) => {
-                write!(f, "{}(", name)?;
-                for (i, arg) in args.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?
+            AstExpression::Call(call) => match call {
+                AstCall::Variable {
+                    var_map,
+                    var_id,
+                    args,
+                    ..
+                } => {
+                    let var_map = var_map.read().unwrap();
+                    let var = var_map.get(var_id).unwrap();
+                    write!(f, "{}(", var.name())?;
+                    for (i, arg) in args.iter().enumerate() {
+                        if i > 0 {
+                            write!(f, ", ")?;
+                        }
+                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
                     }
-                    write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                    write!(f, ")")
                 }
-                write!(f, ")")
-            }
+                AstCall::Function { target } => write!(f, "{:?}()", target),
+                AstCall::Builtin(func, arg) => {
+                    let name: &str = match func {
+                        AstBuiltinFunction::Print => "print",
+                        AstBuiltinFunction::ArchBitPerByte => "ARCH_BIT_PER_BYTE",
+                        AstBuiltinFunction::InstructionByteSize => "INSTRUCTION_BYTE_SIZE",
+                        AstBuiltinFunction::ByteSizeOf => "byte_size_of",
+                        AstBuiltinFunction::BitSizeOf => "bit_size_of",
+                        AstBuiltinFunction::Sized => "sized",
+                        AstBuiltinFunction::OperandExists => "operand_exists",
+                        AstBuiltinFunction::SignedMax => "signed_max",
+                        AstBuiltinFunction::SignedMin => "signed_min",
+                        AstBuiltinFunction::UnsignedMax => "unsigned_max",
+                        AstBuiltinFunction::UnsignedMin => "unsigned_min",
+                        AstBuiltinFunction::BitOnes => "bit_ones",
+                        AstBuiltinFunction::BitZeros => "bit_zeros",
+                    };
+
+                    let args: Vec<&Wrapped<AstExpression>> = match arg.as_ref() {
+                        AstBuiltinFunctionArgument::None => Vec::new(),
+                        AstBuiltinFunctionArgument::Print(args) => args.iter().collect(),
+                        AstBuiltinFunctionArgument::ByteSizeOf(e)
+                        | AstBuiltinFunctionArgument::BitSizeOf(e)
+                        | AstBuiltinFunctionArgument::OperandExists(e)
+                        | AstBuiltinFunctionArgument::SignedMax(e)
+                        | AstBuiltinFunctionArgument::SignedMin(e)
+                        | AstBuiltinFunctionArgument::UnsignedMax(e)
+                        | AstBuiltinFunctionArgument::UnsignedMin(e)
+                        | AstBuiltinFunctionArgument::BitOnes(e)
+                        | AstBuiltinFunctionArgument::BitZeros(e) => vec![e],
+                        AstBuiltinFunctionArgument::Sized(e1, e2) => vec![e1, e2],
+                    };
+
+                    write!(f, "{}(", name)?;
+                    for (i, arg) in args.iter().enumerate() {
+                        if i > 0 {
+                            write!(f, ", ")?;
+                        }
+                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                    }
+                    write!(f, ")")
+                }
+                AstCall::Unknown(name, args) => {
+                    write!(f, "{}(", name)?;
+                    for (i, arg) in args.iter().enumerate() {
+                        if i > 0 {
+                            write!(f, ", ")?;
+                        }
+                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                    }
+                    write!(f, ")")
+                }
+            },
             AstExpression::Unknown => write!(f, "<UNKNOWN DATA>"),
             AstExpression::Undefined => write!(f, "<UNDEFINED DATA>"),
             AstExpression::Cast(ctype, expression) => write!(

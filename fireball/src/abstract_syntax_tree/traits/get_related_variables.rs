@@ -70,13 +70,53 @@ impl GetRelatedVariables for AstStatement {
                     Vec::new()
                 }
             }
-            AstStatement::Call(target, args) => {
-                let mut ret = target.get_related_variables();
-                for var_id in args.iter().flat_map(|x| x.get_related_variables()) {
-                    ret.push((AstVariableAccessType::Read, var_id));
+            AstStatement::Call(call) => match call {
+                AstCall::Variable { var_id, args, .. } => {
+                    let mut ret = vec![(AstVariableAccessType::Read, var_id.clone())];
+                    for var_id in args.iter().flat_map(|x| x.get_related_variables()) {
+                        ret.push((AstVariableAccessType::Read, var_id));
+                    }
+                    ret
                 }
-                ret
-            }
+                AstCall::Builtin(_, arg) => {
+                    let mut ret = Vec::new();
+                    let mut push_expr = |expr: &Wrapped<AstExpression>| {
+                        for var_id in expr.get_related_variables() {
+                            ret.push((AstVariableAccessType::Read, var_id));
+                        }
+                    };
+                    match arg.as_ref() {
+                        AstBuiltinFunctionArgument::None => {}
+                        AstBuiltinFunctionArgument::Print(args) => {
+                            for expr in args.iter() {
+                                push_expr(expr);
+                            }
+                        }
+                        AstBuiltinFunctionArgument::ByteSizeOf(expr)
+                        | AstBuiltinFunctionArgument::BitSizeOf(expr)
+                        | AstBuiltinFunctionArgument::OperandExists(expr)
+                        | AstBuiltinFunctionArgument::SignedMax(expr)
+                        | AstBuiltinFunctionArgument::SignedMin(expr)
+                        | AstBuiltinFunctionArgument::UnsignedMax(expr)
+                        | AstBuiltinFunctionArgument::UnsignedMin(expr)
+                        | AstBuiltinFunctionArgument::BitOnes(expr)
+                        | AstBuiltinFunctionArgument::BitZeros(expr) => {
+                            push_expr(expr);
+                        }
+                        AstBuiltinFunctionArgument::Sized(expr1, expr2) => {
+                            push_expr(expr1);
+                            push_expr(expr2);
+                        }
+                    }
+                    ret
+                }
+                AstCall::Unknown(_, args) => args
+                    .iter()
+                    .flat_map(|x| x.get_related_variables())
+                    .map(|var_id| (AstVariableAccessType::Read, var_id))
+                    .collect(),
+                AstCall::Function { .. } => Vec::new(),
+            },
             AstStatement::Goto(target) => target.get_related_variables(),
             AstStatement::Block(stmts) => stmts
                 .iter()
