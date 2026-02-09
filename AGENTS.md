@@ -2,7 +2,8 @@
 
 ## Default
 
-- Avoid `cargo test`, use `cargo check`
+- Using `cargo b` and `cargo t` helps to void lag when didn't touch `firebat` directory.
+- Formatting uses `cargo +nightly fmt`
 
 ## Structure Paths (fireball)
 
@@ -127,3 +128,11 @@
 - `IrAnalyzeAssertionFailure` (enum) - `fireball/src/utils/error/ir_analyze_assertion_error.rs`
 
 If you want to find another struct/enum/trait/type, search by regex (e.g. `rg "^\\s*pub\\s+(struct|enum|trait|type)\\s+Name"`).
+
+## Testing
+
+Test logs go here
+
+- `fireball/fireball.log` from `fireball/src/tests`
+- `fireball/fireball_outside.log` from `fireball/tests`
+- `fireball/hello_world_result.log` from decompilation of `hello_world.exe` that provided example windows executable file.
