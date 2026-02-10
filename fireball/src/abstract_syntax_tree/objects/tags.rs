@@ -22,6 +22,6 @@ impl AstVariableId {
 }
 impl AstFunctionId {
     pub fn get_default_name(&self) -> String {
-        format!("f{}", self.address)
+        format!("f{:x}", self.address)
     }
 }
