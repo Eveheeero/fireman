@@ -14,6 +14,9 @@ pub fn generate_ast(targets: impl IntoIterator<Item = Arc<Block>>) -> Result<Ast
     let block_groups = block_grouper.analyze();
     for block_group in block_groups.into_iter() {
         let merged = generate_ir_function(&block_group.get_blocks());
+        if merged.get_ir().is_empty() {
+            continue;
+        }
         let merged = Arc::new(merged);
         ast.generate_default_function(merged);
     }

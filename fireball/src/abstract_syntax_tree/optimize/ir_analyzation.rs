@@ -59,6 +59,13 @@ pub(super) fn analyze_ir_function(
                 .inner
                 .arguments
                 .len() as u8;
+            let instruction_byte_size = ir_function.get_instructions()
+                [position.ir_index() as usize]
+                .inner
+                .bytes
+                .as_ref()
+                .map(|x| x.len() as u8)
+                .unwrap_or(0);
             let position = &ir_function.get_ir()[position.ir_index() as usize].address;
             for da in accesses.iter() {
                 var_map.insert(da.location().clone(), var_id);
@@ -66,6 +73,7 @@ pub(super) fn analyze_ir_function(
                 if let Some(c) = resolve_constant(
                     position,
                     instruction_arg_size,
+                    instruction_byte_size,
                     &da.location(),
                     &da.location(),
                 )? {

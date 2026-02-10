@@ -694,6 +694,7 @@ pub(super) fn calc_flags_automatically(
 pub(super) fn resolve_constant(
     position: &Address,
     instruction_arg_size: u8,
+    instruction_byte_size: u8,
     root_expr: &Aos<IrData>,
     data: &Aos<IrData>,
 ) -> Result<Option<Wrapped<AstValue>>, DecompileError> {
@@ -721,19 +722,32 @@ pub(super) fn resolve_constant(
             | IrIntrinsic::ArchitectureByteSizeCondition(..) => None,
         },
         IrData::Register(register) => match register.name() {
-            "rip" | "eip" | "ip" => {
-                Some(AstValue::Num(BigInt::from(position.get_virtual_address())))
-            }
+            "rip" | "eip" | "ip" => Some(AstValue::Num(BigInt::from(
+                position.get_virtual_address() + u64::from(instruction_byte_size),
+            ))),
             _ => None,
         },
         IrData::Dereference(data) => {
-            let Some(c) = resolve_constant(position, instruction_arg_size, root_expr, data)? else {
+            let Some(c) = resolve_constant(
+                position,
+                instruction_arg_size,
+                instruction_byte_size,
+                root_expr,
+                data,
+            )?
+            else {
                 return Ok(None);
             };
             Some(AstValue::Pointer(Box::new(c)))
         }
         IrData::Operation(IrDataOperation::Unary { operator, arg }) => {
-            let Some(arg) = resolve_constant(position, instruction_arg_size, root_expr, arg)?
+            let Some(arg) = resolve_constant(
+                position,
+                instruction_arg_size,
+                instruction_byte_size,
+                root_expr,
+                arg,
+            )?
             else {
                 return Ok(None);
             };
@@ -765,11 +779,23 @@ pub(super) fn resolve_constant(
             arg1,
             arg2,
         }) => {
-            let Some(arg1) = resolve_constant(position, instruction_arg_size, root_expr, arg1)?
+            let Some(arg1) = resolve_constant(
+                position,
+                instruction_arg_size,
+                instruction_byte_size,
+                root_expr,
+                arg1,
+            )?
             else {
                 return Ok(None);
             };
-            let Some(arg2) = resolve_constant(position, instruction_arg_size, root_expr, arg2)?
+            let Some(arg2) = resolve_constant(
+                position,
+                instruction_arg_size,
+                instruction_byte_size,
+                root_expr,
+                arg2,
+            )?
             else {
                 return Ok(None);
             };

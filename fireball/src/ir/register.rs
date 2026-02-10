@@ -70,11 +70,22 @@ impl Register {
         ]
         .into()
     });
+    pub const IP_MATCHLIST: LazyLock<Box<[Register]>> = LazyLock::new(|| {
+        [
+            <VirtualMachine as X64Range>::rip(),
+            <VirtualMachine as X64Range>::eip(),
+            <VirtualMachine as X64Range>::ip(),
+        ]
+        .into()
+    });
     pub fn is_bp(&self) -> bool {
         Self::BP_MATCHLIST.iter().any(|x| x == self)
     }
     pub fn is_sp(&self) -> bool {
         Self::SP_MATCHLIST.iter().any(|x| x == self)
+    }
+    pub fn is_ip(&self) -> bool {
+        Self::IP_MATCHLIST.iter().any(|x| x == self)
     }
 }
 

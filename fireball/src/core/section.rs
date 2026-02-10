@@ -21,6 +21,8 @@ pub struct Section {
     pub(crate) file_offset: u64,
     /// Size of Section in File
     pub(crate) size_of_file: u64,
+    /// Raw PE section characteristics flags.
+    pub(crate) characteristics: u32,
 }
 
 // Since section information is immutable, it is safe to implement Send.
@@ -34,6 +36,13 @@ impl std::fmt::Display for Section {
             self.virtual_address,
             self.virtual_address + self.virtual_size
         )
+    }
+}
+
+impl Section {
+    pub(crate) fn is_executable(&self) -> bool {
+        // IMAGE_SCN_MEM_EXECUTE
+        (self.characteristics & 0x2000_0000) != 0
     }
 }
 
@@ -51,6 +60,7 @@ mod tests {
             virtual_size: 0x2A00,
             file_offset: 0x30B0,
             size_of_file: 0x400C,
+            characteristics: 0,
         };
 
         assert_eq!(format!("{}", section), "0x1000 - 0x3A00");

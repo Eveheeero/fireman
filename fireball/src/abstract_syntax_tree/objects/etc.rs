@@ -32,6 +32,7 @@ pub enum AstCall {
     },
     Function {
         target: AstFunctionId,
+        args: Vec<Wrapped<AstExpression>>,
     },
     Builtin(AstBuiltinFunction, Box<AstBuiltinFunctionArgument>),
     Unknown(String, Vec<Wrapped<AstExpression>>),

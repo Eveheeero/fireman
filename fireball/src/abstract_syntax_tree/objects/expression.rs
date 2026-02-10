@@ -74,7 +74,13 @@ impl AstExpression {
                     }
                     result
                 }
-                AstCall::Function { .. } => Vec::new(),
+                AstCall::Function { args, .. } => {
+                    let mut result = Vec::new();
+                    for arg in args.iter() {
+                        result.extend(arg.get_related_variables());
+                    }
+                    result
+                }
             },
             AstExpression::Cast(_, expr) => expr.get_related_variables(),
             AstExpression::Deref(expr) => expr.get_related_variables(),

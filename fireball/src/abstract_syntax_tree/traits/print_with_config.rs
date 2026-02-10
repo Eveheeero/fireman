@@ -167,7 +167,16 @@ impl PrintWithConfig for AstStatement {
                     }
                     write!(f, ");")
                 }
-                AstCall::Function { target } => write!(f, "{:?}();", target),
+                AstCall::Function { target, args } => {
+                    write!(f, "{}(", target.get_default_name())?;
+                    for (i, arg) in args.iter().enumerate() {
+                        if i > 0 {
+                            write!(f, ", ")?;
+                        }
+                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                    }
+                    write!(f, ");")
+                }
                 AstCall::Builtin(func, arg) => {
                     let name: &str = match func {
                         AstBuiltinFunction::Print => "print",
@@ -307,7 +316,16 @@ impl PrintWithConfig for AstExpression {
                     }
                     write!(f, ")")
                 }
-                AstCall::Function { target } => write!(f, "{:?}()", target),
+                AstCall::Function { target, args } => {
+                    write!(f, "{}(", target.get_default_name())?;
+                    for (i, arg) in args.iter().enumerate() {
+                        if i > 0 {
+                            write!(f, ", ")?;
+                        }
+                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                    }
+                    write!(f, ")")
+                }
                 AstCall::Builtin(func, arg) => {
                     let name: &str = match func {
                         AstBuiltinFunction::Print => "print",

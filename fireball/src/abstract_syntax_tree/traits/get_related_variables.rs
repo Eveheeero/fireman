@@ -115,7 +115,11 @@ impl GetRelatedVariables for AstStatement {
                     .flat_map(|x| x.get_related_variables())
                     .map(|var_id| (AstVariableAccessType::Read, var_id))
                     .collect(),
-                AstCall::Function { .. } => Vec::new(),
+                AstCall::Function { args, .. } => args
+                    .iter()
+                    .flat_map(|x| x.get_related_variables())
+                    .map(|var_id| (AstVariableAccessType::Read, var_id))
+                    .collect(),
             },
             AstStatement::Goto(target) => target.get_related_variables(),
             AstStatement::Block(stmts) => stmts

@@ -145,10 +145,38 @@ impl Pe {
                         )
                     })
                 {
-                    BlockRelationInformation {
-                        destination: Some(self.calc_relative_address_with_ip(ip, args)),
-                        destination_type: DestinationType::Static,
-                        relation_type,
+                    let instruction_len = inst.bytes.as_ref().map(|x| x.len() as u64).unwrap_or(0);
+                    let indirect_slot =
+                        self.calc_relative_address_with_ip(ip, args, instruction_len);
+
+                    if matches!(relation_type, RelationType::Jump | RelationType::Call) {
+                        if let Some(target) = self.read_u64_at_address(&indirect_slot) {
+                            let target_addr = Address::from_virtual_address(&self.sections, target);
+                            if !self.is_likely_code_address(&target_addr) {
+                                return BlockRelationInformation {
+                                    destination: None,
+                                    destination_type: DestinationType::Dynamic,
+                                    relation_type,
+                                };
+                            }
+                            BlockRelationInformation {
+                                destination: Some(target_addr),
+                                destination_type: DestinationType::Static,
+                                relation_type,
+                            }
+                        } else {
+                            BlockRelationInformation {
+                                destination: None,
+                                destination_type: DestinationType::Dynamic,
+                                relation_type,
+                            }
+                        }
+                    } else {
+                        BlockRelationInformation {
+                            destination: Some(indirect_slot),
+                            destination_type: DestinationType::Static,
+                            relation_type,
+                        }
                     }
                 } else {
                     BlockRelationInformation {
@@ -171,6 +199,7 @@ impl Pe {
         &self,
         ip: &Address,
         args: &[iceball::RelativeAddressingArgument],
+        instruction_len: u64,
     ) -> Address {
         let extract_constant = |arg: &iceball::RelativeAddressingArgument| match arg {
             iceball::RelativeAddressingArgument::Constant(x) => *x,
@@ -188,7 +217,7 @@ impl Pe {
                     iceball::X64Register::Rip,
                 )) => {
                     *i = iceball::RelativeAddressingArgument::Constant(
-                        ip.get_virtual_address() as i128
+                        (ip.get_virtual_address() + instruction_len) as i128,
                     );
                 }
                 _ => {}
@@ -266,5 +295,35 @@ impl Pe {
             .try_into()
             .expect("Negative address result");
         Address::from_virtual_address(&self.sections, address)
+    }
+
+    fn read_u64_at_address(&self, address: &Address) -> Option<u64> {
+        let file_offset = address.get_file_offset()? as usize;
+        let end = file_offset.checked_add(8)?;
+        if end > self.binary.len() {
+            return None;
+        }
+        let mut raw = [0u8; 8];
+        raw.copy_from_slice(&self.binary[file_offset..end]);
+        Some(u64::from_le_bytes(raw))
+    }
+
+    fn is_likely_code_address(&self, address: &Address) -> bool {
+        let Some(section) = address.get_section() else {
+            return false;
+        };
+        if !section.is_executable() {
+            return false;
+        }
+        if address.get_file_offset().is_none() {
+            return false;
+        }
+        let Ok(parsed) = self.parse_assem_count(address, 1) else {
+            return false;
+        };
+        let Some(first) = parsed.first() else {
+            return false;
+        };
+        first.inner.statement.is_ok()
     }
 }
