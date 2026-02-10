@@ -4,6 +4,7 @@
 
 - Using `cargo b` and `cargo t` helps to void lag when didn't touch `firebat` directory.
 - Formatting uses `cargo +nightly fmt`
+- To avoid context overflow from voluminous logs, use regular expressions to filter and retrieve only the necessary segments for analysis.
 
 ## Structure Paths (fireball)
 
@@ -136,3 +137,5 @@ Test logs go here
 - `fireball/fireball.log` from `fireball/src/tests`
 - `fireball/fireball_outside.log` from `fireball/tests`
 - `fireball/hello_world_result.log` from decompilation of `hello_world.exe` that provided example windows executable file.
+
+Due to the difficulty of setting up AST and IR environments, agents must refrain from writing internal tests for them and instead conduct testing using reversing results from tests/resources/hello_world.exe.

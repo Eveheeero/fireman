@@ -2,7 +2,19 @@ use fireball::{core::Fire, pe::Pe};
 
 fn test_init() {
     use tracing_subscriber::{
-        prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
+        Layer, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
+    };
+
+    let log_verbose = std::env::var("FIREMAN_VERBOSE_LOG")
+        .map(|value| {
+            let value = value.to_ascii_lowercase();
+            matches!(value.as_str(), "1" | "true" | "yes" | "on")
+        })
+        .unwrap_or(false);
+    let stdio_level = if log_verbose {
+        tracing_subscriber::filter::LevelFilter::TRACE
+    } else {
+        tracing_subscriber::filter::LevelFilter::ERROR
     };
 
     static ONCE: std::sync::Once = std::sync::Once::new();
@@ -14,7 +26,8 @@ fn test_init() {
                     .without_time()
                     .with_file(true)
                     .with_line_number(true)
-                    .with_target(false),
+                    .with_target(false)
+                    .with_filter(stdio_level),
             )
             .with(
                 tracing_subscriber::fmt::layer()
