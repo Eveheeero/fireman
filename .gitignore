@@ -47,3 +47,4 @@ Cargo.lock
 bindings
 *.log
 .idea
+TODO.md
