@@ -34,10 +34,12 @@ impl Ast {
     ) -> Result<Self, DecompileError> {
         let mut ast = self.clone();
         let config = config.unwrap_or_default();
+        let mut ordered_function_ids = function_ids.to_vec();
+        ordered_function_ids.sort_unstable();
 
         // Clone all target functions up front so later passes can query each other.
         let mut versions: Vec<(AstFunctionId, AstFunctionVersion)> = Vec::new();
-        for function_id in function_ids.iter().copied() {
+        for function_id in ordered_function_ids.into_iter() {
             let from_version = *ast.function_versions.get(&function_id).unwrap();
             let to_version = ast.clone_function(&function_id, &from_version).unwrap();
             versions.push((function_id, to_version));

@@ -1,61 +1,61 @@
-I fb/tests/pe_hello_world.rs:111: Parsing at offset -6
-D fb/pe/block.rs:20: Block generation started [0x1000 - 0x9268]0x111F
-T fb/pe/block.rs:39: - 0x111F add rsp 0x30
-T fb/pe/block.rs:39: - 0x1123 pop rbp
-T fb/pe/block.rs:39: - 0x1124 ret
-D fb/pe/block.rs:86: Block generation done for size Some(6) connected_to=[BlockRelationInformation { destination: None, destination_type: Dynamic, relation_type: Return }]
-I fb/tests/pe_hello_world.rs:111: Parsing at offset 2
-D fb/pe/block.rs:20: Block generation started [0x1000 - 0x9268]0x1127
-T fb/pe/block.rs:39: - 0x1127 mov ebp esp
-T fb/pe/block.rs:39: - 0x1129 sub rsp 0x30
-T fb/pe/block.rs:39: - 0x112D mov [rbp-0x4] 0xFF
-T fb/pe/block.rs:39: - 0x1134 mov rax [rip+0xA675]
-T fb/pe/block.rs:39: - 0x113B mov [rax] 0x0
-T fb/pe/block.rs:39: - 0x1141 call 0x1154
-D fb/pe/block.rs:86: Block generation done for size Some(31) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]
-I fb/tests/pe_hello_world.rs:111: Parsing at offset 3
-D fb/pe/block.rs:20: Block generation started [0x1000 - 0x9268]0x1128
-T fb/pe/block.rs:39: - 0x1128 in eax 0x48
-T fb/pe/block.rs:39: - 0x112A sub esp 0x30
-T fb/pe/block.rs:39: - 0x112D mov [rbp-0x4] 0xFF
-T fb/pe/block.rs:39: - 0x1134 mov rax [rip+0xA675]
-T fb/pe/block.rs:39: - 0x113B mov [rax] 0x0
-T fb/pe/block.rs:39: - 0x1141 call 0x1154
-D fb/pe/block.rs:86: Block generation done for size Some(30) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]
-I fb/tests/pe_hello_world.rs:111: Parsing at offset 4
-D fb/pe/block.rs:20: Block generation started [0x1000 - 0x9268]0x1129
-T fb/pe/block.rs:39: - 0x1129 sub rsp 0x30
-T fb/pe/block.rs:39: - 0x112D mov [rbp-0x4] 0xFF
-T fb/pe/block.rs:39: - 0x1134 mov rax [rip+0xA675]
-T fb/pe/block.rs:39: - 0x113B mov [rax] 0x0
-T fb/pe/block.rs:39: - 0x1141 call 0x1154
-D fb/pe/block.rs:86: Block generation done for size Some(29) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]
-I fb/tests/pe_hello_world.rs:111: Parsing at offset 5
-D fb/pe/block.rs:20: Block generation started [0x1000 - 0x9268]0x112A
-T fb/pe/block.rs:39: - 0x112A sub esp 0x30
-T fb/pe/block.rs:39: - 0x112D mov [rbp-0x4] 0xFF
-T fb/pe/block.rs:39: - 0x1134 mov rax [rip+0xA675]
-T fb/pe/block.rs:39: - 0x113B mov [rax] 0x0
-T fb/pe/block.rs:39: - 0x1141 call 0x1154
-D fb/pe/block.rs:86: Block generation done for size Some(28) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]
-I fb/tests/pe_hello_world.rs:111: Parsing at offset 6
-D fb/pe/block.rs:20: Block generation started [0x1000 - 0x9268]0x112B
-T fb/pe/block.rs:39: - 0x112B in al dx
-T fb/pe/block.rs:39: - 0x112C xor bh al
-T fb/pe/block.rs:39: - 0x112E cld
-T fb/pe/block.rs:39: - 0x1130 inc [rax]
-T fb/pe/block.rs:39: - 0x1132 add [rax] al
-T fb/pe/block.rs:39: - 0x1134 mov rax [rip+0xA675]
-T fb/pe/block.rs:39: - 0x113B mov [rax] 0x0
-T fb/pe/block.rs:39: - 0x1141 call 0x1154
-D fb/pe/block.rs:86: Block generation done for size Some(27) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]
-I fb/tests/pe_hello_world.rs:111: Parsing at offset 7
-D fb/pe/block.rs:20: Block generation started [0x1000 - 0x9268]0x112C
-T fb/pe/block.rs:39: - 0x112C xor bh al
-T fb/pe/block.rs:39: - 0x112E cld
-T fb/pe/block.rs:39: - 0x1130 inc [rax]
-T fb/pe/block.rs:39: - 0x1132 add [rax] al
-T fb/pe/block.rs:39: - 0x1134 mov rax [rip+0xA675]
-T fb/pe/block.rs:39: - 0x113B mov [rax] 0x0
-T fb/pe/block.rs:39: - 0x1141 call 0x1154
-D fb/pe/block.rs:86: Block generation done for size Some(26) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]
+I fb/tests/pe_hello_world.rs: Parsing at offset -6
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x111F
+T fb/pe/block.rs: - 0x111F add rsp 0x30
+T fb/pe/block.rs: - 0x1123 pop rbp
+T fb/pe/block.rs: - 0x1124 ret
+D fb/pe/block.rs: Block generation done for size Some(6) connected_to=[BlockRelationInformation { destination: None, destination_type: Dynamic, relation_type: Return }]
+I fb/tests/pe_hello_world.rs: Parsing at offset 2
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x1127
+T fb/pe/block.rs: - 0x1127 mov ebp esp
+T fb/pe/block.rs: - 0x1129 sub rsp 0x30
+T fb/pe/block.rs: - 0x112D mov [rbp-0x4] 0xFF
+T fb/pe/block.rs: - 0x1134 mov rax [rip+0xA675]
+T fb/pe/block.rs: - 0x113B mov [rax] 0x0
+T fb/pe/block.rs: - 0x1141 call 0x1154
+D fb/pe/block.rs: Block generation done for size Some(31) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]
+I fb/tests/pe_hello_world.rs: Parsing at offset 3
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x1128
+T fb/pe/block.rs: - 0x1128 in eax 0x48
+T fb/pe/block.rs: - 0x112A sub esp 0x30
+T fb/pe/block.rs: - 0x112D mov [rbp-0x4] 0xFF
+T fb/pe/block.rs: - 0x1134 mov rax [rip+0xA675]
+T fb/pe/block.rs: - 0x113B mov [rax] 0x0
+T fb/pe/block.rs: - 0x1141 call 0x1154
+D fb/pe/block.rs: Block generation done for size Some(30) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]
+I fb/tests/pe_hello_world.rs: Parsing at offset 4
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x1129
+T fb/pe/block.rs: - 0x1129 sub rsp 0x30
+T fb/pe/block.rs: - 0x112D mov [rbp-0x4] 0xFF
+T fb/pe/block.rs: - 0x1134 mov rax [rip+0xA675]
+T fb/pe/block.rs: - 0x113B mov [rax] 0x0
+T fb/pe/block.rs: - 0x1141 call 0x1154
+D fb/pe/block.rs: Block generation done for size Some(29) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]
+I fb/tests/pe_hello_world.rs: Parsing at offset 5
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x112A
+T fb/pe/block.rs: - 0x112A sub esp 0x30
+T fb/pe/block.rs: - 0x112D mov [rbp-0x4] 0xFF
+T fb/pe/block.rs: - 0x1134 mov rax [rip+0xA675]
+T fb/pe/block.rs: - 0x113B mov [rax] 0x0
+T fb/pe/block.rs: - 0x1141 call 0x1154
+D fb/pe/block.rs: Block generation done for size Some(28) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]
+I fb/tests/pe_hello_world.rs: Parsing at offset 6
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x112B
+T fb/pe/block.rs: - 0x112B in al dx
+T fb/pe/block.rs: - 0x112C xor bh al
+T fb/pe/block.rs: - 0x112E cld
+T fb/pe/block.rs: - 0x1130 inc [rax]
+T fb/pe/block.rs: - 0x1132 add [rax] al
+T fb/pe/block.rs: - 0x1134 mov rax [rip+0xA675]
+T fb/pe/block.rs: - 0x113B mov [rax] 0x0
+T fb/pe/block.rs: - 0x1141 call 0x1154
+D fb/pe/block.rs: Block generation done for size Some(27) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]
+I fb/tests/pe_hello_world.rs: Parsing at offset 7
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x112C
+T fb/pe/block.rs: - 0x112C xor bh al
+T fb/pe/block.rs: - 0x112E cld
+T fb/pe/block.rs: - 0x1130 inc [rax]
+T fb/pe/block.rs: - 0x1132 add [rax] al
+T fb/pe/block.rs: - 0x1134 mov rax [rip+0xA675]
+T fb/pe/block.rs: - 0x113B mov [rax] 0x0
+T fb/pe/block.rs: - 0x1141 call 0x1154
+D fb/pe/block.rs: Block generation done for size Some(26) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]

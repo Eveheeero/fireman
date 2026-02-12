@@ -126,12 +126,16 @@ fn log_read_locations_for_call_arg_analysis(
     );
 
     let vars = variables.read().unwrap();
-    for (var_id, var) in vars.iter() {
+    let mut vars_sorted: Vec<_> = vars.iter().collect();
+    vars_sorted.sort_unstable_by_key(|(var_id, _)| var_id.index);
+    for (var_id, var) in vars_sorted {
         let Some(access_map) = var.data_access_ir.as_ref() else {
             continue;
         };
-        for (ir_index, accesses) in access_map.iter() {
-            for access in accesses.iter() {
+        let mut access_map_sorted: Vec<_> = access_map.iter().collect();
+        access_map_sorted.sort_unstable_by_key(|(ir_index, _)| ir_index.ir_index());
+        for (ir_index, accesses) in access_map_sorted {
+            for access in accesses {
                 if *access.access_type() != IrDataAccessType::Read {
                     continue;
                 }

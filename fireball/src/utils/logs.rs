@@ -30,8 +30,7 @@ where
             file.to_string()
         };
 
-        let line = metadata.line().unwrap_or(0);
-        write!(writer, "{} {}:{}: ", level, shortened_path, line)?;
+        write!(writer, "{} {}: ", level, shortened_path)?;
 
         use tracing_subscriber::fmt::FormatFields as _;
         ctx.format_fields(writer.by_ref(), event)?;
@@ -67,19 +66,11 @@ pub fn test_log_subscriber_with_file(log_file_path: &str) -> impl tracing::Subsc
     let subscriber = tracing_subscriber::registry()
         .with(
             tracing_subscriber::fmt::layer()
-                .without_time()
-                .with_file(true)
-                .with_line_number(true)
-                .with_target(false)
                 .event_format(CompactFormatter)
                 .with_filter(stdio_level),
         )
         .with(
             tracing_subscriber::fmt::layer()
-                .without_time()
-                .with_file(true)
-                .with_line_number(true)
-                .with_target(false)
                 .with_ansi(false)
                 .with_writer(file)
                 .event_format(CompactFormatter),
