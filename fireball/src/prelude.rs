@@ -29,6 +29,49 @@ pub(crate) fn test_init() {
         tracing_subscriber::filter::LevelFilter::ERROR
     };
 
+    struct CompactFormatter;
+
+    impl<S, N> tracing_subscriber::fmt::FormatEvent<S, N> for CompactFormatter
+    where
+        S: tracing::Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
+        N: for<'a> tracing_subscriber::fmt::FormatFields<'a> + 'static,
+    {
+        fn format_event(
+            &self,
+            ctx: &tracing_subscriber::fmt::FmtContext<'_, S, N>,
+            mut writer: tracing_subscriber::fmt::format::Writer<'_>,
+            event: &tracing::Event<'_>,
+        ) -> std::fmt::Result {
+            let metadata = event.metadata();
+
+            // INFO -> I
+            let level = match *metadata.level() {
+                tracing::Level::TRACE => "T",
+                tracing::Level::DEBUG => "D",
+                tracing::Level::INFO => "I",
+                tracing::Level::WARN => "W",
+                tracing::Level::ERROR => "E",
+            };
+
+            // fireball/src/main.rs -> fb/main.rs
+            let file = metadata.file().unwrap_or("unknown");
+            let shortened_path = if let Some(stripped) = file.strip_prefix("fireball/src/") {
+                format!("fb/{}", stripped)
+            } else {
+                file.to_string()
+            };
+
+            let line = metadata.line().unwrap_or(0);
+
+            // I fb/main.rs:10
+            write!(writer, "{} {}:{}: ", level, shortened_path, line)?;
+
+            use tracing_subscriber::fmt::FormatFields as _;
+            ctx.format_fields(writer.by_ref(), event)?;
+            writeln!(writer)
+        }
+    }
+
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| {
         let file = std::fs::File::create("fireball.log").unwrap();
@@ -39,6 +82,7 @@ pub(crate) fn test_init() {
                     .with_file(true)
                     .with_line_number(true)
                     .with_target(false)
+                    .event_format(CompactFormatter)
                     .with_filter(stdio_level),
             )
             .with(
@@ -48,7 +92,8 @@ pub(crate) fn test_init() {
                     .with_line_number(true)
                     .with_target(false)
                     .with_ansi(false)
-                    .with_writer(file),
+                    .with_writer(file)
+                    .event_format(CompactFormatter),
             )
             .with(
                 tracing_subscriber::filter::Targets::new()

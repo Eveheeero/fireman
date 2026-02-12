@@ -280,7 +280,7 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
 
     for variable in variables.iter() {
         trace!(
-            "Variable({}) analyzed. shown in following Nth asm instruction: {:?}",
+            "variable analyzed type={} inst_of_asm={:?}",
             variable.data_type, variable.shown_in
         );
         for da in variable
@@ -288,7 +288,7 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
             .iter()
             .flat_map(|x| x.1.iter())
         {
-            trace!("DataAccess({:?}) {:?}", da.access_type(), da.location());
+            trace!("- {} {}", da.access_type(), da.location());
         }
     }
 
