@@ -279,10 +279,7 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
     }
 
     for variable in variables.iter() {
-        trace!(
-            "variable analyzed type={} inst_of_asm={:?}",
-            variable.data_type, variable.shown_in
-        );
+        trace!("{} {:?}", variable.data_type, variable.shown_in);
         let das = variable.get_all_data_accesses();
         let mut das = Vec::from_iter(das.iter().flat_map(|x| x.1.iter()).cloned());
         use std::hash::{Hash, Hasher};

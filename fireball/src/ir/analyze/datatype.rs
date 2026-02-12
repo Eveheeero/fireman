@@ -35,7 +35,6 @@ pub fn analyze_datatype(
     if ir.statements.is_none() {
         return;
     }
-    debug!("Analyzing datatypes");
     for (statement_index, statement) in ir.statements.as_ref().unwrap().iter().enumerate() {
         let statement_index = statement_index as u8;
         let mut now = Vec::new();
