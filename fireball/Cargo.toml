@@ -22,11 +22,9 @@ tracing = { workspace = true, features = [
   "max_level_trace",
   "release_max_level_debug",
 ] }
+tracing-subscriber.workspace = true
 bitvec.workspace = true
 fireman_macro.workspace = true
 hashbrown.workspace = true
 num-bigint.workspace = true
 either.workspace = true
-
-[dev-dependencies]
-tracing-subscriber.workspace = true

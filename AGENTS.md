@@ -132,10 +132,4 @@ If you want to find another struct/enum/trait/type, search by regex (e.g. `rg "^
 
 ## Testing
 
-Test logs go here
-
-- `fireball/fireball.log` from `fireball/src/tests`
-- `fireball/fireball_outside.log` from `fireball/tests`
-- `fireball/hello_world_result.log` from decompilation of `hello_world.exe` that provided example windows executable file.
-
 Due to the difficulty of setting up AST and IR environments, agents must refrain from writing internal tests for them and instead conduct testing using reversing results from tests/resources/hello_world.exe.

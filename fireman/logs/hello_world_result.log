@@ -1,0 +1,176 @@
+void f1125() {
+  unknown_t v1;
+  unknown_t v2;
+  unknown_t v3;
+  unknown_t v4;
+  unknown_t v5;
+  unknown_t v6;
+  unknown_t v7;
+  unknown_t v8;
+  unknown_t v9;
+  unknown_t v10;
+  unknown_t v11;
+  unknown_t v12;
+  unknown_t v13;
+  void* v14;
+  unknown_t v15;
+  unknown_t v16;
+  unknown_t v18;
+  unknown_t v19;
+  unknown_t v20;
+  unknown_t v21;
+  unknown_t v22;
+  int v23;
+  unknown_t v24;
+  unknown_t v25;
+  unknown_t v26;
+  unknown_t v27;
+  unknown_t v29;
+
+  // 0x1125 push rbp
+    /* rsp = (arch_len)rsp - arch_byte_size */
+    v27 = v1;
+  // 0x1126 mov rbp rsp
+    /* o1 = (sizeof(o1))zero_extend o2 */
+    v24 = v4;
+  // 0x1129 sub rsp 0x30
+    /* o1 = (sizeof(o1))o1 - o2 */
+    v27 = v6;
+  // 0x112D mov [rbp-0x4] 0xFF
+    /* o1 = (sizeof(o1))zero_extend o2 */
+    v19 = v8;
+  // 0x1134 mov rax [rip+0xA675]
+    /* o1 = (sizeof(o1))zero_extend o2 */
+    v11 = v10;
+  // 0x113B mov [rax] 0x0
+    /* o1 = (sizeof(o1))zero_extend o2 */
+    v13 = v12;
+  // 0x1141 call 0x1154
+    /* rsp = (arch_len)rsp - arch_byte_size */
+    v27 = v1;
+    /* rsp = (arch_len)rip + instruction_byte_size */
+    v16 = v15;
+    /* call o1 */
+    v17();
+}
+
+void f1154() {
+  unknown_t v1;
+  unknown_t v2;
+  unknown_t v3;
+  unknown_t v4;
+  unknown_t v5;
+  unknown_t v6;
+  unknown_t v7;
+  unknown_t v8;
+  unknown_t v9;
+  unknown_t v10;
+  unknown_t v11;
+  unknown_t v12;
+  unknown_t v13;
+  unknown_t v14;
+  unknown_t v15;
+  unknown_t v16;
+  unknown_t v17;
+  void* v18;
+  unknown_t v19;
+  unknown_t v20;
+  unknown_t v22;
+  unknown_t v23;
+  unknown_t v24;
+  unknown_t v25;
+  unknown_t v27;
+  unknown_t v28;
+  unknown_t v30;
+  unknown_t v31;
+  unknown_t v32;
+  unknown_t v33;
+  unknown_t v34;
+  unknown_t v35;
+  unknown_t v36;
+  unknown_t v37;
+  unknown_t v38;
+  unknown_t v39;
+  unknown_t v40;
+  unknown_t v41;
+  unknown_t v42;
+  unknown_t v43;
+  unknown_t v45;
+  unknown_t v46;
+  unknown_t v47;
+  unknown_t v48;
+  unknown_t v49;
+  unknown_t v50;
+  unknown_t v51;
+  unknown_t v52;
+  unknown_t v53;
+  unknown_t v54;
+  unknown_t v55;
+  unknown_t v56;
+  unknown_t v57;
+
+  // 0x1155 mov rbp rsp
+    /* o1 = (sizeof(o1))zero_extend o2 */
+    v5 = v4;
+  // 0x1158 sub rsp 0xE0
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
+    { v27 = v6; v30 = v6; v28 = v6; }
+  // 0x115F mov [rbp-0x8] 0x0
+    /* o1 = (sizeof(o1))zero_extend o2 */
+    v9 = v8;
+  // 0x1167 mov [rbp-0xC] 0x0
+    /* o1 = (sizeof(o1))zero_extend o2 */
+    v10 = v8;
+  // 0x116E lea rax [rbp-0xC0]
+    /* o1 = (sizeof(o1))zero_extend o2 */
+    v55 = v11;
+  // 0x1175 mov r8d 0x68
+    /* o1 = (sizeof(o1))zero_extend o2 */
+    v14 = v13;
+  // 0x117B mov edx 0x0
+    /* o1 = (sizeof(o1))zero_extend o2 */
+    v15 = v8;
+  // 0x1180 mov rcx rax
+    /* o1 = (sizeof(o1))zero_extend o2 */
+    v53 = v16;
+  // 0x1183 call 0x9160
+    /* rsp = (arch_len)rsp - arch_byte_size */
+    v18 = v1;
+    /* rsp = (arch_len)rip + instruction_byte_size */
+    v20 = v19;
+    /* call o1 */
+    v21();
+}
+
+void f1195() {
+  unknown_t v1;
+  unknown_t v2;
+  unknown_t v3;
+  unknown_t v4;
+  unknown_t v5;
+  unknown_t v6;
+  unknown_t v7;
+  void* v8;
+  unknown_t v9;
+  unknown_t v10;
+
+  // 0x119C mov rcx rax
+    /* o1 = (sizeof(o1))zero_extend o2 */
+    v4 = v3;
+  // 0x119F mov rax [rip+0x1007E]
+    /* o1 = (sizeof(o1))zero_extend o2 */
+    v6 = v5;
+  // 0x11A6 call rax
+    /* rsp = (arch_len)rsp - arch_byte_size */
+    v8 = v7;
+    /* rsp = (arch_len)rip + instruction_byte_size */
+    v10 = v9;
+    /* call o1 */
+    v6();
+}
+
+void f9160() {
+  // 0x9160 jmp [rip+0x8206]
+    /* jmp o1 */
+    goto *0x1136C;
+}

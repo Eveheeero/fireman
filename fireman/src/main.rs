@@ -1,6 +1,8 @@
 pub mod prelude;
 mod tui;
 pub mod utils;
+#[cfg(test)]
+mod tests;
 
 use fireball::{Fireball, core::FireRaw};
 

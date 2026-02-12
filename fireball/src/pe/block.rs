@@ -36,6 +36,7 @@ impl Pe {
             let mut inst = inst.unwrap();
             debug_assert_eq!(inst.len(), 1);
             let inst = inst.pop().unwrap();
+            trace!("- {}", inst);
             instructions.push(inst);
             let inst = &instructions.last().unwrap().inner;
             if let Err(e) = inst.statement {

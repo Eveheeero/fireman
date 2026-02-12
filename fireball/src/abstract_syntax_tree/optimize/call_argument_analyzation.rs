@@ -8,12 +8,12 @@ use crate::{
     ir::{
         Register, VirtualMachine,
         analyze::variables::resolve_operand,
-        data::{IrData, IrDataOperation},
+        data::{IrData, IrDataAccessType, IrDataOperation},
         operator::{IrBinaryOperator, IrUnaryOperator},
         statements::IrStatement,
         x86_64::X64Range,
     },
-    prelude::DecompileError,
+    prelude::{DecompileError, *},
     utils::version_map::VersionMap,
 };
 use either::Either;
@@ -40,6 +40,8 @@ pub(super) fn analyze_call_arguments(
         function_ir = function.ir.clone();
         function_return_type = function.return_type.clone();
     }
+
+    log_read_locations_for_call_arg_analysis(function_id, function_version, &variables);
 
     // We rebuild call nodes from IR (JumpByCall) and infer args from surrounding assignments.
     let reg_name_to_var = build_register_name_to_var_map(&variables);
@@ -110,6 +112,38 @@ pub(super) fn analyze_call_arguments(
     }
 
     Ok(())
+}
+
+fn log_read_locations_for_call_arg_analysis(
+    function_id: AstFunctionId,
+    function_version: AstFunctionVersion,
+    variables: &ArcAstVariableMap,
+) {
+    trace!(
+        ?function_id,
+        function_version = ?function_version.0,
+        "call argument analysis started"
+    );
+
+    let vars = variables.read().unwrap();
+    for (var_id, var) in vars.iter() {
+        let Some(access_map) = var.data_access_ir.as_ref() else {
+            continue;
+        };
+        for (ir_index, accesses) in access_map.iter() {
+            for access in accesses.iter() {
+                if *access.access_type() != IrDataAccessType::Read {
+                    continue;
+                }
+                trace!(
+                    var_id = ?var_id.index,
+                    ir_index = ?ir_index.ir_index(),
+                    location = ?access.location().to_string(),
+                    "-"
+                );
+            }
+        }
+    }
 }
 
 fn propagate_observed_call_args_to_callee_parameters(ast: &Ast, body: &[WrappedAstStatement]) {
