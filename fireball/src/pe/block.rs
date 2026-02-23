@@ -39,19 +39,28 @@ impl Pe {
             trace!("- {}", inst);
             instructions.push(inst);
             let inst = &instructions.last().unwrap().inner;
+            let inst_len = inst.bytes.as_ref().unwrap().len() as u64;
             if let Err(e) = inst.statement {
-                error!(
-                    "Instruction converting failed: {:#x} {:?}",
+                warn!(
+                    "Instruction converting failed: {:#x} {:?}; continue block scan",
                     address.get_virtual_address(),
                     e
                 );
-                break;
+                // If this looks like an unparsed control-flow instruction, stop safely.
+                if Self::looks_like_control_flow_text(inst) {
+                    break;
+                }
+                if inst_len == 0 {
+                    break;
+                }
+                address += inst_len;
+                continue;
             }
             if inst.is_jcc() || inst.is_jmp() || inst.is_call() || inst.is_ret() {
                 last_instruction_address = Some(address);
                 break;
             }
-            address += inst.bytes.as_ref().unwrap().len() as u64;
+            address += inst_len;
         }
 
         /* Find connected blocks */
@@ -326,5 +335,16 @@ impl Pe {
             return false;
         };
         first.inner.statement.is_ok()
+    }
+
+    fn looks_like_control_flow_text(inst: &iceball::Instruction) -> bool {
+        let text = inst.to_string().to_ascii_lowercase();
+        let mut parts = text.split_whitespace();
+        let first = parts.next().unwrap_or_default();
+        let op = match first {
+            "lock" | "rep" | "repe" | "repz" | "repne" | "repnz" => parts.next().unwrap_or(first),
+            _ => first,
+        };
+        matches!(op, "call" | "jmp" | "ret") || op.starts_with('j')
     }
 }

@@ -93,7 +93,9 @@ pub(super) fn analyze_ir_function(
                             AstValue::Char(_) => AstValueType::Char,
                             AstValue::Double(_) => AstValueType::Double,
                             AstValue::Bool(_) => AstValueType::Bool,
-                            AstValue::Pointer(_) | AstValue::Array(_) => todo!(),
+                            AstValue::Pointer(_) | AstValue::Array(_) => {
+                                AstValueType::Pointer(Box::new(AstValueType::Void))
+                            }
                         };
                         debug!(
                             "Constant value found in {}({}) but datatype not set. init datatype to {}",

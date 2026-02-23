@@ -94,7 +94,14 @@ impl Ast {
         // Functions
         let functions = self.functions.read().unwrap();
         let mut function_keys_sorted = functions.keys().collect::<Vec<_>>();
-        function_keys_sorted.sort_by_cached_key(|key| key.address);
+        function_keys_sorted.sort_by_cached_key(|key_ref| {
+            let key = *key_ref;
+            let is_main = function_versions
+                .get(key)
+                .and_then(|version| functions.get(key).and_then(|m| m.get(version)))
+                .is_some_and(|function| function.name() == "main");
+            (if is_main { 0u8 } else { 1u8 }, key.address)
+        });
         for func_id in function_keys_sorted {
             let version_map = functions.get(func_id).unwrap();
             let version = function_versions.get(func_id).unwrap();

@@ -8,7 +8,15 @@ use std::sync::Arc;
 
 /// Generate AST from targets
 pub fn generate_ast(targets: impl IntoIterator<Item = Arc<Block>>) -> Result<Ast, DecompileError> {
+    generate_ast_with_pre_defined_symbols(targets, std::iter::empty())
+}
+
+pub fn generate_ast_with_pre_defined_symbols(
+    targets: impl IntoIterator<Item = Arc<Block>>,
+    pre_defined_symbols: impl IntoIterator<Item = (u64, String)>,
+) -> Result<Ast, DecompileError> {
     let mut ast = Ast::new();
+    ast.set_pre_defined_symbols(pre_defined_symbols);
     let mut block_grouper = BlockGrouper::new();
     block_grouper.add_targets(targets);
     let block_groups = block_grouper.analyze();

@@ -133,3 +133,4 @@ If you want to find another struct/enum/trait/type, search by regex (e.g. `rg "^
 ## Testing
 
 Due to the difficulty of setting up AST and IR environments, agents must refrain from writing internal tests for them and instead conduct testing using reversing results from tests/resources/hello_world.exe.
+To verify and compare disassembly and decompiled outputs during testing, use the radare (`r2`) CLI.

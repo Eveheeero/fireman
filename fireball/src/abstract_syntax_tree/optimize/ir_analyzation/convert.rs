@@ -291,7 +291,7 @@ pub(super) fn convert_expr(
                 );
             }
         },
-        IrData::Register(_) | IrData::Operand(_) => unreachable!("Should not be here"),
+        IrData::Register(_) | IrData::Operand(_) => AstExpression::Unknown,
     };
     Ok(w(result))
 }
@@ -956,7 +956,7 @@ pub(super) fn resolve_constant(
                 }
             }
         }
-        IrData::Operand(..) => unreachable!("With {}, {}", position, data),
+        IrData::Operand(..) => None,
     };
     Ok(result.map(w))
 }

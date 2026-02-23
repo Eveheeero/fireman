@@ -57,7 +57,7 @@ impl Pe {
             let exports = gl.exports;
 
             for import in imports {
-                let name = import.name.to_string();
+                let name = format!("{}::{}", import.dll, import.name);
                 let offset = import.offset as u64;
 
                 defined.insert(PreDefinedOffset {

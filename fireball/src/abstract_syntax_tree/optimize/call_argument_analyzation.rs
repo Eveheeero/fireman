@@ -113,9 +113,21 @@ pub(super) fn analyze_call_arguments(
         &rsp_offset_to_var,
     );
 
+    // Rewrite external import thunk targets in calls to explicit external symbols.
+    let mut external_import_thunks = collect_external_import_thunks(ast);
+    if let Some(name) = infer_external_import_symbol_from_body(ast, &body) {
+        external_import_thunks.insert(function_id, name);
+    }
+    rewrite_external_import_calls_recursive(&mut body, &external_import_thunks);
+    apply_external_import_thunk_names(ast, &external_import_thunks);
+
     // If this function contains function-call sites with inferred arguments,
     // propagate that information back into callee signatures when they are missing.
     propagate_observed_call_args_to_callee_parameters(ast, &body);
+
+    if let Some(main_target) = detect_real_main_target_from_startup(ast, &body) {
+        apply_real_main_special_case(ast, function_id, main_target, &mut body);
+    }
 
     // Function-level CFG safety: once a top-level goto/return is emitted,
     // subsequent statements are unreachable in this linear AST view.
@@ -130,6 +142,10 @@ pub(super) fn analyze_call_arguments(
         function
             .processed_optimizations
             .push(ProcessedOptimization::CallArgumentAnalyzation);
+        if let Some(name) = external_import_thunks.get(&function_id) {
+            function.name = Some(external_symbol_identifier(name));
+            function.parameters.clear();
+        }
         function.body = body;
     }
 
@@ -185,6 +201,152 @@ fn log_read_locations_for_call_arg_analysis(
     }
 }
 
+fn external_symbol_identifier(name: &str) -> String {
+    let mut out = String::from("ext_");
+    for ch in name.chars() {
+        if ch.is_ascii_alphanumeric() || ch == '_' {
+            out.push(ch);
+        } else {
+            out.push('_');
+        }
+    }
+    if out.len() <= 4 {
+        out.push_str("unknown");
+    }
+    out
+}
+
+fn external_symbol_name_from_slot(ast: &Ast, slot: u64) -> Option<String> {
+    ast.pre_defined_symbols.get(&slot).cloned()
+}
+
+fn external_slot_address_from_unknown_target(raw: &str) -> Option<u64> {
+    let target = raw.trim();
+    let target = target.strip_prefix('*').unwrap_or(target).trim();
+    if let Some(hex) = target
+        .strip_prefix("0x")
+        .or_else(|| target.strip_prefix("0X"))
+    {
+        u64::from_str_radix(hex, 16).ok()
+    } else {
+        target.parse::<u64>().ok()
+    }
+}
+
+fn external_slot_address_from_jump_target(
+    jump: &crate::abstract_syntax_tree::AstJumpTarget,
+) -> Option<u64> {
+    match jump {
+        crate::abstract_syntax_tree::AstJumpTarget::Unknown(raw) => {
+            external_slot_address_from_unknown_target(raw)
+        }
+        crate::abstract_syntax_tree::AstJumpTarget::Variable {
+            var_map, var_id, ..
+        } => variable_constant_address(var_map, *var_id),
+        _ => None,
+    }
+}
+
+fn meaningful_statements<'a>(body: &'a [WrappedAstStatement]) -> Vec<&'a WrappedAstStatement> {
+    body.iter()
+        .filter(|stmt| {
+            !matches!(
+                stmt.statement,
+                AstStatement::Comment(_) | AstStatement::Empty | AstStatement::Label(_)
+            )
+        })
+        .collect()
+}
+
+fn infer_external_import_symbol_from_body(
+    ast: &Ast,
+    body: &[WrappedAstStatement],
+) -> Option<String> {
+    let meaningful = meaningful_statements(body);
+    if meaningful.len() != 1 {
+        return None;
+    }
+    let AstStatement::Goto(jump) = &meaningful[0].statement else {
+        return None;
+    };
+    let slot = external_slot_address_from_jump_target(jump)?;
+    Some(external_symbol_name_from_slot(ast, slot).unwrap_or_else(|| format!("0x{:X}", slot)))
+}
+
+fn collect_external_import_thunks(ast: &Ast) -> HashMap<AstFunctionId, String> {
+    let mut out: HashMap<AstFunctionId, String> = HashMap::new();
+    let functions = ast.functions.read().unwrap();
+    let mut function_ids: Vec<_> = ast.function_versions.keys().copied().collect();
+    function_ids.sort_unstable_by_key(|id| id.address);
+    for function_id in function_ids {
+        let Some(version) = ast.function_versions.get(&function_id).copied() else {
+            continue;
+        };
+        let Some(function) = functions.get(&function_id).and_then(|m| m.get(&version)) else {
+            continue;
+        };
+        if let Some(name) = infer_external_import_symbol_from_body(ast, &function.body) {
+            out.insert(function_id, name);
+        }
+    }
+    out
+}
+
+fn rewrite_external_import_calls_recursive(
+    body: &mut [WrappedAstStatement],
+    external_thunks: &HashMap<AstFunctionId, String>,
+) {
+    for stmt in body.iter_mut() {
+        match &mut stmt.statement {
+            AstStatement::If(_, true_branch, false_branch) => {
+                rewrite_external_import_calls_recursive(true_branch, external_thunks);
+                if let Some(false_branch) = false_branch {
+                    rewrite_external_import_calls_recursive(false_branch, external_thunks);
+                }
+            }
+            AstStatement::While(_, block) | AstStatement::Block(block) => {
+                rewrite_external_import_calls_recursive(block, external_thunks);
+            }
+            AstStatement::For(_, _, _, block) => {
+                rewrite_external_import_calls_recursive(block, external_thunks);
+            }
+            AstStatement::Call(AstCall::Function { target, args }) => {
+                if let Some(symbol) = external_thunks.get(target) {
+                    let args = std::mem::take(args);
+                    stmt.statement = AstStatement::Call(AstCall::Unknown(
+                        external_symbol_identifier(symbol),
+                        args,
+                    ));
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn apply_external_import_thunk_names(ast: &Ast, external_thunks: &HashMap<AstFunctionId, String>) {
+    if external_thunks.is_empty() {
+        return;
+    }
+    let mut entries: Vec<_> = external_thunks.iter().collect();
+    entries.sort_unstable_by_key(|(function_id, _)| function_id.address);
+
+    let mut functions = ast.functions.write().unwrap();
+    for (function_id, symbol) in entries {
+        let Some(version) = ast.function_versions.get(function_id).copied() else {
+            continue;
+        };
+        let Some(function) = functions
+            .get_mut(function_id)
+            .and_then(|m| m.get_mut(&version))
+        else {
+            continue;
+        };
+        function.name = Some(external_symbol_identifier(symbol));
+        function.parameters.clear();
+    }
+}
+
 fn propagate_observed_call_args_to_callee_parameters(ast: &Ast, body: &[WrappedAstStatement]) {
     let mut observed: HashMap<AstFunctionId, usize> = HashMap::new();
     collect_observed_call_arg_counts(body, &mut observed);
@@ -236,13 +398,216 @@ fn propagate_observed_call_args_to_callee_parameters(ast: &Ast, body: &[WrappedA
     }
 }
 
+fn detect_real_main_target_from_startup(
+    ast: &Ast,
+    body: &[WrappedAstStatement],
+) -> Option<AstFunctionId> {
+    if !has_crt_startup_markers(ast, body) {
+        return None;
+    }
+
+    let last_termination_call = body.iter().rposition(|stmt| {
+        let AstStatement::Call(call) = &stmt.statement else {
+            return false;
+        };
+        call_matches_symbol(ast, call, is_termination_symbol)
+    })?;
+
+    for stmt in body[..last_termination_call].iter().rev() {
+        let AstStatement::Call(call) = &stmt.statement else {
+            continue;
+        };
+        match call {
+            AstCall::Function { target, args } => {
+                if args.len() >= 3 {
+                    return Some(*target);
+                }
+            }
+            AstCall::Unknown(name, args) => {
+                if args.len() < 3 {
+                    continue;
+                }
+                let Some(addr) = parse_default_function_name(name) else {
+                    continue;
+                };
+                if let Some(target) = resolve_function_id_by_address(ast, addr) {
+                    return Some(target);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
+}
+
+fn has_crt_startup_markers(ast: &Ast, body: &[WrappedAstStatement]) -> bool {
+    let mut has_initterm = false;
+    let mut has_termination = false;
+    visit_calls_recursive(body, &mut |call| {
+        if call_matches_symbol(ast, call, is_initterm_symbol) {
+            has_initterm = true;
+        }
+        if call_matches_symbol(ast, call, is_termination_symbol)
+            || call_matches_symbol(ast, call, is_amsg_exit_symbol)
+        {
+            has_termination = true;
+        }
+    });
+    has_initterm && has_termination
+}
+
+fn visit_calls_recursive(body: &[WrappedAstStatement], visitor: &mut impl FnMut(&AstCall)) {
+    for stmt in body.iter() {
+        match &stmt.statement {
+            AstStatement::Call(call) => visitor(call),
+            AstStatement::If(_, true_branch, false_branch) => {
+                visit_calls_recursive(true_branch, visitor);
+                if let Some(false_branch) = false_branch {
+                    visit_calls_recursive(false_branch, visitor);
+                }
+            }
+            AstStatement::While(_, block) | AstStatement::Block(block) => {
+                visit_calls_recursive(block, visitor);
+            }
+            AstStatement::For(_, _, _, block) => {
+                visit_calls_recursive(block, visitor);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn parse_default_function_name(name: &str) -> Option<u64> {
+    let trimmed = name.trim();
+    let hex = trimmed.strip_prefix('f')?;
+    if hex.is_empty() || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        return None;
+    }
+    u64::from_str_radix(hex, 16).ok()
+}
+
+fn call_matches_symbol(ast: &Ast, call: &AstCall, matcher: fn(&str) -> bool) -> bool {
+    let name = match call {
+        AstCall::Unknown(name, _) => Some(name.clone()),
+        AstCall::Function { target, .. } => function_symbol_hint(ast, *target),
+        _ => None,
+    };
+    name.is_some_and(|name| matcher(&name))
+}
+
+fn function_symbol_hint(ast: &Ast, target: AstFunctionId) -> Option<String> {
+    let version = ast.function_versions.get(&target).copied()?;
+    let functions = ast.functions.read().unwrap();
+    let function = functions.get(&target).and_then(|m| m.get(&version))?;
+    if let Some(name) = &function.name {
+        return Some(name.clone());
+    }
+    if let Some(symbol) = infer_external_import_symbol_from_body(ast, &function.body) {
+        return Some(external_symbol_identifier(&symbol));
+    }
+    Some(target.get_default_name())
+}
+
+fn is_initterm_symbol(name: &str) -> bool {
+    name.to_ascii_lowercase().contains("initterm")
+}
+
+fn is_amsg_exit_symbol(name: &str) -> bool {
+    name.to_ascii_lowercase().contains("amsg_exit")
+}
+
+fn is_termination_symbol(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.ends_with("_exit")
+        || lower.ends_with("__exit")
+        || lower.ends_with("cexit")
+        || lower == "exit"
+        || lower == "_exit"
+        || lower == "_cexit"
+}
+
+fn apply_real_main_special_case(
+    ast: &Ast,
+    startup_function_id: AstFunctionId,
+    main_target: AstFunctionId,
+    body: &mut [WrappedAstStatement],
+) {
+    {
+        let mut functions = ast.functions.write().unwrap();
+
+        if let Some(version) = ast.function_versions.get(&main_target).copied()
+            && let Some(main_function) = functions
+                .get_mut(&main_target)
+                .and_then(|m| m.get_mut(&version))
+        {
+            let default_main_name = main_target.get_default_name();
+            if should_apply_special_name(&main_function.name, &default_main_name) {
+                main_function.name = Some("main".to_string());
+            }
+        }
+
+        if let Some(version) = ast.function_versions.get(&startup_function_id).copied()
+            && let Some(startup_function) = functions
+                .get_mut(&startup_function_id)
+                .and_then(|m| m.get_mut(&version))
+        {
+            let default_startup_name = startup_function_id.get_default_name();
+            if should_apply_special_name(&startup_function.name, &default_startup_name) {
+                startup_function.name = Some("__tmainCRTStartup".to_string());
+            }
+        }
+    }
+
+    rewrite_calls_to_named_target(body, main_target, "main");
+}
+
+fn should_apply_special_name(current_name: &Option<String>, default_name: &str) -> bool {
+    match current_name {
+        None => true,
+        Some(existing) => existing == default_name,
+    }
+}
+
+fn rewrite_calls_to_named_target(
+    body: &mut [WrappedAstStatement],
+    target: AstFunctionId,
+    replacement_name: &str,
+) {
+    for stmt in body.iter_mut() {
+        match &mut stmt.statement {
+            AstStatement::If(_, true_branch, false_branch) => {
+                rewrite_calls_to_named_target(true_branch, target, replacement_name);
+                if let Some(false_branch) = false_branch {
+                    rewrite_calls_to_named_target(false_branch, target, replacement_name);
+                }
+            }
+            AstStatement::While(_, block) | AstStatement::Block(block) => {
+                rewrite_calls_to_named_target(block, target, replacement_name);
+            }
+            AstStatement::For(_, _, _, block) => {
+                rewrite_calls_to_named_target(block, target, replacement_name);
+            }
+            AstStatement::Call(AstCall::Function {
+                target: call_target,
+                args,
+            }) if *call_target == target => {
+                let args = std::mem::take(args);
+                stmt.statement =
+                    AstStatement::Call(AstCall::Unknown(replacement_name.to_string(), args));
+            }
+            _ => {}
+        }
+    }
+}
+
 fn truncate_after_terminal_control_flow(
     body: &mut Vec<WrappedAstStatement>,
 ) -> Option<(u64, Vec<WrappedAstStatement>)> {
     let cut = body.iter().position(|stmt| {
         matches!(
             stmt.statement,
-            AstStatement::Call(_) | AstStatement::Goto(_) | AstStatement::Return(_)
+            AstStatement::Goto(_) | AstStatement::Return(_)
         )
     });
     let Some(idx) = cut else {
@@ -680,7 +1045,7 @@ fn enrich_existing_call_args_recursive(
         }
 
         rewrite_call_target_from_constant_value(ast, &mut stmts[i]);
-        rewrite_indirect_call_target_from_nearby_assignment(stmts, i);
+        rewrite_indirect_call_target_from_nearby_assignment(ast, stmts, i);
 
         let should_infer = match &stmts[i].statement {
             AstStatement::Call(AstCall::Function { args, .. })
@@ -722,6 +1087,7 @@ fn enrich_existing_call_args_recursive(
 }
 
 fn rewrite_indirect_call_target_from_nearby_assignment(
+    ast: &Ast,
     stmts: &mut [WrappedAstStatement],
     call_idx: usize,
 ) {
@@ -750,8 +1116,11 @@ fn rewrite_indirect_call_target_from_nearby_assignment(
         let Some(slot) = stmt_origin_rip_relative_load_slot(&stmts[j]) else {
             break;
         };
+        let external_name = external_symbol_name_from_slot(ast, slot)
+            .map(|name| external_symbol_identifier(&name))
+            .unwrap_or_else(|| format!("*0x{:X}", slot));
         stmts[call_idx].statement =
-            AstStatement::Call(AstCall::Unknown(format!("*0x{:X}", slot), current_args));
+            AstStatement::Call(AstCall::Unknown(external_name, current_args));
         break;
     }
 }
@@ -770,14 +1139,19 @@ fn rewrite_call_target_from_constant_value(ast: &Ast, stmt: &mut WrappedAstState
     let Some(addr) = variable_constant_address(&var_map, var_id) else {
         return;
     };
-    let Some(target) = resolve_function_id_by_address(ast, addr) else {
+    if let Some(target) = resolve_function_id_by_address(ast, addr) {
+        stmt.statement = AstStatement::Call(AstCall::Function {
+            target,
+            args: current_args,
+        });
         return;
-    };
-
-    stmt.statement = AstStatement::Call(AstCall::Function {
-        target,
-        args: current_args,
-    });
+    }
+    if let Some(symbol) = external_symbol_name_from_slot(ast, addr) {
+        stmt.statement = AstStatement::Call(AstCall::Unknown(
+            external_symbol_identifier(&symbol),
+            current_args,
+        ));
+    }
 }
 
 fn variable_constant_address(var_map: &ArcAstVariableMap, var_id: AstVariableId) -> Option<u64> {
@@ -1011,6 +1385,8 @@ fn resolve_call_target(
                     target: fid,
                     args: Vec::new(),
                 }
+            } else if let Some(symbol) = external_symbol_name_from_slot(ast, addr) {
+                AstCall::Unknown(external_symbol_identifier(&symbol), Vec::new())
             } else {
                 AstCall::Unknown(function_like_name_from_address(ast, addr), Vec::new())
             }

@@ -12,6 +12,7 @@ pub struct Ast {
     pub function_versions: HashMap<AstFunctionId, AstFunctionVersion>,
     pub functions: ArcAstFunctionMap,
     pub last_variable_id: HashMap<AstFunctionId, u32>,
+    pub pre_defined_symbols: HashMap<u64, String>,
 }
 
 impl Ast {
@@ -20,7 +21,16 @@ impl Ast {
             function_versions: HashMap::new(),
             functions: Arc::new(RwLock::new(HashMap::new())),
             last_variable_id: HashMap::new(),
+            pre_defined_symbols: HashMap::new(),
         }
+    }
+
+    pub fn set_pre_defined_symbols(&mut self, symbols: impl IntoIterator<Item = (u64, String)>) {
+        let mut map: HashMap<u64, String> = HashMap::new();
+        for (address, name) in symbols.into_iter() {
+            map.entry(address).or_insert(name);
+        }
+        self.pre_defined_symbols = map;
     }
 
     /// 1. generate default function
