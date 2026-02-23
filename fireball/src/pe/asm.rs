@@ -81,11 +81,6 @@ impl Pe {
         for item in input.iter() {
             let mnemonic = item.mnemonic().unwrap();
             let op = item.op_str();
-            trace!(
-                "Parsing instruction {} {}",
-                mnemonic,
-                op.unwrap_or_default()
-            );
             let statement = iceball::parse_statement(iceball::Architecture::X64, mnemonic);
             let mut arguments = Vec::new();
             if op.is_some() {
@@ -93,9 +88,15 @@ impl Pe {
                     if op.is_empty() {
                         continue;
                     }
-                    let argument = iceball::parse_argument(iceball::Architecture::X64, op)
-                        .unwrap_or_else(|_| panic!("Failed to parse argument {}", op));
-                    arguments.push(argument);
+                    if let Some(argument) = Self::parse_argument_lossy(op) {
+                        arguments.push(argument);
+                    } else {
+                        warn!(
+                            "Failed to parse argument `{}` at {:#x}; dropping operand",
+                            op,
+                            item.address()
+                        );
+                    }
                 }
             }
             let bytes = Some(item.bytes().into());
@@ -110,5 +111,39 @@ impl Pe {
             result.push(data);
         }
         result
+    }
+
+    fn parse_argument_lossy(op: &str) -> Option<iceball::Argument> {
+        if let Some(arg) = Self::parse_argument_safe(op) {
+            return Some(arg);
+        }
+
+        let lowered = op.to_ascii_lowercase();
+        let stripped = [
+            "byte ptr ",
+            "word ptr ",
+            "dword ptr ",
+            "qword ptr ",
+            "xmmword ptr ",
+            "ymmword ptr ",
+            "zmmword ptr ",
+            "ptr ",
+        ]
+        .iter()
+        .find_map(|prefix| lowered.strip_prefix(prefix).map(str::trim));
+
+        if let Some(candidate) = stripped
+            && let Some(arg) = Self::parse_argument_safe(candidate)
+        {
+            return Some(arg);
+        }
+
+        None
+    }
+
+    fn parse_argument_safe(op: &str) -> Option<iceball::Argument> {
+        std::panic::catch_unwind(|| iceball::parse_argument(iceball::Architecture::X64, op))
+            .ok()
+            .and_then(Result::ok)
     }
 }

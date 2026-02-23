@@ -9,5 +9,5 @@ pub use block_grouper::{BlockGroup, BlockGrouper};
 pub use data_access::analyze_data_access;
 pub use datatype::{DataType, KnownDataType, analyze_datatype};
 pub use ir_function::IrFunction;
-pub use ir_to_ast::generate_ast;
+pub use ir_to_ast::{generate_ast, generate_ast_with_pre_defined_symbols};
 pub use variables::{IrVariable, analyze_variables};

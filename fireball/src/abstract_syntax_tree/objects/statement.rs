@@ -17,7 +17,7 @@ pub enum AstStatement {
         Vec<WrappedAstStatement>,
     ),
     Return(Option<Wrapped<AstExpression>>),
-    Call(AstJumpTarget, Vec<Wrapped<AstExpression>>),
+    Call(AstCall),
     Label(String /* TODO need to change */),
     Goto(AstJumpTarget),
     Block(Vec<WrappedAstStatement>),

@@ -279,16 +279,17 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
     }
 
     for variable in variables.iter() {
-        trace!(
-            "Variable({}) analyzed. shown in following Nth asm instruction: {:?}",
-            variable.data_type, variable.shown_in
-        );
-        for da in variable
-            .get_all_data_accesses()
-            .iter()
-            .flat_map(|x| x.1.iter())
-        {
-            trace!("DataAccess({:?}) {:?}", da.access_type(), da.location());
+        trace!("{} {:?}", variable.data_type, variable.shown_in);
+        let das = variable.get_all_data_accesses();
+        let mut das = Vec::from_iter(das.iter().flat_map(|x| x.1.iter()).cloned());
+        use std::hash::{Hash, Hasher};
+        das.sort_by_cached_key(|x| {
+            let mut h = std::hash::DefaultHasher::new();
+            x.hash(&mut h);
+            h.finish()
+        });
+        for da in das {
+            trace!("- {} {}", da.access_type(), da.location());
         }
     }
 

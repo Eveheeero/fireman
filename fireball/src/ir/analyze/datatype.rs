@@ -39,10 +39,10 @@ pub fn analyze_datatype(
         let statement_index = statement_index as u8;
         let mut now = Vec::new();
         let mut insert = |x| {
-            trace!("Inserting data type {}", x);
+            trace!("- {}", x);
             now.push(x);
         };
-        trace!("Analyzing data access for statement {}", statement);
+        trace!("{}", statement);
         analyze_datatype_raw(&mut insert, statement);
         now.shrink_to_fit();
         out.insert(IrStatementDescriptor::new(ir_index, statement_index), now);

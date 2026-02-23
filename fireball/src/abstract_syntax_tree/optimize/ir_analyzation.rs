@@ -54,11 +54,20 @@ pub(super) fn analyze_ir_function(
             DataType::Address => AstValueType::Pointer(Box::new(AstValueType::Void)),
         };
         let mut const_value: Option<Wrapped<AstValue>> = None;
-        for (position, accesses) in var.get_data_accesses().iter() {
+        let mut accesses_by_position: Vec<_> = var.get_data_accesses().iter().collect();
+        accesses_by_position.sort_unstable_by_key(|(position, _)| position.to_u64());
+        for (position, accesses) in accesses_by_position {
             let instruction_arg_size = ir_function.get_instructions()[position.ir_index() as usize]
                 .inner
                 .arguments
                 .len() as u8;
+            let instruction_byte_size = ir_function.get_instructions()
+                [position.ir_index() as usize]
+                .inner
+                .bytes
+                .as_ref()
+                .map(|x| x.len() as u8)
+                .unwrap_or(0);
             let position = &ir_function.get_ir()[position.ir_index() as usize].address;
             for da in accesses.iter() {
                 var_map.insert(da.location().clone(), var_id);
@@ -66,6 +75,7 @@ pub(super) fn analyze_ir_function(
                 if let Some(c) = resolve_constant(
                     position,
                     instruction_arg_size,
+                    instruction_byte_size,
                     &da.location(),
                     &da.location(),
                 )? {
@@ -85,7 +95,9 @@ pub(super) fn analyze_ir_function(
                             AstValue::Char(_) => AstValueType::Char,
                             AstValue::Double(_) => AstValueType::Double,
                             AstValue::Bool(_) => AstValueType::Bool,
-                            AstValue::Pointer(_) | AstValue::Array(_) => todo!(),
+                            AstValue::Pointer(_) | AstValue::Array(_) => {
+                                AstValueType::Pointer(Box::new(AstValueType::Void))
+                            }
                         };
                         debug!(
                             "Constant value found in {}({}) but datatype not set. init datatype to {}",

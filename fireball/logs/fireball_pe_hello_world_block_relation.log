@@ -1,0 +1,21 @@
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x1125
+T fb/pe/block.rs: - 0x1125 push rbp
+T fb/pe/block.rs: - 0x1126 mov rbp rsp
+T fb/pe/block.rs: - 0x1129 sub rsp 0x30
+T fb/pe/block.rs: - 0x112D mov [rbp-0x4] 0xFF
+T fb/pe/block.rs: - 0x1134 mov rax [rip+0xA675]
+T fb/pe/block.rs: - 0x113B mov [rax] 0x0
+T fb/pe/block.rs: - 0x1141 call 0x1154
+D fb/pe/block.rs: Block generation done for size Some(33) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x1154
+T fb/pe/block.rs: - 0x1154 push rbp
+T fb/pe/block.rs: - 0x1155 mov rbp rsp
+T fb/pe/block.rs: - 0x1158 sub rsp 0xE0
+T fb/pe/block.rs: - 0x115F mov [rbp-0x8] 0x0
+T fb/pe/block.rs: - 0x1167 mov [rbp-0xC] 0x0
+T fb/pe/block.rs: - 0x116E lea rax [rbp-0xC0]
+T fb/pe/block.rs: - 0x1175 mov r8d 0x68
+T fb/pe/block.rs: - 0x117B mov edx 0x0
+T fb/pe/block.rs: - 0x1180 mov rcx rax
+T fb/pe/block.rs: - 0x1183 call 0x9160
+D fb/pe/block.rs: Block generation done for size Some(52) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1188"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x9160"), destination_type: Static, relation_type: Call }]

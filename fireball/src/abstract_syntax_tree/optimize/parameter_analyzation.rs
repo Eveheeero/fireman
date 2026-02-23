@@ -31,7 +31,8 @@ pub(super) fn analyze_parameters(
     }
     let mut written_registers: HashSet<Register> = HashSet::new();
     let mut read_before_write_registers: HashSet<Register> = HashSet::new();
-    let mut used_offset_from_base_pointers: HashSet<isize> = HashSet::new();
+    let mut written_offset_from_base_pointers: HashSet<isize> = HashSet::new();
+    let mut read_before_write_offset_from_base_pointers: HashSet<isize> = HashSet::new();
     // Maps to link used locations back to existing AST variables
     let mut reg_to_var: HashMap<Register, AstVariableId> = HashMap::new();
     let mut offset_to_var: HashMap<isize, AstVariableId> = HashMap::new();
@@ -73,7 +74,7 @@ pub(super) fn analyze_parameters(
             for (access_type, register) in related_registers {
                 match access_type {
                     AstVariableAccessType::Read => {
-                        if written_registers.contains(&register) {
+                        if !written_registers.contains(&register) {
                             read_before_write_registers.insert(register);
                         }
                     }
@@ -91,65 +92,50 @@ pub(super) fn analyze_parameters(
         if write with base pointer, it might return with reference
         if read with base pointer, it might arg passing
          */
-        'a: {
-            let is_bp_related = related_vars.iter().any(|x| {
-                super::utils::var_id_to_access_location(&variables, x.1)
-                    .and_then(|x| x.get_offset_from_base_pointer())
-                    .is_some()
-            });
-            if !is_bp_related {
-                break 'a;
-            }
-            // Build mapping from stack offsets to variables
-            for (_, var_id) in related_vars.iter().copied() {
-                let maybe_offset = super::utils::var_id_to_access_location(&variables, var_id)
-                    .and_then(|x| x.get_offset_from_base_pointer());
-                if let Some(mut offset) = maybe_offset {
-                    let mut neg = false;
-                    if let IrData::Operation(IrDataOperation::Unary {
-                        operator: IrUnaryOperator::Negation,
-                        arg,
-                    }) = offset.as_ref()
-                    {
-                        neg = true;
-                        offset = arg.clone();
-                    }
-                    if let Some(v) = offset.constant() {
-                        let signed = if !neg { v as isize } else { 0 - v as isize };
-                        offset_to_var.entry(signed).or_insert(var_id);
-                    }
-                }
-            }
+        for (access_type, var_id) in related_vars.iter().copied() {
+            let maybe_offset = super::utils::var_id_to_access_location(&variables, var_id)
+                .and_then(|loc| {
+                    loc.get_offset_from_base_pointer().or_else(|| {
+                        loc.dereference()
+                            .and_then(|inner| inner.get_offset_from_base_pointer())
+                    })
+                });
+            let Some(mut offset) = maybe_offset else {
+                continue;
+            };
 
-            let offset_from_bp = related_vars.iter().filter_map(|x| {
-                super::utils::var_id_to_access_location(&variables, x.1)
-                    .and_then(|x| x.get_offset_from_base_pointer())
-            });
-            for mut offset in offset_from_bp {
-                let mut neg = false;
-                if let IrData::Operation(IrDataOperation::Unary {
-                    operator: IrUnaryOperator::Negation,
-                    arg,
-                }) = offset.as_ref()
-                {
-                    neg = true;
-                    offset = arg.clone();
+            let mut neg = false;
+            if let IrData::Operation(IrDataOperation::Unary {
+                operator: IrUnaryOperator::Negation,
+                arg,
+            }) = offset.as_ref()
+            {
+                neg = true;
+                offset = arg.clone();
+            }
+            let Some(v) = offset.constant() else {
+                continue;
+            };
+            let signed = if !neg { v as isize } else { 0 - v as isize };
+
+            offset_to_var.entry(signed).or_insert(var_id);
+
+            match access_type {
+                AstVariableAccessType::Read => {
+                    if !written_offset_from_base_pointers.contains(&signed) {
+                        read_before_write_offset_from_base_pointers.insert(signed);
+                    }
                 }
-                let Some(offset) = offset.constant() else {
-                    continue;
-                };
-                if !neg {
-                    used_offset_from_base_pointers.insert(offset as isize);
-                } else {
-                    used_offset_from_base_pointers.insert(0 - offset as isize);
+                AstVariableAccessType::Write => {
+                    written_offset_from_base_pointers.insert(signed);
                 }
             }
         }
     }
 
     let parameters = used_locations_to_parameters(
-        written_registers,
-        used_offset_from_base_pointers,
+        read_before_write_registers,
+        read_before_write_offset_from_base_pointers,
         &reg_to_var,
         &offset_to_var,
     );
@@ -187,54 +173,56 @@ enum CallingConvention {
 /// x86 vectorcall - xmm0, xmm1, xmm2, xmm3, stack..., sp cleaned by callee (?)
 /// x64 - rcx(xmm0), rdx(xmm1), r8(xmm2), r9(xmm3), stack..., sp cleaned by callee
 fn used_locations_to_parameters(
-    used_registers: HashSet<Register>,
-    used_offset_from_base_pointers: HashSet<isize>,
+    read_before_write_registers: HashSet<Register>,
+    read_before_write_offset_from_base_pointers: HashSet<isize>,
     reg_to_var: &HashMap<Register, AstVariableId>,
     offset_to_var: &HashMap<isize, AstVariableId>,
 ) -> Vec<AstParameter> {
-    let calling_convention =
-        detecting_calling_convention(&used_registers, &used_offset_from_base_pointers);
+    let calling_convention = detecting_calling_convention(
+        &read_before_write_registers,
+        &read_before_write_offset_from_base_pointers,
+    );
 
     match calling_convention {
         CallingConvention::X64 => parameter_ordering::order_params_x64(
-            &used_registers,
-            &used_offset_from_base_pointers,
+            &read_before_write_registers,
+            &read_before_write_offset_from_base_pointers,
             reg_to_var,
             offset_to_var,
         ),
         CallingConvention::X86Cdecl => parameter_ordering::order_params_x86_cdecl(
-            &used_registers,
-            &used_offset_from_base_pointers,
+            &read_before_write_registers,
+            &read_before_write_offset_from_base_pointers,
             reg_to_var,
             offset_to_var,
         ),
         CallingConvention::X86Stdcall => parameter_ordering::order_params_x86_stdcall(
-            &used_registers,
-            &used_offset_from_base_pointers,
+            &read_before_write_registers,
+            &read_before_write_offset_from_base_pointers,
             reg_to_var,
             offset_to_var,
         ),
         CallingConvention::X86Fastcall => parameter_ordering::order_params_x86_fastcall(
-            &used_registers,
-            &used_offset_from_base_pointers,
+            &read_before_write_registers,
+            &read_before_write_offset_from_base_pointers,
             reg_to_var,
             offset_to_var,
         ),
         CallingConvention::X86Thiscall => parameter_ordering::order_params_x86_thiscall(
-            &used_registers,
-            &used_offset_from_base_pointers,
+            &read_before_write_registers,
+            &read_before_write_offset_from_base_pointers,
             reg_to_var,
             offset_to_var,
         ),
         CallingConvention::X86Vectorcall => parameter_ordering::order_params_x86_vectorcall(
-            &used_registers,
-            &used_offset_from_base_pointers,
+            &read_before_write_registers,
+            &read_before_write_offset_from_base_pointers,
             reg_to_var,
             offset_to_var,
         ),
         CallingConvention::Unknown => parameter_ordering::order_params_unknown(
-            &used_registers,
-            &used_offset_from_base_pointers,
+            &read_before_write_registers,
+            &read_before_write_offset_from_base_pointers,
             reg_to_var,
             offset_to_var,
         ),
@@ -245,9 +233,9 @@ fn detecting_calling_convention(
     _used_registers: &HashSet<Register>,
     _used_offset_from_base_pointers: &HashSet<isize>,
 ) -> CallingConvention {
-    // TODO need detecting calling convention with metadata
-    warn!("detecting calling convention is unimplemented now. defaulting to unknown");
-    CallingConvention::Unknown
+    // Fireball currently only supports x86_64 and our primary target is PE on Windows.
+    // Use the x64 parameter ordering so callsites and callee params line up deterministically.
+    CallingConvention::X64
 }
 
 mod parameter_ordering {

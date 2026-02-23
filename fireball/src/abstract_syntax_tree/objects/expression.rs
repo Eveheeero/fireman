@@ -14,7 +14,7 @@ pub enum AstExpression {
         Box<Wrapped<AstExpression>>,
         Box<Wrapped<AstExpression>>,
     ),
-    Call(String, Vec<Wrapped<AstExpression>>),
+    Call(AstCall),
     Cast(AstValueType, Box<Wrapped<AstExpression>>),
     Deref(Box<Wrapped<AstExpression>>),
     AddressOf(Box<Wrapped<AstExpression>>),
@@ -32,13 +32,56 @@ impl AstExpression {
                 result.extend(arg2.get_related_variables());
                 result
             }
-            AstExpression::Call(_, args) => {
-                let mut result = Vec::new();
-                for arg in args {
-                    result.extend(arg.get_related_variables());
+            AstExpression::Call(call) => match call {
+                AstCall::Variable { var_id, args, .. } => {
+                    let mut result = vec![var_id.clone()];
+                    for arg in args.iter() {
+                        result.extend(arg.get_related_variables());
+                    }
+                    result
                 }
-                result
-            }
+                AstCall::Builtin(_, arg) => {
+                    let mut result = Vec::new();
+                    match arg.as_ref() {
+                        AstBuiltinFunctionArgument::None => {}
+                        AstBuiltinFunctionArgument::Print(args) => {
+                            for expr in args.iter() {
+                                result.extend(expr.get_related_variables());
+                            }
+                        }
+                        AstBuiltinFunctionArgument::ByteSizeOf(expr)
+                        | AstBuiltinFunctionArgument::BitSizeOf(expr)
+                        | AstBuiltinFunctionArgument::OperandExists(expr)
+                        | AstBuiltinFunctionArgument::SignedMax(expr)
+                        | AstBuiltinFunctionArgument::SignedMin(expr)
+                        | AstBuiltinFunctionArgument::UnsignedMax(expr)
+                        | AstBuiltinFunctionArgument::UnsignedMin(expr)
+                        | AstBuiltinFunctionArgument::BitOnes(expr)
+                        | AstBuiltinFunctionArgument::BitZeros(expr) => {
+                            result.extend(expr.get_related_variables());
+                        }
+                        AstBuiltinFunctionArgument::Sized(expr1, expr2) => {
+                            result.extend(expr1.get_related_variables());
+                            result.extend(expr2.get_related_variables());
+                        }
+                    }
+                    result
+                }
+                AstCall::Unknown(_, args) => {
+                    let mut result = Vec::new();
+                    for arg in args.iter() {
+                        result.extend(arg.get_related_variables());
+                    }
+                    result
+                }
+                AstCall::Function { args, .. } => {
+                    let mut result = Vec::new();
+                    for arg in args.iter() {
+                        result.extend(arg.get_related_variables());
+                    }
+                    result
+                }
+            },
             AstExpression::Cast(_, expr) => expr.get_related_variables(),
             AstExpression::Deref(expr) => expr.get_related_variables(),
             AstExpression::AddressOf(expr) => expr.get_related_variables(),

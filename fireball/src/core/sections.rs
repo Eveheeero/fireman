@@ -36,6 +36,7 @@ impl Sections {
                     let virtual_size = section.virtual_size as u64;
                     let file_offset = section.pointer_to_raw_data as u64;
                     let size_of_file = section.size_of_raw_data as u64;
+                    let characteristics = section.characteristics;
 
                     section_writer.insert(Arc::new(Section {
                         id,
@@ -45,6 +46,7 @@ impl Sections {
                         virtual_size,
                         file_offset,
                         size_of_file,
+                        characteristics,
                     }));
                 }
             }

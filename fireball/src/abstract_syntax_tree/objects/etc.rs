@@ -21,3 +21,58 @@ pub enum AstJumpTarget {
     },
     Unknown(String),
 }
+
+#[derive(Debug, Clone)]
+pub enum AstCall {
+    Variable {
+        scope: AstFunctionId,
+        var_map: ArcAstVariableMap,
+        var_id: AstVariableId,
+        args: Vec<Wrapped<AstExpression>>,
+    },
+    Function {
+        target: AstFunctionId,
+        args: Vec<Wrapped<AstExpression>>,
+    },
+    Builtin(AstBuiltinFunction, Box<AstBuiltinFunctionArgument>),
+    Unknown(String, Vec<Wrapped<AstExpression>>),
+}
+
+#[derive(Debug, Clone)]
+pub enum AstBuiltinFunctionArgument {
+    None,
+
+    Print(Vec<Wrapped<AstExpression>>),
+    ByteSizeOf(Wrapped<AstExpression>),
+    BitSizeOf(Wrapped<AstExpression>),
+    Sized(Wrapped<AstExpression>, Wrapped<AstExpression>),
+    OperandExists(Wrapped<AstExpression>),
+
+    SignedMax(Wrapped<AstExpression>),
+    SignedMin(Wrapped<AstExpression>),
+    UnsignedMax(Wrapped<AstExpression>),
+    UnsignedMin(Wrapped<AstExpression>),
+
+    BitOnes(Wrapped<AstExpression>),
+    BitZeros(Wrapped<AstExpression>),
+}
+
+#[derive(Debug, Clone)]
+pub enum AstBuiltinFunction {
+    ArchBitPerByte,
+    InstructionByteSize,
+
+    Print,
+    ByteSizeOf,
+    BitSizeOf,
+    Sized,
+    OperandExists,
+
+    SignedMax,
+    SignedMin,
+    UnsignedMax,
+    UnsignedMin,
+
+    BitOnes,
+    BitZeros,
+}

@@ -1,5 +1,6 @@
 use crate::{
     abstract_syntax_tree::objects::*,
+    core::PreDefinedOffsets,
     ir::{analyze::IrFunction, utils::IrStatementDescriptor},
     prelude::*,
     utils::version_map::VersionMap,
@@ -12,6 +13,7 @@ pub struct Ast {
     pub function_versions: HashMap<AstFunctionId, AstFunctionVersion>,
     pub functions: ArcAstFunctionMap,
     pub last_variable_id: HashMap<AstFunctionId, u32>,
+    pub pre_defined_symbols: HashMap<u64, String>,
 }
 
 impl Ast {
@@ -20,7 +22,23 @@ impl Ast {
             function_versions: HashMap::new(),
             functions: Arc::new(RwLock::new(HashMap::new())),
             last_variable_id: HashMap::new(),
+            pre_defined_symbols: HashMap::new(),
         }
+    }
+
+    pub fn set_pre_defined_symbols(&mut self, symbols: Arc<PreDefinedOffsets>) {
+        let reader = symbols.get_reader();
+        let mut entries: Vec<_> = reader
+            .iter()
+            .map(|item| (item.address.get_virtual_address(), item.name.clone()))
+            .collect();
+        entries.sort_unstable_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+
+        let mut map: HashMap<u64, String> = HashMap::new();
+        for (address, name) in entries {
+            map.entry(address).or_insert(name);
+        }
+        self.pre_defined_symbols = map;
     }
 
     /// 1. generate default function
