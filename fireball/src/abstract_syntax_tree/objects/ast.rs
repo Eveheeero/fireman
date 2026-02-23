@@ -1,5 +1,6 @@
 use crate::{
     abstract_syntax_tree::objects::*,
+    core::PreDefinedOffsets,
     ir::{analyze::IrFunction, utils::IrStatementDescriptor},
     prelude::*,
     utils::version_map::VersionMap,
@@ -25,9 +26,16 @@ impl Ast {
         }
     }
 
-    pub fn set_pre_defined_symbols(&mut self, symbols: impl IntoIterator<Item = (u64, String)>) {
+    pub fn set_pre_defined_symbols(&mut self, symbols: Arc<PreDefinedOffsets>) {
+        let reader = symbols.get_reader();
+        let mut entries: Vec<_> = reader
+            .iter()
+            .map(|item| (item.address.get_virtual_address(), item.name.clone()))
+            .collect();
+        entries.sort_unstable_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+
         let mut map: HashMap<u64, String> = HashMap::new();
-        for (address, name) in symbols.into_iter() {
+        for (address, name) in entries {
             map.entry(address).or_insert(name);
         }
         self.pre_defined_symbols = map;

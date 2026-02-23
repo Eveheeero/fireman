@@ -37,13 +37,11 @@ fn hello_world_all_print_config_trace() {
         let binary = get_binary();
 
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
-        let ast = generate_ast_with_pre_defined_symbols(
-            pe.analyze_all().unwrap(),
-            pe.get_pre_defined_symbol_map(),
-        )
-        .unwrap()
-        .optimize(None)
-        .unwrap();
+        let ast =
+            generate_ast_with_pre_defined_symbols(pe.analyze_all().unwrap(), pe.get_defined())
+                .unwrap()
+                .optimize(None)
+                .unwrap();
         let result = ast.print(Some(AstPrintConfig::ALL));
         println!("{}", &result);
 

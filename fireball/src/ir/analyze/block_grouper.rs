@@ -46,17 +46,21 @@ impl BlockGrouper {
         for target in self.targets.iter() {
             let connected_from = target.get_connected_from();
             let connected_to = target.get_connected_to();
+            let mut connected_from_ids = connected_from.iter().map(|r| r.from()).collect::<Vec<_>>();
+            connected_from_ids.sort_unstable();
+            let mut connected_to_addresses = connected_to
+                .iter()
+                .filter_map(|r| r.to())
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>();
+            connected_to_addresses.sort_unstable();
 
             debug!(
                 "Block grouper target block (id: {}, start address: {}) relation from: (id){:?}, to: (addr){:?}",
                 target.get_id(),
                 target.get_start_address(),
-                connected_from.iter().map(|r| r.from()).collect::<Vec<_>>(),
-                connected_to
-                    .iter()
-                    .filter_map(|r| r.to())
-                    .map(|x| x.to_string())
-                    .collect::<Vec<_>>()
+                connected_from_ids,
+                connected_to_addresses
             );
 
             for relation in connected_from.iter() {

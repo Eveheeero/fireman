@@ -54,7 +54,9 @@ pub(super) fn analyze_ir_function(
             DataType::Address => AstValueType::Pointer(Box::new(AstValueType::Void)),
         };
         let mut const_value: Option<Wrapped<AstValue>> = None;
-        for (position, accesses) in var.get_data_accesses().iter() {
+        let mut accesses_by_position: Vec<_> = var.get_data_accesses().iter().collect();
+        accesses_by_position.sort_unstable_by_key(|(position, _)| position.to_u64());
+        for (position, accesses) in accesses_by_position {
             let instruction_arg_size = ir_function.get_instructions()[position.ir_index() as usize]
                 .inner
                 .arguments

@@ -26600,7 +26600,7 @@ D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 1, start addre
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 2, start address: [0x1000 - 0x9268]0x9160) relation from: (id)[1], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 3, start address: [0x1000 - 0x9268]0x1188) relation from: (id)[1], to: (addr)["[0x1000 - 0x9268]0x1195", "[0x1000 - 0x9268]0x11A8"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 4, start address: [0x1000 - 0x9268]0x11A8) relation from: (id)[3, 309], to: (addr)["[0x1000 - 0x9268]0x11F8"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 5, start address: [0x1000 - 0x9268]0x11F8) relation from: (id)[4, 7], to: (addr)["[0x1000 - 0x9268]0x122F", "[0x1000 - 0x9268]0x11D7"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 5, start address: [0x1000 - 0x9268]0x11F8) relation from: (id)[4, 7], to: (addr)["[0x1000 - 0x9268]0x11D7", "[0x1000 - 0x9268]0x122F"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 6, start address: [0x1000 - 0x9268]0x11D7) relation from: (id)[5], to: (addr)["[0x1000 - 0x9268]0x11E1", "[0x1000 - 0x9268]0x11EA"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 7, start address: [0x1000 - 0x9268]0x11EA) relation from: (id)[6], to: (addr)["[0x1000 - 0x9268]0x11F8"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 8, start address: [0x1000 - 0x9268]0x11E1) relation from: (id)[6], to: (addr)["[0x1000 - 0x9268]0x122F"]
@@ -26613,7 +26613,7 @@ D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 14, start addr
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 15, start address: [0x1000 - 0x9268]0x2362) relation from: (id)[14], to: (addr)["[0x1000 - 0x9268]0x2378", "[0x1000 - 0x9268]0x2400"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 16, start address: [0x1000 - 0x9268]0x2400) relation from: (id)[15], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 17, start address: [0x1000 - 0x9268]0x2378) relation from: (id)[15], to: (addr)["[0x1000 - 0x9268]0x238C", "[0x1000 - 0x9268]0x2BF8"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 18, start address: [0x1000 - 0x9268]0x2BF8) relation from: (id)[17], to: (addr)["[0x1000 - 0x9268]0x2C17", "[0x1000 - 0x9268]0x29D0"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 18, start address: [0x1000 - 0x9268]0x2BF8) relation from: (id)[17], to: (addr)["[0x1000 - 0x9268]0x29D0", "[0x1000 - 0x9268]0x2C17"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 19, start address: [0x1000 - 0x9268]0x29D0) relation from: (id)[18, 51, 66], to: (addr)["[0x1000 - 0x9268]0x29F1", "[0x1000 - 0x9268]0x29F8"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 20, start address: [0x1000 - 0x9268]0x29F8) relation from: (id)[19], to: (addr)["[0x1000 - 0x9268]0x2A1A", "[0x1000 - 0x9268]0x2A21"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 21, start address: [0x1000 - 0x9268]0x2A21) relation from: (id)[20], to: (addr)["[0x1000 - 0x9268]0x2A3A", "[0x1000 - 0x9268]0x2A41"]
@@ -26629,30 +26629,30 @@ D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 30, start addr
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 31, start address: [0x1000 - 0x9268]0x238C) relation from: (id)[17], to: (addr)["[0x1000 - 0x9268]0x23B4", "[0x1000 - 0x9268]0x2E80"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 32, start address: [0x1000 - 0x9268]0x2E80) relation from: (id)[31], to: (addr)["[0x1000 - 0x9268]0x2E8F", "[0x1000 - 0x9268]0x2EA8"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 33, start address: [0x1000 - 0x9268]0x2EA8) relation from: (id)[32, 34], to: (addr)[]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 34, start address: [0x1000 - 0x9268]0x2E8F) relation from: (id)[32], to: (addr)["[0x1000 - 0x9268]0x2EA8", "[0x1000 - 0x9268]0x2E8F"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 35, start address: [0x1000 - 0x9268]0x23B4) relation from: (id)[31], to: (addr)["[0x1000 - 0x9268]0x23F9", "[0x1000 - 0x9268]0x1FD8"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 34, start address: [0x1000 - 0x9268]0x2E8F) relation from: (id)[32], to: (addr)["[0x1000 - 0x9268]0x2E8F", "[0x1000 - 0x9268]0x2EA8"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 35, start address: [0x1000 - 0x9268]0x23B4) relation from: (id)[31], to: (addr)["[0x1000 - 0x9268]0x1FD8", "[0x1000 - 0x9268]0x23F9"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 36, start address: [0x1000 - 0x9268]0x1FD8) relation from: (id)[35], to: (addr)["[0x1000 - 0x9268]0x200B", "[0x1000 - 0x9268]0x235B"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 37, start address: [0x1000 - 0x9268]0x235B) relation from: (id)[36], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 38, start address: [0x1000 - 0x9268]0x200B) relation from: (id)[36], to: (addr)["[0x1000 - 0x9268]0x2012", "[0x1000 - 0x9268]0x2037"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 39, start address: [0x1000 - 0x9268]0x2037) relation from: (id)[38, 153, 154, 155], to: (addr)["[0x1000 - 0x9268]0x2041", "[0x1000 - 0x9268]0x204C"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 40, start address: [0x1000 - 0x9268]0x204C) relation from: (id)[39, 109, 156], to: (addr)["[0x1000 - 0x9268]0x2096"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 41, start address: [0x1000 - 0x9268]0x2096) relation from: (id)[40], to: (addr)["[0x1000 - 0x9268]0x20A0", "[0x1000 - 0x9268]0x2056"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 42, start address: [0x1000 - 0x9268]0x2056) relation from: (id)[41, 106], to: (addr)["[0x1000 - 0x9268]0x2091", "[0x1000 - 0x9268]0x1F94"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 41, start address: [0x1000 - 0x9268]0x2096) relation from: (id)[40], to: (addr)["[0x1000 - 0x9268]0x2056", "[0x1000 - 0x9268]0x20A0"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 42, start address: [0x1000 - 0x9268]0x2056) relation from: (id)[41, 106], to: (addr)["[0x1000 - 0x9268]0x1F94", "[0x1000 - 0x9268]0x2091"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 43, start address: [0x1000 - 0x9268]0x1F94) relation from: (id)[42, 117, 123, 127, 130], to: (addr)["[0x1000 - 0x9268]0x1FAF", "[0x1000 - 0x9268]0x1FD1"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 44, start address: [0x1000 - 0x9268]0x1FD1) relation from: (id)[43], to: (addr)[]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 45, start address: [0x1000 - 0x9268]0x1FAF) relation from: (id)[43], to: (addr)["[0x1000 - 0x9268]0x1FB8", "[0x1000 - 0x9268]0x1BED"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 45, start address: [0x1000 - 0x9268]0x1FAF) relation from: (id)[43], to: (addr)["[0x1000 - 0x9268]0x1BED", "[0x1000 - 0x9268]0x1FB8"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 46, start address: [0x1000 - 0x9268]0x1BED) relation from: (id)[45], to: (addr)["[0x1000 - 0x9268]0x1C87"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 47, start address: [0x1000 - 0x9268]0x1C87) relation from: (id)[46, 95], to: (addr)["[0x1000 - 0x9268]0x1C96", "[0x1000 - 0x9268]0x1C05"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 47, start address: [0x1000 - 0x9268]0x1C87) relation from: (id)[46, 95], to: (addr)["[0x1000 - 0x9268]0x1C05", "[0x1000 - 0x9268]0x1C96"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 48, start address: [0x1000 - 0x9268]0x1C05) relation from: (id)[47, 49], to: (addr)["[0x1000 - 0x9268]0x1C2D", "[0x1000 - 0x9268]0x1C83"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 49, start address: [0x1000 - 0x9268]0x1C83) relation from: (id)[48, 100], to: (addr)["[0x1000 - 0x9268]0x1C96", "[0x1000 - 0x9268]0x1C05"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 49, start address: [0x1000 - 0x9268]0x1C83) relation from: (id)[48, 100], to: (addr)["[0x1000 - 0x9268]0x1C05", "[0x1000 - 0x9268]0x1C96"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 50, start address: [0x1000 - 0x9268]0x1C96) relation from: (id)[47, 49], to: (addr)["[0x1000 - 0x9268]0x1C9F", "[0x1000 - 0x9268]0x2BA8"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 51, start address: [0x1000 - 0x9268]0x2BA8) relation from: (id)[50], to: (addr)["[0x1000 - 0x9268]0x2BCB", "[0x1000 - 0x9268]0x29D0"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 51, start address: [0x1000 - 0x9268]0x2BA8) relation from: (id)[50], to: (addr)["[0x1000 - 0x9268]0x29D0", "[0x1000 - 0x9268]0x2BCB"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 52, start address: [0x1000 - 0x9268]0x2BCB) relation from: (id)[51], to: (addr)["[0x1000 - 0x9268]0x2BCF", "[0x1000 - 0x9268]0x2BD6"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 53, start address: [0x1000 - 0x9268]0x2BD6) relation from: (id)[52], to: (addr)["[0x1000 - 0x9268]0x2BF2", "[0x1000 - 0x9268]0x2A4C"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 53, start address: [0x1000 - 0x9268]0x2BD6) relation from: (id)[52], to: (addr)["[0x1000 - 0x9268]0x2A4C", "[0x1000 - 0x9268]0x2BF2"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 54, start address: [0x1000 - 0x9268]0x2A4C) relation from: (id)[53], to: (addr)["[0x1000 - 0x9268]0x2ACA"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 55, start address: [0x1000 - 0x9268]0x2ACA) relation from: (id)[54], to: (addr)["[0x1000 - 0x9268]0x2ADA", "[0x1000 - 0x9268]0x2A94"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 55, start address: [0x1000 - 0x9268]0x2ACA) relation from: (id)[54], to: (addr)["[0x1000 - 0x9268]0x2A94", "[0x1000 - 0x9268]0x2ADA"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 56, start address: [0x1000 - 0x9268]0x2A94) relation from: (id)[55, 57], to: (addr)["[0x1000 - 0x9268]0x2AA3", "[0x1000 - 0x9268]0x2AC1"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 57, start address: [0x1000 - 0x9268]0x2AC1) relation from: (id)[56, 59], to: (addr)["[0x1000 - 0x9268]0x2ADA", "[0x1000 - 0x9268]0x2A94"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 57, start address: [0x1000 - 0x9268]0x2AC1) relation from: (id)[56, 59], to: (addr)["[0x1000 - 0x9268]0x2A94", "[0x1000 - 0x9268]0x2ADA"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 58, start address: [0x1000 - 0x9268]0x2ADA) relation from: (id)[55, 57], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 59, start address: [0x1000 - 0x9268]0x2AA3) relation from: (id)[56], to: (addr)["[0x1000 - 0x9268]0x2ABB", "[0x1000 - 0x9268]0x2AC1"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 60, start address: [0x1000 - 0x9268]0x2ABB) relation from: (id)[59], to: (addr)["[0x1000 - 0x9268]0x2ADF"]
@@ -26661,7 +26661,7 @@ D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 62, start addr
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 63, start address: [0x1000 - 0x9268]0x2BCF) relation from: (id)[52], to: (addr)["[0x1000 - 0x9268]0x2BF2"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 64, start address: [0x1000 - 0x9268]0x1C9F) relation from: (id)[50], to: (addr)["[0x1000 - 0x9268]0x1CAA", "[0x1000 - 0x9268]0x1CBD"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 65, start address: [0x1000 - 0x9268]0x1CBD) relation from: (id)[64, 99], to: (addr)["[0x1000 - 0x9268]0x1D0D", "[0x1000 - 0x9268]0x2CF4"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 66, start address: [0x1000 - 0x9268]0x2CF4) relation from: (id)[65], to: (addr)["[0x1000 - 0x9268]0x2D13", "[0x1000 - 0x9268]0x29D0"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 66, start address: [0x1000 - 0x9268]0x2CF4) relation from: (id)[65], to: (addr)["[0x1000 - 0x9268]0x29D0", "[0x1000 - 0x9268]0x2D13"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 67, start address: [0x1000 - 0x9268]0x2D13) relation from: (id)[66], to: (addr)["[0x1000 - 0x9268]0x2D17", "[0x1000 - 0x9268]0x2D1E"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 68, start address: [0x1000 - 0x9268]0x2D1E) relation from: (id)[67], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 69, start address: [0x1000 - 0x9268]0x2D17) relation from: (id)[67], to: (addr)["[0x1000 - 0x9268]0x2D22"]
@@ -26678,7 +26678,7 @@ D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 79, start addr
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 80, start address: [0x1000 - 0x9268]0x1DFD) relation from: (id)[79], to: (addr)["[0x1000 - 0x9268]0x1E90"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 81, start address: [0x1000 - 0x9268]0x1E90) relation from: (id)[80, 97], to: (addr)["[0x1000 - 0x9268]0x1E94", "[0x1000 - 0x9268]0x1EAE"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 82, start address: [0x1000 - 0x9268]0x1E94) relation from: (id)[81], to: (addr)["[0x1000 - 0x9268]0x1E9D"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 83, start address: [0x1000 - 0x9268]0x1E9D) relation from: (id)[82], to: (addr)["[0x1000 - 0x9268]0x1EAE", "[0x1000 - 0x9268]0x1B80"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 83, start address: [0x1000 - 0x9268]0x1E9D) relation from: (id)[82], to: (addr)["[0x1000 - 0x9268]0x1B80", "[0x1000 - 0x9268]0x1EAE"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 84, start address: [0x1000 - 0x9268]0x1B80) relation from: (id)[83, 98, 99, 134, 137, 152], to: (addr)["[0x1000 - 0x9268]0x1BAD", "[0x1000 - 0x9268]0x89E0"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 85, start address: [0x1000 - 0x9268]0x89E0) relation from: (id)[84, 90, 214, 218, 220, 261, 265, 267], to: (addr)["[0x1000 - 0x9268]0x89F0", "[0x1000 - 0x9268]0x90C0"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 86, start address: [0x1000 - 0x9268]0x90C0) relation from: (id)[85], to: (addr)[]
@@ -26693,46 +26693,46 @@ D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 94, start addr
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 95, start address: [0x1000 - 0x9268]0x1BEC) relation from: (id)[93], to: (addr)["[0x1000 - 0x9268]0x1C87"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 96, start address: [0x1000 - 0x9268]0x1DF4) relation from: (id)[79], to: (addr)["[0x1000 - 0x9268]0x1E04"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 97, start address: [0x1000 - 0x9268]0x1E04) relation from: (id)[96], to: (addr)["[0x1000 - 0x9268]0x1E90"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 98, start address: [0x1000 - 0x9268]0x1D7D) relation from: (id)[72], to: (addr)["[0x1000 - 0x9268]0x1DBA", "[0x1000 - 0x9268]0x1B80"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 99, start address: [0x1000 - 0x9268]0x1CAA) relation from: (id)[64], to: (addr)["[0x1000 - 0x9268]0x1CBD", "[0x1000 - 0x9268]0x1B80"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 98, start address: [0x1000 - 0x9268]0x1D7D) relation from: (id)[72], to: (addr)["[0x1000 - 0x9268]0x1B80", "[0x1000 - 0x9268]0x1DBA"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 99, start address: [0x1000 - 0x9268]0x1CAA) relation from: (id)[64], to: (addr)["[0x1000 - 0x9268]0x1B80", "[0x1000 - 0x9268]0x1CBD"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 100, start address: [0x1000 - 0x9268]0x1C2D) relation from: (id)[48], to: (addr)["[0x1000 - 0x9268]0x1C83", "[0x1000 - 0x9268]0x1EBF"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 101, start address: [0x1000 - 0x9268]0x1EBF) relation from: (id)[100], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 102, start address: [0x1000 - 0x9268]0x1FB8) relation from: (id)[45], to: (addr)["[0x1000 - 0x9268]0x1FCF", "[0x1000 - 0x9268]0x9158"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 103, start address: [0x1000 - 0x9268]0x9158) relation from: (id)[102, 185], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 104, start address: [0x1000 - 0x9268]0x1FCF) relation from: (id)[102], to: (addr)["[0x1000 - 0x9268]0x1FD2"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 105, start address: [0x1000 - 0x9268]0x1FD2) relation from: (id)[104], to: (addr)[]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 106, start address: [0x1000 - 0x9268]0x2091) relation from: (id)[42], to: (addr)["[0x1000 - 0x9268]0x20A0", "[0x1000 - 0x9268]0x2056"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 107, start address: [0x1000 - 0x9268]0x20A0) relation from: (id)[106, 41], to: (addr)["[0x1000 - 0x9268]0x235C"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 106, start address: [0x1000 - 0x9268]0x2091) relation from: (id)[42], to: (addr)["[0x1000 - 0x9268]0x2056", "[0x1000 - 0x9268]0x20A0"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 107, start address: [0x1000 - 0x9268]0x20A0) relation from: (id)[41, 106], to: (addr)["[0x1000 - 0x9268]0x235C"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 108, start address: [0x1000 - 0x9268]0x235C) relation from: (id)[107, 119], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 109, start address: [0x1000 - 0x9268]0x2041) relation from: (id)[39, 156], to: (addr)["[0x1000 - 0x9268]0x204C", "[0x1000 - 0x9268]0x20A5"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 110, start address: [0x1000 - 0x9268]0x20A5) relation from: (id)[109], to: (addr)["[0x1000 - 0x9268]0x20B1", "[0x1000 - 0x9268]0x20C9"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 111, start address: [0x1000 - 0x9268]0x20C9) relation from: (id)[110, 152], to: (addr)["[0x1000 - 0x9268]0x234B"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 112, start address: [0x1000 - 0x9268]0x234B) relation from: (id)[111], to: (addr)["[0x1000 - 0x9268]0x2359", "[0x1000 - 0x9268]0x20DA"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 112, start address: [0x1000 - 0x9268]0x234B) relation from: (id)[111], to: (addr)["[0x1000 - 0x9268]0x20DA", "[0x1000 - 0x9268]0x2359"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 113, start address: [0x1000 - 0x9268]0x20DA) relation from: (id)[112, 118, 121], to: (addr)["[0x1000 - 0x9268]0x211F", "[0x1000 - 0x9268]0x21D5"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 114, start address: [0x1000 - 0x9268]0x21D5) relation from: (id)[113], to: (addr)["[0x1000 - 0x9268]0x220C"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 115, start address: [0x1000 - 0x9268]0x220C) relation from: (id)[114, 138, 149], to: (addr)["[0x1000 - 0x9268]0x224D", "[0x1000 - 0x9268]0x22BD"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 116, start address: [0x1000 - 0x9268]0x22BD) relation from: (id)[115, 134, 135, 141], to: (addr)["[0x1000 - 0x9268]0x22CC", "[0x1000 - 0x9268]0x232F"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 117, start address: [0x1000 - 0x9268]0x232F) relation from: (id)[116], to: (addr)["[0x1000 - 0x9268]0x2345", "[0x1000 - 0x9268]0x1F94"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 118, start address: [0x1000 - 0x9268]0x2345) relation from: (id)[117], to: (addr)["[0x1000 - 0x9268]0x2359", "[0x1000 - 0x9268]0x20DA"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 119, start address: [0x1000 - 0x9268]0x2359) relation from: (id)[118, 112, 121], to: (addr)["[0x1000 - 0x9268]0x235C"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 117, start address: [0x1000 - 0x9268]0x232F) relation from: (id)[116], to: (addr)["[0x1000 - 0x9268]0x1F94", "[0x1000 - 0x9268]0x2345"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 118, start address: [0x1000 - 0x9268]0x2345) relation from: (id)[117], to: (addr)["[0x1000 - 0x9268]0x20DA", "[0x1000 - 0x9268]0x2359"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 119, start address: [0x1000 - 0x9268]0x2359) relation from: (id)[112, 118, 121], to: (addr)["[0x1000 - 0x9268]0x235C"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 120, start address: [0x1000 - 0x9268]0x22CC) relation from: (id)[116], to: (addr)["[0x1000 - 0x9268]0x22D1", "[0x1000 - 0x9268]0x2346"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 121, start address: [0x1000 - 0x9268]0x2346) relation from: (id)[120, 124, 125, 128, 131, 132], to: (addr)["[0x1000 - 0x9268]0x2359", "[0x1000 - 0x9268]0x20DA"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 121, start address: [0x1000 - 0x9268]0x2346) relation from: (id)[120, 124, 125, 128, 131, 132], to: (addr)["[0x1000 - 0x9268]0x20DA", "[0x1000 - 0x9268]0x2359"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 122, start address: [0x1000 - 0x9268]0x22D1) relation from: (id)[120], to: (addr)["[0x1000 - 0x9268]0x22D6", "[0x1000 - 0x9268]0x2317"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 123, start address: [0x1000 - 0x9268]0x2317) relation from: (id)[122], to: (addr)["[0x1000 - 0x9268]0x232D", "[0x1000 - 0x9268]0x1F94"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 123, start address: [0x1000 - 0x9268]0x2317) relation from: (id)[122], to: (addr)["[0x1000 - 0x9268]0x1F94", "[0x1000 - 0x9268]0x232D"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 124, start address: [0x1000 - 0x9268]0x232D) relation from: (id)[123], to: (addr)["[0x1000 - 0x9268]0x2346"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 125, start address: [0x1000 - 0x9268]0x22D6) relation from: (id)[122], to: (addr)["[0x1000 - 0x9268]0x22DB", "[0x1000 - 0x9268]0x2346"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 126, start address: [0x1000 - 0x9268]0x22DB) relation from: (id)[125], to: (addr)["[0x1000 - 0x9268]0x22E0", "[0x1000 - 0x9268]0x22E7"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 127, start address: [0x1000 - 0x9268]0x22E7) relation from: (id)[126], to: (addr)["[0x1000 - 0x9268]0x22FD", "[0x1000 - 0x9268]0x1F94"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 127, start address: [0x1000 - 0x9268]0x22E7) relation from: (id)[126], to: (addr)["[0x1000 - 0x9268]0x1F94", "[0x1000 - 0x9268]0x22FD"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 128, start address: [0x1000 - 0x9268]0x22FD) relation from: (id)[127], to: (addr)["[0x1000 - 0x9268]0x2346"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 129, start address: [0x1000 - 0x9268]0x22E0) relation from: (id)[126], to: (addr)["[0x1000 - 0x9268]0x22E5", "[0x1000 - 0x9268]0x22FF"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 130, start address: [0x1000 - 0x9268]0x22FF) relation from: (id)[129], to: (addr)["[0x1000 - 0x9268]0x2315", "[0x1000 - 0x9268]0x1F94"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 130, start address: [0x1000 - 0x9268]0x22FF) relation from: (id)[129], to: (addr)["[0x1000 - 0x9268]0x1F94", "[0x1000 - 0x9268]0x2315"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 131, start address: [0x1000 - 0x9268]0x2315) relation from: (id)[130], to: (addr)["[0x1000 - 0x9268]0x2346"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 132, start address: [0x1000 - 0x9268]0x22E5) relation from: (id)[129], to: (addr)["[0x1000 - 0x9268]0x2346"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 133, start address: [0x1000 - 0x9268]0x224D) relation from: (id)[115, 141], to: (addr)["[0x1000 - 0x9268]0x2288", "[0x1000 - 0x9268]0x2292"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 134, start address: [0x1000 - 0x9268]0x2292) relation from: (id)[133, 135], to: (addr)["[0x1000 - 0x9268]0x22BD", "[0x1000 - 0x9268]0x1B80"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 134, start address: [0x1000 - 0x9268]0x2292) relation from: (id)[133, 135], to: (addr)["[0x1000 - 0x9268]0x1B80", "[0x1000 - 0x9268]0x22BD"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 135, start address: [0x1000 - 0x9268]0x2288) relation from: (id)[133], to: (addr)["[0x1000 - 0x9268]0x2292", "[0x1000 - 0x9268]0x22BD"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 136, start address: [0x1000 - 0x9268]0x211F) relation from: (id)[113], to: (addr)["[0x1000 - 0x9268]0x2128", "[0x1000 - 0x9268]0x21E2"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 137, start address: [0x1000 - 0x9268]0x21E2) relation from: (id)[136, 143, 151], to: (addr)["[0x1000 - 0x9268]0x2205", "[0x1000 - 0x9268]0x1B80"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 137, start address: [0x1000 - 0x9268]0x21E2) relation from: (id)[136, 143, 151], to: (addr)["[0x1000 - 0x9268]0x1B80", "[0x1000 - 0x9268]0x2205"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 138, start address: [0x1000 - 0x9268]0x2205) relation from: (id)[137, 145, 146], to: (addr)["[0x1000 - 0x9268]0x220C"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 139, start address: [0x1000 - 0x9268]0x2128) relation from: (id)[136], to: (addr)["[0x1000 - 0x9268]0x212D", "[0x1000 - 0x9268]0x21A4"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 140, start address: [0x1000 - 0x9268]0x21A4) relation from: (id)[139], to: (addr)["[0x1000 - 0x9268]0x21BE", "[0x1000 - 0x9268]0x220B"]
@@ -26747,20 +26747,20 @@ D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 148, start add
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 149, start address: [0x1000 - 0x9268]0x2208) relation from: (id)[148, 150], to: (addr)["[0x1000 - 0x9268]0x220C"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 150, start address: [0x1000 - 0x9268]0x2194) relation from: (id)[148], to: (addr)["[0x1000 - 0x9268]0x2208"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 151, start address: [0x1000 - 0x9268]0x2140) relation from: (id)[147], to: (addr)["[0x1000 - 0x9268]0x21E2"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 152, start address: [0x1000 - 0x9268]0x20B1) relation from: (id)[110], to: (addr)["[0x1000 - 0x9268]0x20C9", "[0x1000 - 0x9268]0x1B80"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 152, start address: [0x1000 - 0x9268]0x20B1) relation from: (id)[110], to: (addr)["[0x1000 - 0x9268]0x1B80", "[0x1000 - 0x9268]0x20C9"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 153, start address: [0x1000 - 0x9268]0x2012) relation from: (id)[38], to: (addr)["[0x1000 - 0x9268]0x201C", "[0x1000 - 0x9268]0x2037"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 154, start address: [0x1000 - 0x9268]0x201C) relation from: (id)[153], to: (addr)["[0x1000 - 0x9268]0x2027", "[0x1000 - 0x9268]0x2037"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 155, start address: [0x1000 - 0x9268]0x2027) relation from: (id)[154], to: (addr)["[0x1000 - 0x9268]0x2032", "[0x1000 - 0x9268]0x2037"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 156, start address: [0x1000 - 0x9268]0x2032) relation from: (id)[155], to: (addr)["[0x1000 - 0x9268]0x2041", "[0x1000 - 0x9268]0x204C"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 157, start address: [0x1000 - 0x9268]0x23F9) relation from: (id)[35], to: (addr)["[0x1000 - 0x9268]0x23FE", "[0x1000 - 0x9268]0x1EC6"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 157, start address: [0x1000 - 0x9268]0x23F9) relation from: (id)[35], to: (addr)["[0x1000 - 0x9268]0x1EC6", "[0x1000 - 0x9268]0x23FE"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 158, start address: [0x1000 - 0x9268]0x1EC6) relation from: (id)[157], to: (addr)["[0x1000 - 0x9268]0x1F7D"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 159, start address: [0x1000 - 0x9268]0x1F7D) relation from: (id)[158], to: (addr)["[0x1000 - 0x9268]0x1F8C", "[0x1000 - 0x9268]0x1EDA"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 159, start address: [0x1000 - 0x9268]0x1F7D) relation from: (id)[158], to: (addr)["[0x1000 - 0x9268]0x1EDA", "[0x1000 - 0x9268]0x1F8C"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 160, start address: [0x1000 - 0x9268]0x1EDA) relation from: (id)[159, 161, 165], to: (addr)["[0x1000 - 0x9268]0x1EFE", "[0x1000 - 0x9268]0x1F78"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 161, start address: [0x1000 - 0x9268]0x1F78) relation from: (id)[160], to: (addr)["[0x1000 - 0x9268]0x1F8C", "[0x1000 - 0x9268]0x1EDA"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 161, start address: [0x1000 - 0x9268]0x1F78) relation from: (id)[160], to: (addr)["[0x1000 - 0x9268]0x1EDA", "[0x1000 - 0x9268]0x1F8C"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 162, start address: [0x1000 - 0x9268]0x1F8C) relation from: (id)[159, 161, 165], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 163, start address: [0x1000 - 0x9268]0x1EFE) relation from: (id)[160], to: (addr)["[0x1000 - 0x9268]0x1F76"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 164, start address: [0x1000 - 0x9268]0x1F76) relation from: (id)[163], to: (addr)["[0x1000 - 0x9268]0x1F79"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 165, start address: [0x1000 - 0x9268]0x1F79) relation from: (id)[164], to: (addr)["[0x1000 - 0x9268]0x1F8C", "[0x1000 - 0x9268]0x1EDA"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 165, start address: [0x1000 - 0x9268]0x1F79) relation from: (id)[164], to: (addr)["[0x1000 - 0x9268]0x1EDA", "[0x1000 - 0x9268]0x1F8C"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 166, start address: [0x1000 - 0x9268]0x23FE) relation from: (id)[157], to: (addr)["[0x1000 - 0x9268]0x2401"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 167, start address: [0x1000 - 0x9268]0x2401) relation from: (id)[166], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 168, start address: [0x1000 - 0x9268]0x1310) relation from: (id)[14], to: (addr)["[0x1000 - 0x9268]0x1323"]
@@ -26776,23 +26776,23 @@ D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 177, start add
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 178, start address: [0x1000 - 0x9268]0x1583) relation from: (id)[177, 283, 285], to: (addr)["[0x1000 - 0x9268]0x15A9", "[0x1000 - 0x9268]0x9150"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 179, start address: [0x1000 - 0x9268]0x9150) relation from: (id)[178, 184], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 180, start address: [0x1000 - 0x9268]0x15A9) relation from: (id)[178], to: (addr)["[0x1000 - 0x9268]0x1650"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 181, start address: [0x1000 - 0x9268]0x1650) relation from: (id)[180], to: (addr)["[0x1000 - 0x9268]0x165C", "[0x1000 - 0x9268]0x15C4"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 181, start address: [0x1000 - 0x9268]0x1650) relation from: (id)[180], to: (addr)["[0x1000 - 0x9268]0x15C4", "[0x1000 - 0x9268]0x165C"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 182, start address: [0x1000 - 0x9268]0x15C4) relation from: (id)[181, 186], to: (addr)["[0x1000 - 0x9268]0x15E3", "[0x1000 - 0x9268]0x9178"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 183, start address: [0x1000 - 0x9268]0x9178) relation from: (id)[182], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 184, start address: [0x1000 - 0x9268]0x15E3) relation from: (id)[182], to: (addr)["[0x1000 - 0x9268]0x160C", "[0x1000 - 0x9268]0x9150"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 185, start address: [0x1000 - 0x9268]0x160C) relation from: (id)[184], to: (addr)["[0x1000 - 0x9268]0x164C", "[0x1000 - 0x9268]0x9158"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 186, start address: [0x1000 - 0x9268]0x164C) relation from: (id)[185], to: (addr)["[0x1000 - 0x9268]0x165C", "[0x1000 - 0x9268]0x15C4"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 187, start address: [0x1000 - 0x9268]0x165C) relation from: (id)[186, 181], to: (addr)[]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 186, start address: [0x1000 - 0x9268]0x164C) relation from: (id)[185], to: (addr)["[0x1000 - 0x9268]0x15C4", "[0x1000 - 0x9268]0x165C"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 187, start address: [0x1000 - 0x9268]0x165C) relation from: (id)[181, 186], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 188, start address: [0x1000 - 0x9268]0x140D) relation from: (id)[177, 283, 285], to: (addr)["[0x1000 - 0x9268]0x1412", "[0x1000 - 0x9268]0x1907"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 189, start address: [0x1000 - 0x9268]0x1907) relation from: (id)[188, 209], to: (addr)["[0x1000 - 0x9268]0x1919", "[0x1000 - 0x9268]0x1928"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 190, start address: [0x1000 - 0x9268]0x1928) relation from: (id)[189, 191], to: (addr)[]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 191, start address: [0x1000 - 0x9268]0x1919) relation from: (id)[189], to: (addr)["[0x1000 - 0x9268]0x1928", "[0x1000 - 0x9268]0x188F"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 191, start address: [0x1000 - 0x9268]0x1919) relation from: (id)[189], to: (addr)["[0x1000 - 0x9268]0x188F", "[0x1000 - 0x9268]0x1928"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 192, start address: [0x1000 - 0x9268]0x188F) relation from: (id)[191], to: (addr)["[0x1000 - 0x9268]0x18AA", "[0x1000 - 0x9268]0x18CF"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 193, start address: [0x1000 - 0x9268]0x18CF) relation from: (id)[192, 206, 207], to: (addr)["[0x1000 - 0x9268]0x18EB"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 194, start address: [0x1000 - 0x9268]0x18EB) relation from: (id)[193], to: (addr)["[0x1000 - 0x9268]0x18F1", "[0x1000 - 0x9268]0x18D7"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 194, start address: [0x1000 - 0x9268]0x18EB) relation from: (id)[193], to: (addr)["[0x1000 - 0x9268]0x18D7", "[0x1000 - 0x9268]0x18F1"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 195, start address: [0x1000 - 0x9268]0x18D7) relation from: (id)[194, 196], to: (addr)["[0x1000 - 0x9268]0x18E7"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 196, start address: [0x1000 - 0x9268]0x18E7) relation from: (id)[195], to: (addr)["[0x1000 - 0x9268]0x18F1", "[0x1000 - 0x9268]0x18D7"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 197, start address: [0x1000 - 0x9268]0x18F1) relation from: (id)[196, 194], to: (addr)["[0x1000 - 0x9268]0x1900", "[0x1000 - 0x9268]0x168A"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 196, start address: [0x1000 - 0x9268]0x18E7) relation from: (id)[195], to: (addr)["[0x1000 - 0x9268]0x18D7", "[0x1000 - 0x9268]0x18F1"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 197, start address: [0x1000 - 0x9268]0x18F1) relation from: (id)[194, 196], to: (addr)["[0x1000 - 0x9268]0x168A", "[0x1000 - 0x9268]0x1900"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 198, start address: [0x1000 - 0x9268]0x168A) relation from: (id)[197], to: (addr)["[0x1000 - 0x9268]0x169F", "[0x1000 - 0x9268]0x9100"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 199, start address: [0x1000 - 0x9268]0x9100) relation from: (id)[198], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 200, start address: [0x1000 - 0x9268]0x169F) relation from: (id)[198], to: (addr)["[0x1000 - 0x9268]0x16A4", "[0x1000 - 0x9268]0x16AB"]
@@ -26801,8 +26801,8 @@ D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 202, start add
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 203, start address: [0x1000 - 0x9268]0x16B0) relation from: (id)[202], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 204, start address: [0x1000 - 0x9268]0x1900) relation from: (id)[197], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 205, start address: [0x1000 - 0x9268]0x18AA) relation from: (id)[192], to: (addr)["[0x1000 - 0x9268]0x18B7"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 206, start address: [0x1000 - 0x9268]0x18B7) relation from: (id)[205], to: (addr)["[0x1000 - 0x9268]0x18CF", "[0x1000 - 0x9268]0x18B3"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 207, start address: [0x1000 - 0x9268]0x18B3) relation from: (id)[206], to: (addr)["[0x1000 - 0x9268]0x18CF", "[0x1000 - 0x9268]0x18B3"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 206, start address: [0x1000 - 0x9268]0x18B7) relation from: (id)[205], to: (addr)["[0x1000 - 0x9268]0x18B3", "[0x1000 - 0x9268]0x18CF"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 207, start address: [0x1000 - 0x9268]0x18B3) relation from: (id)[206], to: (addr)["[0x1000 - 0x9268]0x18B3", "[0x1000 - 0x9268]0x18CF"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 208, start address: [0x1000 - 0x9268]0x1412) relation from: (id)[188], to: (addr)["[0x1000 - 0x9268]0x1444", "[0x1000 - 0x9268]0x17D0"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 209, start address: [0x1000 - 0x9268]0x17D0) relation from: (id)[208], to: (addr)["[0x1000 - 0x9268]0x17DF", "[0x1000 - 0x9268]0x1907"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 210, start address: [0x1000 - 0x9268]0x17DF) relation from: (id)[209], to: (addr)["[0x1000 - 0x9268]0x17F2", "[0x1000 - 0x9268]0x1800"]
@@ -26824,9 +26824,9 @@ D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 225, start add
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 226, start address: [0x1000 - 0x9268]0x4EB1) relation from: (id)[225], to: (addr)["[0x1000 - 0x9268]0x4ED0", "[0x1000 - 0x9268]0x90E8"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 227, start address: [0x1000 - 0x9268]0x90E8) relation from: (id)[226], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 228, start address: [0x1000 - 0x9268]0x4ED0) relation from: (id)[226], to: (addr)["[0x1000 - 0x9268]0x5865"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 229, start address: [0x1000 - 0x9268]0x5865) relation from: (id)[228, 231, 246, 258], to: (addr)["[0x1000 - 0x9268]0x5884", "[0x1000 - 0x9268]0x4F2B"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 229, start address: [0x1000 - 0x9268]0x5865) relation from: (id)[228, 231, 246, 258], to: (addr)["[0x1000 - 0x9268]0x4F2B", "[0x1000 - 0x9268]0x5884"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 230, start address: [0x1000 - 0x9268]0x4F2B) relation from: (id)[229], to: (addr)["[0x1000 - 0x9268]0x4F35", "[0x1000 - 0x9268]0x5857"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 231, start address: [0x1000 - 0x9268]0x5857) relation from: (id)[230], to: (addr)["[0x1000 - 0x9268]0x5865", "[0x1000 - 0x9268]0x2F20"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 231, start address: [0x1000 - 0x9268]0x5857) relation from: (id)[230], to: (addr)["[0x1000 - 0x9268]0x2F20", "[0x1000 - 0x9268]0x5865"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 232, start address: [0x1000 - 0x9268]0x2F20) relation from: (id)[231, 244], to: (addr)["[0x1000 - 0x9268]0x2F3F", "[0x1000 - 0x9268]0x2F51"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 233, start address: [0x1000 - 0x9268]0x2F51) relation from: (id)[232, 239], to: (addr)["[0x1000 - 0x9268]0x2F61", "[0x1000 - 0x9268]0x2F75"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 234, start address: [0x1000 - 0x9268]0x2F75) relation from: (id)[233], to: (addr)[]
@@ -26836,10 +26836,10 @@ D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 237, start add
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 238, start address: [0x1000 - 0x9268]0x2F8D) relation from: (id)[237, 239], to: (addr)[]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 239, start address: [0x1000 - 0x9268]0x2F3F) relation from: (id)[232], to: (addr)["[0x1000 - 0x9268]0x2F51", "[0x1000 - 0x9268]0x2F8D"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 240, start address: [0x1000 - 0x9268]0x4F35) relation from: (id)[230], to: (addr)["[0x1000 - 0x9268]0x5846"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 241, start address: [0x1000 - 0x9268]0x5846) relation from: (id)[240, 251, 253, 254, 255], to: (addr)["[0x1000 - 0x9268]0x5855", "[0x1000 - 0x9268]0x4F6F"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 241, start address: [0x1000 - 0x9268]0x5846) relation from: (id)[240, 251, 253, 254, 255], to: (addr)["[0x1000 - 0x9268]0x4F6F", "[0x1000 - 0x9268]0x5855"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 242, start address: [0x1000 - 0x9268]0x4F6F) relation from: (id)[241], to: (addr)["[0x1000 - 0x9268]0x4F93", "[0x1000 - 0x9268]0x57BA"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 243, start address: [0x1000 - 0x9268]0x57BA) relation from: (id)[242], to: (addr)["[0x1000 - 0x9268]0x57C0", "[0x1000 - 0x9268]0x5828"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 244, start address: [0x1000 - 0x9268]0x5828) relation from: (id)[243, 247, 248], to: (addr)["[0x1000 - 0x9268]0x5841", "[0x1000 - 0x9268]0x2F20"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 244, start address: [0x1000 - 0x9268]0x5828) relation from: (id)[243, 247, 248], to: (addr)["[0x1000 - 0x9268]0x2F20", "[0x1000 - 0x9268]0x5841"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 245, start address: [0x1000 - 0x9268]0x5841) relation from: (id)[244], to: (addr)["[0x1000 - 0x9268]0x4F26"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 246, start address: [0x1000 - 0x9268]0x4F26) relation from: (id)[245], to: (addr)["[0x1000 - 0x9268]0x5865"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 247, start address: [0x1000 - 0x9268]0x57C0) relation from: (id)[243], to: (addr)["[0x1000 - 0x9268]0x57C6", "[0x1000 - 0x9268]0x5828"]
@@ -26882,17 +26882,17 @@ D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 283, start add
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 284, start address: [0x1000 - 0x9268]0x13E5) relation from: (id)[282], to: (addr)["[0x1000 - 0x9268]0x13F3"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 285, start address: [0x1000 - 0x9268]0x13F3) relation from: (id)[284], to: (addr)["[0x1000 - 0x9268]0x140D", "[0x1000 - 0x9268]0x1583"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 286, start address: [0x1000 - 0x9268]0x1365) relation from: (id)[175], to: (addr)["[0x1000 - 0x9268]0x1384"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 287, start address: [0x1000 - 0x9268]0x1384) relation from: (id)[286], to: (addr)["[0x1000 - 0x9268]0x138F", "[0x1000 - 0x9268]0x1367"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 287, start address: [0x1000 - 0x9268]0x1384) relation from: (id)[286], to: (addr)["[0x1000 - 0x9268]0x1367", "[0x1000 - 0x9268]0x138F"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 288, start address: [0x1000 - 0x9268]0x1367) relation from: (id)[287, 289, 295, 297], to: (addr)["[0x1000 - 0x9268]0x1372", "[0x1000 - 0x9268]0x137F"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 289, start address: [0x1000 - 0x9268]0x137F) relation from: (id)[288], to: (addr)["[0x1000 - 0x9268]0x138F", "[0x1000 - 0x9268]0x1367"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 289, start address: [0x1000 - 0x9268]0x137F) relation from: (id)[288], to: (addr)["[0x1000 - 0x9268]0x1367", "[0x1000 - 0x9268]0x138F"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 290, start address: [0x1000 - 0x9268]0x138F) relation from: (id)[287, 289, 297], to: (addr)["[0x1000 - 0x9268]0x139A", "[0x1000 - 0x9268]0x13A7"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 291, start address: [0x1000 - 0x9268]0x13A7) relation from: (id)[290, 296], to: (addr)["[0x1000 - 0x9268]0x13B2", "[0x1000 - 0x9268]0x13BD"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 292, start address: [0x1000 - 0x9268]0x13BD) relation from: (id)[291, 293, 294], to: (addr)["[0x1000 - 0x9268]0x13D8", "[0x1000 - 0x9268]0x13F9"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 293, start address: [0x1000 - 0x9268]0x13B2) relation from: (id)[291, 294], to: (addr)["[0x1000 - 0x9268]0x13BD", "[0x1000 - 0x9268]0x13A2"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 293, start address: [0x1000 - 0x9268]0x13B2) relation from: (id)[291, 294], to: (addr)["[0x1000 - 0x9268]0x13A2", "[0x1000 - 0x9268]0x13BD"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 294, start address: [0x1000 - 0x9268]0x13A2) relation from: (id)[293], to: (addr)["[0x1000 - 0x9268]0x13B2", "[0x1000 - 0x9268]0x13BD"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 295, start address: [0x1000 - 0x9268]0x139A) relation from: (id)[290], to: (addr)["[0x1000 - 0x9268]0x13A0", "[0x1000 - 0x9268]0x1367"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 295, start address: [0x1000 - 0x9268]0x139A) relation from: (id)[290], to: (addr)["[0x1000 - 0x9268]0x1367", "[0x1000 - 0x9268]0x13A0"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 296, start address: [0x1000 - 0x9268]0x13A0) relation from: (id)[295], to: (addr)["[0x1000 - 0x9268]0x13A7"]
-D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 297, start address: [0x1000 - 0x9268]0x1372) relation from: (id)[288], to: (addr)["[0x1000 - 0x9268]0x138F", "[0x1000 - 0x9268]0x1367"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 297, start address: [0x1000 - 0x9268]0x1372) relation from: (id)[288], to: (addr)["[0x1000 - 0x9268]0x1367", "[0x1000 - 0x9268]0x138F"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 298, start address: [0x1000 - 0x9268]0x12EF) relation from: (id)[13, 299], to: (addr)["[0x1000 - 0x9268]0x130B"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 299, start address: [0x1000 - 0x9268]0x12C2) relation from: (id)[12, 302], to: (addr)["[0x1000 - 0x9268]0x12EF", "[0x1000 - 0x9268]0x130B"]
 D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 300, start address: [0x1000 - 0x9268]0x1296) relation from: (id)[11, 305], to: (addr)["[0x1000 - 0x9268]0x12AF", "[0x1000 - 0x9268]0x90F0"]
@@ -48290,64 +48290,64 @@ T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1153: true
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1153(true) but datatype not set. init datatype to bool
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1183: 0x9160
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE: 0x0
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE(0x0) but datatype not set. init datatype to int
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1450: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191: 0x0
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191(0x0) but datatype not set. init datatype to int
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1252: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1252: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x12EA: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x12EA: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x12EA: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x12EA: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1396: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1396: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13E1: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13E1: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13DE: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13DE: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13E1: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13E1: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1450: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13DE: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13DE: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x12EA: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1450: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1467: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x12EA: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1467: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1252: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1252: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x12EA: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x12EA(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13DE: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13DE(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13E1: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13E1(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1396: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1396(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1450: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1450(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1467: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1467(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1252: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1252(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x12EA: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x12EA(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x12EA: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x12EA(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1396: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1396(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13AE(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13D4(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13DE: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13DE(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13E1: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x13E1(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1450: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1450(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1467: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1467(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x11D5: 0x11F8
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x11E8: 0x122F
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1242: 0x90D8
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x127C: 0x1288
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1247: 0x1288
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x127C: 0x1288
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1277: 0x90F0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x12AA: 0x90F0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x127E: *0x10024
@@ -48382,8 +48382,8 @@ T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x159D(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x159D: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x159D(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1607: 0x9150
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x15A4: 0x9150
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1607: 0x9150
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x15BF: 0x1650
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x15DE: 0x9178
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1647: 0x9158
@@ -48450,169 +48450,169 @@ T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1BE2: 0x9188
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1BE7: 0x9110
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C00: 0x1C87
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CFB: true
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CFB(true) but datatype not set. init datatype to bool
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C15: true
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C15(true) but datatype not set. init datatype to bool
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C3D: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CD4: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CF4: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CFB: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D2A: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D57: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D8D: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D94: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D57: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D2A: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CD4: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D94: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D8D: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C15: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C3D: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C15: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C15(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D8D: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D8D(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D57: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D57(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C15: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C15(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C15: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C15(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C3D: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C3D(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C15: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C15(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D2A: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D2A(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C3D: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C3D(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C3D: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C3D(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CD4: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CD4(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CD4: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CD4(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CD4: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CD4(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CF4: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CF4(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CF4: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CF4(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CF4: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CF4(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CFB: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CFB(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CF4: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CF4(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D94: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D94(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C3D: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C3D(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C1C(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CFB: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CFB(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CFB: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CFB(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D2A: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D2A(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E90: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E90(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D8D: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D8D(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CD4: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CD4(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CCD(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D94: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D94(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CF4: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CF4(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C5F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D2A: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D2A(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D2A: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D2A(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D57: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D57(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C15: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C15(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C66(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D57: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D57(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D57: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D57(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D78: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D78(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CFB: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CFB(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D2A: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D2A(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D57: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D57(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D8D: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D8D(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CD4: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CD4(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C3D: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C3D(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D8D: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D8D(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D8D: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D8D(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D94: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D94(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CF4: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CF4(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C44(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D31(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D50(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CFB: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CFB(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D94: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D94(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D94: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D94(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E90: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E90(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C9A: 0x2BA8
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EA9: 0x1B80
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1DB5: 0x1B80
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1CB8: 0x1B80
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1DB5: 0x1B80
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EA9: 0x1B80
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D08: 0x2CF4
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D78: 0x0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1D78(0x0) but datatype not set. init datatype to int
@@ -48627,43 +48627,43 @@ T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EC5(true) but datatype not set. init datatype to bool
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EC5: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1C00: 0x1C87
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: true
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14(true) but datatype not set. init datatype to bool
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: true
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B(true) but datatype not set. init datatype to bool
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E62(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E14(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E3B(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E42(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E1B(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1E69: undefined
@@ -48673,63 +48673,63 @@ D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1ED5: 0x1F7D
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EEA: true
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EEA(true) but datatype not set. init datatype to bool
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F51: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F0E: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EF1: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F0E: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F15: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F51: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EEA: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EEA(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EEA: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EEA(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EEA: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EEA(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F15: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F15(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EF1: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EF1(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F0E: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F0E(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F0E: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F0E(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F15: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F15(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F15: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F15(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EF1: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EF1(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EF1: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EF1(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EFA: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EFA(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F0E: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F0E(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EF1: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EF1(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EF1: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EF1(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F0E: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F0E(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F0E: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F0E(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F15: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F15(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F15: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F15(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F15: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F15(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F2F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F36(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F51: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F51(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F51: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F51(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F51: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F51(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1F58(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EFA: 0x0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EFA(0x0) but datatype not set. init datatype to int
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1EFA: 0x0
@@ -48743,95 +48743,95 @@ T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1FD7(true) but datatype not set. init datatype to bool
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1FD7: true
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1FD7(true) but datatype not set. init datatype to bool
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x215C: 0x0
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x215C(0x0) but datatype not set. init datatype to int
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2048: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2018: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218A: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2169: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218F: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x203D: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B4: 0x0
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2018(0x0) but datatype not set. init datatype to int
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2018: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2023: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B9: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2198: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2023: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x202E: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x202E: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x203D: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x203D: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x203D: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x203D: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2048: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2048: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2157: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2157: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x215C: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x202E: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21CC: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2048: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2018: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x215C: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2169: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2169: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218A: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218A: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218F: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x203D: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2023: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218F: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2198: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2198: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B4: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B4: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B9: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2198: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x203D: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x202E: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B9: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21CC: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2157: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B9: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B9(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218A: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218A(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x202E: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x202E(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2048: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2048(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218F: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218F(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x203D: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x203D(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2157: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2157(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21CC: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2018: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2018(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B4: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B4(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2274: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2274(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x215C: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x215C(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2023: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2023(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x202E: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x202E(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x203D: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x203D(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2274: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2274(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2274: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2274(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2198: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2198(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21CC: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21CC(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x203D: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x203D(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2048: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2048(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2157: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2157(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x215C: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x215C(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2169: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2169(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218A: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218A(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218F: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x218F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2198: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2198(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B4: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B4(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B9: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21B9(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21CC: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21CC(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x223F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2274: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2274(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2274: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2274(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2274: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2274(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2054: 0x2096
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2340: 0x1F94
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2310: 0x1F94
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2328: 0x1F94
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x208C: 0x1F94
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x22F8: 0x1F94
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2359: 0x235C
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2310: 0x1F94
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2328: 0x1F94
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2340: 0x1F94
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x20A0: 0x235C
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2359: 0x235C
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x20C4: 0x1B80
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2200: 0x1B80
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x22B8: 0x1B80
@@ -48841,15 +48841,15 @@ T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21A2: 0x2208
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21D3: 0x220B
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x21E0: 0x220C
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2209: 0x220C
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2206: 0x220C
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2209: 0x220C
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257: true
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2257(true) but datatype not set. init datatype to bool
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2274: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2315: 0x2346
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x22FD: 0x2346
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x232D: 0x2346
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x22E5: 0x2346
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x22FD: 0x2346
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2315: 0x2346
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x232D: 0x2346
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2361: true
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2361(true) but datatype not set. init datatype to bool
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2361: true
@@ -48861,50 +48861,50 @@ T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2370(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2398: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2398(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2398: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2398(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AB: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AB(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AB: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AB(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AB: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AB(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2398: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2398(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AB: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AB(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AB: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AB(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AB: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AB(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2381: *0x100FC
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2381(*0x100FC) but datatype not set. init datatype to void*
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2387: 0x2BF8
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F: true
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F(true) but datatype not set. init datatype to bool
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2398: true
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4: true
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2398(true) but datatype not set. init datatype to bool
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x239F: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23A7: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AB: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C0: true
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C4: true
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23AF: 0x2E80
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C8: *0x100F0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x23C8(*0x100F0) but datatype not set. init datatype to void*
@@ -48964,13 +48964,13 @@ T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2D27(true) but datatype not set. init datatype to bool
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2E96: 0x0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2E96(0x0) but datatype not set. init datatype to int
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2EAB: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2EAB: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2E96: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2EAB: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2EAB(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2EAB: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2EAB: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2E96: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2E96(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2EAB: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2EAB(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2EB1: true
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2EB1(true) but datatype not set. init datatype to bool
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2EDB: 0x8880
@@ -48980,21 +48980,21 @@ T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F17(true) but datatype not set. init datatype to bool
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F36: 0x0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F36(0x0) but datatype not set. init datatype to int
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F5D: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F36: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F3B: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F3B: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F58: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F58: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F5D: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F58: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F3B: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F3B: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F3B(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F5D: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F5D(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F5D: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F36: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F36(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F3B: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F3B(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F58: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F58(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F5D: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F5D(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F6E: 0x9130
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2F73: 0x2F8D
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2FA4: true
@@ -49002,13 +49002,17 @@ D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2FA4: true
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x2FA4(true) but datatype not set. init datatype to bool
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x4ECB: 0x90E8
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x584D: 0x0
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x584D(0x0) but datatype not set. init datatype to int
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x4EDD: 0x0
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x4EDD(0x0) but datatype not set. init datatype to int
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x4EDD: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x57F5: 0x0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x4EDD: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x57F5: 0x0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x584D: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x584D: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x4EDD: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x4EDD(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x57F5: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x57F5(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x580F: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x580F(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x580F: undefined
@@ -49017,39 +49021,35 @@ T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x580F(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x584D: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x584D(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x4EDD: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x4EDD(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x57F5: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x57F5(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x5855: 0x5865
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x4F26: 0x5865
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x5826: 0x5846
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x5805: 0x5846
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x5855: 0x5865
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x4F6A: 0x5846
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x5805: 0x5846
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x5826: 0x5846
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x57D9: 0x57E8
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x580F: true
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x580F(true) but datatype not set. init datatype to bool
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x5860: 0x2F20
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x583C: 0x2F20
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x5860: 0x2F20
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x5841: 0x4F26
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x588F: true
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x588F(true) but datatype not set. init datatype to bool
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x4F26: 0x5865
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x887F: true
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x887F(true) but datatype not set. init datatype to bool
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x8891: 0x89E0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88A1: 0x89E0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88B1: 0x89E0
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x8891: 0x89E0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88E6: undefined
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88E6(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1(undefined) but datatype not set. init datatype to unknown_t
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1: undefined
-D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88D1(undefined) but datatype not set. init datatype to unknown_t
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88DA: 0x90F8
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88E6: 0x0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x88E6(0x0) but datatype not set. init datatype to int
@@ -49059,9 +49059,9 @@ T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x890F(true) but datatype not set. init datatype to bool
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x890F: true
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x890F(true) but datatype not set. init datatype to bool
-T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x8954: 0x89E0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x8921: 0x89E0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x8931: 0x89E0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x8954: 0x89E0
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x8943: 0x0
 D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x8943(0x0) but datatype not set. init datatype to int
 T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x8943: 0x0

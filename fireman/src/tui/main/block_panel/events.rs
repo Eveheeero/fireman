@@ -271,7 +271,7 @@ pub fn generate_ast(ctx_: &MutexCtx) -> std::io::Result<()> {
                 .map(|address| blocks.get_by_start_address(address).unwrap());
             let ast = fireball::ir::analyze::generate_ast_with_pre_defined_symbols(
                 selected_blocks,
-                fireball.get_pre_defined_symbol_map(),
+                fireball.get_defined(),
             );
             if let Err(e) = ast {
                 ctx.top_message = e.to_string();

@@ -25,7 +25,7 @@ impl Fire for Pe {
     fn decompile_all(&self) -> Result<String, DecompileError> {
         Ok(crate::ir::analyze::generate_ast_with_pre_defined_symbols(
             self.analyze_all()?,
-            self.get_pre_defined_symbol_map(),
+            self.get_defined(),
         )?
         .optimize(None)?
         .print(None))
@@ -34,7 +34,7 @@ impl Fire for Pe {
     fn decompile_from_entry(&self) -> Result<String, DecompileError> {
         Ok(crate::ir::analyze::generate_ast_with_pre_defined_symbols(
             [self.analyze_from_entry()?],
-            self.get_pre_defined_symbol_map(),
+            self.get_defined(),
         )?
         .optimize(None)?
         .print(None))
@@ -43,7 +43,7 @@ impl Fire for Pe {
     fn decompile_from_file_offset(&self, address: u64) -> Result<String, DecompileError> {
         Ok(crate::ir::analyze::generate_ast_with_pre_defined_symbols(
             [self.analyze_from_file_offset(address)?],
-            self.get_pre_defined_symbol_map(),
+            self.get_defined(),
         )?
         .optimize(None)?
         .print(None))
@@ -52,7 +52,7 @@ impl Fire for Pe {
     fn decompile_from_virtual_address(&self, address: u64) -> Result<String, DecompileError> {
         Ok(crate::ir::analyze::generate_ast_with_pre_defined_symbols(
             [self.analyze_from_virtual_address(address)?],
-            self.get_pre_defined_symbol_map(),
+            self.get_defined(),
         )?
         .optimize(None)?
         .print(None))

@@ -1,6 +1,6 @@
 use crate::{
     abstract_syntax_tree::Ast,
-    core::Block,
+    core::{Block, PreDefinedOffsets},
     ir::analyze::{BlockGrouper, ir_function::generate_ir_function},
     prelude::*,
 };
@@ -8,12 +8,12 @@ use std::sync::Arc;
 
 /// Generate AST from targets
 pub fn generate_ast(targets: impl IntoIterator<Item = Arc<Block>>) -> Result<Ast, DecompileError> {
-    generate_ast_with_pre_defined_symbols(targets, std::iter::empty())
+    generate_ast_with_pre_defined_symbols(targets, PreDefinedOffsets::new())
 }
 
 pub fn generate_ast_with_pre_defined_symbols(
     targets: impl IntoIterator<Item = Arc<Block>>,
-    pre_defined_symbols: impl IntoIterator<Item = (u64, String)>,
+    pre_defined_symbols: Arc<PreDefinedOffsets>,
 ) -> Result<Ast, DecompileError> {
     let mut ast = Ast::new();
     ast.set_pre_defined_symbols(pre_defined_symbols);
