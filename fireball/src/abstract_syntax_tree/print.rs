@@ -1,6 +1,90 @@
 use super::*;
 use hashbrown::HashSet;
 
+fn format_descriptor(ir_index: u32, statement_index: Option<u8>) -> String {
+    match statement_index {
+        Some(stmt_index) => format!("{}:{}", ir_index, stmt_index),
+        None => format!("{}", ir_index),
+    }
+}
+
+fn format_parameter_location(location: &AstParameterLocation) -> String {
+    match location {
+        AstParameterLocation::Register(reg) => format!("reg {}", reg),
+        AstParameterLocation::Stack(offset) => format!("stack {:+#x}", offset),
+    }
+}
+
+fn variable_usage_summary(var: &AstVariable) -> String {
+    let Some(access_map) = var.data_access_ir.as_ref() else {
+        return "usage: n/a".to_string();
+    };
+    if access_map.is_empty() {
+        return "usage: none".to_string();
+    }
+
+    let mut points: Vec<_> = access_map
+        .iter()
+        .map(|(descriptor, _)| {
+            (
+                descriptor.ir_index(),
+                *descriptor.statement_index(),
+                format_descriptor(descriptor.ir_index(), *descriptor.statement_index()),
+            )
+        })
+        .collect();
+    points.sort_unstable_by_key(|(ir_index, stmt_index, _)| (*ir_index, *stmt_index));
+
+    let mut read_count = 0usize;
+    let mut write_count = 0usize;
+    let mut where_used: Vec<String> = access_map
+        .iter()
+        .flat_map(|(_, accesses)| accesses.iter())
+        .map(|access| {
+            match access.access_type() {
+                crate::ir::data::IrDataAccessType::Read => read_count += 1,
+                crate::ir::data::IrDataAccessType::Write => write_count += 1,
+            }
+            format!("{} {}", access.access_type(), access.location())
+        })
+        .collect();
+    where_used.sort_unstable();
+    where_used.dedup();
+    let omitted = where_used.len().saturating_sub(4);
+    where_used.truncate(4);
+    let where_used = if where_used.is_empty() {
+        "where n/a".to_string()
+    } else if omitted > 0 {
+        format!("where {}", where_used.join(", "),) + &format!(" (+{} more)", omitted)
+    } else {
+        format!("where {}", where_used.join(", "))
+    };
+
+    let range = if let (Some(first), Some(last)) = (points.first(), points.last()) {
+        format!("{}..{}", first.2, last.2)
+    } else {
+        "n/a".to_string()
+    };
+    format!(
+        "range {}, access r:{} w:{}, {}",
+        range, read_count, write_count, where_used
+    )
+}
+
+fn parameter_usage_comment(param: &AstParameter, variables: &ArcAstVariableMap) -> String {
+    let location = format_parameter_location(&param.location);
+    let usage = match &param.id {
+        either::Either::Left(var_id) => {
+            let vars = variables.read().unwrap();
+            vars.get(var_id)
+                .map(variable_usage_summary)
+                .unwrap_or_else(|| "usage: unresolved variable".to_string())
+        }
+        either::Either::Right(_) => "usage: no linked variable".to_string(),
+    };
+    format!("param {} | {}", location, usage)
+}
+
 impl Ast {
     pub fn print(&self, config: Option<AstPrintConfig>) -> String {
         let config = config.unwrap_or_default();
@@ -32,7 +116,14 @@ impl Ast {
                             .expect("invalid variable map")
                             .to_string_with_config(Some(config));
                         let name_str = param.name(&func.variables).expect("invalid variable map");
-                        format!("{} {}", ty_str, name_str)
+                        let mut line = format!("{} {}", ty_str, name_str);
+                        if config.parameter_usage_comment {
+                            line.push_str(&format!(
+                                " /* {} */",
+                                parameter_usage_comment(param, &func.variables)
+                            ));
+                        }
+                        line
                     })
                     .collect();
                 output.push_str("\n  ");
@@ -53,12 +144,17 @@ impl Ast {
                     if let Some(const_value) = &var.const_value {
                         if !config.replace_constant {
                             var_declarations_exist = true;
-                            output.push_str(&format!(
+                            let mut line = format!(
                                 "  const {} {} = {};\n",
                                 var.var_type.to_string_with_config(Some(config)),
                                 var.name(),
                                 const_value.to_string_with_config(Some(config))
-                            ));
+                            );
+                            if config.variable_usage_comment {
+                                line.pop();
+                                line.push_str(&format!(" /* {} */\n", variable_usage_summary(var)));
+                            }
+                            output.push_str(&line);
                         } else {
                             debug!(
                                 function=?func.name(),
@@ -70,11 +166,16 @@ impl Ast {
                         }
                     } else {
                         var_declarations_exist = true;
-                        output.push_str(&format!(
+                        let mut line = format!(
                             "  {} {};\n",
                             var.var_type.to_string_with_config(Some(config)),
                             var.name()
-                        ));
+                        );
+                        if config.variable_usage_comment {
+                            line.pop();
+                            line.push_str(&format!(" /* {} */\n", variable_usage_summary(var)));
+                        }
+                        output.push_str(&line);
                     }
                 }
                 if var_declarations_exist {

@@ -6,7 +6,7 @@ use crate::{
         WrappedAstStatement,
     },
     ir::{
-        Register, VirtualMachine,
+        Architecture, Register, VirtualMachine,
         analyze::variables::resolve_operand,
         data::{IrData, IrDataAccessType, IrDataOperation},
         operator::{IrBinaryOperator, IrUnaryOperator},
@@ -18,6 +18,39 @@ use crate::{
 };
 use either::Either;
 use hashbrown::{HashMap, HashSet};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct RegKey {
+    architecture: Architecture,
+    bit_start: usize,
+}
+
+impl RegKey {
+    #[inline]
+    fn from_register(reg: &Register) -> Self {
+        Self {
+            architecture: reg.architecture(),
+            bit_start: reg.bit_range().start,
+        }
+    }
+
+    #[inline]
+    fn sort_key(&self) -> (u8, usize) {
+        (architecture_sort_key(self.architecture), self.bit_start)
+    }
+}
+
+#[inline]
+const fn architecture_sort_key(architecture: Architecture) -> u8 {
+    match architecture {
+        Architecture::X64 => 0,
+    }
+}
+
+type RegName = RegKey;
+type RegNameToVarMap = HashMap<RegName, AstVariableId>;
+type RegNameExprMap = HashMap<RegName, Wrapped<AstExpression>>;
+type RegNameSet = HashSet<RegName>;
 
 pub(super) fn analyze_call_arguments(
     ast: &mut Ast,
@@ -133,7 +166,9 @@ fn log_read_locations_for_call_arg_analysis(
             continue;
         };
         let mut access_map_sorted: Vec<_> = access_map.iter().collect();
-        access_map_sorted.sort_unstable_by_key(|(ir_index, _)| ir_index.ir_index());
+        access_map_sorted.sort_unstable_by_key(|(ir_index, _)| {
+            (ir_index.ir_index(), *ir_index.statement_index())
+        });
         for (ir_index, accesses) in access_map_sorted {
             for access in accesses {
                 if *access.access_type() != IrDataAccessType::Read {
@@ -401,33 +436,7 @@ fn jump_target_constant_address(jump: &crate::abstract_syntax_tree::AstJumpTarge
         }
         crate::abstract_syntax_tree::AstJumpTarget::Variable {
             var_map, var_id, ..
-        } => {
-            let vars = var_map.read().unwrap();
-            let var = vars.get(var_id)?;
-            let c = var.const_value.as_ref()?;
-            match &c.item {
-                crate::abstract_syntax_tree::AstValue::Pointer(p) => match &p.item {
-                    crate::abstract_syntax_tree::AstValue::Num(n) => {
-                        let (sign, digits) = n.to_u64_digits();
-                        if sign == num_bigint::Sign::Minus {
-                            None
-                        } else {
-                            Some(*digits.first().unwrap_or(&0))
-                        }
-                    }
-                    _ => None,
-                },
-                crate::abstract_syntax_tree::AstValue::Num(n) => {
-                    let (sign, digits) = n.to_u64_digits();
-                    if sign == num_bigint::Sign::Minus {
-                        None
-                    } else {
-                        Some(*digits.first().unwrap_or(&0))
-                    }
-                }
-                _ => None,
-            }
-        }
+        } => variable_constant_address(var_map, *var_id),
     }
 }
 
@@ -453,7 +462,7 @@ fn rebuild_call_groups_recursive(
     scope: AstFunctionId,
     variables: &ArcAstVariableMap,
     stmts: &mut Vec<WrappedAstStatement>,
-    reg_name_to_var: &HashMap<Register, AstVariableId>,
+    reg_name_to_var: &RegNameToVarMap,
     var_id_to_reg: &HashMap<AstVariableId, Register>,
     data_to_var: &HashMap<IrData, AstVariableId>,
     var_id_to_rsp_offset: &HashMap<AstVariableId, isize>,
@@ -611,7 +620,7 @@ fn enrich_existing_call_args_recursive(
     scope: AstFunctionId,
     variables: &ArcAstVariableMap,
     stmts: &mut Vec<WrappedAstStatement>,
-    reg_name_to_var: &HashMap<Register, AstVariableId>,
+    reg_name_to_var: &RegNameToVarMap,
     var_id_to_reg: &HashMap<AstVariableId, Register>,
     var_id_to_rsp_offset: &HashMap<AstVariableId, isize>,
     rsp_offset_to_var: &HashMap<isize, AstVariableId>,
@@ -670,6 +679,7 @@ fn enrich_existing_call_args_recursive(
             _ => {}
         }
 
+        rewrite_call_target_from_constant_value(ast, &mut stmts[i]);
         rewrite_indirect_call_target_from_nearby_assignment(stmts, i);
 
         let should_infer = match &stmts[i].statement {
@@ -743,6 +753,52 @@ fn rewrite_indirect_call_target_from_nearby_assignment(
         stmts[call_idx].statement =
             AstStatement::Call(AstCall::Unknown(format!("*0x{:X}", slot), current_args));
         break;
+    }
+}
+
+fn rewrite_call_target_from_constant_value(ast: &Ast, stmt: &mut WrappedAstStatement) {
+    let (var_map, var_id, current_args) = match &stmt.statement {
+        AstStatement::Call(AstCall::Variable {
+            var_map,
+            var_id,
+            args,
+            ..
+        }) => (var_map.clone(), *var_id, args.clone()),
+        _ => return,
+    };
+
+    let Some(addr) = variable_constant_address(&var_map, var_id) else {
+        return;
+    };
+    let Some(target) = resolve_function_id_by_address(ast, addr) else {
+        return;
+    };
+
+    stmt.statement = AstStatement::Call(AstCall::Function {
+        target,
+        args: current_args,
+    });
+}
+
+fn variable_constant_address(var_map: &ArcAstVariableMap, var_id: AstVariableId) -> Option<u64> {
+    let vars = var_map.read().unwrap();
+    let var = vars.get(&var_id)?;
+    let const_value = var.const_value.as_ref()?;
+    ast_value_constant_address(&const_value.item)
+}
+
+fn ast_value_constant_address(value: &crate::abstract_syntax_tree::AstValue) -> Option<u64> {
+    match value {
+        crate::abstract_syntax_tree::AstValue::Pointer(p) => ast_value_constant_address(&p.item),
+        crate::abstract_syntax_tree::AstValue::Num(n) => {
+            let (sign, digits) = n.to_u64_digits();
+            if sign == num_bigint::Sign::Minus {
+                None
+            } else {
+                Some(*digits.first().unwrap_or(&0))
+            }
+        }
+        _ => None,
     }
 }
 
@@ -1004,7 +1060,7 @@ fn infer_call_args(
     body: &[WrappedAstStatement],
     call_group_start_idx: usize,
     call_stmt: &WrappedAstStatement,
-    reg_name_to_var: &HashMap<Register, AstVariableId>,
+    reg_name_to_var: &RegNameToVarMap,
     var_id_to_reg: &HashMap<AstVariableId, Register>,
     var_id_to_rsp_offset: &HashMap<AstVariableId, isize>,
     rsp_offset_to_var: &HashMap<isize, AstVariableId>,
@@ -1017,10 +1073,8 @@ fn infer_call_args(
     };
 
     let fallback_args = infer_args_by_calling_convention(
-        variables,
         body,
         call_group_start_idx,
-        reg_name_to_var,
         var_id_to_reg,
         var_id_to_rsp_offset,
     );
@@ -1028,7 +1082,7 @@ fn infer_call_args(
     if let Some(params) = callee_params
         && !params.is_empty()
     {
-        let mut args = infer_args_from_callee_params(
+        let args = infer_args_from_callee_params(
             variables,
             body,
             call_group_start_idx,
@@ -1047,16 +1101,6 @@ fn infer_call_args(
             return fallback_args;
         }
 
-        // Keep callee-based ordering but patch unknown slots from fallback when possible.
-        for (i, arg) in args.iter_mut().enumerate() {
-            if is_unknown_expr(arg)
-                && let Some(fallback) = fallback_args.get(i)
-                && !is_unknown_expr(fallback)
-            {
-                *arg = fallback.clone();
-            }
-        }
-
         return args;
     }
 
@@ -1068,18 +1112,18 @@ fn infer_args_from_callee_params(
     body: &[WrappedAstStatement],
     call_group_start_idx: usize,
     params: &[crate::abstract_syntax_tree::AstParameter],
-    reg_name_to_var: &HashMap<Register, AstVariableId>,
+    reg_name_to_var: &RegNameToVarMap,
     var_id_to_reg: &HashMap<AstVariableId, Register>,
     var_id_to_rsp_offset: &HashMap<AstVariableId, isize>,
     rsp_offset_to_var: &HashMap<isize, AstVariableId>,
 ) -> Vec<Wrapped<AstExpression>> {
-    let mut interested: HashSet<Register> = HashSet::new();
+    let mut interested: RegNameSet = HashSet::new();
     for p in params.iter() {
         let AstParameterLocation::Register(reg_loc) = &p.location else {
             continue;
         };
         if let Some(r) = ir_register(reg_loc.as_ref()) {
-            interested.insert(r);
+            interested.insert(RegKey::from_register(&r));
         }
     }
     let reg_writes =
@@ -1116,12 +1160,13 @@ fn infer_args_from_callee_params(
                     out.push(wrap_unknown_expr());
                     continue;
                 };
+                let reg_key = RegKey::from_register(&r);
                 let arg = reg_writes
-                    .get(&r)
+                    .get(&reg_key)
                     .cloned()
                     .or_else(|| {
                         reg_name_to_var
-                            .get(&r)
+                            .get(&reg_key)
                             .copied()
                             .map(|id| wrap_var_expr(variables.clone(), id))
                     })
@@ -1149,90 +1194,27 @@ fn infer_args_from_callee_params(
 }
 
 fn infer_args_by_calling_convention(
-    variables: &ArcAstVariableMap,
     body: &[WrappedAstStatement],
     call_group_start_idx: usize,
-    reg_name_to_var: &HashMap<Register, AstVariableId>,
     var_id_to_reg: &HashMap<AstVariableId, Register>,
     var_id_to_rsp_offset: &HashMap<AstVariableId, isize>,
 ) -> Vec<Wrapped<AstExpression>> {
-    // Windows x64 calling convention (best-effort): rcx, rdx, r8, r9.
-    // We accept width-variants since IR often uses edx/r8d.
-    let arg_regs = [
-        [
-            <VirtualMachine as X64Range>::rcx(),
-            <VirtualMachine as X64Range>::ecx(),
-            <VirtualMachine as X64Range>::cx(),
-            <VirtualMachine as X64Range>::cl(),
-        ],
-        [
-            <VirtualMachine as X64Range>::rdx(),
-            <VirtualMachine as X64Range>::edx(),
-            <VirtualMachine as X64Range>::dx(),
-            <VirtualMachine as X64Range>::dl(),
-        ],
-        [
-            <VirtualMachine as X64Range>::r8(),
-            <VirtualMachine as X64Range>::r8d(),
-            <VirtualMachine as X64Range>::r8w(),
-            <VirtualMachine as X64Range>::r8b(),
-        ],
-        [
-            <VirtualMachine as X64Range>::r9(),
-            <VirtualMachine as X64Range>::r9d(),
-            <VirtualMachine as X64Range>::r9w(),
-            <VirtualMachine as X64Range>::r9b(),
-        ],
-    ];
-
-    let mut interested: HashSet<Register> = HashSet::new();
-    for regs in arg_regs.iter() {
-        for reg in regs.iter() {
-            interested.insert(reg.clone());
-        }
-    }
+    // Deterministic fallback: collect all register families and stack slots written
+    // before call; register key includes architecture + family bit-start.
+    let interested: RegNameSet = HashSet::new();
     let reg_writes =
         scan_backward_for_register_writes(body, call_group_start_idx, var_id_to_reg, &interested);
 
-    // Only include registers that look like explicit argument setup in the window.
     let mut out: Vec<Wrapped<AstExpression>> = Vec::new();
-    for regs in arg_regs.iter() {
-        let mut chosen = None;
-        for reg in regs.iter() {
-            if let Some(v) = reg_writes.get(reg) {
-                chosen = Some(v.clone());
-                break;
-            }
-        }
-        if chosen.is_none() {
-            for reg in regs.iter() {
-                if let Some(var_id) = reg_name_to_var.get(reg).copied() {
-                    chosen = Some(wrap_var_expr(variables.clone(), var_id));
-                    break;
-                }
-            }
-        }
-        if let Some(v) = chosen {
+    let mut reg_keys: Vec<_> = reg_writes.keys().copied().collect();
+    reg_keys.sort_unstable_by_key(|key| key.sort_key());
+    for reg_key in reg_keys {
+        if let Some(v) = reg_writes.get(&reg_key).cloned() {
             out.push(v);
         }
     }
 
-    // If we couldn't prove anything, don't emit noisy unknown args.
-    if out.is_empty() {
-        // No proven register setup; don't emit noisy args.
-        return Vec::new();
-    }
-
-    // Best-effort stack args (Win64): only attempt when all 4 reg args are proven.
-    if out.len() < 4 {
-        return out;
-    }
-
-    // Scan for writes to [rsp + 0x20], [rsp + 0x28], ... (arg5+; ignore shadow-space/home-space).
-    let mut interested_stack_offsets: HashSet<isize> = HashSet::new();
-    for i in 0..16 {
-        interested_stack_offsets.insert(0x20 + (i * 8) as isize);
-    }
+    let interested_stack_offsets: HashSet<isize> = HashSet::new();
     let stack_writes = scan_backward_for_stack_slot_writes(
         body,
         call_group_start_idx,
@@ -1240,20 +1222,18 @@ fn infer_args_by_calling_convention(
         var_id_to_reg,
         &interested_stack_offsets,
     );
-    if !stack_writes.contains_key(&0x20) {
-        return out;
-    }
-    let mut off = 0x20isize;
-    while let Some(v) = stack_writes.get(&off) {
-        out.push(v.clone());
-        off += 8;
-        if off > 0x20 + (16 * 8) {
-            break;
+    let mut stack_offsets: Vec<_> = stack_writes
+        .keys()
+        .copied()
+        .filter(|offset| *offset >= 0)
+        .collect();
+    stack_offsets.sort_unstable();
+    for offset in stack_offsets {
+        if let Some(v) = stack_writes.get(&offset).cloned() {
+            out.push(v);
         }
     }
 
-    // If we have no callee info, avoid printing implicit default values.
-    // But keep proven args.
     out
 }
 
@@ -1261,44 +1241,60 @@ fn scan_backward_for_register_writes(
     body: &[WrappedAstStatement],
     call_group_start_idx: usize,
     var_id_to_reg: &HashMap<AstVariableId, Register>,
-    interested: &HashSet<Register>,
-) -> HashMap<Register, Wrapped<AstExpression>> {
-    let mut out: HashMap<Register, Wrapped<AstExpression>> = HashMap::new();
+    interested: &RegNameSet,
+) -> RegNameExprMap {
+    let mut out: RegNameExprMap = HashMap::new();
 
     let mut i = call_group_start_idx;
     while i > 0 {
         i -= 1;
-        let stmt = &body[i].statement;
+        let wrapped_stmt = &body[i];
+        let stmt = &wrapped_stmt.statement;
 
         if is_barrier(stmt) {
             break;
         }
 
+        if let Some(reg) = stmt_origin_assigned_register(wrapped_stmt) {
+            let reg_key = RegKey::from_register(&reg);
+            if (interested.is_empty() || interested.contains(&reg_key))
+                && !out.contains_key(&reg_key)
+            {
+                if let Some(rhs) = stmt_assigned_expression(stmt) {
+                    out.insert(reg_key, rhs);
+                }
+            }
+        }
+
         match stmt {
             AstStatement::Declaration(var, init) => {
-                if let Some(reg) = var_id_to_reg.get(&var.id)
-                    && interested.contains(reg)
-                    && !out.contains_key(reg)
-                {
-                    if let Some(init) = init {
-                        out.insert(reg.clone(), init.clone());
+                if let Some(reg) = var_id_to_reg.get(&var.id) {
+                    let reg_key = RegKey::from_register(reg);
+                    if (interested.is_empty() || interested.contains(&reg_key))
+                        && !out.contains_key(&reg_key)
+                    {
+                        if let Some(init) = init {
+                            out.insert(reg_key, init.clone());
+                        }
                     }
                 }
             }
             AstStatement::Assignment(lhs, rhs) => {
                 if let AstExpression::Variable(_, lhs_id) = lhs.item {
-                    if let Some(reg) = var_id_to_reg.get(&lhs_id)
-                        && interested.contains(reg)
-                        && !out.contains_key(reg)
-                    {
-                        out.insert(reg.clone(), rhs.clone());
+                    if let Some(reg) = var_id_to_reg.get(&lhs_id) {
+                        let reg_key = RegKey::from_register(reg);
+                        if (interested.is_empty() || interested.contains(&reg_key))
+                            && !out.contains_key(&reg_key)
+                        {
+                            out.insert(reg_key, rhs.clone());
+                        }
                     }
                 }
             }
             _ => {}
         }
 
-        if out.len() >= interested.len() {
+        if !interested.is_empty() && out.len() >= interested.len() {
             break;
         }
     }
@@ -1318,40 +1314,53 @@ fn scan_backward_for_stack_slot_writes(
     let mut i = call_group_start_idx;
     while i > 0 {
         i -= 1;
-        let stmt = &body[i].statement;
+        let wrapped_stmt = &body[i];
+        let stmt = &wrapped_stmt.statement;
 
         if is_barrier(stmt) {
             break;
         }
-        if is_stack_pointer_write(stmt, var_id_to_reg) {
+        if is_stack_pointer_write(wrapped_stmt, var_id_to_reg) {
             break;
+        }
+
+        if let Some(off) = stmt_origin_assigned_rsp_offset(wrapped_stmt) {
+            if (interested_offsets.is_empty() || interested_offsets.contains(&off))
+                && !out.contains_key(&off)
+            {
+                if let Some(rhs) = stmt_assigned_expression(stmt) {
+                    out.insert(off, rhs);
+                }
+            }
         }
 
         match stmt {
             AstStatement::Declaration(var, init) => {
-                if let Some(off) = var_id_to_rsp_offset.get(&var.id).copied()
-                    && interested_offsets.contains(&off)
-                    && !out.contains_key(&off)
-                {
-                    if let Some(init) = init {
-                        out.insert(off, init.clone());
+                if let Some(off) = var_id_to_rsp_offset.get(&var.id).copied() {
+                    if (interested_offsets.is_empty() || interested_offsets.contains(&off))
+                        && !out.contains_key(&off)
+                    {
+                        if let Some(init) = init {
+                            out.insert(off, init.clone());
+                        }
                     }
                 }
             }
             AstStatement::Assignment(lhs, rhs) => {
                 if let AstExpression::Variable(_, lhs_id) = lhs.item {
-                    if let Some(off) = var_id_to_rsp_offset.get(&lhs_id).copied()
-                        && interested_offsets.contains(&off)
-                        && !out.contains_key(&off)
-                    {
-                        out.insert(off, rhs.clone());
+                    if let Some(off) = var_id_to_rsp_offset.get(&lhs_id).copied() {
+                        if (interested_offsets.is_empty() || interested_offsets.contains(&off))
+                            && !out.contains_key(&off)
+                        {
+                            out.insert(off, rhs.clone());
+                        }
                     }
                 }
             }
             _ => {}
         }
 
-        if out.len() >= interested_offsets.len() {
+        if !interested_offsets.is_empty() && out.len() >= interested_offsets.len() {
             break;
         }
     }
@@ -1360,10 +1369,16 @@ fn scan_backward_for_stack_slot_writes(
 }
 
 fn is_stack_pointer_write(
-    stmt: &AstStatement,
+    stmt: &WrappedAstStatement,
     var_id_to_reg: &HashMap<AstVariableId, Register>,
 ) -> bool {
-    match stmt {
+    if let Some(reg) = stmt_origin_assigned_register(stmt)
+        && reg.is_sp()
+    {
+        return true;
+    }
+
+    match &stmt.statement {
         AstStatement::Declaration(var, _) => {
             var_id_to_reg.get(&var.id).is_some_and(Register::is_sp)
         }
@@ -1376,6 +1391,37 @@ fn is_stack_pointer_write(
         }
         _ => false,
     }
+}
+
+fn stmt_assigned_expression(stmt: &AstStatement) -> Option<Wrapped<AstExpression>> {
+    match stmt {
+        AstStatement::Declaration(_, init) => init.clone(),
+        AstStatement::Assignment(_, rhs) => Some(rhs.clone()),
+        _ => None,
+    }
+}
+
+fn stmt_origin_assigned_register(stmt: &WrappedAstStatement) -> Option<Register> {
+    let ir_stmt = stmt_origin_ir_statement(stmt)?;
+    let IrStatement::Assignment { to, .. } = ir_stmt else {
+        return None;
+    };
+    let instruction_args = stmt_origin_instruction_args(stmt)?;
+    let resolved_to = resolve_operand(to, instruction_args);
+    match resolved_to.as_ref() {
+        IrData::Register(reg) => Some(reg.clone()),
+        _ => None,
+    }
+}
+
+fn stmt_origin_assigned_rsp_offset(stmt: &WrappedAstStatement) -> Option<isize> {
+    let ir_stmt = stmt_origin_ir_statement(stmt)?;
+    let IrStatement::Assignment { to, .. } = ir_stmt else {
+        return None;
+    };
+    let instruction_args = stmt_origin_instruction_args(stmt)?;
+    let resolved_to = resolve_operand(to, instruction_args);
+    rsp_offset_from_location(resolved_to.as_ref())
 }
 
 fn is_barrier(stmt: &AstStatement) -> bool {
@@ -1411,20 +1457,26 @@ fn get_function_parameters(
     Some(func.parameters.clone())
 }
 
-fn build_register_name_to_var_map(
-    variables: &ArcAstVariableMap,
-) -> HashMap<Register, AstVariableId> {
-    let mut map: HashMap<Register, AstVariableId> = HashMap::new();
+fn build_register_name_to_var_map(variables: &ArcAstVariableMap) -> RegNameToVarMap {
+    let mut map: RegNameToVarMap = HashMap::new();
     let vars = variables.read().unwrap();
-    for (var_id, var) in vars.iter() {
+    let mut vars_sorted: Vec<_> = vars.iter().collect();
+    vars_sorted.sort_unstable_by_key(|(var_id, _)| var_id.index);
+    for (var_id, var) in vars_sorted {
         let Some(access_map) = var.data_access_ir.as_ref() else {
             continue;
         };
-        for da in access_map.values().flat_map(|x| x.iter()) {
-            let IrData::Register(reg) = da.location().as_ref() else {
-                continue;
-            };
-            map.entry(reg.clone()).or_insert(*var_id);
+        let mut access_map_sorted: Vec<_> = access_map.iter().collect();
+        access_map_sorted.sort_unstable_by_key(|(ir_index, _)| {
+            (ir_index.ir_index(), *ir_index.statement_index())
+        });
+        for (_ir_index, accesses) in access_map_sorted {
+            for da in accesses.iter() {
+                let IrData::Register(reg) = da.location().as_ref() else {
+                    continue;
+                };
+                map.entry(RegKey::from_register(reg)).or_insert(*var_id);
+            }
         }
     }
     map
@@ -1435,16 +1487,37 @@ fn build_var_id_to_register_name_map(
 ) -> HashMap<AstVariableId, Register> {
     let vars = variables.read().unwrap();
     let mut map: HashMap<AstVariableId, Register> = HashMap::new();
-    for (var_id, var) in vars.iter() {
+    let mut vars_sorted: Vec<_> = vars.iter().collect();
+    vars_sorted.sort_unstable_by_key(|(var_id, _)| var_id.index);
+    for (var_id, var) in vars_sorted {
         let Some(access_map) = var.data_access_ir.as_ref() else {
             continue;
         };
-        for da in access_map.values().flat_map(|x| x.iter()) {
-            let IrData::Register(reg) = da.location().as_ref() else {
-                continue;
-            };
-            map.entry(*var_id).or_insert(reg.clone());
-            break;
+        let mut access_map_sorted: Vec<_> = access_map.iter().collect();
+        access_map_sorted.sort_unstable_by_key(|(ir_index, _)| {
+            (ir_index.ir_index(), *ir_index.statement_index())
+        });
+        let mut any_reg: Option<Register> = None;
+        let mut written_reg: Option<Register> = None;
+        for (_ir_index, accesses) in access_map_sorted {
+            for da in accesses.iter() {
+                let IrData::Register(reg) = da.location().as_ref() else {
+                    continue;
+                };
+                if any_reg.is_none() {
+                    any_reg = Some(reg.clone());
+                }
+                if *da.access_type() == IrDataAccessType::Write {
+                    written_reg = Some(reg.clone());
+                    break;
+                }
+            }
+            if written_reg.is_some() {
+                break;
+            }
+        }
+        if let Some(reg) = written_reg.or(any_reg) {
+            map.insert(*var_id, reg);
         }
     }
     map
@@ -1453,12 +1526,20 @@ fn build_var_id_to_register_name_map(
 fn build_data_location_to_var_map(variables: &ArcAstVariableMap) -> HashMap<IrData, AstVariableId> {
     let vars = variables.read().unwrap();
     let mut map: HashMap<IrData, AstVariableId> = HashMap::new();
-    for (var_id, var) in vars.iter() {
+    let mut vars_sorted: Vec<_> = vars.iter().collect();
+    vars_sorted.sort_unstable_by_key(|(var_id, _)| var_id.index);
+    for (var_id, var) in vars_sorted {
         let Some(access_map) = var.data_access_ir.as_ref() else {
             continue;
         };
-        for da in access_map.values().flat_map(|x| x.iter()) {
-            map.entry(da.location().as_ref().clone()).or_insert(*var_id);
+        let mut access_map_sorted: Vec<_> = access_map.iter().collect();
+        access_map_sorted.sort_unstable_by_key(|(ir_index, _)| {
+            (ir_index.ir_index(), *ir_index.statement_index())
+        });
+        for (_ir_index, accesses) in access_map_sorted {
+            for da in accesses.iter() {
+                map.entry(da.location().as_ref().clone()).or_insert(*var_id);
+            }
         }
     }
     map
@@ -1467,16 +1548,29 @@ fn build_data_location_to_var_map(variables: &ArcAstVariableMap) -> HashMap<IrDa
 fn build_var_id_to_rsp_offset_map(variables: &ArcAstVariableMap) -> HashMap<AstVariableId, isize> {
     let vars = variables.read().unwrap();
     let mut map: HashMap<AstVariableId, isize> = HashMap::new();
-    for (var_id, var) in vars.iter() {
+    let mut vars_sorted: Vec<_> = vars.iter().collect();
+    vars_sorted.sort_unstable_by_key(|(var_id, _)| var_id.index);
+    for (var_id, var) in vars_sorted {
         let Some(access_map) = var.data_access_ir.as_ref() else {
             continue;
         };
-        for da in access_map.values().flat_map(|x| x.iter()) {
-            let Some(off) = rsp_offset_from_location(da.location().as_ref()) else {
-                continue;
-            };
-            map.entry(*var_id).or_insert(off);
-            break;
+        let mut access_map_sorted: Vec<_> = access_map.iter().collect();
+        access_map_sorted.sort_unstable_by_key(|(ir_index, _)| {
+            (ir_index.ir_index(), *ir_index.statement_index())
+        });
+        for (_ir_index, accesses) in access_map_sorted {
+            let mut found = false;
+            for da in accesses.iter() {
+                let Some(off) = rsp_offset_from_location(da.location().as_ref()) else {
+                    continue;
+                };
+                map.entry(*var_id).or_insert(off);
+                found = true;
+                break;
+            }
+            if found {
+                break;
+            }
         }
     }
     map
@@ -1486,8 +1580,13 @@ fn build_rsp_offset_to_var_map(
     var_id_to_rsp_offset: &HashMap<AstVariableId, isize>,
 ) -> HashMap<isize, AstVariableId> {
     let mut map: HashMap<isize, AstVariableId> = HashMap::new();
-    for (var_id, off) in var_id_to_rsp_offset.iter() {
-        map.entry(*off).or_insert(*var_id);
+    let mut entries: Vec<_> = var_id_to_rsp_offset
+        .iter()
+        .map(|(var_id, off)| (*off, *var_id))
+        .collect();
+    entries.sort_unstable_by_key(|(off, var_id)| (*off, var_id.index));
+    for (off, var_id) in entries {
+        map.entry(off).or_insert(var_id);
     }
     map
 }

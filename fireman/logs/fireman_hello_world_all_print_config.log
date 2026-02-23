@@ -1,0 +1,1694 @@
+I fb/pe/fire/analyze_block.rs: Block analysis started [0x1000 - 0x9268]0x1125
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x1125
+T fb/pe/block.rs: - 0x1125 push rbp
+T fb/pe/block.rs: - 0x1126 mov rbp rsp
+T fb/pe/block.rs: - 0x1129 sub rsp 0x30
+T fb/pe/block.rs: - 0x112D mov [rbp-0x4] 0xFF
+T fb/pe/block.rs: - 0x1134 mov rax [rip+0xA675]
+T fb/pe/block.rs: - 0x113B mov [rax] 0x0
+T fb/pe/block.rs: - 0x1141 call 0x1154
+D fb/pe/block.rs: Block generation done for size Some(33) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1146"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1154"), destination_type: Static, relation_type: Call }]
+D fb/pe/fire/analyze_block.rs: Block created ([0x1000 - 0x9268]0x1125 ~ [0x1000 - 0x9268]0x1146)
+D fb/pe/fire/analyze_block.rs: Converting 7 instructions to IR at [0x1000 - 0x9268]0x1125
+D fb/pe/fire/analyze_block.rs: Completed IR conversion for block instructions, total 14 statements
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp - arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))rsp
+T fb/ir/analyze/data_access.rs: - r(rsp) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: calc_flags [of, sf, zf, af, cf, pf] (o1 - o2)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))o1 - o2
+T fb/ir/analyze/data_access.rs: - r(o1 - o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp - arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rip + instruction_byte_size
+T fb/ir/analyze/data_access.rs: - r(rip + instruction_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: call o1
+T fb/ir/analyze/data_access.rs: - r(o1) arch_len
+T fb/ir/analyze/data_access.rs: type o1 = sizeof(o1)*
+T fb/ir/analyze/data_access.rs: type rsp = arch_len*
+T fb/ir/analyze/data_access.rs: type rip = arch_len*
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp - arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))rsp
+T fb/ir/analyze/datatype.rs: - rsp u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: calc_flags [of, sf, zf, af, cf, pf] (o1 - o2)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))o1 - o2
+T fb/ir/analyze/datatype.rs: - o1 - o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp - arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rip + instruction_byte_size
+T fb/ir/analyze/datatype.rs: - rip + instruction_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: call o1
+T fb/ir/analyze/datatype.rs: - o1 * arch_len
+T fb/ir/analyze/datatype.rs: type o1 = sizeof(o1)*
+T fb/ir/analyze/datatype.rs: - o1 * sizeof(o1)
+T fb/ir/analyze/datatype.rs: type rsp = arch_len*
+T fb/ir/analyze/datatype.rs: - rsp * arch_len
+T fb/ir/analyze/datatype.rs: type rip = arch_len*
+T fb/ir/analyze/datatype.rs: - rip * arch_len
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: u [0, 6]
+T fb/ir/analyze/variables.rs: - r rsp - arch_byte_size
+T fb/ir/analyze/variables.rs: - r rsp - arch_byte_size
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - r rsp
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - w rbp
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - r zero_extend rsp
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - w rbp
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - r rsp - 0x30
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - r zero_extend 0xFF
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - w rbp - 0x4
+T fb/ir/analyze/variables.rs: u [4]
+T fb/ir/analyze/variables.rs: - r zero_extend rip + 0xA675
+T fb/ir/analyze/variables.rs: u [4]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: * [6]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - r rip + instruction_byte_size
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: * [6]
+T fb/ir/analyze/variables.rs: - r 0x1154
+I fb/pe/fire/analyze_block.rs: Block analysis completed
+I fb/pe/fire/analyze_block.rs: Block analysis started [0x1000 - 0x9268]0x1154
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x1154
+T fb/pe/block.rs: - 0x1154 push rbp
+T fb/pe/block.rs: - 0x1155 mov rbp rsp
+T fb/pe/block.rs: - 0x1158 sub rsp 0xE0
+T fb/pe/block.rs: - 0x115F mov [rbp-0x8] 0x0
+T fb/pe/block.rs: - 0x1167 mov [rbp-0xC] 0x0
+T fb/pe/block.rs: - 0x116E lea rax [rbp-0xC0]
+T fb/pe/block.rs: - 0x1175 mov r8d 0x68
+T fb/pe/block.rs: - 0x117B mov edx 0x0
+T fb/pe/block.rs: - 0x1180 mov rcx rax
+T fb/pe/block.rs: - 0x1183 call 0x9160
+D fb/pe/block.rs: Block generation done for size Some(52) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1188"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x9160"), destination_type: Static, relation_type: Call }]
+D fb/pe/fire/analyze_block.rs: Block created ([0x1000 - 0x9268]0x1154 ~ [0x1000 - 0x9268]0x1188)
+D fb/pe/fire/analyze_block.rs: Converting 10 instructions to IR at [0x1000 - 0x9268]0x1154
+D fb/pe/fire/analyze_block.rs: Completed IR conversion for block instructions, total 17 statements
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp - arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))rsp
+T fb/ir/analyze/data_access.rs: - r(rsp) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: calc_flags [of, sf, zf, af, cf, pf] (o1 - o2)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))o1 - o2
+T fb/ir/analyze/data_access.rs: - r(o1 - o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp - arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rip + instruction_byte_size
+T fb/ir/analyze/data_access.rs: - r(rip + instruction_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: call o1
+T fb/ir/analyze/data_access.rs: - r(o1) arch_len
+T fb/ir/analyze/data_access.rs: type o1 = sizeof(o1)*
+T fb/ir/analyze/data_access.rs: type rsp = arch_len*
+T fb/ir/analyze/data_access.rs: type rip = arch_len*
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp - arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))rsp
+T fb/ir/analyze/datatype.rs: - rsp u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: calc_flags [of, sf, zf, af, cf, pf] (o1 - o2)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))o1 - o2
+T fb/ir/analyze/datatype.rs: - o1 - o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp - arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rip + instruction_byte_size
+T fb/ir/analyze/datatype.rs: - rip + instruction_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: call o1
+T fb/ir/analyze/datatype.rs: - o1 * arch_len
+T fb/ir/analyze/datatype.rs: type o1 = sizeof(o1)*
+T fb/ir/analyze/datatype.rs: - o1 * sizeof(o1)
+T fb/ir/analyze/datatype.rs: type rsp = arch_len*
+T fb/ir/analyze/datatype.rs: - rsp * arch_len
+T fb/ir/analyze/datatype.rs: type rip = arch_len*
+T fb/ir/analyze/datatype.rs: - rip * arch_len
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: u [0, 9]
+T fb/ir/analyze/variables.rs: - r rsp - arch_byte_size
+T fb/ir/analyze/variables.rs: - r rsp - arch_byte_size
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - r rsp
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - w rbp
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - r zero_extend rsp
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - w rbp
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - r rsp - 0xE0
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [3, 4, 7]
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - w rbp - 0x8
+T fb/ir/analyze/variables.rs: u [4]
+T fb/ir/analyze/variables.rs: - w rbp - 0xC
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0xC0
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - r zero_extend 0x68
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - w r8d
+T fb/ir/analyze/variables.rs: u [7]
+T fb/ir/analyze/variables.rs: - w edx
+T fb/ir/analyze/variables.rs: u [8]
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: u [8]
+T fb/ir/analyze/variables.rs: - w rcx
+T fb/ir/analyze/variables.rs: * [9]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [9]
+T fb/ir/analyze/variables.rs: - r rip + instruction_byte_size
+T fb/ir/analyze/variables.rs: u [9]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: * [9]
+T fb/ir/analyze/variables.rs: - r 0x9160
+I fb/pe/fire/analyze_block.rs: Block analysis completed
+I fb/pe/fire/analyze_block.rs: Block analysis started [0x1000 - 0x9268]0x9160
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x9160
+T fb/pe/block.rs: - 0x9160 jmp [rip+0x8206]
+D fb/pe/block.rs: Block generation done for size Some(6) connected_to=[BlockRelationInformation { destination: None, destination_type: Dynamic, relation_type: Jump }]
+D fb/pe/fire/analyze_block.rs: Block created ([0x1000 - 0x9268]0x9160 ~ [0x1000 - 0x9268]0x9166)
+D fb/pe/fire/analyze_block.rs: Converting 1 instructions to IR at [0x1000 - 0x9268]0x9160
+D fb/pe/fire/analyze_block.rs: Completed IR conversion for block instructions, total 1 statements
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: jmp o1
+T fb/ir/analyze/data_access.rs: - r(o1) arch_len
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: jmp o1
+T fb/ir/analyze/datatype.rs: - o1 * arch_len
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: * [0]
+T fb/ir/analyze/variables.rs: - r rip + 0x8206
+I fb/pe/fire/analyze_block.rs: Block analysis completed
+I fb/pe/fire/analyze_block.rs: Block analysis started [0x1000 - 0x9268]0x1188
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x1188
+T fb/pe/block.rs: - 0x1188 mov rax [rip+0xA621]
+T fb/pe/block.rs: - 0x118F mov eax [rax]
+T fb/pe/block.rs: - 0x1191 test eax eax
+T fb/pe/block.rs: - 0x1193 je 0x11A8
+D fb/pe/block.rs: Block generation done for size Some(13) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1195"), destination_type: Static, relation_type: Continued }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x11A8"), destination_type: Static, relation_type: Jcc }]
+D fb/pe/fire/analyze_block.rs: Block created ([0x1000 - 0x9268]0x1188 ~ [0x1000 - 0x9268]0x1195)
+D fb/pe/fire/analyze_block.rs: Converting 4 instructions to IR at [0x1000 - 0x9268]0x1188
+W fb/pe/fire/analyze_block.rs: Instruction conversion failed: 0x1193 je 0x11A8
+D fb/pe/fire/analyze_block.rs: Completed IR conversion for block instructions, total 6 statements
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: calc_flags [sf, zf, pf] (o1 & o2)
+T fb/ir/analyze/data_access.rs: of = (sizeof(of))0x0
+T fb/ir/analyze/data_access.rs: - r(0x0) sizeof(of)
+T fb/ir/analyze/data_access.rs: - w(of) sizeof(of)
+T fb/ir/analyze/data_access.rs: cf = (sizeof(cf))0x0
+T fb/ir/analyze/data_access.rs: - r(0x0) sizeof(cf)
+T fb/ir/analyze/data_access.rs: - w(cf) sizeof(cf)
+T fb/ir/analyze/data_access.rs: af = (sizeof(af))undefined
+T fb/ir/analyze/data_access.rs: - r(undefined) sizeof(af)
+T fb/ir/analyze/data_access.rs: - w(af) sizeof(af)
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: calc_flags [sf, zf, pf] (o1 & o2)
+T fb/ir/analyze/datatype.rs: of = (sizeof(of))0x0
+T fb/ir/analyze/datatype.rs: - 0x0 u sizeof(of)
+T fb/ir/analyze/datatype.rs: - of u sizeof(of)
+T fb/ir/analyze/datatype.rs: cf = (sizeof(cf))0x0
+T fb/ir/analyze/datatype.rs: - 0x0 u sizeof(cf)
+T fb/ir/analyze/datatype.rs: - cf u sizeof(cf)
+T fb/ir/analyze/datatype.rs: af = (sizeof(af))undefined
+T fb/ir/analyze/datatype.rs: - undefined u sizeof(af)
+T fb/ir/analyze/datatype.rs: - af u sizeof(af)
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - r zero_extend rip + 0xA621
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - w eax
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - r 0x0
+T fb/ir/analyze/variables.rs: - r 0x0
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - w of
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - w cf
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - r undefined
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - w af
+I fb/pe/fire/analyze_block.rs: Block analysis completed
+I fb/pe/fire/analyze_block.rs: Block analysis started [0x1000 - 0x9268]0x11A8
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x11A8
+T fb/pe/block.rs: - 0x11A8 mov [rbp-0x18] 0x0
+T fb/pe/block.rs: - 0x11B0 mov [rbp-0x24] 0x30
+T fb/pe/block.rs: - 0x11B7 mov eax [rbp-0x24]
+T fb/pe/block.rs: - 0x11BA mov rax [rax]
+T fb/pe/block.rs: - 0x11BE mov [rbp-0x30] rax
+T fb/pe/block.rs: - 0x11C2 mov rax [rbp-0x30]
+T fb/pe/block.rs: - 0x11C6 mov rax [rax+0x8]
+T fb/pe/block.rs: - 0x11CA mov [rbp-0x20] rax
+T fb/pe/block.rs: - 0x11CE mov [rbp-0x10] 0x0
+T fb/pe/block.rs: - 0x11D5 jmp 0x11F8
+D fb/pe/block.rs: Block generation done for size Some(47) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x11F8"), destination_type: Static, relation_type: Jump }]
+D fb/pe/fire/analyze_block.rs: Block created ([0x1000 - 0x9268]0x11A8 ~ [0x1000 - 0x9268]0x11D7)
+D fb/pe/fire/analyze_block.rs: Converting 10 instructions to IR at [0x1000 - 0x9268]0x11A8
+D fb/pe/fire/analyze_block.rs: Completed IR conversion for block instructions, total 10 statements
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: jmp o1
+T fb/ir/analyze/data_access.rs: - r(o1) arch_len
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: jmp o1
+T fb/ir/analyze/datatype.rs: - o1 * arch_len
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: u [0, 8]
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - w rbp - 0x18
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - r zero_extend 0x30
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - w rbp - 0x24
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x24
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - w eax
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [4, 7]
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: u [4]
+T fb/ir/analyze/variables.rs: - w rbp - 0x30
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x30
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - r zero_extend rax + 0x8
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [7]
+T fb/ir/analyze/variables.rs: - w rbp - 0x20
+T fb/ir/analyze/variables.rs: u [8]
+T fb/ir/analyze/variables.rs: - w rbp - 0x10
+T fb/ir/analyze/variables.rs: * [9]
+T fb/ir/analyze/variables.rs: - r 0x11F8
+I fb/pe/fire/analyze_block.rs: Block analysis completed
+I fb/pe/fire/analyze_block.rs: Block analysis started [0x1000 - 0x9268]0x11F8
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x11F8
+T fb/pe/block.rs: - 0x11F8 mov rax [rip+0xA601]
+T fb/pe/block.rs: - 0x11FF mov [rbp-0x38] rax
+T fb/pe/block.rs: - 0x1203 mov rax [rbp-0x20]
+T fb/pe/block.rs: - 0x1207 mov [rbp-0x40] rax
+T fb/pe/block.rs: - 0x120B mov [rbp-0x48] 0x0
+T fb/pe/block.rs: - 0x1213 mov rcx [rbp-0x40]
+T fb/pe/block.rs: - 0x1217 mov rax [rbp-0x48]
+T fb/pe/block.rs: - 0x121B mov rdx [rbp-0x38]
+T fb/pe/block.rs: - 0x121F F0480FB10A
+E fb/pe/block.rs: Instruction converting failed: 0x121f UnknownStatement
+D fb/pe/block.rs: Block generation done for size None connected_to=[]
+D fb/pe/fire/analyze_block.rs: Block created ([0x1000 - 0x9268]0x11F8 ~ )
+D fb/pe/fire/analyze_block.rs: Converting 9 instructions to IR at [0x1000 - 0x9268]0x11F8
+W fb/pe/fire/analyze_block.rs: Instruction conversion failed: 0x121F F0480FB10A
+D fb/pe/fire/analyze_block.rs: Completed IR conversion for block instructions, total 8 statements
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - r zero_extend rip + 0xA601
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [1, 3]
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - w rbp - 0x38
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x20
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - w rbp - 0x40
+T fb/ir/analyze/variables.rs: u [4]
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: u [4]
+T fb/ir/analyze/variables.rs: - w rbp - 0x48
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x40
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - w rcx
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x48
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [7]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x38
+T fb/ir/analyze/variables.rs: u [7]
+T fb/ir/analyze/variables.rs: - w rdx
+I fb/pe/fire/analyze_block.rs: Block analysis completed
+I fb/pe/fire/analyze_block.rs: Block analysis started [0x1000 - 0x9268]0x1195
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x1195
+T fb/pe/block.rs: - 0x1195 lea rax [rbp-0xC0]
+T fb/pe/block.rs: - 0x119C mov rcx rax
+T fb/pe/block.rs: - 0x119F mov rax [rip+0x1007E]
+T fb/pe/block.rs: - 0x11A6 call rax
+D fb/pe/block.rs: Block generation done for size Some(19) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x11A8"), destination_type: Static, relation_type: Halt }, BlockRelationInformation { destination: None, destination_type: Dynamic, relation_type: Call }]
+D fb/pe/fire/analyze_block.rs: Block created ([0x1000 - 0x9268]0x1195 ~ [0x1000 - 0x9268]0x11A8)
+D fb/pe/fire/analyze_block.rs: Converting 4 instructions to IR at [0x1000 - 0x9268]0x1195
+D fb/pe/fire/analyze_block.rs: Completed IR conversion for block instructions, total 9 statements
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp - arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rip + instruction_byte_size
+T fb/ir/analyze/data_access.rs: - r(rip + instruction_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: call o1
+T fb/ir/analyze/data_access.rs: - r(o1) arch_len
+T fb/ir/analyze/data_access.rs: type o1 = sizeof(o1)*
+T fb/ir/analyze/data_access.rs: type rsp = arch_len*
+T fb/ir/analyze/data_access.rs: type rip = arch_len*
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp - arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rip + instruction_byte_size
+T fb/ir/analyze/datatype.rs: - rip + instruction_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: call o1
+T fb/ir/analyze/datatype.rs: - o1 * arch_len
+T fb/ir/analyze/datatype.rs: type o1 = sizeof(o1)*
+T fb/ir/analyze/datatype.rs: - o1 * sizeof(o1)
+T fb/ir/analyze/datatype.rs: type rsp = arch_len*
+T fb/ir/analyze/datatype.rs: - rsp * arch_len
+T fb/ir/analyze/datatype.rs: type rip = arch_len*
+T fb/ir/analyze/datatype.rs: - rip * arch_len
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0xC0
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - w rcx
+T fb/ir/analyze/variables.rs: u [2, 3]
+T fb/ir/analyze/variables.rs: - r rax
+T fb/ir/analyze/variables.rs: - r zero_extend rip + 0x1007E
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - r rsp - arch_byte_size
+T fb/ir/analyze/variables.rs: * [3]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - r rip + instruction_byte_size
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - w rsp
+I fb/pe/fire/analyze_block.rs: Block analysis completed
+I fb/pe/fire/analyze_block.rs: Block analysis started [0x1000 - 0x9268]0x11A8
+D fb/pe/fire/analyze_block.rs: Block created ([0x1000 - 0x9268]0x11A8 ~ [0x1000 - 0x9268]0x11D7)(Analyzed)
+D fb/pe/fire/analyze_block.rs: Converting 10 instructions to IR at [0x1000 - 0x9268]0x11A8
+D fb/pe/fire/analyze_block.rs: Completed IR conversion for block instructions, total 10 statements
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: jmp o1
+T fb/ir/analyze/data_access.rs: - r(o1) arch_len
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: jmp o1
+T fb/ir/analyze/datatype.rs: - o1 * arch_len
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: u [0, 8]
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - w rbp - 0x18
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - r zero_extend 0x30
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - w rbp - 0x24
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x24
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - w eax
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [4, 7]
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: u [4]
+T fb/ir/analyze/variables.rs: - w rbp - 0x30
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x30
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - r zero_extend rax + 0x8
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [7]
+T fb/ir/analyze/variables.rs: - w rbp - 0x20
+T fb/ir/analyze/variables.rs: u [8]
+T fb/ir/analyze/variables.rs: - w rbp - 0x10
+T fb/ir/analyze/variables.rs: * [9]
+T fb/ir/analyze/variables.rs: - r 0x11F8
+I fb/pe/fire/analyze_block.rs: Block analysis completed
+I fb/pe/fire/analyze_block.rs: Block analysis started [0x1000 - 0x9268]0x11F8
+D fb/pe/fire/analyze_block.rs: Block created ([0x1000 - 0x9268]0x11F8 ~ )(Analyzed)
+D fb/pe/fire/analyze_block.rs: Converting 9 instructions to IR at [0x1000 - 0x9268]0x11F8
+W fb/pe/fire/analyze_block.rs: Instruction conversion failed: 0x121F F0480FB10A
+D fb/pe/fire/analyze_block.rs: Completed IR conversion for block instructions, total 8 statements
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - r zero_extend rip + 0xA601
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [1, 3]
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - w rbp - 0x38
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x20
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - w rbp - 0x40
+T fb/ir/analyze/variables.rs: u [4]
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: u [4]
+T fb/ir/analyze/variables.rs: - w rbp - 0x48
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x40
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - w rcx
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x48
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [7]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x38
+T fb/ir/analyze/variables.rs: u [7]
+T fb/ir/analyze/variables.rs: - w rdx
+I fb/pe/fire/analyze_block.rs: Block analysis completed
+I fb/pe/fire/analyze_block.rs: Block analysis started [0x1000 - 0x9268]0x1146
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x1146
+T fb/pe/block.rs: - 0x1146 mov [rbp-0x4] eax
+T fb/pe/block.rs: - 0x1149 nop
+T fb/pe/block.rs: - 0x114A nop
+T fb/pe/block.rs: - 0x114B mov eax [rbp-0x4]
+T fb/pe/block.rs: - 0x114E add rsp 0x30
+T fb/pe/block.rs: - 0x1152 pop rbp
+T fb/pe/block.rs: - 0x1153 ret
+D fb/pe/block.rs: Block generation done for size Some(14) connected_to=[BlockRelationInformation { destination: None, destination_type: Dynamic, relation_type: Return }]
+D fb/pe/fire/analyze_block.rs: Block created ([0x1000 - 0x9268]0x1146 ~ [0x1000 - 0x9268]0x1154)
+D fb/pe/fire/analyze_block.rs: Converting 7 instructions to IR at [0x1000 - 0x9268]0x1146
+D fb/pe/fire/analyze_block.rs: Completed IR conversion for block instructions, total 12 statements
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: calc_flags [of, sf, zf, af, cf, pf] (o1 + o2)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))o1 + o2
+T fb/ir/analyze/data_access.rs: - r(o1 + o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: type o1 = sizeof(o1)i
+T fb/ir/analyze/data_access.rs: type o2 = sizeof(o2)i
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))rsp
+T fb/ir/analyze/data_access.rs: - r(rsp) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp + arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp + arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp + arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp + arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 }
+T fb/ir/analyze/data_access.rs: - r(operand_exists(1)) unlimited
+T fb/ir/analyze/data_access.rs: - r(rsp + zero_extend o1) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: jmp rsp
+T fb/ir/analyze/data_access.rs: - r(rsp) arch_len
+T fb/ir/analyze/data_access.rs: halt
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: calc_flags [of, sf, zf, af, cf, pf] (o1 + o2)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))o1 + o2
+T fb/ir/analyze/datatype.rs: - o1 + o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: type o1 = sizeof(o1)i
+T fb/ir/analyze/datatype.rs: - o1 i sizeof(o1)
+T fb/ir/analyze/datatype.rs: type o2 = sizeof(o2)i
+T fb/ir/analyze/datatype.rs: - o2 i sizeof(o2)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))rsp
+T fb/ir/analyze/datatype.rs: - rsp u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp + arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp + arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp + arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp + arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 }
+T fb/ir/analyze/datatype.rs: - rsp + zero_extend o1 u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: jmp rsp
+T fb/ir/analyze/datatype.rs: - rsp * arch_len
+T fb/ir/analyze/datatype.rs: halt
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - r zero_extend eax
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - w rbp - 0x4
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x4
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - w eax
+T fb/ir/analyze/variables.rs: u [4]
+T fb/ir/analyze/variables.rs: - r rsp + 0x30
+T fb/ir/analyze/variables.rs: i [4]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [5, 6]
+T fb/ir/analyze/variables.rs: - r rsp
+T fb/ir/analyze/variables.rs: - r rsp
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - w rbp
+T fb/ir/analyze/variables.rs: u [5, 6]
+T fb/ir/analyze/variables.rs: - r rsp + arch_byte_size
+T fb/ir/analyze/variables.rs: - r rsp + arch_byte_size
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - r operand_exists(1)
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - r rsp + zero_extend undefined
+I fb/pe/fire/analyze_block.rs: Block analysis completed
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 0, start address: [0x1000 - 0x9268]0x1125) relation from: (id)[], to: (addr)["[0x1000 - 0x9268]0x1146", "[0x1000 - 0x9268]0x1154"]
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 1, start address: [0x1000 - 0x9268]0x1154) relation from: (id)[0], to: (addr)["[0x1000 - 0x9268]0x1188", "[0x1000 - 0x9268]0x9160"]
+D fb/ir/analyze/block_grouper.rs: Found relation with: (id)0
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 2, start address: [0x1000 - 0x9268]0x9160) relation from: (id)[1], to: (addr)[]
+D fb/ir/analyze/block_grouper.rs: Found relation with: (id)1
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 3, start address: [0x1000 - 0x9268]0x1188) relation from: (id)[1], to: (addr)["[0x1000 - 0x9268]0x1195", "[0x1000 - 0x9268]0x11A8"]
+D fb/ir/analyze/block_grouper.rs: Found relation with: (id)1
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 4, start address: [0x1000 - 0x9268]0x11A8) relation from: (id)[3, 6], to: (addr)["[0x1000 - 0x9268]0x11F8"]
+D fb/ir/analyze/block_grouper.rs: Found relation with: (id)3
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 5, start address: [0x1000 - 0x9268]0x11F8) relation from: (id)[4], to: (addr)[]
+D fb/ir/analyze/block_grouper.rs: Found relation with: (id)4
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 6, start address: [0x1000 - 0x9268]0x1195) relation from: (id)[3], to: (addr)["[0x1000 - 0x9268]0x11A8"]
+D fb/ir/analyze/block_grouper.rs: Found relation with: (id)3
+D fb/ir/analyze/block_grouper.rs: Found relation with: (addr)[0x1000 - 0x9268]0x11A8
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 4, start address: [0x1000 - 0x9268]0x11A8) relation from: (id)[3, 6], to: (addr)["[0x1000 - 0x9268]0x11F8"]
+D fb/ir/analyze/block_grouper.rs: Found relation with: (id)3
+D fb/ir/analyze/block_grouper.rs: Found relation with: (id)6
+D fb/ir/analyze/block_grouper.rs: Found relation with: (addr)[0x1000 - 0x9268]0x11F8
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 5, start address: [0x1000 - 0x9268]0x11F8) relation from: (id)[4], to: (addr)[]
+D fb/ir/analyze/block_grouper.rs: Found relation with: (id)4
+D fb/ir/analyze/block_grouper.rs: Block grouper target block (id: 7, start address: [0x1000 - 0x9268]0x1146) relation from: (id)[0], to: (addr)[]
+D fb/ir/analyze/block_grouper.rs: Found relation with: (id)0
+D fb/ir/analyze/block_grouper.rs: Generated block group: [4389, 4422]
+D fb/ir/analyze/block_grouper.rs: Generated block group: [4436, 4488, 4520, 4600]
+D fb/ir/analyze/block_grouper.rs: Generated block group: [4501]
+D fb/ir/analyze/block_grouper.rs: Generated block group: [37216]
+I fb/ir/analyze/ir_function.rs: Generate IR function from 2 blocks
+D fb/ir/analyze/ir_function.rs: IR Function size: 14
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp - arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))rsp
+T fb/ir/analyze/data_access.rs: - r(rsp) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: calc_flags [of, sf, zf, af, cf, pf] (o1 - o2)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))o1 - o2
+T fb/ir/analyze/data_access.rs: - r(o1 - o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp - arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rip + instruction_byte_size
+T fb/ir/analyze/data_access.rs: - r(rip + instruction_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: call o1
+T fb/ir/analyze/data_access.rs: - r(o1) arch_len
+T fb/ir/analyze/data_access.rs: type o1 = sizeof(o1)*
+T fb/ir/analyze/data_access.rs: type rsp = arch_len*
+T fb/ir/analyze/data_access.rs: type rip = arch_len*
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: calc_flags [of, sf, zf, af, cf, pf] (o1 + o2)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))o1 + o2
+T fb/ir/analyze/data_access.rs: - r(o1 + o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: type o1 = sizeof(o1)i
+T fb/ir/analyze/data_access.rs: type o2 = sizeof(o2)i
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))rsp
+T fb/ir/analyze/data_access.rs: - r(rsp) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp + arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp + arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp + arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp + arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 }
+T fb/ir/analyze/data_access.rs: - r(operand_exists(1)) unlimited
+T fb/ir/analyze/data_access.rs: - r(rsp + zero_extend o1) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: jmp rsp
+T fb/ir/analyze/data_access.rs: - r(rsp) arch_len
+T fb/ir/analyze/data_access.rs: halt
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp - arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))rsp
+T fb/ir/analyze/datatype.rs: - rsp u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: calc_flags [of, sf, zf, af, cf, pf] (o1 - o2)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))o1 - o2
+T fb/ir/analyze/datatype.rs: - o1 - o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp - arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rip + instruction_byte_size
+T fb/ir/analyze/datatype.rs: - rip + instruction_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: call o1
+T fb/ir/analyze/datatype.rs: - o1 * arch_len
+T fb/ir/analyze/datatype.rs: type o1 = sizeof(o1)*
+T fb/ir/analyze/datatype.rs: - o1 * sizeof(o1)
+T fb/ir/analyze/datatype.rs: type rsp = arch_len*
+T fb/ir/analyze/datatype.rs: - rsp * arch_len
+T fb/ir/analyze/datatype.rs: type rip = arch_len*
+T fb/ir/analyze/datatype.rs: - rip * arch_len
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: calc_flags [of, sf, zf, af, cf, pf] (o1 + o2)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))o1 + o2
+T fb/ir/analyze/datatype.rs: - o1 + o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: type o1 = sizeof(o1)i
+T fb/ir/analyze/datatype.rs: - o1 i sizeof(o1)
+T fb/ir/analyze/datatype.rs: type o2 = sizeof(o2)i
+T fb/ir/analyze/datatype.rs: - o2 i sizeof(o2)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))rsp
+T fb/ir/analyze/datatype.rs: - rsp u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp + arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp + arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp + arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp + arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 }
+T fb/ir/analyze/datatype.rs: - rsp + zero_extend o1 u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: jmp rsp
+T fb/ir/analyze/datatype.rs: - rsp * arch_len
+T fb/ir/analyze/datatype.rs: halt
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: u [0, 6]
+T fb/ir/analyze/variables.rs: - r rsp - arch_byte_size
+T fb/ir/analyze/variables.rs: - r rsp - arch_byte_size
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - r rsp
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - w rbp
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - r zero_extend rsp
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - w rbp
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - r rsp - 0x30
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - r zero_extend 0xFF
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - w rbp - 0x4
+T fb/ir/analyze/variables.rs: u [4]
+T fb/ir/analyze/variables.rs: - r zero_extend rip + 0xA675
+T fb/ir/analyze/variables.rs: u [4]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: * [6]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [6, 12, 13]
+T fb/ir/analyze/variables.rs: - r rsp
+T fb/ir/analyze/variables.rs: - r rsp
+T fb/ir/analyze/variables.rs: - r rip + instruction_byte_size
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: * [6]
+T fb/ir/analyze/variables.rs: - r 0x1154
+T fb/ir/analyze/variables.rs: u [7]
+T fb/ir/analyze/variables.rs: - r zero_extend eax
+T fb/ir/analyze/variables.rs: u [7]
+T fb/ir/analyze/variables.rs: - w rbp - 0x4
+T fb/ir/analyze/variables.rs: u [10]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x4
+T fb/ir/analyze/variables.rs: u [10]
+T fb/ir/analyze/variables.rs: - w eax
+T fb/ir/analyze/variables.rs: u [11]
+T fb/ir/analyze/variables.rs: - r rsp + 0x30
+T fb/ir/analyze/variables.rs: i [11]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [12]
+T fb/ir/analyze/variables.rs: - w rbp
+T fb/ir/analyze/variables.rs: u [12, 13]
+T fb/ir/analyze/variables.rs: - r rsp + arch_byte_size
+T fb/ir/analyze/variables.rs: - r rsp + arch_byte_size
+T fb/ir/analyze/variables.rs: u [12]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [13]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [13]
+T fb/ir/analyze/variables.rs: - r operand_exists(1)
+T fb/ir/analyze/variables.rs: u [13]
+T fb/ir/analyze/variables.rs: - r rsp + zero_extend undefined
+I fb/ir/analyze/ir_function.rs: IrFunction generation completed
+I fb/ir/analyze/ir_function.rs: Generate IR function from 4 blocks
+D fb/ir/analyze/ir_function.rs: IR Function size: 33
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp - arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))rsp
+T fb/ir/analyze/data_access.rs: - r(rsp) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: calc_flags [of, sf, zf, af, cf, pf] (o1 - o2)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))o1 - o2
+T fb/ir/analyze/data_access.rs: - r(o1 - o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp - arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rip + instruction_byte_size
+T fb/ir/analyze/data_access.rs: - r(rip + instruction_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: call o1
+T fb/ir/analyze/data_access.rs: - r(o1) arch_len
+T fb/ir/analyze/data_access.rs: type o1 = sizeof(o1)*
+T fb/ir/analyze/data_access.rs: type rsp = arch_len*
+T fb/ir/analyze/data_access.rs: type rip = arch_len*
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: calc_flags [sf, zf, pf] (o1 & o2)
+T fb/ir/analyze/data_access.rs: of = (sizeof(of))0x0
+T fb/ir/analyze/data_access.rs: - r(0x0) sizeof(of)
+T fb/ir/analyze/data_access.rs: - w(of) sizeof(of)
+T fb/ir/analyze/data_access.rs: cf = (sizeof(cf))0x0
+T fb/ir/analyze/data_access.rs: - r(0x0) sizeof(cf)
+T fb/ir/analyze/data_access.rs: - w(cf) sizeof(cf)
+T fb/ir/analyze/data_access.rs: af = (sizeof(af))undefined
+T fb/ir/analyze/data_access.rs: - r(undefined) sizeof(af)
+T fb/ir/analyze/data_access.rs: - w(af) sizeof(af)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: jmp o1
+T fb/ir/analyze/data_access.rs: - r(o1) arch_len
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp - arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))rsp
+T fb/ir/analyze/datatype.rs: - rsp u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: calc_flags [of, sf, zf, af, cf, pf] (o1 - o2)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))o1 - o2
+T fb/ir/analyze/datatype.rs: - o1 - o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp - arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rip + instruction_byte_size
+T fb/ir/analyze/datatype.rs: - rip + instruction_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: call o1
+T fb/ir/analyze/datatype.rs: - o1 * arch_len
+T fb/ir/analyze/datatype.rs: type o1 = sizeof(o1)*
+T fb/ir/analyze/datatype.rs: - o1 * sizeof(o1)
+T fb/ir/analyze/datatype.rs: type rsp = arch_len*
+T fb/ir/analyze/datatype.rs: - rsp * arch_len
+T fb/ir/analyze/datatype.rs: type rip = arch_len*
+T fb/ir/analyze/datatype.rs: - rip * arch_len
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: calc_flags [sf, zf, pf] (o1 & o2)
+T fb/ir/analyze/datatype.rs: of = (sizeof(of))0x0
+T fb/ir/analyze/datatype.rs: - 0x0 u sizeof(of)
+T fb/ir/analyze/datatype.rs: - of u sizeof(of)
+T fb/ir/analyze/datatype.rs: cf = (sizeof(cf))0x0
+T fb/ir/analyze/datatype.rs: - 0x0 u sizeof(cf)
+T fb/ir/analyze/datatype.rs: - cf u sizeof(cf)
+T fb/ir/analyze/datatype.rs: af = (sizeof(af))undefined
+T fb/ir/analyze/datatype.rs: - undefined u sizeof(af)
+T fb/ir/analyze/datatype.rs: - af u sizeof(af)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: jmp o1
+T fb/ir/analyze/datatype.rs: - o1 * arch_len
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: u [0, 9]
+T fb/ir/analyze/variables.rs: - r rsp - arch_byte_size
+T fb/ir/analyze/variables.rs: - r rsp - arch_byte_size
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - r rsp
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - w rbp
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - r zero_extend rsp
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - w rbp
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - r rsp - 0xE0
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [3, 4, 7, 14, 22, 28]
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: - r zero_extend 0x0
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - w rbp - 0x8
+T fb/ir/analyze/variables.rs: u [4]
+T fb/ir/analyze/variables.rs: - w rbp - 0xC
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0xC0
+T fb/ir/analyze/variables.rs: u [5]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - r zero_extend 0x68
+T fb/ir/analyze/variables.rs: u [6]
+T fb/ir/analyze/variables.rs: - w r8d
+T fb/ir/analyze/variables.rs: u [7]
+T fb/ir/analyze/variables.rs: - w edx
+T fb/ir/analyze/variables.rs: u [8, 18, 21, 25, 27]
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: u [8]
+T fb/ir/analyze/variables.rs: - w rcx
+T fb/ir/analyze/variables.rs: * [9]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [9]
+T fb/ir/analyze/variables.rs: - r rip + instruction_byte_size
+T fb/ir/analyze/variables.rs: u [9]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: * [9]
+T fb/ir/analyze/variables.rs: - r 0x9160
+T fb/ir/analyze/variables.rs: u [10]
+T fb/ir/analyze/variables.rs: - r zero_extend rip + 0xA621
+T fb/ir/analyze/variables.rs: u [10]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [11, 17]
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: u [11]
+T fb/ir/analyze/variables.rs: - w eax
+T fb/ir/analyze/variables.rs: u [12]
+T fb/ir/analyze/variables.rs: - r 0x0
+T fb/ir/analyze/variables.rs: - r 0x0
+T fb/ir/analyze/variables.rs: u [12]
+T fb/ir/analyze/variables.rs: - w of
+T fb/ir/analyze/variables.rs: u [12]
+T fb/ir/analyze/variables.rs: - w cf
+T fb/ir/analyze/variables.rs: u [12]
+T fb/ir/analyze/variables.rs: - r undefined
+T fb/ir/analyze/variables.rs: u [12]
+T fb/ir/analyze/variables.rs: - w af
+T fb/ir/analyze/variables.rs: u [14]
+T fb/ir/analyze/variables.rs: - w rbp - 0x18
+T fb/ir/analyze/variables.rs: u [15]
+T fb/ir/analyze/variables.rs: - r zero_extend 0x30
+T fb/ir/analyze/variables.rs: u [15]
+T fb/ir/analyze/variables.rs: - w rbp - 0x24
+T fb/ir/analyze/variables.rs: u [16]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x24
+T fb/ir/analyze/variables.rs: u [16]
+T fb/ir/analyze/variables.rs: - w eax
+T fb/ir/analyze/variables.rs: u [17]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [18]
+T fb/ir/analyze/variables.rs: - w rbp - 0x30
+T fb/ir/analyze/variables.rs: u [19]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x30
+T fb/ir/analyze/variables.rs: u [19]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [20]
+T fb/ir/analyze/variables.rs: - r zero_extend rax + 0x8
+T fb/ir/analyze/variables.rs: u [20]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [21]
+T fb/ir/analyze/variables.rs: - w rbp - 0x20
+T fb/ir/analyze/variables.rs: u [22]
+T fb/ir/analyze/variables.rs: - w rbp - 0x10
+T fb/ir/analyze/variables.rs: * [23]
+T fb/ir/analyze/variables.rs: - r 0x11F8
+T fb/ir/analyze/variables.rs: u [24]
+T fb/ir/analyze/variables.rs: - r zero_extend rip + 0xA601
+T fb/ir/analyze/variables.rs: u [24]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [25]
+T fb/ir/analyze/variables.rs: - w rbp - 0x38
+T fb/ir/analyze/variables.rs: u [26]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x20
+T fb/ir/analyze/variables.rs: u [26]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [27]
+T fb/ir/analyze/variables.rs: - w rbp - 0x40
+T fb/ir/analyze/variables.rs: u [28]
+T fb/ir/analyze/variables.rs: - w rbp - 0x48
+T fb/ir/analyze/variables.rs: u [29]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x40
+T fb/ir/analyze/variables.rs: u [29]
+T fb/ir/analyze/variables.rs: - w rcx
+T fb/ir/analyze/variables.rs: u [30]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x48
+T fb/ir/analyze/variables.rs: u [30]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [31]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0x38
+T fb/ir/analyze/variables.rs: u [31]
+T fb/ir/analyze/variables.rs: - w rdx
+I fb/ir/analyze/ir_function.rs: IrFunction generation completed
+I fb/ir/analyze/ir_function.rs: Generate IR function from 1 blocks
+D fb/ir/analyze/ir_function.rs: IR Function size: 4
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/data_access.rs: - r(zero_extend o2) sizeof(o1)
+T fb/ir/analyze/data_access.rs: - w(o1) sizeof(o1)
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/data_access.rs: - r(rsp - arch_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: rsp = (arch_len)rip + instruction_byte_size
+T fb/ir/analyze/data_access.rs: - r(rip + instruction_byte_size) arch_len
+T fb/ir/analyze/data_access.rs: - w(rsp) arch_len
+T fb/ir/analyze/data_access.rs: call o1
+T fb/ir/analyze/data_access.rs: - r(o1) arch_len
+T fb/ir/analyze/data_access.rs: type o1 = sizeof(o1)*
+T fb/ir/analyze/data_access.rs: type rsp = arch_len*
+T fb/ir/analyze/data_access.rs: type rip = arch_len*
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: o1 = (sizeof(o1))zero_extend o2
+T fb/ir/analyze/datatype.rs: - zero_extend o2 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: - o1 u sizeof(o1)
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rsp - arch_byte_size
+T fb/ir/analyze/datatype.rs: - rsp - arch_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: rsp = (arch_len)rip + instruction_byte_size
+T fb/ir/analyze/datatype.rs: - rip + instruction_byte_size u arch_len
+T fb/ir/analyze/datatype.rs: - rsp u arch_len
+T fb/ir/analyze/datatype.rs: call o1
+T fb/ir/analyze/datatype.rs: - o1 * arch_len
+T fb/ir/analyze/datatype.rs: type o1 = sizeof(o1)*
+T fb/ir/analyze/datatype.rs: - o1 * sizeof(o1)
+T fb/ir/analyze/datatype.rs: type rsp = arch_len*
+T fb/ir/analyze/datatype.rs: - rsp * arch_len
+T fb/ir/analyze/datatype.rs: type rip = arch_len*
+T fb/ir/analyze/datatype.rs: - rip * arch_len
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - r zero_extend rbp - 0xC0
+T fb/ir/analyze/variables.rs: u [0]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - r zero_extend rax
+T fb/ir/analyze/variables.rs: u [1]
+T fb/ir/analyze/variables.rs: - w rcx
+T fb/ir/analyze/variables.rs: u [2, 3]
+T fb/ir/analyze/variables.rs: - r rax
+T fb/ir/analyze/variables.rs: - r zero_extend rip + 0x1007E
+T fb/ir/analyze/variables.rs: u [2]
+T fb/ir/analyze/variables.rs: - w rax
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - r rsp - arch_byte_size
+T fb/ir/analyze/variables.rs: * [3]
+T fb/ir/analyze/variables.rs: - w rsp
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - r rip + instruction_byte_size
+T fb/ir/analyze/variables.rs: u [3]
+T fb/ir/analyze/variables.rs: - w rsp
+I fb/ir/analyze/ir_function.rs: IrFunction generation completed
+I fb/ir/analyze/ir_function.rs: Generate IR function from 1 blocks
+D fb/ir/analyze/ir_function.rs: IR Function size: 1
+D fb/ir/mod.rs: Analyzing data access
+T fb/ir/analyze/data_access.rs: jmp o1
+T fb/ir/analyze/data_access.rs: - r(o1) arch_len
+D fb/ir/mod.rs: Analyzing datatypes
+T fb/ir/analyze/datatype.rs: jmp o1
+T fb/ir/analyze/datatype.rs: - o1 * arch_len
+D fb/ir/mod.rs: Analyzing variables, log format: type [inst_of_asm]
+T fb/ir/analyze/variables.rs: * [0]
+T fb/ir/analyze/variables.rs: - r rip + 0x8206
+I fb/ir/analyze/ir_function.rs: IrFunction generation completed
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1141: 0x1154
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1153: true
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1153(true) but datatype not set. init datatype to bool
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1183: 0x9160
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191: 0x0
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191(0x0) but datatype not set. init datatype to int
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191: 0x0
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191: undefined
+D fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x1191(undefined) but datatype not set. init datatype to unknown_t
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x11D5: 0x11F8
+T fb/abstract_syntax_tree/optimize/ir_analyzation.rs: Constant value found in [0x1000 - 0x9268]0x9160: *0x1136C
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: call argument analysis started function_id=AstFunctionId { address: 4389 } function_version=2
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=1 ir_index=0 location="rsp - arch_byte_size"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=1 ir_index=6 location="rsp - arch_byte_size"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=2 ir_index=0 location="rsp"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=4 ir_index=1 location="zero_extend rsp"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=6 ir_index=2 location="rsp - 0x30"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=8 ir_index=3 location="zero_extend 0xFF"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=10 ir_index=4 location="zero_extend rip + 0xA675"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=12 ir_index=5 location="zero_extend 0x0"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=15 ir_index=6 location="rip + instruction_byte_size"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=15 ir_index=12 location="rsp"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=15 ir_index=13 location="rsp"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=17 ir_index=6 location="0x1154"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=18 ir_index=7 location="zero_extend eax"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=20 ir_index=10 location="zero_extend rbp - 0x4"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=22 ir_index=11 location="rsp + 0x30"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=25 ir_index=12 location="rsp + arch_byte_size"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=25 ir_index=13 location="rsp + arch_byte_size"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=28 ir_index=13 location="operand_exists(1)"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=29 ir_index=13 location="rsp + zero_extend undefined"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: call argument analysis started function_id=AstFunctionId { address: 4436 } function_version=2
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=1 ir_index=0 location="rsp - arch_byte_size"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=1 ir_index=9 location="rsp - arch_byte_size"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=2 ir_index=0 location="rsp"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=4 ir_index=1 location="zero_extend rsp"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=6 ir_index=2 location="rsp - 0xE0"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=8 ir_index=3 location="zero_extend 0x0"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=8 ir_index=4 location="zero_extend 0x0"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=8 ir_index=7 location="zero_extend 0x0"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=8 ir_index=14 location="zero_extend 0x0"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=8 ir_index=22 location="zero_extend 0x0"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=8 ir_index=28 location="zero_extend 0x0"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=11 ir_index=5 location="zero_extend rbp - 0xC0"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=13 ir_index=6 location="zero_extend 0x68"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=16 ir_index=8 location="zero_extend rax"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=16 ir_index=18 location="zero_extend rax"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=16 ir_index=21 location="zero_extend rax"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=16 ir_index=25 location="zero_extend rax"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=16 ir_index=27 location="zero_extend rax"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=19 ir_index=9 location="rip + instruction_byte_size"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=21 ir_index=9 location="0x9160"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=22 ir_index=10 location="zero_extend rip + 0xA621"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=24 ir_index=11 location="zero_extend rax"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=24 ir_index=17 location="zero_extend rax"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=26 ir_index=12 location="0x0"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=26 ir_index=12 location="0x0"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=29 ir_index=12 location="undefined"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=32 ir_index=15 location="zero_extend 0x30"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=34 ir_index=16 location="zero_extend rbp - 0x24"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=38 ir_index=19 location="zero_extend rbp - 0x30"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=40 ir_index=20 location="zero_extend rax + 0x8"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=44 ir_index=23 location="0x11F8"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=45 ir_index=24 location="zero_extend rip + 0xA601"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=48 ir_index=26 location="zero_extend rbp - 0x20"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=52 ir_index=29 location="zero_extend rbp - 0x40"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=54 ir_index=30 location="zero_extend rbp - 0x48"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=56 ir_index=31 location="zero_extend rbp - 0x38"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: call argument analysis started function_id=AstFunctionId { address: 4501 } function_version=2
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=1 ir_index=0 location="zero_extend rbp - 0xC0"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=3 ir_index=1 location="zero_extend rax"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=5 ir_index=2 location="zero_extend rip + 0x1007E"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=5 ir_index=3 location="rax"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=7 ir_index=3 location="rsp - arch_byte_size"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=9 ir_index=3 location="rip + instruction_byte_size"
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: call argument analysis started function_id=AstFunctionId { address: 37216 } function_version=2
+T fb/abstract_syntax_tree/optimize/call_argument_analyzation.rs: - var_id=1 ir_index=0 location="rip + 0x8206"
+T fb/abstract_syntax_tree/optimize/collapse_unused_variable.rs: Removing assignment of unused variable lhs=AstVariable { name: None, id: AstVariableId { index: 24, parent: Some(AstFunctionId { address: 4389 }) }, type: Unknown, const_value: None } stmt.comment=None
+T fb/abstract_syntax_tree/optimize/collapse_unused_variable.rs: Removing assignment of unused variable lhs=AstVariable { name: None, id: AstVariableId { index: 18, parent: Some(AstFunctionId { address: 4436 }) }, type: Pointer(Void), const_value: None } stmt.comment=None
+T fb/abstract_syntax_tree/optimize/collapse_unused_variable.rs: Removing assignment of unused variable lhs=AstVariable { name: None, id: AstVariableId { index: 5, parent: Some(AstFunctionId { address: 4436 }) }, type: Unknown, const_value: None } stmt.comment=None
+T fb/abstract_syntax_tree/optimize/collapse_unused_variable.rs: Removing assignment of unused variable lhs=AstVariable { name: None, id: AstVariableId { index: 18, parent: Some(AstFunctionId { address: 4436 }) }, type: Pointer(Void), const_value: None } stmt.comment=None
+T fb/abstract_syntax_tree/optimize/collapse_unused_variable.rs: Removing assignment of unused variable lhs=AstVariable { name: None, id: AstVariableId { index: 6, parent: Some(AstFunctionId { address: 4501 }) }, type: Unknown, const_value: None } stmt.comment=None
+D fb/abstract_syntax_tree/print.rs: void* v17 was replaced with constant value 0x1154 function="f1125"
+D fb/abstract_syntax_tree/print.rs: bool v28 was replaced with constant value true function="f1125"
+D fb/abstract_syntax_tree/print.rs: void* v21 was replaced with constant value 0x9160 function="f1154"
+D fb/abstract_syntax_tree/print.rs: int v26 was replaced with constant value 0x0 function="f1154"
+D fb/abstract_syntax_tree/print.rs: unknown_t v29 was replaced with constant value undefined function="f1154"
+D fb/abstract_syntax_tree/print.rs: void* v44 was replaced with constant value 0x11F8 function="f1154"
+D fb/abstract_syntax_tree/print.rs: void* v1 was replaced with constant value *0x1136C function="f9160"

@@ -51,10 +51,13 @@ void f1125() {
     /* rsp = (arch_len)rip + instruction_byte_size */
     v16 = v15;
     /* call o1 */
-    v17();
+    f1154(v10, v1);
 }
 
-void f1154() {
+void f1154(
+  unknown_t p1 /* param reg rcx | usage: no linked variable */,
+  unknown_t p2 /* param reg rdx | usage: no linked variable */
+) {
   unknown_t v1;
   unknown_t v2;
   unknown_t v3;
@@ -139,7 +142,7 @@ void f1154() {
     /* rsp = (arch_len)rip + instruction_byte_size */
     v20 = v19;
     /* call o1 */
-    v21();
+    f9160(v11, v16, v8, v1, v13);
 }
 
 void f1195() {
@@ -166,10 +169,16 @@ void f1195() {
     /* rsp = (arch_len)rip + instruction_byte_size */
     v10 = v9;
     /* call o1 */
-    v6();
+    v6(v5, v3, v7);
 }
 
-void f9160() {
+void f9160(
+  unknown_t p1 /* param reg rcx | usage: no linked variable */,
+  unknown_t p2 /* param reg rdx | usage: no linked variable */,
+  unknown_t p3 /* param reg r8 | usage: no linked variable */,
+  unknown_t p4 /* param reg r9 | usage: no linked variable */,
+  unknown_t p5 /* param stack +0x30 | usage: no linked variable */
+) {
   // 0x9160 jmp [rip+0x8206]
     /* jmp o1 */
     goto *0x1136C;
