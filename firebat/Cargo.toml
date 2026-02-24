@@ -1,0 +1,21 @@
+[package]
+name = "firebat"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+description = "GUI of Fireball"
+homepage = "https://crates.io/crates/firebat"
+
+[lib]
+name = "firebat_lib"
+crate-type = ["rlib"]
+
+[dependencies]
+fireball.workspace = true
+chrono = { version = "0.4", default-features = true, features = ["clock"] }
+eframe = "0.33"
+egui = "0.33"
+egui_dock = "0.18"
+rfd = "0.17"

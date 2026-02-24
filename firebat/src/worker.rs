@@ -1,0 +1,82 @@
+use crate::{
+    core::FirebatCore,
+    model::{DecompileResult, KnownSectionData},
+};
+use std::{sync::mpsc, thread};
+
+pub(crate) enum WorkerRequest {
+    OpenFile(String),
+    AnalyzeSection(String),
+    AnalyzeAllSections,
+    DecompileSections(Vec<u64>),
+}
+
+pub(crate) enum WorkerResponse {
+    OpenFile(Result<(), String>),
+    AnalyzeSection(Result<Vec<KnownSectionData>, String>),
+    AnalyzeAllSections(Result<Vec<KnownSectionData>, String>),
+    DecompileSections(Result<DecompileResult, String>),
+}
+
+pub(crate) enum WorkerTryRecv {
+    Message(WorkerResponse),
+    Empty,
+    Disconnected,
+}
+
+pub(crate) struct FirebatWorker {
+    request_tx: mpsc::Sender<WorkerRequest>,
+    response_rx: mpsc::Receiver<WorkerResponse>,
+}
+
+impl FirebatWorker {
+    pub(crate) fn spawn() -> Self {
+        let (request_tx, request_rx) = mpsc::channel::<WorkerRequest>();
+        let (response_tx, response_rx) = mpsc::channel::<WorkerResponse>();
+        thread::Builder::new()
+            .name("firebat-worker".to_string())
+            .spawn(move || {
+                let mut core = FirebatCore::default();
+                while let Ok(request) = request_rx.recv() {
+                    let response = match request {
+                        WorkerRequest::OpenFile(path) => {
+                            WorkerResponse::OpenFile(core.open_file(&path))
+                        }
+                        WorkerRequest::AnalyzeSection(address) => {
+                            WorkerResponse::AnalyzeSection(core.analyze_section(&address))
+                        }
+                        WorkerRequest::AnalyzeAllSections => {
+                            WorkerResponse::AnalyzeAllSections(core.analyze_all_sections())
+                        }
+                        WorkerRequest::DecompileSections(start_addresses) => {
+                            WorkerResponse::DecompileSections(
+                                core.decompile_sections(start_addresses),
+                            )
+                        }
+                    };
+                    if response_tx.send(response).is_err() {
+                        break;
+                    }
+                }
+            })
+            .expect("failed to spawn firebat worker thread");
+        Self {
+            request_tx,
+            response_rx,
+        }
+    }
+
+    pub(crate) fn send(&self, request: WorkerRequest) -> Result<(), String> {
+        self.request_tx
+            .send(request)
+            .map_err(|_| "Background worker is unavailable".to_string())
+    }
+
+    pub(crate) fn try_recv(&self) -> WorkerTryRecv {
+        match self.response_rx.try_recv() {
+            Ok(response) => WorkerTryRecv::Message(response),
+            Err(mpsc::TryRecvError::Empty) => WorkerTryRecv::Empty,
+            Err(mpsc::TryRecvError::Disconnected) => WorkerTryRecv::Disconnected,
+        }
+    }
+}

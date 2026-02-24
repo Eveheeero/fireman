@@ -213,52 +213,47 @@ impl From<&iceball::Argument> for Aos<IrData> {
             }
             Argument::Memory(Memory::RelativeAddressing(v)) => {
                 let v = v.as_ref();
-                let arg_count = v.len();
-                assert_ne!(arg_count, 0);
-                assert!(matches!(arg_count, 1 | 3));
 
                 let mut iter = v.iter();
-                let arg1 = iter.next().unwrap();
-                let mut current_expr: Aos<IrData> = match arg1 {
-                    RelativeAddressingArgument::Register(reg) => match reg {
-                        Register::X64(x64_reg) => x64_reg_to_ir_reg(*x64_reg),
-                    },
-                    RelativeAddressingArgument::Constant(c) => {
-                        if *c >= 0 {
-                            IrData::Constant((*c).try_into().unwrap()).into()
-                        } else {
-                            IrData::Operation(IrDataOperation::Unary {
-                                operator: IrUnaryOperator::Negation,
-                                arg: IrData::Constant((0 - *c).try_into().unwrap()).into(),
-                            })
-                            .into()
-                        }
-                    }
-                    RelativeAddressingArgument::Operator(_) => unreachable!(),
+                let Some(arg1) = iter.next() else {
+                    return IrData::Dereference(IrData::Intrinsic(IrIntrinsic::Unknown).into()).into();
                 };
-
-                if let Some(operator) = iter.next() {
-                    let operator = match operator {
-                        RelativeAddressingArgument::Operator(op) => op,
-                        _ => unreachable!(),
-                    };
-                    let operand = iter.next().unwrap();
-                    let operand: Aos<IrData> = match operand {
+                let to_ir_operand = |arg: &RelativeAddressingArgument| -> Option<Aos<IrData>> {
+                    match arg {
                         RelativeAddressingArgument::Register(reg) => match reg {
-                            Register::X64(x64_reg) => x64_reg_to_ir_reg(*x64_reg),
+                            Register::X64(x64_reg) => Some(x64_reg_to_ir_reg(*x64_reg)),
                         },
                         RelativeAddressingArgument::Constant(c) => {
                             if *c >= 0 {
-                                IrData::Constant((*c).try_into().unwrap()).into()
+                                Some(IrData::Constant((*c).try_into().unwrap()).into())
                             } else {
-                                IrData::Operation(IrDataOperation::Unary {
-                                    operator: IrUnaryOperator::Negation,
-                                    arg: IrData::Constant((0 - *c).try_into().unwrap()).into(),
-                                })
-                                .into()
+                                Some(
+                                    IrData::Operation(IrDataOperation::Unary {
+                                        operator: IrUnaryOperator::Negation,
+                                        arg: IrData::Constant((0 - *c).try_into().unwrap()).into(),
+                                    })
+                                    .into(),
+                                )
                             }
                         }
-                        RelativeAddressingArgument::Operator(_) => unreachable!(),
+                        RelativeAddressingArgument::Operator(_) => None,
+                    }
+                };
+                let mut current_expr: Aos<IrData> = match to_ir_operand(arg1) {
+                    Some(value) => value,
+                    None => IrData::Constant(0).into(),
+                };
+
+                while let Some(token) = iter.next() {
+                    let (operator, operand_token) = match token {
+                        RelativeAddressingArgument::Operator(op) => match iter.next() {
+                            Some(operand) => (op, operand),
+                            None => break,
+                        },
+                        _ => (&AddressingOperator::Add, token),
+                    };
+                    let Some(operand) = to_ir_operand(operand_token) else {
+                        continue;
                     };
 
                     let binary_op_ir = match operator {

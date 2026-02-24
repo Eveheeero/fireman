@@ -13,14 +13,11 @@ pub fn parse_argument(op: impl AsRef<str>) -> Result<crate::Argument, crate::Dis
     /* Constant */
     if op.as_bytes()[0] == b'0' {
         let data = if op.len() == 1 {
-            op.parse()
+            op.parse::<u64>().map_err(|_| crate::DisassembleError::Unknown)?
         } else {
-            u64::from_str_radix(&op[2..], 16)
+            u64::from_str_radix(&op[2..], 16).map_err(|_| crate::DisassembleError::Unknown)?
         };
-        if data.is_err() {
-            panic!("Cannot parse {}", op);
-        }
-        return Ok(crate::Argument::Constant(data.unwrap()));
+        return Ok(crate::Argument::Constant(data));
     }
 
     /* Register */
@@ -37,16 +34,28 @@ pub fn parse_argument(op: impl AsRef<str>) -> Result<crate::Argument, crate::Dis
 fn parse_memory(op: &str) -> Result<crate::Argument, crate::DisassembleError> {
     let mut result = Vec::<crate::RelativeAddressingArgument>::new();
     let mut inner = op.split(['[', ']']);
-    let inner = inner
-        .nth(1)
-        .unwrap_or_else(|| panic!("{}는 파싱 가능한 형태가 아닙니다.", op));
-    let items = inner.split(' ');
+    let inner = inner.nth(1).ok_or(crate::DisassembleError::Unknown)?;
+    let mut normalized = String::with_capacity(inner.len() * 2);
+    for ch in inner.chars() {
+        if ['+', '-', '*'].contains(&ch) {
+            normalized.push(' ');
+            normalized.push(ch);
+            normalized.push(' ');
+        } else {
+            normalized.push(ch);
+        }
+    }
+    let items = normalized.split_whitespace();
     for item in items {
-        if item.as_bytes()[0].is_ascii_digit() {
+        if item
+            .as_bytes()
+            .first()
+            .is_some_and(|byte| byte.is_ascii_digit())
+        {
             let num = if item.contains('x') {
-                u64::from_str_radix(&item[2..], 16).unwrap()
+                u64::from_str_radix(&item[2..], 16).map_err(|_| crate::DisassembleError::Unknown)?
             } else {
-                item.parse().unwrap()
+                item.parse().map_err(|_| crate::DisassembleError::Unknown)?
             };
             result.push(crate::RelativeAddressingArgument::Constant(num as i128));
             continue;
@@ -62,7 +71,7 @@ fn parse_memory(op: &str) -> Result<crate::Argument, crate::DisassembleError> {
             continue;
         }
 
-        let register = item.parse::<register::X64Register>().unwrap();
+        let register = item.parse::<register::X64Register>()?;
         result.push(crate::RelativeAddressingArgument::Register(
             crate::Register::X64(register),
         ));
