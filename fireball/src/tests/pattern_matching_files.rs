@@ -2,7 +2,7 @@ use crate::{
     abstract_syntax_tree::{
         Ast, AstFunction, AstFunctionId, AstFunctionVersion, AstOptimizationConfig, AstStatement,
         AstStatementOrigin, AstValueType, AstVariable, AstVariableId, WrappedAstStatement,
-        pattern_matching::AstPattern,
+        pattern_matching::{AstPattern, AstPatternInputType},
     },
     core::Instruction,
     ir::{analyze::IrFunction, statements::IrStatement},
@@ -141,6 +141,7 @@ fn pattern_matching_example_fb_files_parse_and_execute() {
         "03_skip_aliases.fb",
         "04_script_and_logs.fb",
         "05_all_syntax.fb",
+        "06_do_del_syntax.fb",
     ];
 
     for file in files {
@@ -202,5 +203,87 @@ fn pattern_matching_actions_example_applies_key_actions() {
             AstStatement::Comment(text) if text == "replaced-from-01"
         )),
         "actions example must apply `do: ast comment replaced-from-01` action"
+    );
+}
+
+#[test]
+fn pattern_matching_do_del_syntax_deletes_statement_based_ranges() {
+    let (ast, function_id) = build_pattern_test_ast();
+    let pattern = AstPattern::from_file(example_pattern_path("06_do_del_syntax.fb"));
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(1),
+            ),
+        )
+        .expect("do-del syntax example must optimize successfully");
+
+    let optimized_version = *optimized
+        .function_versions
+        .get(&function_id)
+        .expect("optimized function version should exist");
+    let functions = optimized.functions.read().unwrap();
+    let versions = functions
+        .get(&function_id)
+        .expect("optimized function should exist");
+    let function = versions
+        .get(&optimized_version)
+        .expect("optimized function version should exist");
+
+    assert_eq!(
+        function.body.len(),
+        1,
+        "do-del syntax should delete statements using statement indices"
+    );
+}
+
+#[test]
+fn pattern_matching_new_parses_inline_pattern_and_infers_input_type() {
+    let pattern = AstPattern::new(
+        "inline-asm-only",
+        r#"
+if:
+  asm push rbp
+do:
+  ast comment replaced-from-inline
+"#,
+    );
+    assert_eq!(pattern.input_type(), AstPatternInputType::WithAssembly);
+
+    let (ast, function_id) = build_pattern_test_ast();
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(1),
+            ),
+        )
+        .expect("inline pattern must optimize successfully");
+
+    let optimized_version = *optimized
+        .function_versions
+        .get(&function_id)
+        .expect("optimized function version should exist");
+    let functions = optimized.functions.read().unwrap();
+    let versions = functions
+        .get(&function_id)
+        .expect("optimized function should exist");
+    let function = versions
+        .get(&optimized_version)
+        .expect("optimized function version should exist");
+
+    assert!(
+        function.body.iter().any(|stmt| matches!(
+            &stmt.statement,
+            AstStatement::Comment(text) if text == "replaced-from-inline"
+        )),
+        "inline pattern from AstPattern::new must be parsed and applied"
     );
 }

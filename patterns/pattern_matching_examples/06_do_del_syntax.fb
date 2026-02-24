@@ -1,0 +1,6 @@
+if:
+  asm push rbp
+do:
+  del start[-1]
+  del end[-3]
+  del start[0..7]
