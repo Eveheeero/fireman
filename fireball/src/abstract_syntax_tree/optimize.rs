@@ -1,11 +1,17 @@
 mod call_argument_analyzation;
 mod collapse_unused_variable;
+mod constant_folding;
+mod control_flow_cleanup;
 mod ir_analyzation;
 mod loop_analyzation;
 mod parameter_analyzation;
 pub mod pattern_matching;
 
 use super::*;
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+};
 
 impl Ast {
     pub fn optimize(&self, config: Option<AstOptimizationConfig>) -> Result<Self, DecompileError> {
@@ -21,12 +27,6 @@ impl Ast {
         self.optimize_functions(&[function_id], config)
     }
 
-    // TODO: Implement optimization passes:
-    // 1. Dead code elimination
-    // 2. Constant folding
-    // 3. Common subexpression elimination
-    // 4. Loop optimization
-    // 5. Function inlining
     pub fn optimize_functions(
         &self,
         function_ids: &[AstFunctionId],
@@ -64,16 +64,88 @@ impl Ast {
                 )?;
             }
         }
-        if config.collapse_unused_varaible {
-            for (function_id, to_version) in versions.into_iter() {
-                collapse_unused_variable::collapse_unused_variables(
-                    &mut ast,
-                    function_id,
-                    to_version,
-                )?;
+
+        let run_iterative_passes = config.loop_analyzation
+            || config.constant_folding
+            || config.control_flow_cleanup
+            || config.pattern_matching_enabled
+            || config.collapse_unused_varaible;
+        let max_pass_iterations = config.max_pass_iterations.max(1);
+        if run_iterative_passes {
+            for _ in 0..max_pass_iterations {
+                let before = snapshot_optimized_functions(&ast, &versions);
+
+                if config.constant_folding {
+                    for (function_id, to_version) in versions.iter().copied() {
+                        constant_folding::fold_constants(&mut ast, function_id, to_version)?;
+                    }
+                }
+
+                if config.loop_analyzation {
+                    for (function_id, to_version) in versions.iter().copied() {
+                        loop_analyzation::analyze_loops(&mut ast, function_id, to_version)?;
+                    }
+                }
+
+                if config.pattern_matching_enabled {
+                    for (function_id, to_version) in versions.iter().copied() {
+                        pattern_matching::apply_patterns(
+                            &mut ast,
+                            function_id,
+                            to_version,
+                            &config.pattern_matching,
+                        )?;
+                    }
+                }
+
+                if config.collapse_unused_varaible {
+                    for (function_id, to_version) in versions.iter().copied() {
+                        collapse_unused_variable::collapse_unused_variables(
+                            &mut ast,
+                            function_id,
+                            to_version,
+                        )?;
+                    }
+                }
+
+                if config.control_flow_cleanup {
+                    for (function_id, to_version) in versions.iter().copied() {
+                        control_flow_cleanup::cleanup_control_flow(
+                            &mut ast,
+                            function_id,
+                            to_version,
+                        )?;
+                    }
+                }
+
+                let after = snapshot_optimized_functions(&ast, &versions);
+                if before == after {
+                    break;
+                }
             }
         }
 
         Ok(ast)
     }
+}
+
+fn snapshot_optimized_functions(
+    ast: &Ast,
+    versions: &[(AstFunctionId, AstFunctionVersion)],
+) -> u64 {
+    let functions = ast.functions.read().unwrap();
+    let mut hasher = DefaultHasher::new();
+    for (function_id, function_version) in versions.iter().copied() {
+        function_id.hash(&mut hasher);
+        function_version.hash(&mut hasher);
+        let function = functions
+            .get(&function_id)
+            .and_then(|version_map| version_map.get(&function_version))
+            .unwrap();
+        function.name.hash(&mut hasher);
+        function.parameters.len().hash(&mut hasher);
+        function.processed_optimizations.len().hash(&mut hasher);
+        format!("{:?}", function.body).hash(&mut hasher);
+    }
+    hasher.finish()
 }

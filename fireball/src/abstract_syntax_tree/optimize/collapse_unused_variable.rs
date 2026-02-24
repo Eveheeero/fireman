@@ -112,10 +112,22 @@ pub(super) fn collapse_unused_variables(
 
                 continue;
             }
-            AstStatement::While(_cond, _stmts) => todo!("same with `for`"),
-            AstStatement::For(_init, _cond, _update, _stmts) => todo!(
-                "if for pattern used, there might be user-defined or optimization variable exists. how should we handle this?"
-            ),
+            AstStatement::While(_cond, stmts) => {
+                let mut loop_overwritten_locations: HashSet<Aos<IrData>> = HashSet::new();
+                collapse(&variables, &mut loop_overwritten_locations, stmts);
+                // Loop iteration effects are hard to prove backwards safely.
+                // Be conservative and stop propagation across loop boundary.
+                overwritten_locations.clear();
+                new_body.push(stmt);
+                continue;
+            }
+            AstStatement::For(_init, _cond, _update, stmts) => {
+                let mut loop_overwritten_locations: HashSet<Aos<IrData>> = HashSet::new();
+                collapse(&variables, &mut loop_overwritten_locations, stmts);
+                overwritten_locations.clear();
+                new_body.push(stmt);
+                continue;
+            }
             AstStatement::Block(stmts) => {
                 collapse(&variables, &mut overwritten_locations, stmts);
                 new_body.push(stmt);
@@ -246,10 +258,16 @@ fn collapse(
                         collapse(&variables, overwritten_locations, branch_true);
                     }
                 }
-                AstStatement::While(_cond, _stmts) => todo!("same with `for`"),
-                AstStatement::For(_init, _cond, _update, _stmts) => todo!(
-                    "if for pattern used, there might be user-defined or optimization variable exists. how should we handle this?"
-                ),
+                AstStatement::While(_cond, stmts) => {
+                    let mut loop_overwritten_locations: HashSet<Aos<IrData>> = HashSet::new();
+                    collapse(variables, &mut loop_overwritten_locations, stmts);
+                    overwritten_locations.clear();
+                }
+                AstStatement::For(_init, _cond, _update, stmts) => {
+                    let mut loop_overwritten_locations: HashSet<Aos<IrData>> = HashSet::new();
+                    collapse(variables, &mut loop_overwritten_locations, stmts);
+                    overwritten_locations.clear();
+                }
                 AstStatement::Block(stmts) => {
                     collapse(variables, overwritten_locations, stmts);
                     if stmts.is_empty() {

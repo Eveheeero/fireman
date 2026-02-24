@@ -86,7 +86,7 @@ void main(
     /* rsp = (arch_len)rsp + arch_byte_size */
     v36 = v34;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v36 = v38; } else { }
+    if (true) { v36 = v38; }
     /* jmp rsp */
     goto v17;
 }
@@ -163,7 +163,7 @@ void f1125() {
     /* rsp = (arch_len)rsp + arch_byte_size */
     v27 = v25;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v27 = v29; } else { }
+    if (true) { v27 = v29; }
     /* jmp rsp */
     goto v16;
 }
@@ -2116,7 +2116,7 @@ void f16b0() {
     /* rsp = (arch_len)rsp + arch_byte_size */
     v7 = v5;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v7 = v9; } else { }
+    if (true) { v7 = v9; }
     /* jmp rsp */
     goto v3;
 }
@@ -2224,7 +2224,7 @@ void f1800(
     /* rsp = (arch_len)rsp + arch_byte_size */
     v38 = v37;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v38 = v40; } else { }
+    if (true) { v38 = v40; }
     /* jmp rsp */
     goto v29;
 }
@@ -2588,7 +2588,7 @@ void f1907(
     /* rsp = (arch_len)rsp + arch_byte_size */
     v26 = v24;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v26 = v28; } else { }
+    if (true) { v26 = v28; }
     /* jmp rsp */
     goto v19;
 }
@@ -2625,7 +2625,7 @@ void f1b70(
     /* rsp = (arch_len)rsp + arch_byte_size */
     v10 = v8;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v10 = v12; } else { }
+    if (true) { v10 = v12; }
     /* jmp rsp */
     goto v6;
 }
@@ -3077,26 +3077,6 @@ void f1b80(
     v334 = v25;
     /* call o1 */
     ext_msvcrt_dll__abort(v1);
-  // 0x1BED push rbp
-    /* rsp = (arch_len)rsp - arch_byte_size */
-    v352 = v1;
-  // 0x1BEE mov rbp rsp
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v350 = v56;
-  // 0x1BF1 sub rsp 0x60
-    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
-    { v322 = v58; v324 = v58; v323 = v58; }
-    /* o1 = (sizeof(o1))o1 - o2 */
-    v352 = v58;
-  // 0x1BF5 mov [rbp+0x10] rcx
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v60 = v10;
-  // 0x1BF9 mov [rbp-0x4] 0x0
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v125 = v61;
-  // 0x1C00 jmp 0x1C87
-    /* jmp o1 */
-    goto 0x1C87;
 }
 
 void f1bed(
@@ -3130,7 +3110,6 @@ void f1bed(
   // 0x1C00 jmp 0x1C87
     /* jmp o1 */
     f1c87(v6);
-    return;
 }
 
 void f1c87(
@@ -4984,28 +4963,6 @@ void f1f94(
     v29 = v17;
     /* call o1 */
     f1bed(v14, v1);
-  // 0x1FBC mov rax [rbp+0x18]
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v23 = v22;
-  // 0x1FC0 mov r8 rdx
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v24 = v10;
-  // 0x1FC3 mov rdx rax
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v26 = v25;
-  // 0x1FC6 mov rcx [rbp+0x10]
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v27 = v14;
-  // 0x1FCA call 0x9158
-    /* rsp = (arch_len)rsp - arch_byte_size */
-    v37 = v1;
-    /* rsp = (arch_len)rip + instruction_byte_size */
-    v29 = v17;
-    /* call o1 */
-    ext_msvcrt_dll__memcpy(v22, v14, v25, v1, v10);
-  // 0x1FCF jmp 0x1FD2
-    /* jmp o1 */
-    goto 0x1FD2;
 }
 
 void f1fd2() {
@@ -5030,7 +4987,7 @@ void f1fd2() {
     /* rsp = (arch_len)rsp + arch_byte_size */
     v7 = v5;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v7 = v9; } else { }
+    if (true) { v7 = v9; }
     /* jmp rsp */
     goto v3;
 }
@@ -5396,7 +5353,7 @@ void f1fd8(
     <ASSEMBLY: jle 0x235B>
   // 0x200B cmp [rbp-0x20] 0xB
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
-    { v272 = (v119 - (signed)11); v273 = (v119 - (signed)11); v274 = (v119 - (signed)11); }
+    { v272 = (v119 - 11); v273 = (v119 - 11); v274 = (v119 - 11); }
   // 0x2010 jle 0x2037
     <ASSEMBLY: jle 0x2037>
   // 0x2012 mov rax [rbp-0x8]
@@ -6693,7 +6650,7 @@ void f235c() {
     /* rsp = (arch_len)rsp + arch_byte_size */
     v7 = v5;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v7 = v9; } else { }
+    if (true) { v7 = v9; }
     /* jmp rsp */
     goto v3;
 }
@@ -6916,7 +6873,7 @@ void f2401() {
     /* rsp = (arch_len)rsp + arch_byte_size */
     v7 = v5;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v7 = v9; } else { }
+    if (true) { v7 = v9; }
     /* jmp rsp */
     goto v3;
 }
@@ -7025,7 +6982,7 @@ void f2a46() {
     /* rsp = (arch_len)rsp + arch_byte_size */
     v7 = v5;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v7 = v9; } else { }
+    if (true) { v7 = v9; }
     /* jmp rsp */
     goto v3;
 }
@@ -7309,7 +7266,7 @@ void f2adf() {
     /* rsp = (arch_len)rsp + arch_byte_size */
     v7 = v5;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v7 = v9; } else { }
+    if (true) { v7 = v9; }
     /* jmp rsp */
     goto v3;
 }
@@ -7609,7 +7566,7 @@ void f2c42() {
     /* rsp = (arch_len)rsp + arch_byte_size */
     v7 = v5;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v7 = v9; } else { }
+    if (true) { v7 = v9; }
     /* jmp rsp */
     goto v3;
 }
@@ -7715,7 +7672,7 @@ void f2d22() {
     /* rsp = (arch_len)rsp + arch_byte_size */
     v7 = v5;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v7 = v9; } else { }
+    if (true) { v7 = v9; }
     /* jmp rsp */
     goto v3;
 }
@@ -7767,7 +7724,7 @@ void f2e80(
     v26 = v31;
   // 0x2E82 cmp rax 0x1000
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
-    { v21 = (v26 - (signed)4096); v23 = (v26 - (signed)4096); v22 = (v26 - (signed)4096); }
+    { v21 = (v26 - 4096); v23 = (v26 - 4096); v22 = (v26 - 4096); }
   // 0x2E88 lea rcx [rsp+0x18]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v29 = v6;
@@ -7784,7 +7741,7 @@ void f2e80(
     v26 = v17;
   // 0x2EA0 cmp rax 0x1000
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
-    { v21 = (v26 - (signed)4096); v23 = (v26 - (signed)4096); v22 = (v26 - (signed)4096); }
+    { v21 = (v26 - 4096); v23 = (v26 - 4096); v22 = (v26 - 4096); }
   // 0x2EA6 ja 0x2E8F
     <ASSEMBLY: ja 0x2E8F>
   // 0x2EAB or [rcx] 0x0
@@ -7810,7 +7767,7 @@ void f2e80(
     /* rsp = (arch_len)rsp + arch_byte_size */
     v31 = v27;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v31 = v33; } else { }
+    if (true) { v31 = v33; }
     /* jmp rsp */
     goto v25;
 }
@@ -7963,7 +7920,7 @@ void f2ec0(
     /* rsp = (arch_len)rsp + arch_byte_size */
     v52 = v48;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v52 = v54; } else { }
+    if (true) { v52 = v54; }
     /* jmp rsp */
     goto v41;
 }
@@ -8172,7 +8129,7 @@ void f2f8d() {
     /* rsp = (arch_len)rsp + arch_byte_size */
     v16 = v14;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v16 = v18; } else { }
+    if (true) { v16 = v18; }
     /* jmp rsp */
     goto v12;
 }
@@ -8948,7 +8905,7 @@ void f8870(
     /* rsp = (arch_len)rsp + arch_byte_size */
     v14 = v12;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v14 = v16; } else { }
+    if (true) { v14 = v16; }
     /* jmp rsp */
     goto v10;
 }
@@ -9168,7 +9125,7 @@ void f8909() {
     /* rsp = (arch_len)rsp + arch_byte_size */
     v7 = v5;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v7 = v9; } else { }
+    if (true) { v7 = v9; }
     /* jmp rsp */
     goto v3;
 }
@@ -9388,7 +9345,7 @@ void f8999() {
     /* rsp = (arch_len)rsp + arch_byte_size */
     v7 = v5;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v7 = v9; } else { }
+    if (true) { v7 = v9; }
     /* jmp rsp */
     goto v3;
 }
@@ -9473,7 +9430,7 @@ void f89a0(
     /* rsp = (arch_len)rsp + arch_byte_size */
     v32 = v30;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v32 = v34; } else { }
+    if (true) { v32 = v34; }
     /* jmp rsp */
     goto v28;
 }
@@ -9566,7 +9523,7 @@ void f89e0(
     /* rsp = (arch_len)rsp + arch_byte_size */
     v39 = v37;
     /* if operand_exists(1) { rsp = (arch_len)rsp + zero_extend o1 } */
-    if (true) { v39 = v41; } else { }
+    if (true) { v39 = v41; }
     /* jmp rsp */
     goto v12;
 }
