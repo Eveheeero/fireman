@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "fireman",
     "fireball",
-    "firebat/src-tauri",
+    "firebat",
     "iceball",
     "dryice",
     "fireman_macro",
@@ -31,16 +31,16 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-regex = "1.11"
+regex = "1.12"
 either = "1.15"
 
 # Binary parsing and analysis
 goblin = "0.10"
-capstone = "0.13"
+capstone = "0.14"
 pdb = "0.8"
-cpp_demangle = "0.4"
+cpp_demangle = "0.5"
 
 # Data structures
 bitvec = "1"
-hashbrown = "0.15"
+hashbrown = "0.16"
 num-bigint = "0.4"
