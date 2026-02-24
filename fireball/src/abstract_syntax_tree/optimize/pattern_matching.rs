@@ -597,8 +597,6 @@ pub(super) fn apply_patterns(
         body = std::mem::take(&mut function.body);
     }
 
-    apply_patterns_in_statements(&mut body, patterns);
-
     let file_rules = load_file_pattern_rules(patterns)?;
     if !file_rules.is_empty() {
         apply_file_pattern_rules_recursive(&mut body, &file_rules, &ir_debug);
@@ -617,46 +615,6 @@ pub(super) fn apply_patterns(
     }
 
     Ok(())
-}
-
-fn apply_patterns_in_statements(stmts: &mut Vec<WrappedAstStatement>, patterns: &[AstPattern]) {
-    for stmt in stmts.iter_mut() {
-        apply_patterns_in_statement(stmt, patterns);
-    }
-}
-
-fn apply_patterns_in_statement(stmt: &mut WrappedAstStatement, patterns: &[AstPattern]) {
-    match &mut stmt.statement {
-        AstStatement::If(_, branch_true, branch_false) => {
-            apply_patterns_in_statements(branch_true, patterns);
-            if let Some(branch_false) = branch_false {
-                apply_patterns_in_statements(branch_false, patterns);
-            }
-        }
-        AstStatement::While(_, body) => {
-            apply_patterns_in_statements(body, patterns);
-        }
-        AstStatement::For(init, _, update, body) => {
-            apply_patterns_in_statement(init, patterns);
-            apply_patterns_in_statement(update, patterns);
-            apply_patterns_in_statements(body, patterns);
-        }
-        AstStatement::Block(body) => {
-            apply_patterns_in_statements(body, patterns);
-        }
-        AstStatement::Declaration(_, _)
-        | AstStatement::Assignment(_, _)
-        | AstStatement::Return(_)
-        | AstStatement::Call(_)
-        | AstStatement::Label(_)
-        | AstStatement::Goto(_)
-        | AstStatement::Assembly(_)
-        | AstStatement::Undefined
-        | AstStatement::Exception(_)
-        | AstStatement::Comment(_)
-        | AstStatement::Ir(_)
-        | AstStatement::Empty => {}
-    }
 }
 
 fn load_file_pattern_rules(
