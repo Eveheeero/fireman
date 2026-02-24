@@ -45,3 +45,6 @@ cpp_demangle = "0.4"
 bitvec = "1"
 hashbrown = "0.15"
 num-bigint = "0.4"
+
+[profile.bench]
+debug = true

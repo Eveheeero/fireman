@@ -29,3 +29,13 @@ hashbrown.workspace = true
 num-bigint.workspace = true
 either.workspace = true
 rhai.workspace = true
+
+[dev-dependencies]
+criterion = "0.5"
+
+[target.'cfg(unix)'.dev-dependencies]
+pprof = { version = "0.15", features = ["criterion", "flamegraph"] }
+
+[[bench]]
+name = "decompile_bench"
+harness = false
