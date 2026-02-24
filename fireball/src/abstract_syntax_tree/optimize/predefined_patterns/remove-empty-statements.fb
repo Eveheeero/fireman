@@ -1,0 +1,4 @@
+if:
+  script true
+do:
+  remove-empty-statements

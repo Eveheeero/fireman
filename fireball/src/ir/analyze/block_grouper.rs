@@ -46,7 +46,8 @@ impl BlockGrouper {
         for target in self.targets.iter() {
             let connected_from = target.get_connected_from();
             let connected_to = target.get_connected_to();
-            let mut connected_from_ids = connected_from.iter().map(|r| r.from()).collect::<Vec<_>>();
+            let mut connected_from_ids =
+                connected_from.iter().map(|r| r.from()).collect::<Vec<_>>();
             connected_from_ids.sort_unstable();
             let mut connected_to_addresses = connected_to
                 .iter()

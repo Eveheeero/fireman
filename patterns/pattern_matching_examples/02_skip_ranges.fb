@@ -1,0 +1,8 @@
+if:
+  asm push rbp
+  skip_range 0..8
+  skip_asm_range 0..8
+  skip_ast_range 0..8
+  skip_ir_range 0..8
+do:
+  ast comment replaced-from-02

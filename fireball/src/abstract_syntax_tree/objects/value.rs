@@ -40,7 +40,7 @@ pub enum AstValue {
     Array(Vec<Wrapped<AstValue>>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AstLiteral {
     Int(i64),
     UInt(u64),

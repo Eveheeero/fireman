@@ -1,0 +1,19 @@
+if:
+  script `
+fn my_rhai_script() {
+  stmt_count >= 5 && asm_count >= 2
+}
+my_rhai_script()
+`
+do:
+  script `
+fn my_rhai_script() {
+  true
+}
+my_rhai_script()
+`
+  info("info log from 04")
+  warn("warn log from 04")
+  error("error log from 04")
+  debug("debug log from 04")
+  trace("trace log from 04")
