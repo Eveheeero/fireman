@@ -8,6 +8,26 @@
 
 ## Structure Paths (fireball)
 
+### Major Structs (quick reference)
+
+- `Address` - `fireball/src/core/address.rs`
+- `Instruction` - `fireball/src/core/instruction.rs`
+- `Section` / `Sections` - `fireball/src/core/section.rs`, `fireball/src/core/sections.rs`
+- `Block` / `Blocks` - `fireball/src/core/block.rs`, `fireball/src/core/blocks.rs`
+- `Relation` / `Relations` - `fireball/src/core/relation.rs`, `fireball/src/core/relations.rs`
+- `PreDefinedOffset` / `PreDefinedOffsets` - `fireball/src/core/pre_defined_offset.rs`, `fireball/src/core/pre_defined_offsets.rs`
+- `Pe` - `fireball/src/pe/mod.rs`
+- `VirtualMachine`, `IrBlock`, `Ir` - `fireball/src/ir/mod.rs`
+- `Register` - `fireball/src/ir/register.rs`
+- `IrDataAccess` - `fireball/src/ir/data.rs`
+- `IrStatementDescriptor` / `IrStatementDescriptorMap<T>` - `fireball/src/ir/utils.rs`
+- `IrVariable`, `BlockGrouper`, `BlockGroup`, `KnownDataType`, `IrFunction`, `IrFunctionVariable` - `fireball/src/ir/analyze/...`
+- `Ast`, `AstFunction`, `AstVariable`, `AstParameter` - `fireball/src/abstract_syntax_tree/objects/...`
+- `AstPrintConfig`, `AstOptimizationConfig` - `fireball/src/abstract_syntax_tree/objects/...`
+- `WrappedAstStatement`, `Wrapped<T>`, `AstDescriptor` - `fireball/src/abstract_syntax_tree/objects/wrapper.rs`
+- `AstPattern`, `AstPatternRule`, `AstPatternIrReplacement`, `AstPatternAsmData`, `AstPatternAstData`, `AstPatternIrData`, `AstPatternScript`, `AstPatternRange` - `fireball/src/abstract_syntax_tree/optimize/pattern_matching.rs`
+- `VersionMap<..>` - `fireball/src/utils/version_map.rs`
+
 ### Entry points
 
 - `Fireball` (enum) - `fireball/src/lib.rs`
