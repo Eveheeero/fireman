@@ -28,3 +28,4 @@ fireman_macro.workspace = true
 hashbrown.workspace = true
 num-bigint.workspace = true
 either.workspace = true
+rhai.workspace = true

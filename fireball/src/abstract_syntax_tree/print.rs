@@ -55,7 +55,7 @@ fn variable_usage_summary(var: &AstVariable) -> String {
     let where_used = if where_used.is_empty() {
         "where n/a".to_string()
     } else if omitted > 0 {
-        format!("where {}", where_used.join(", "),) + &format!(" (+{} more)", omitted)
+        format!("where {} (+{} more)", where_used.join(", "), omitted)
     } else {
         format!("where {}", where_used.join(", "))
     };

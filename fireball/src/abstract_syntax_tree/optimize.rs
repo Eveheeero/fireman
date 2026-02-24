@@ -74,31 +74,44 @@ impl Ast {
         if run_iterative_passes {
             for _ in 0..max_pass_iterations {
                 let before = snapshot_optimized_functions(&ast, &versions);
+                let mut ran_ast_optimization = false;
 
                 if config.constant_folding {
+                    ran_ast_optimization = true;
                     for (function_id, to_version) in versions.iter().copied() {
                         constant_folding::fold_constants(&mut ast, function_id, to_version)?;
+                    }
+                    if config.pattern_matching_enabled {
+                        for (function_id, to_version) in versions.iter().copied() {
+                            pattern_matching::apply_patterns(
+                                &mut ast,
+                                function_id,
+                                to_version,
+                                &config.pattern_matching,
+                            )?;
+                        }
                     }
                 }
 
                 if config.loop_analyzation {
+                    ran_ast_optimization = true;
                     for (function_id, to_version) in versions.iter().copied() {
                         loop_analyzation::analyze_loops(&mut ast, function_id, to_version)?;
                     }
-                }
-
-                if config.pattern_matching_enabled {
-                    for (function_id, to_version) in versions.iter().copied() {
-                        pattern_matching::apply_patterns(
-                            &mut ast,
-                            function_id,
-                            to_version,
-                            &config.pattern_matching,
-                        )?;
+                    if config.pattern_matching_enabled {
+                        for (function_id, to_version) in versions.iter().copied() {
+                            pattern_matching::apply_patterns(
+                                &mut ast,
+                                function_id,
+                                to_version,
+                                &config.pattern_matching,
+                            )?;
+                        }
                     }
                 }
 
                 if config.collapse_unused_varaible {
+                    ran_ast_optimization = true;
                     for (function_id, to_version) in versions.iter().copied() {
                         collapse_unused_variable::collapse_unused_variables(
                             &mut ast,
@@ -106,14 +119,46 @@ impl Ast {
                             to_version,
                         )?;
                     }
+                    if config.pattern_matching_enabled {
+                        for (function_id, to_version) in versions.iter().copied() {
+                            pattern_matching::apply_patterns(
+                                &mut ast,
+                                function_id,
+                                to_version,
+                                &config.pattern_matching,
+                            )?;
+                        }
+                    }
                 }
 
                 if config.control_flow_cleanup {
+                    ran_ast_optimization = true;
                     for (function_id, to_version) in versions.iter().copied() {
                         control_flow_cleanup::cleanup_control_flow(
                             &mut ast,
                             function_id,
                             to_version,
+                        )?;
+                    }
+                    if config.pattern_matching_enabled {
+                        for (function_id, to_version) in versions.iter().copied() {
+                            pattern_matching::apply_patterns(
+                                &mut ast,
+                                function_id,
+                                to_version,
+                                &config.pattern_matching,
+                            )?;
+                        }
+                    }
+                }
+
+                if config.pattern_matching_enabled && !ran_ast_optimization {
+                    for (function_id, to_version) in versions.iter().copied() {
+                        pattern_matching::apply_patterns(
+                            &mut ast,
+                            function_id,
+                            to_version,
+                            &config.pattern_matching,
                         )?;
                     }
                 }
