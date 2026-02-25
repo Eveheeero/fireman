@@ -1,0 +1,6 @@
+D fb/pe/block.rs: Block generation started [0x1000 - 0x9268]0x1188
+T fb/pe/block.rs: - 0x1188 mov rax [rip+0xA621]
+T fb/pe/block.rs: - 0x118F mov eax [rax]
+T fb/pe/block.rs: - 0x1191 test eax eax
+T fb/pe/block.rs: - 0x1193 je 0x11A8
+D fb/pe/block.rs: Block generation done for size Some(13) connected_to=[BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x1195"), destination_type: Static, relation_type: Continued }, BlockRelationInformation { destination: Some("[0x1000 - 0x9268]0x11A8"), destination_type: Static, relation_type: Jcc }]
