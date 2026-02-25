@@ -85,6 +85,14 @@ fn parameter_usage_comment(param: &AstParameter, variables: &ArcAstVariableMap) 
     format!("param {} | {}", location, usage)
 }
 
+fn push_indented_lines(output: &mut String, indent: &str, content: &str) {
+    for line in content.lines() {
+        output.push_str(indent);
+        output.push_str(line);
+        output.push('\n');
+    }
+}
+
 impl Ast {
     pub fn print(&self, config: Option<AstPrintConfig>) -> String {
         let config = config.unwrap_or_default();
@@ -234,7 +242,7 @@ impl Ast {
                         }
                     }
                 }
-                output.push_str(&format!("    {}\n", content));
+                push_indented_lines(&mut output, "    ", &content);
             }
 
             output.push_str("}\n\n");

@@ -11,6 +11,46 @@ fn inline_statement_body(stmts: &[WrappedAstStatement], config: AstPrintConfig) 
         .join(" ")
 }
 
+fn statement_body(stmts: &[WrappedAstStatement], config: AstPrintConfig) -> Vec<String> {
+    stmts
+        .iter()
+        .map(|stmt| stmt.to_string_with_config(Some(config)))
+        .filter(|stmt| !stmt.is_empty())
+        .collect()
+}
+
+fn indent_multiline(text: &str, indent: &str) -> String {
+    text.lines()
+        .map(|line| format!("{indent}{line}"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn write_multiline_block_from_body(
+    f: &mut impl std::fmt::Write,
+    stmts: &[String],
+) -> std::fmt::Result {
+    write!(f, "{{\n")?;
+    for stmt in stmts {
+        write!(f, "{}\n", indent_multiline(stmt, "    "))?;
+    }
+    write!(f, "}}")
+}
+
+fn write_block_with_style(
+    f: &mut impl std::fmt::Write,
+    stmts: &[String],
+    multiline: bool,
+) -> std::fmt::Result {
+    if multiline {
+        write_multiline_block_from_body(f, stmts)
+    } else if stmts.is_empty() {
+        write!(f, "{{ }}")
+    } else {
+        write!(f, "{{ {} }}", stmts.join(" "))
+    }
+}
+
 fn write_inline_block(
     f: &mut impl std::fmt::Write,
     stmts: &[WrappedAstStatement],
@@ -98,17 +138,19 @@ impl PrintWithConfig for AstStatement {
                 right.to_string_with_config(Some(config))
             ),
             AstStatement::If(cond, then_body, else_body) => {
-                if then_body.is_empty() && !config.print_empty_statement {
-                    if else_body.is_none() || else_body.as_ref().unwrap().is_empty() {
+                let then_stmts = statement_body(then_body, config);
+                let else_stmts = else_body.as_ref().map(|body| statement_body(body, config));
+                if then_stmts.is_empty() && !config.print_empty_statement {
+                    if else_stmts.as_ref().is_none_or(|body| body.is_empty()) {
                         return Ok(());
                     }
                 }
 
                 write!(f, "if ({}) ", cond.to_string_with_config(Some(config)))?;
-                write_inline_block(f, then_body, config)?;
-                if let Some(else_stmts) = else_body {
+                write_block_with_style(f, &then_stmts, then_stmts.len() > 1)?;
+                if let Some(else_stmts) = else_stmts {
                     write!(f, " else ")?;
-                    write_inline_block(f, else_stmts, config)?;
+                    write_block_with_style(f, &else_stmts, else_stmts.len() > 1)?;
                 }
                 Ok(())
             }

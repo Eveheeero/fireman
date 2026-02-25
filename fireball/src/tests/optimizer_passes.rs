@@ -764,3 +764,58 @@ fn print_aligns_local_variables_and_sorts_same_index_by_scope() {
         printed
     );
 }
+
+#[test]
+fn print_if_with_multi_statement_branch_uses_multiline_block() {
+    let function_id = AstFunctionId { address: 0x3000 };
+    let version = AstFunctionVersion(1);
+    let var_id = AstVariableId {
+        index: 1,
+        parent: Some(function_id),
+    };
+    let variable_map = Arc::new(RwLock::new(HashMap::from([(
+        var_id,
+        AstVariable {
+            name: Some("x".to_string()),
+            id: var_id,
+            var_type: AstValueType::Int,
+            const_value: None,
+            data_access_ir: None,
+        },
+    )])));
+
+    let body = vec![wrap_statement(AstStatement::If(
+        wrap_expression(AstExpression::Literal(AstLiteral::Bool(true))),
+        vec![
+            wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(variable_map.clone(), var_id)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            )),
+            wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(variable_map.clone(), var_id)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+            )),
+        ],
+        Some(vec![wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(variable_map.clone(), var_id)),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(3))),
+        ))]),
+    ))];
+
+    let function = build_test_function(function_id, "if_multiline", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let printed = ast.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("if (true) {\n        x = 1;\n        x = 2;\n    } else { x = 3; }"),
+        "if true-branch with multiple statements should be printed as multiline block, got:\n{}",
+        printed
+    );
+}
