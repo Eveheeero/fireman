@@ -3466,7 +3466,7 @@ void f1c87(
     v331 = v12;
   // 0x1C15 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3480,7 +3480,7 @@ void f1c87(
     v331 = v77;
   // 0x1C1C shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3513,7 +3513,7 @@ void f1c87(
     v331 = v12;
   // 0x1C3D shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3527,7 +3527,7 @@ void f1c87(
     v331 = v77;
   // 0x1C44 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3555,7 +3555,7 @@ void f1c87(
     v331 = v12;
   // 0x1C5F shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3569,7 +3569,7 @@ void f1c87(
     v331 = v77;
   // 0x1C66 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3668,7 +3668,7 @@ void f1c87(
     v331 = v12;
   // 0x1CCD shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3682,7 +3682,7 @@ void f1c87(
     v331 = v77;
   // 0x1CD4 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3711,7 +3711,7 @@ void f1c87(
     v331 = v12;
   // 0x1CF4 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3725,7 +3725,7 @@ void f1c87(
     v331 = v77;
   // 0x1CFB shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3772,7 +3772,7 @@ void f1c87(
     v331 = v12;
   // 0x1D2A shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3786,7 +3786,7 @@ void f1c87(
     v331 = v77;
   // 0x1D31 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3817,7 +3817,7 @@ void f1c87(
     v331 = v12;
   // 0x1D50 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3831,7 +3831,7 @@ void f1c87(
     v331 = v77;
   // 0x1D57 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3887,7 +3887,7 @@ void f1c87(
     v331 = v12;
   // 0x1D8D shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -3901,7 +3901,7 @@ void f1c87(
     v331 = v77;
   // 0x1D94 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4003,7 +4003,7 @@ void f1c87(
     v331 = v12;
   // 0x1E14 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4017,7 +4017,7 @@ void f1c87(
     v331 = v77;
   // 0x1E1B shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4046,7 +4046,7 @@ void f1c87(
     v331 = v12;
   // 0x1E3B shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4060,7 +4060,7 @@ void f1c87(
     v331 = v77;
   // 0x1E42 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4089,7 +4089,7 @@ void f1c87(
     v331 = v12;
   // 0x1E62 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4103,7 +4103,7 @@ void f1c87(
     v331 = v77;
   // 0x1E69 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v331 = v70; } else {  v331 = v72; }
+    if (true) { v331 = v70; } else { v331 = v72; }
     /* of = (sizeof(of))undefined */
     v322 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4662,7 +4662,7 @@ void f1f7d() {
     v94 = v15;
   // 0x1EEA shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v94 = v18; } else {  v94 = v20; }
+    if (true) { v94 = v18; } else { v94 = v20; }
     /* of = (sizeof(of))undefined */
     v81 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4676,7 +4676,7 @@ void f1f7d() {
     v94 = v25;
   // 0x1EF1 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v94 = v18; } else {  v94 = v20; }
+    if (true) { v94 = v18; } else { v94 = v20; }
     /* of = (sizeof(of))undefined */
     v81 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4713,7 +4713,7 @@ void f1f7d() {
     v94 = v15;
   // 0x1F0E shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v94 = v18; } else {  v94 = v20; }
+    if (true) { v94 = v18; } else { v94 = v20; }
     /* of = (sizeof(of))undefined */
     v81 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4727,7 +4727,7 @@ void f1f7d() {
     v94 = v25;
   // 0x1F15 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v94 = v18; } else {  v94 = v20; }
+    if (true) { v94 = v18; } else { v94 = v20; }
     /* of = (sizeof(of))undefined */
     v81 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4755,7 +4755,7 @@ void f1f7d() {
     v94 = v15;
   // 0x1F2F shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v94 = v18; } else {  v94 = v20; }
+    if (true) { v94 = v18; } else { v94 = v20; }
     /* of = (sizeof(of))undefined */
     v81 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4769,7 +4769,7 @@ void f1f7d() {
     v94 = v25;
   // 0x1F36 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v94 = v18; } else {  v94 = v20; }
+    if (true) { v94 = v18; } else { v94 = v20; }
     /* of = (sizeof(of))undefined */
     v81 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4797,7 +4797,7 @@ void f1f7d() {
     v94 = v73;
   // 0x1F51 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v94 = v18; } else {  v94 = v20; }
+    if (true) { v94 = v18; } else { v94 = v20; }
     /* of = (sizeof(of))undefined */
     v81 = undefined;
     /* af = (sizeof(af))undefined */
@@ -4811,7 +4811,7 @@ void f1f7d() {
     v94 = v31;
   // 0x1F58 shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v94 = v18; } else {  v94 = v20; }
+    if (true) { v94 = v18; } else { v94 = v20; }
     /* of = (sizeof(of))undefined */
     v81 = undefined;
     /* af = (sizeof(af))undefined */
@@ -6341,7 +6341,7 @@ void f2096() {
     v270 = v67;
   // 0x2257 shl rdx cl
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v315 = v255; } else {  v315 = v257; }
+    if (true) { v315 = v255; } else { v315 = v257; }
     /* of = (sizeof(of))undefined */
     v272 = undefined;
     /* af = (sizeof(af))undefined */
@@ -6375,7 +6375,7 @@ void f2096() {
     v270 = v67;
   // 0x2274 shl rdx cl
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v315 = v255; } else {  v315 = v257; }
+    if (true) { v315 = v255; } else { v315 = v257; }
     /* of = (sizeof(of))undefined */
     v272 = undefined;
     /* af = (sizeof(af))undefined */
@@ -8726,7 +8726,7 @@ void f5865() {
     v153 = v106;
   // 0x580F shl eax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) {  v153 = v112; } else {  v153 = v114; }
+    if (true) { v153 = v112; } else { v153 = v114; }
     /* of = (sizeof(of))undefined */
     v140 = undefined;
     /* af = (sizeof(af))undefined */

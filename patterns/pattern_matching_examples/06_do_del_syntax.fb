@@ -1,4 +1,5 @@
 if:
+  at beforeIrAnalyzation
   asm push rbp
 do:
   del start[-1]

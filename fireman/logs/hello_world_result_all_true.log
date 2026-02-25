@@ -56,6 +56,10 @@ void main(
     v17 = v9;
     /* call o1 */
     f1907(v15);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x17DF mov [rbp-0x4] 0x0
     /* o1 = (sizeof(o1))zero_extend o2 */
     v13 = v12;
@@ -69,6 +73,12 @@ void main(
     v17 = v9;
     /* call o1 */
     f1800(v14, v1);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x17F2 xor eax eax
     /* if o1 == (sizeof(o1)) o2 { o1 = (sizeof(o1))0x0; zf = (sizeof(zf))0x1; sf = (sizeof(sf))0x0; pf = (sizeof(pf))0x0 } else { o1 = (sizeof(o1))o1 ^ o2; zf = (sizeof(zf))0x0; calc_flags [sf, pf] (o1 ^ o2) } */
     if (v19) { v21 = 0x0; v23 = 0x1; } else { v21 = v26; v23 = 0x0; }
@@ -77,6 +87,10 @@ void main(
     { v27 = v31; v24 = v31; v23 = v31; v30 = v31; v28 = v31; v25 = v31; }
     /* o1 = (sizeof(o1))o1 + o2 */
     v36 = v31;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x17F8 pop rbp
     /* o1 = (sizeof(o1))rsp */
     v33 = v17;
@@ -145,6 +159,10 @@ void f1125() {
     v16 = v15;
     /* call o1 */
     f1154(v10, v1);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x1146 mov [rbp-0x4] eax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v19 = v18;
@@ -152,8 +170,14 @@ void f1125() {
     /* o1 = (sizeof(o1))zero_extend o2 */
     v21 = v20;
   // 0x114E add rsp 0x30
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
     /* o1 = (sizeof(o1))o1 + o2 */
     v27 = v22;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x1152 pop rbp
     /* o1 = (sizeof(o1))rsp */
     v24 = v16;
@@ -483,6 +507,10 @@ void __tmainCRTStartup(
     v287 = v19;
     /* call o1 */
     ext_msvcrt_dll__memset(v11, v16, v8, v1, v13);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x1188 mov rax [rip+0xA621]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v253 = v22;
@@ -511,6 +539,12 @@ void __tmainCRTStartup(
     v287 = v19;
     /* call o1 */
     v253(v33, v16, v1);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x11A8 mov [rbp-0x18] 0x0
     /* o1 = (sizeof(o1))zero_extend o2 */
     v75 = v8;
@@ -1693,6 +1727,9 @@ void f1288() {
   // 0x128F mov eax [rax]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v4 = v3;
+  // 0x1291 cmp eax
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x1294 jne 0x12BC
     <ASSEMBLY: jne 0x12BC>
 }
@@ -1728,6 +1765,10 @@ void f13f3() {
     v11 = v10;
     /* call o1 */
     f1583(v1, v5, <UNKNOWN DATA>, <UNKNOWN DATA>);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
 }
 
 void f1583(
@@ -1866,8 +1907,17 @@ void f1583(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v13 = v12;
   // 0x1598 add eax
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
     /* o1 = (sizeof(o1))o1 + o2 */
     v97 = v16;
+    /* type o2 = sizeof(o2)i */
+    ;
+  // 0x159B cdqe
+    /* type eax = sizeof(eax)i */
+    ;
+    /* type rax = sizeof(rax)i */
+    ;
   // 0x159D shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
     if (true) { v103 = v21; } else { v103 = v23; }
@@ -1887,6 +1937,12 @@ void f1583(
     v91 = v31;
     /* call o1 */
     ext_msvcrt_dll__malloc(v28, v1, undefined, undefined, undefined);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x15A9 mov [rbp-0x10] rax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v34 = v28;
@@ -2347,6 +2403,10 @@ void f168a(
     v14 = v13;
     /* call o1 */
     ext_msvcrt_dll___onexit(v10, v1);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x169F test rax rax
     /* of = (sizeof(of))0x0 */
     v17 = 0x0;
@@ -2377,6 +2437,8 @@ void f16b0() {
   // 0x16B0 add rsp 0x20
     /* o1 = (sizeof(o1))o1 + o2 */
     v7 = v1;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x16B4 pop rbp
     /* o1 = (sizeof(o1))rsp */
     v4 = v3;
@@ -2465,6 +2527,10 @@ void f1800(
     v29 = v21;
     /* call o1 */
     v16(v15, v17, v19);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x1830 mov rcx rax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v23 = v13;
@@ -2481,6 +2547,12 @@ void f1800(
     v29 = v21;
     /* call o1 */
     f2ec0(v13, v24, v19, v26);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x1842 mov [rsp+0x2C] eax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v32 = v31;
@@ -2488,8 +2560,14 @@ void f1800(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v34 = v33;
   // 0x184A add rsp 0x38
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
     /* o1 = (sizeof(o1))o1 + o2 */
     v38 = v35;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x184E ret
     /* rsp = (arch_len)rsp + arch_byte_size */
     v38 = v37;
@@ -2584,6 +2662,8 @@ void f188f(
   // 0x18A4 cmp [rbp-0x4]
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
     { v39 = (v18 - (signed)undefined); v41 = (v18 - (signed)undefined); v40 = (v18 - (signed)undefined); }
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x18A8 jne 0x18CF
     <ASSEMBLY: jne 0x18CF>
   // 0x18AA mov [rbp-0x4] 0x0
@@ -2858,6 +2938,8 @@ void f1907(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v9 = v8;
   // 0x1915 test eax eax
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v11 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -2876,11 +2958,19 @@ void f1907(
     v19 = v18;
     /* call o1 */
     f188f(v1);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x1929 add rsp 0x20
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
     { v11 = v21; v14 = v21; v12 = v21; }
     /* o1 = (sizeof(o1))o1 + o2 */
     v26 = v21;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x192D pop rbp
     /* o1 = (sizeof(o1))rsp */
     v23 = v19;
@@ -3321,6 +3411,10 @@ void f1b80(
     v334 = v25;
     /* call o1 */
     f89e0(v18, v22, v1, v8);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x1BAD mov r9 rax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v314 = v20;
@@ -3343,6 +3437,12 @@ void f1b80(
     v334 = v25;
     /* call o1 */
     ext_msvcrt_dll__fwrite(v32, v20, v22, v1, v29, v20);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x1BCA mov rbx [rbp-0x8]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v39 = v38;
@@ -3356,6 +3456,12 @@ void f1b80(
     v334 = v25;
     /* call o1 */
     f89e0(v38, v22, v1);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x1BD8 mov r8 rbx
     /* o1 = (sizeof(o1))zero_extend o2 */
     v310 = v43;
@@ -3372,6 +3478,12 @@ void f1b80(
     v334 = v25;
     /* call o1 */
     ext_msvcrt_dll__vfprintf(v20, v45, v1, v43);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x1BE7 call 0x9110
     /* rsp = (arch_len)rsp - arch_byte_size */
     v352 = v1;
@@ -4807,6 +4919,9 @@ void f1e04() {
     v46 = v3;
   // 0x1E0E movsxd rdx eax
     <ASSEMBLY: movsxd rdx eax>
+  // 0x1E18 add rax rdx
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x1E1B shl rax
     /* of = (sizeof(of))undefined */
     v54 = undefined;
@@ -4831,6 +4946,13 @@ void f1e04() {
     v46 = v3;
   // 0x1E35 movsxd rdx eax
     <ASSEMBLY: movsxd rdx eax>
+  // 0x1E3F add rax rdx
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x1E42 shl rax
     /* of = (sizeof(of))undefined */
     v54 = undefined;
@@ -4855,9 +4977,20 @@ void f1e04() {
     v46 = v3;
   // 0x1E5C movsxd rdx eax
     <ASSEMBLY: movsxd rdx eax>
+  // 0x1E66 add rax rdx
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x1E6D add rax rcx
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
     { v54 = v57; v55 = v57; v56 = v57; }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x1E70 mov r8 rax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v59 = v25;
@@ -4886,6 +5019,12 @@ void f1e04() {
     v74 = v73;
     /* call o1 */
     v70(v69, v25, v41, v71, v66, v64);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
 }
 
 void f1ec6(
@@ -5025,9 +5164,18 @@ void f1f79() {
   // 0x1F79 add [rbp-0x4]
     /* o1 = (sizeof(o1))o1 + o2 */
     v2 = v1;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x1F7D mov eax [rip+0xE175]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v4 = v3;
+  // 0x1F83 cmp [rbp-0x4] eax
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
+    { }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x1F86 jl 0x1EDA
     <ASSEMBLY: jl 0x1EDA>
 }
@@ -5497,6 +5645,11 @@ void f1f94(
   // 0x1FA4 mov [rbp+0x20] r8
     /* o1 = (sizeof(o1))zero_extend o2 */
     v13 = v12;
+  // 0x1FA8 cmp [rbp+0x20] 0x0
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
+    { }
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x1FAD je 0x1FD1
     <ASSEMBLY: je 0x1FD1>
   // 0x1FAF mov rcx [rbp+0x10]
@@ -5524,6 +5677,8 @@ void f1fd2() {
   // 0x1FD2 add rsp 0x20
     /* o1 = (sizeof(o1))o1 + o2 */
     v7 = v1;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x1FD6 pop rbp
     /* o1 = (sizeof(o1))rsp */
     v4 = v3;
@@ -5874,6 +6029,8 @@ void f1fd8(
   // 0x1FDC add rsp
     /* o1 = (sizeof(o1))o1 + o2 */
     v329 = v6;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x1FE0 mov [rbp+0x10] rcx
     /* o1 = (sizeof(o1))zero_extend o2 */
     v9 = v8;
@@ -5883,6 +6040,9 @@ void f1fd8(
   // 0x1FE8 mov [rbp+0x20] r8
     /* o1 = (sizeof(o1))zero_extend o2 */
     v13 = v12;
+  // 0x1FF0 sub rax [rbp+0x10]
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
+    { }
   // 0x1FF4 mov [rbp-0x20] rax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v119 = v18;
@@ -5895,11 +6055,19 @@ void f1fd8(
   // 0x2000 cmp [rbp-0x20]
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
     { v272 = (v119 - (signed)undefined); v273 = (v119 - (signed)undefined); v274 = (v119 - (signed)undefined); }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2005 jle 0x235B
     <ASSEMBLY: jle 0x235B>
   // 0x200B cmp [rbp-0x20] 0xB
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
     { v272 = (v119 - 11); v273 = (v119 - 11); v274 = (v119 - 11); }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2010 jle 0x2037
     <ASSEMBLY: jle 0x2037>
   // 0x2012 mov rax [rbp-0x8]
@@ -5909,6 +6077,8 @@ void f1fd8(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v293 = v25;
   // 0x2018 test eax eax
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v272 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -5924,6 +6094,8 @@ void f1fd8(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v293 = v33;
   // 0x2023 test eax eax
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v272 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -5939,6 +6111,8 @@ void f1fd8(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v293 = v39;
   // 0x202E test eax eax
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v272 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -5948,8 +6122,14 @@ void f1fd8(
   // 0x2030 jne 0x2037
     <ASSEMBLY: jne 0x2037>
   // 0x2032 add [rbp-0x8] 0xC
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
     /* o1 = (sizeof(o1))o1 + o2 */
     v45 = v44;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2037 mov rax [rbp-0x8]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v323 = v23;
@@ -5957,6 +6137,8 @@ void f1fd8(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v293 = v25;
   // 0x203D test eax eax
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v272 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -5972,6 +6154,8 @@ void f1fd8(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v293 = v25;
   // 0x203D test eax eax
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v272 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -5987,6 +6171,8 @@ void f1fd8(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v293 = v33;
   // 0x2048 test eax eax
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v272 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -7385,9 +7571,18 @@ void f2346() {
   // 0x2346 add [rbp-0x10] 0xC
     /* o1 = (sizeof(o1))o1 + o2 */
     v2 = v1;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x234B mov rax [rbp-0x10]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v4 = v3;
+  // 0x234F cmp rax [rbp+0x18]
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
+    { }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2353 jb 0x20DA
     <ASSEMBLY: jb 0x20DA>
 }
@@ -7521,6 +7716,8 @@ void f2362(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v27 = v8;
   // 0x2370 test eax eax
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v68 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -7534,6 +7731,8 @@ void f2362(
     { v68 = v17; v69 = v17; v70 = v17; }
     /* o1 = (sizeof(o1))o1 + o2 */
     v27 = v17;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2381 mov [rip+0xDD75] eax
     /* o1 = (sizeof(o1))zero_extend o2 */
     *0x100FC = v19;
@@ -7544,6 +7743,12 @@ void f2362(
     v87 = v22;
     /* call o1 */
     f2bf8(v17, v1);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x238C mov [rbp-0x4] eax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v25 = v19;
@@ -7552,6 +7757,20 @@ void f2362(
     v27 = v26;
   // 0x2392 movsxd rdx eax
     <ASSEMBLY: movsxd rdx eax>
+  // 0x239C add rax rdx
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
+  // 0x23A3 add rax 0xF
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x23AB shl rax
     /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
     if (true) { v81 = v31; } else { v81 = v33; }
@@ -7568,9 +7787,24 @@ void f2362(
     v87 = v22;
     /* call o1 */
     f2e80(v1, undefined, undefined, undefined);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x23B4 sub rsp rax
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
+    { }
     /* o1 = (sizeof(o1))o1 - o2 */
     v95 = v58;
+  // 0x23BC add rax 0xF
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x23C4 shl rax
     /* of = (sizeof(of))undefined */
     v68 = undefined;
@@ -7603,6 +7837,12 @@ void f2362(
     v87 = v22;
     /* call o1 */
     f1fd8(v80, v71, v71, v1, v75, undefined, undefined, undefined);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x23F9 call 0x1EC6
     /* rsp = (arch_len)rsp - arch_byte_size */
     v95 = v1;
@@ -7610,6 +7850,12 @@ void f2362(
     v87 = v22;
     /* call o1 */
     f1ec6(v1);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x23FE jmp 0x2401
     /* jmp o1 */
     goto 0x2401;
@@ -7714,6 +7960,11 @@ void f29d0(
     v36 = v14;
   // 0x29E8 movzx eax [rax]
     <ASSEMBLY: movzx eax [rax]>
+  // 0x29EB cmp ax 0x5A4D
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
+    { }
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x29EF je 0x29F8
     <ASSEMBLY: je 0x29F8>
   // 0x29F1 mov eax 0x0
@@ -7737,6 +7988,8 @@ void f2a46() {
   // 0x2A46 add rsp 0x20
     /* o1 = (sizeof(o1))o1 + o2 */
     v7 = v1;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2A4A pop rbp
     /* o1 = (sizeof(o1))rsp */
     v4 = v3;
@@ -7840,6 +8093,11 @@ void f2a4c(
     v53 = v14;
   // 0x2A63 movsxd rdx eax
     <ASSEMBLY: movsxd rdx eax>
+  // 0x2A6A add rax rdx
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2A6D mov [rbp-0x18] rax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v20 = v19;
@@ -7853,9 +8111,22 @@ void f2a4c(
     <ASSEMBLY: movzx eax [rax+0x14]>
   // 0x2A80 movzx edx ax
     <ASSEMBLY: movzx edx ax>
+  // 0x2A87 add rax rdx
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2A8A add rax 0x18
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
     /* o1 = (sizeof(o1))o1 + o2 */
     v52 = v27;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2A8E mov [rbp-0x8] rax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v50 = v19;
@@ -8073,6 +8344,8 @@ void f2adf() {
   // 0x2ADF add rsp 0x20
     /* o1 = (sizeof(o1))o1 + o2 */
     v7 = v1;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2AE3 pop rbp
     /* o1 = (sizeof(o1))rsp */
     v4 = v3;
@@ -8164,6 +8437,10 @@ void f2ba8(
     v39 = v18;
     /* call o1 */
     f29d0(v14, v12, v1);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x2BCB test eax eax
     /* of = (sizeof(of))0x0 */
     v22 = 0x0;
@@ -8353,6 +8630,10 @@ void f2bf8(
     v17 = v16;
     /* call o1 */
     f29d0(v12, v10, v1);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x2C17 test eax eax
     /* of = (sizeof(of))0x0 */
     v20 = 0x0;
@@ -8383,6 +8664,8 @@ void f2c42() {
   // 0x2C42 add rsp 0x30
     /* o1 = (sizeof(o1))o1 + o2 */
     v7 = v1;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2C46 pop rbp
     /* o1 = (sizeof(o1))rsp */
     v4 = v3;
@@ -8459,6 +8742,10 @@ void f2cf4(
     v17 = v16;
     /* call o1 */
     f29d0(v12, v10, v1);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x2D13 test eax eax
     /* of = (sizeof(of))0x0 */
     v20 = 0x0;
@@ -8489,6 +8776,8 @@ void f2d22() {
   // 0x2D22 add rsp 0x30
     /* o1 = (sizeof(o1))o1 + o2 */
     v7 = v1;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2D26 pop rbp
     /* o1 = (sizeof(o1))rsp */
     v4 = v3;
@@ -8551,6 +8840,8 @@ void f2e80(
   // 0x2E82 cmp rax 0x1000
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
     { v21 = (v26 - 4096); v23 = (v26 - 4096); v22 = (v26 - 4096); }
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2E88 lea rcx [rsp+0x18]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v29 = v6;
@@ -8560,17 +8851,30 @@ void f2e80(
     /* o1 = (sizeof(o1))o1 - o2 */
     v29 = v8;
   // 0x2E96 or [rcx] 0x0
+    /* calc_flags [sf, zf, pf] (o1 | o2) */
+    { }
     /* o1 = (sizeof(o1))o1 | o2 */
     v24 = v15;
   // 0x2E9A sub rax 0x1000
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
+    { }
     /* o1 = (sizeof(o1))o1 - o2 */
     v26 = v17;
   // 0x2EA0 cmp rax 0x1000
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
     { v21 = (v26 - 4096); v23 = (v26 - 4096); v22 = (v26 - 4096); }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2EA6 ja 0x2E8F
     <ASSEMBLY: ja 0x2E8F>
+  // 0x2EA8 sub rcx rax
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
+    { }
   // 0x2EAB or [rcx] 0x0
+    /* calc_flags [sf, zf, pf] (o1 | o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v21 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -8688,6 +8992,10 @@ void f2ec0(
     v41 = v19;
     /* call o1 */
     f8880(v16, v1, v8);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x2EE4 mov rax [rbp+0x30]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v25 = v24;
@@ -8713,6 +9021,12 @@ void f2ec0(
     v41 = v19;
     /* call o1 */
     f4eb1(v24, v32, v16, v1, v29, v12);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x2F04 mov ebx eax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v38 = v37;
@@ -8726,12 +9040,24 @@ void f2ec0(
     v41 = v19;
     /* call o1 */
     f8910(v37, v16, v1);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x2F0F mov eax ebx
     /* o1 = (sizeof(o1))zero_extend o2 */
     v44 = v43;
   // 0x2F11 add rsp 0x38
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
     /* o1 = (sizeof(o1))o1 + o2 */
     v52 = v45;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2F15 pop rbx
     /* o1 = (sizeof(o1))rsp */
     v47 = v41;
@@ -8851,9 +9177,15 @@ void f2f20(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v69 = v12;
   // 0x2F36 and eax 0x4000
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* o1 = (sizeof(o1))o1 & o2 */
     v66 = v21;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2F3B test eax eax
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v39 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -8874,15 +9206,27 @@ void f2f20(
   // 0x2F4D cmp edx eax
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
     { v39 = (v68 - v58); v41 = (v68 - v58); v40 = (v68 - v58); }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2F4F jle 0x2F8D
     <ASSEMBLY: jle 0x2F8D>
   // 0x2F51 mov rax [rbp+0x18]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v69 = v12;
   // 0x2F58 and eax 0x2000
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* o1 = (sizeof(o1))o1 & o2 */
     v66 = v37;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2F5D test eax eax
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v39 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -8907,6 +9251,12 @@ void f2f20(
     v51 = v50;
     /* call o1 */
     ext_msvcrt_dll__fputc(v43, v47, v45, v1);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x2F73 jmp 0x2F8D
     /* jmp o1 */
     goto 0x2F8D;
@@ -8946,6 +9296,8 @@ void f2f8d() {
   // 0x2F9F add rsp 0x20
     /* o1 = (sizeof(o1))o1 + o2 */
     v16 = v10;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x2FA3 pop rbp
     /* o1 = (sizeof(o1))rsp */
     v13 = v12;
@@ -9150,6 +9502,10 @@ void f4eb1(
     v147 = v17;
     /* call o1 */
     ext_msvcrt_dll___errno(v1);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x4ED2 mov [rbp-0x14] eax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v23 = v22;
@@ -9168,6 +9524,10 @@ void f4eb1(
     v142 = undefined;
     /* o1 = (sizeof(o1))o1 & o2 */
     v34 = v33;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x4EE7 mov [rbp-0x58] eax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v64 = v22;
@@ -9922,9 +10282,17 @@ void f8880(
     v70 = v13;
     /* call o1 */
     f89e0(v10, v24, <UNKNOWN DATA>, <UNKNOWN DATA>);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x8896 cmp [rbp+0x10] rax
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
     { v53 = (v9 - (signed)v68); v38 = (v9 - (signed)v68); v39 = (v9 - (signed)v68); v55 = (v9 - (signed)v68); v54 = (v9 - (signed)v68); v41 = (v9 - (signed)v68); }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x889A jb 0x88F4
     <ASSEMBLY: jb 0x88F4>
   // 0x889C mov ecx 0x13
@@ -9937,9 +10305,19 @@ void f8880(
     v70 = v13;
     /* call o1 */
     f89e0(v16, v24, <UNKNOWN DATA>, <UNKNOWN DATA>);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x88A6 cmp [rbp+0x10] rax
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
     { v53 = (v9 - (signed)v68); v38 = (v9 - (signed)v68); v39 = (v9 - (signed)v68); v55 = (v9 - (signed)v68); v54 = (v9 - (signed)v68); v41 = (v9 - (signed)v68); }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x88AA ja 0x88F4
     <ASSEMBLY: ja 0x88F4>
   // 0x88AC mov ecx 0x0
@@ -9952,6 +10330,12 @@ void f8880(
     v70 = v13;
     /* call o1 */
     f89e0(v10, v24, <UNKNOWN DATA>, <UNKNOWN DATA>);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x88B6 mov rdx rax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v36 = v23;
@@ -9968,6 +10352,8 @@ void f8880(
   // 0x88C7 48B8ABAAAAAAAAAAAAAA
     <ASSEMBLY: 48B8ABAAAAAAAAAAAAAA>
   // 0x88D1 imul rax rdx
+    /* assert (! operand_exists(2)) */
+    ;
     /* if bit_size_of(o1) == (unlimited) 0x8 { calc_flags [of, cf] (sized(al,sizeof(al)) * o1); ax = (sizeof(ax))sized(al,sizeof(al)) * o1 } else { calc_flags [of, cf] (sized(rax,sizeof(o1)) * o1); rax = (sizeof(o1))sized(rax,sizeof(o1)) * o1; rdx = (sizeof(o1))zero_extend sized(rax,sizeof(o1)) * o1 >> bit_size_of(o1) } */
     if (v30) { v32 = v31; } else { v68 = v33; v36 = v35; }
   // 0x88D5 add eax 0x10
@@ -9975,6 +10361,10 @@ void f8880(
     { v53 = v42; v38 = v42; v39 = v42; v55 = v42; v54 = v42; v41 = v42; }
     /* o1 = (sizeof(o1))o1 + o2 */
     v51 = v42;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x88D8 mov ecx eax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v45 = v44;
@@ -9985,6 +10375,12 @@ void f8880(
     v70 = v13;
     /* call o1 */
     ext_msvcrt_dll___lock(v42, v44, v1);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x88E3 mov eax [rax+0x18]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v51 = v50;
@@ -10026,6 +10422,8 @@ void f8909() {
   // 0x890A add rsp 0x20
     /* o1 = (sizeof(o1))o1 + o2 */
     v7 = v1;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x890E pop rbp
     /* o1 = (sizeof(o1))rsp */
     v4 = v3;
@@ -10142,9 +10540,17 @@ void f8910(
     v70 = v13;
     /* call o1 */
     f89e0(v10, v32, <UNKNOWN DATA>, <UNKNOWN DATA>);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x8926 cmp [rbp+0x10] rax
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
     { v25 = (v9 - (signed)v68); v52 = (v9 - (signed)v68); v53 = (v9 - (signed)v68); v54 = (v9 - (signed)v68); v26 = (v9 - (signed)v68); v55 = (v9 - (signed)v68); }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x892A jb 0x8984
     <ASSEMBLY: jb 0x8984>
   // 0x892C mov ecx 0x13
@@ -10157,9 +10563,19 @@ void f8910(
     v70 = v13;
     /* call o1 */
     f89e0(v16, v32, <UNKNOWN DATA>, <UNKNOWN DATA>);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x8936 cmp [rbp+0x10] rax
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - sign_extend o2) */
     { v25 = (v9 - (signed)v68); v52 = (v9 - (signed)v68); v53 = (v9 - (signed)v68); v54 = (v9 - (signed)v68); v26 = (v9 - (signed)v68); v55 = (v9 - (signed)v68); }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x893A ja 0x8984
     <ASSEMBLY: ja 0x8984>
   // 0x8940 mov eax [rax+0x18]
@@ -10176,6 +10592,10 @@ void f8910(
     v54 = undefined;
     /* o1 = (sizeof(o1))o1 & o2 */
     v30 = v29;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x8946 mov edx eax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v32 = v31;
@@ -10195,6 +10615,12 @@ void f8910(
     v70 = v13;
     /* call o1 */
     f89e0(v10, v31, <UNKNOWN DATA>, <UNKNOWN DATA>);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x8959 mov rdx rax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v51 = v39;
@@ -10211,6 +10637,8 @@ void f8910(
   // 0x896A 48B8ABAAAAAAAAAAAAAA
     <ASSEMBLY: 48B8ABAAAAAAAAAAAAAA>
   // 0x8974 imul rax rdx
+    /* assert (! operand_exists(2)) */
+    ;
     /* if bit_size_of(o1) == (unlimited) 0x8 { calc_flags [of, cf] (sized(al,sizeof(al)) * o1); ax = (sizeof(ax))sized(al,sizeof(al)) * o1 } else { calc_flags [of, cf] (sized(rax,sizeof(o1)) * o1); rax = (sizeof(o1))sized(rax,sizeof(o1)) * o1; rdx = (sizeof(o1))zero_extend sized(rax,sizeof(o1)) * o1 >> bit_size_of(o1) } */
     if (v45) { v47 = v46; } else { v68 = v48; v51 = v50; }
   // 0x8978 add eax 0x10
@@ -10218,6 +10646,10 @@ void f8910(
     { v25 = v56; v52 = v56; v53 = v56; v54 = v56; v26 = v56; v55 = v56; }
     /* o1 = (sizeof(o1))o1 + o2 */
     v57 = v56;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x897B mov ecx eax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v58 = v31;
@@ -10228,6 +10660,12 @@ void f8910(
     v70 = v13;
     /* call o1 */
     ext_msvcrt_dll___unlock(v56, v31, v1);
+    /* type o1 = sizeof(o1)* */
+    ;
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x8982 jmp 0x8999
     /* jmp o1 */
     goto 0x8999;
@@ -10246,6 +10684,8 @@ void f8999() {
   // 0x899A add rsp 0x20
     /* o1 = (sizeof(o1))o1 + o2 */
     v7 = v1;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x899E pop rbp
     /* o1 = (sizeof(o1))rsp */
     v4 = v3;
@@ -10329,8 +10769,12 @@ void f89a0(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v25 = v24;
   // 0x89CD add rsp 0x10
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
     /* o1 = (sizeof(o1))o1 + o2 */
     v32 = v26;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x89D1 pop rbp
     /* o1 = (sizeof(o1))rsp */
     v29 = v28;
@@ -10410,20 +10854,46 @@ void f89e0(
     v12 = v11;
     /* call o1 */
     ext_msvcrt_dll____iob_func(v1);
+    /* type rsp = arch_len* */
+    ;
+    /* type rip = arch_len* */
+    ;
   // 0x89F0 mov rcx rax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v15 = v14;
   // 0x89F3 mov edx [rbp+0x10]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v17 = v16;
+  // 0x89F9 add rax rax
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
+  // 0x89FC add rax rdx
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x8A03 add rax rcx
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
     /* o1 = (sizeof(o1))o1 + o2 */
     v33 = v32;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x8A06 add rsp 0x20
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
     { v29 = v34; v30 = v34; v31 = v34; }
     /* o1 = (sizeof(o1))o1 + o2 */
     v39 = v34;
+    /* type o1 = sizeof(o1)i */
+    ;
+    /* type o2 = sizeof(o2)i */
+    ;
   // 0x8A0A pop rbp
     /* o1 = (sizeof(o1))rsp */
     v36 = v12;

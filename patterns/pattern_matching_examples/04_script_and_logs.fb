@@ -1,4 +1,5 @@
 if:
+  at afterParameterAnalyzation
   script `
 fn my_rhai_script() {
   stmt_count >= 5 && asm_count >= 2

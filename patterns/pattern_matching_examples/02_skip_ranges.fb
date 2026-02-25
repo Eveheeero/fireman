@@ -1,4 +1,5 @@
 if:
+  at afterIteration
   asm push rbp
   skip_range 0..8
   skip_asm_range 0..8

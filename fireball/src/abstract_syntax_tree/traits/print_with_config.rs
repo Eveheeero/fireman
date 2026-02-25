@@ -2,6 +2,28 @@ use super::*;
 
 // to_string_with_config(Some(config))
 
+fn inline_statement_body(stmts: &[WrappedAstStatement], config: AstPrintConfig) -> String {
+    stmts
+        .iter()
+        .map(|stmt| stmt.to_string_with_config(Some(config)))
+        .filter(|stmt| !stmt.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn write_inline_block(
+    f: &mut impl std::fmt::Write,
+    stmts: &[WrappedAstStatement],
+    config: AstPrintConfig,
+) -> std::fmt::Result {
+    let body = inline_statement_body(stmts, config);
+    if body.is_empty() {
+        write!(f, "{{ }}")
+    } else {
+        write!(f, "{{ {} }}", body)
+    }
+}
+
 impl PrintWithConfig for AstValueType {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
@@ -82,32 +104,21 @@ impl PrintWithConfig for AstStatement {
                     }
                 }
 
-                write!(f, "if ({}) {{ ", cond.to_string_with_config(Some(config)))?;
-                for stmt in then_body {
-                    write!(f, "{} ", stmt.to_string_with_config(Some(config)))?;
-                }
+                write!(f, "if ({}) ", cond.to_string_with_config(Some(config)))?;
+                write_inline_block(f, then_body, config)?;
                 if let Some(else_stmts) = else_body {
-                    write!(f, "}} else {{ ")?;
-                    for stmt in else_stmts {
-                        write!(f, "{} ", stmt.to_string_with_config(Some(config)))?;
-                    }
+                    write!(f, " else ")?;
+                    write_inline_block(f, else_stmts, config)?;
                 }
-                write!(f, "}}")
+                Ok(())
             }
             AstStatement::While(cond, body) => {
                 if body.is_empty() && !config.print_empty_statement {
                     return Ok(());
                 }
 
-                write!(
-                    f,
-                    "while ({}) {{ ",
-                    cond.to_string_with_config(Some(config))
-                )?;
-                for stmt in body {
-                    write!(f, "{} ", stmt.to_string_with_config(Some(config)))?;
-                }
-                write!(f, "}}")
+                write!(f, "while ({}) ", cond.to_string_with_config(Some(config)))?;
+                write_inline_block(f, body, config)
             }
             AstStatement::For(init, cond, update, body) => {
                 if body.is_empty() && !config.print_empty_statement {
@@ -136,11 +147,8 @@ impl PrintWithConfig for AstStatement {
                 } else {
                     write!(f, "{};", update.to_string_with_config(Some(config)))?;
                 }
-                write!(f, ") {{ ")?;
-                for stmt in body {
-                    write!(f, "{} ", stmt.to_string_with_config(Some(config)))?;
-                }
-                write!(f, "}}")
+                write!(f, ") ")?;
+                write_inline_block(f, body, config)
             }
             AstStatement::Return(expr) => {
                 if let Some(expr) = expr {
@@ -238,11 +246,7 @@ impl PrintWithConfig for AstStatement {
                     return Ok(());
                 }
 
-                write!(f, "{{ ")?;
-                for stmt in stmts {
-                    write!(f, "{} ", stmt.to_string_with_config(Some(config)))?;
-                }
-                write!(f, "}}")
+                write_inline_block(f, stmts, config)
             }
             AstStatement::Empty => {
                 if config.print_empty_statement {

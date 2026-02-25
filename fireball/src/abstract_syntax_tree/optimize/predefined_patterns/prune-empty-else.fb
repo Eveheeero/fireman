@@ -1,4 +1,0 @@
-if:
-  script true
-do:
-  prune-empty-else

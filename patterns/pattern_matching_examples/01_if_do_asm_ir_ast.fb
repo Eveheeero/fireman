@@ -1,4 +1,5 @@
 if:
+  at beforeIrAnalyzation
   asm mov rsp, 8
   ast comment seed-comment
 do:
