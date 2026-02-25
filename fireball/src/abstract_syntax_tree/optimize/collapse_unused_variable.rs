@@ -1,7 +1,7 @@
 use crate::{
     abstract_syntax_tree::{
-        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement,
-        ProcessedOptimization, WrappedAstStatement,
+        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion,
+        GetRelatedVariables, ProcessedOptimization, AstStatement, WrappedAstStatement,
     },
     ir::data::IrData,
     prelude::{DecompileError, *},
@@ -31,6 +31,16 @@ pub(super) fn collapse_unused_variables(
     let mut overwritten_locations: HashSet<Aos<IrData>> = HashSet::new();
     let mut new_body: Vec<WrappedAstStatement> = Vec::new();
     for mut stmt in body.into_iter().rev() {
+        if let AstStatement::Call(_) = &stmt.statement {
+            for (_, var_id) in stmt.statement.get_related_variables() {
+                if let Some(location) = super::utils::var_id_to_access_location(&variables, var_id) {
+                    overwritten_locations.remove(&location);
+                }
+            }
+            new_body.push(stmt);
+            continue;
+        }
+
         match &mut stmt.statement {
             /* removable */
             AstStatement::Declaration(lhs, _rhs) => {
@@ -139,10 +149,13 @@ pub(super) fn collapse_unused_variables(
                 new_body.push(stmt);
                 continue;
             }
+            AstStatement::Call(_) => {
+                // handled above
+                continue;
+            }
 
             /* next statements undetectable */
-            AstStatement::Call(_)
-            | AstStatement::Goto(_)
+            AstStatement::Goto(_)
             | AstStatement::Assembly(_)
             | AstStatement::Ir(_)
             | AstStatement::Return(_)
@@ -181,6 +194,15 @@ fn collapse(
         i -= 1;
         let mut drop_needed = false;
         let stmt = &mut stmts[i];
+
+        if let AstStatement::Call(_) = &stmt.statement {
+            for (_, var_id) in stmt.statement.get_related_variables() {
+                if let Some(location) = super::utils::var_id_to_access_location(variables, var_id) {
+                    overwritten_locations.remove(&location);
+                }
+            }
+            continue;
+        }
 
         'inner: {
             match &mut stmt.statement {
@@ -277,10 +299,12 @@ fn collapse(
 
                 /* etc */
                 AstStatement::Label(_) | AstStatement::Comment(_) | AstStatement::Empty => {}
+                AstStatement::Call(_) => {
+                    // handled above
+                }
 
                 /* next statements undetectable */
-                AstStatement::Call(_)
-                | AstStatement::Goto(_)
+                AstStatement::Goto(_)
                 | AstStatement::Assembly(_)
                 | AstStatement::Ir(_)
                 | AstStatement::Return(_)

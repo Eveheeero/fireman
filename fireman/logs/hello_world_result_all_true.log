@@ -43,17 +43,12 @@ void main(
     v36 = v1;
   // 0x17D1 sub rsp 0x30
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
-    { v27 = v4; v24 = v4; v23 = v4; v30 = v4; v28 = v4; v25 = v4; }
+    { v23 = v4; }
     /* o1 = (sizeof(o1))o1 - o2 */
     v36 = v4;
-  // 0x17D5 lea rbp [rsp+0x30]
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v33 = v6;
   // 0x17DA call 0x1907
     /* rsp = (arch_len)rsp - arch_byte_size */
     v36 = v1;
-    /* rsp = (arch_len)rip + instruction_byte_size */
-    v17 = v9;
     /* call o1 */
     f1907(v15);
     /* type rsp = arch_len* */
@@ -137,15 +132,9 @@ void f1125() {
   // 0x1125 push rbp
     /* rsp = (arch_len)rsp - arch_byte_size */
     v27 = v1;
-  // 0x1126 mov rbp rsp
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v24 = v4;
   // 0x1129 sub rsp 0x30
     /* o1 = (sizeof(o1))o1 - o2 */
     v27 = v6;
-  // 0x112D mov [rbp-0x4] 0xFF
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v19 = v8;
   // 0x1134 mov rax [rip+0xA675]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v11 = v10;
@@ -483,7 +472,7 @@ void __tmainCRTStartup(
     v314 = v4;
   // 0x1158 sub rsp 0xE0
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
-    { v303 = v6; v31 = v6; v305 = v6; v304 = v6; }
+    { v31 = v6; }
     /* o1 = (sizeof(o1))o1 - o2 */
     v317 = v6;
   // 0x115F mov [rbp-0x8] 0x0
@@ -492,9 +481,6 @@ void __tmainCRTStartup(
   // 0x1167 mov [rbp-0xC] 0x0
     /* o1 = (sizeof(o1))zero_extend o2 */
     v196 = v8;
-  // 0x116E lea rax [rbp-0xC0]
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v272 = v11;
   // 0x1175 mov r8d 0x68
     /* o1 = (sizeof(o1))zero_extend o2 */
     v153 = v13;
@@ -1957,8 +1943,6 @@ void f1583(
     /* type rax = sizeof(rax)i */
     ;
   // 0x159D shl rax
-    /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) { v105 = v21; } else { v105 = v23; }
     /* of = (sizeof(of))undefined */
     v25 = undefined;
     /* af = (sizeof(af))undefined */
@@ -2428,8 +2412,6 @@ void f168a(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v30 = v4;
   // 0x168E sub rsp 0x20
-    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
-    { v17 = v6; v21 = v6; v20 = v6; v18 = v6; }
     /* o1 = (sizeof(o1))o1 - o2 */
     v33 = v6;
   // 0x1692 mov [rbp+0x10] rcx
@@ -2568,8 +2550,6 @@ void f1800(
   // 0x182E call rax
     /* rsp = (arch_len)rsp - arch_byte_size */
     v38 = v19;
-    /* rsp = (arch_len)rip + instruction_byte_size */
-    v29 = v21;
     /* call o1 */
     v16(v15, v17, v19);
     /* type rsp = arch_len* */
@@ -3430,16 +3410,11 @@ void f1b80(
   // 0x1B81 push rbx
     /* rsp = (arch_len)rsp - arch_byte_size */
     v362 = v1;
-    /* o1 = (sizeof(o1))rsp */
-    v39 = v362;
   // 0x1B82 sub rsp 0x38
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
-    { v332 = v6; v261 = v6; v334 = v6; v333 = v6; }
+    { v261 = v6; }
     /* o1 = (sizeof(o1))o1 - o2 */
     v362 = v6;
-  // 0x1B86 lea rbp [rsp+0x30]
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v360 = v8;
   // 0x1B8B mov [rbp+0x20] rcx
     /* o1 = (sizeof(o1))zero_extend o2 */
     v11 = v10;
@@ -3452,20 +3427,12 @@ void f1b80(
   // 0x1B97 mov [rbp+0x38] r9
     /* o1 = (sizeof(o1))zero_extend o2 */
     v17 = v16;
-  // 0x1B9B lea rax [rbp+0x28]
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v341 = v18;
   // 0x1B9F mov [rbp-0x8] rax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v271 = v20;
-  // 0x1BA3 mov ecx
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v323 = v22;
   // 0x1BA8 call 0x89E0
     /* rsp = (arch_len)rsp - arch_byte_size */
     v362 = v1;
-    /* rsp = (arch_len)rip + instruction_byte_size */
-    v344 = v25;
     /* call o1 */
     f89e0(v18, v22, v1, v8);
     /* type rsp = arch_len* */
@@ -3484,14 +3451,9 @@ void f1b80(
   // 0x1BBB lea rax [rip+0x961E]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v341 = v32;
-  // 0x1BC2 mov rcx rax
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v342 = v20;
   // 0x1BC5 call 0x9140
     /* rsp = (arch_len)rsp - arch_byte_size */
     v362 = v1;
-    /* rsp = (arch_len)rip + instruction_byte_size */
-    v344 = v25;
     /* call o1 */
     ext_msvcrt_dll__fwrite(v32, v20, v22, v1, v29, v20);
     /* type o1 = sizeof(o1)* */
@@ -3509,8 +3471,6 @@ void f1b80(
   // 0x1BD3 call 0x89E0
     /* rsp = (arch_len)rsp - arch_byte_size */
     v362 = v1;
-    /* rsp = (arch_len)rip + instruction_byte_size */
-    v344 = v25;
     /* call o1 */
     f89e0(v38, v22, v1);
     /* type o1 = sizeof(o1)* */
@@ -3531,8 +3491,6 @@ void f1b80(
   // 0x1BE2 call 0x9188
     /* rsp = (arch_len)rsp - arch_byte_size */
     v362 = v1;
-    /* rsp = (arch_len)rip + instruction_byte_size */
-    v344 = v25;
     /* call o1 */
     ext_msvcrt_dll__vfprintf(v20, v45, v1, v43);
     /* type o1 = sizeof(o1)* */
@@ -5735,14 +5693,9 @@ void f1f94(
   // 0x1FAD je 0x1FD1
     /* if zf { jmp o1 } */
     if (v14) { goto 0x1FD1; }
-  // 0x1FAF mov rcx [rbp+0x10]
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v29 = v16;
   // 0x1FB3 call 0x1BED
     /* rsp = (arch_len)rsp - arch_byte_size */
     v39 = v1;
-    /* rsp = (arch_len)rip + instruction_byte_size */
-    v31 = v19;
     /* call o1 */
     f1bed(v16, v1);
 }
@@ -7860,8 +7813,6 @@ void f2362(
   // 0x237E add eax
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
     { v70 = v19; v71 = v19; v72 = v19; }
-    /* o1 = (sizeof(o1))o1 + o2 */
-    v29 = v19;
     /* type o2 = sizeof(o2)i */
     ;
   // 0x2381 mov [rip+0xDD75] eax
@@ -7902,20 +7853,9 @@ void f2362(
     ;
     /* type o2 = sizeof(o2)i */
     ;
-  // 0x23AB shl rax
-    /* if operand_exists(2) { calc_flags [sf, zf, pf] (o1 << o2); o1 = (sizeof(o1))o1 << o2 } else { calc_flags [sf, zf, pf] (o1 << 0x1); o1 = (sizeof(o1))o1 << 0x1 } */
-    if (true) { v83 = v33; } else { v83 = v35; }
-    /* of = (sizeof(of))undefined */
-    v70 = undefined;
-    /* af = (sizeof(af))undefined */
-    v71 = undefined;
-    /* cf = (sizeof(cf))undefined */
-    v72 = undefined;
   // 0x23AF call 0x2E80
     /* rsp = (arch_len)rsp - arch_byte_size */
     v97 = v1;
-    /* rsp = (arch_len)rip + instruction_byte_size */
-    v89 = v24;
     /* call o1 */
     f2e80(v1, undefined, undefined, undefined);
     /* type o1 = sizeof(o1)* */
@@ -7964,8 +7904,6 @@ void f2362(
   // 0x23F4 call 0x1FD8
     /* rsp = (arch_len)rsp - arch_byte_size */
     v97 = v1;
-    /* rsp = (arch_len)rip + instruction_byte_size */
-    v89 = v24;
     /* call o1 */
     f1fd8(v82, v73, v73, v1, v77, undefined, undefined, undefined);
     /* type o1 = sizeof(o1)* */
@@ -8560,8 +8498,6 @@ void f2ba8(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v45 = v4;
   // 0x2BAC sub rsp 0x30
-    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
-    { v22 = v6; v25 = v6; v23 = v6; }
     /* o1 = (sizeof(o1))o1 - o2 */
     v48 = v6;
   // 0x2BB0 mov [rbp+0x10] rcx
@@ -8588,6 +8524,8 @@ void f2ba8(
     /* type rip = arch_len* */
     ;
   // 0x2BCB test eax eax
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v22 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -8759,8 +8697,6 @@ void f2bf8(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v40 = v4;
   // 0x2BFC sub rsp 0x30
-    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
-    { v20 = v6; v23 = v6; v21 = v6; }
     /* o1 = (sizeof(o1))o1 - o2 */
     v43 = v6;
   // 0x2C07 mov [rbp-0x8] rax
@@ -8784,6 +8720,8 @@ void f2bf8(
     /* type rip = arch_len* */
     ;
   // 0x2C17 test eax eax
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v20 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -8873,8 +8811,6 @@ void f2cf4(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v32 = v4;
   // 0x2CF8 sub rsp 0x30
-    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
-    { v20 = v6; v23 = v6; v21 = v6; }
     /* o1 = (sizeof(o1))o1 - o2 */
     v35 = v6;
   // 0x2D03 mov [rbp-0x8] rax
@@ -8898,6 +8834,8 @@ void f2cf4(
     /* type rip = arch_len* */
     ;
   // 0x2D13 test eax eax
+    /* calc_flags [sf, zf, pf] (o1 & o2) */
+    { }
     /* of = (sizeof(of))0x0 */
     v20 = 0x0;
     /* cf = (sizeof(cf))0x0 */
@@ -9121,14 +9059,9 @@ void f2ec0(
   // 0x2EC1 push rbx
     /* rsp = (arch_len)rsp - arch_byte_size */
     v52 = v1;
-    /* o1 = (sizeof(o1))rsp */
-    v47 = v52;
   // 0x2EC2 sub rsp 0x38
     /* o1 = (sizeof(o1))o1 - o2 */
     v52 = v6;
-  // 0x2EC6 lea rbp [rsp+0x30]
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v50 = v8;
   // 0x2ECB mov [rbp+0x20] rcx
     /* o1 = (sizeof(o1))zero_extend o2 */
     v11 = v10;
@@ -9138,14 +9071,9 @@ void f2ec0(
   // 0x2ED3 mov [rbp+0x30] r8
     /* o1 = (sizeof(o1))zero_extend o2 */
     v15 = v14;
-  // 0x2ED7 mov rcx [rbp+0x20]
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v39 = v16;
   // 0x2EDB call 0x8880
     /* rsp = (arch_len)rsp - arch_byte_size */
     v52 = v1;
-    /* rsp = (arch_len)rip + instruction_byte_size */
-    v41 = v19;
     /* call o1 */
     f8880(v16, v1, v8);
     /* type rsp = arch_len* */
@@ -9173,8 +9101,6 @@ void f2ec0(
   // 0x2EFF call 0x4EB1
     /* rsp = (arch_len)rsp - arch_byte_size */
     v52 = v1;
-    /* rsp = (arch_len)rip + instruction_byte_size */
-    v41 = v19;
     /* call o1 */
     f4eb1(v24, v32, v16, v1, v29, v12);
     /* type o1 = sizeof(o1)* */
@@ -9648,12 +9574,9 @@ void f4eb1(
     v169 = v4;
   // 0x4EB5 sub rsp 0xD0
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
-    { v151 = v6; v104 = v6; v153 = v6; v152 = v6; }
+    { v104 = v6; }
     /* o1 = (sizeof(o1))o1 - o2 */
     v172 = v6;
-  // 0x4EBC mov [rbp+0x10] ecx
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v34 = v8;
   // 0x4EBF mov [rbp+0x18] rdx
     /* o1 = (sizeof(o1))zero_extend o2 */
     v11 = v10;
@@ -10455,8 +10378,6 @@ void f8880(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v76 = v4;
   // 0x8884 sub rsp 0x20
-    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
-    { v56 = v6; v41 = v6; v42 = v6; v58 = v6; v57 = v6; v44 = v6; }
     /* o1 = (sizeof(o1))o1 - o2 */
     v79 = v6;
   // 0x8888 mov [rbp+0x10] rcx
@@ -10547,12 +10468,10 @@ void f8880(
     /* assert (! operand_exists(2)) */
     ;
     /* if bit_size_of(o1) == (unlimited) 0x8 { calc_flags [of, cf] (sized(al,sizeof(al)) * o1); ax = (sizeof(ax))sized(al,sizeof(al)) * o1 } else { calc_flags [of, cf] (sized(rax,sizeof(o1)) * o1); rax = (sizeof(o1))sized(rax,sizeof(o1)) * o1; rdx = (sizeof(o1))zero_extend sized(rax,sizeof(o1)) * o1 >> bit_size_of(o1) } */
-    if (v33) { v35 = v34; } else { v71 = v36; v39 = v38; }
+    if (v33) { v35 = v34; } else { v39 = v38; }
   // 0x88D5 add eax 0x10
     /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
-    { v56 = v45; v41 = v45; v42 = v45; v58 = v45; v57 = v45; v44 = v45; }
-    /* o1 = (sizeof(o1))o1 + o2 */
-    v54 = v45;
+    { }
     /* type o1 = sizeof(o1)i */
     ;
     /* type o2 = sizeof(o2)i */
@@ -10717,8 +10636,6 @@ void f8910(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v76 = v4;
   // 0x8914 sub rsp 0x20
-    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
-    { v28 = v6; v55 = v6; v56 = v6; v57 = v6; v29 = v6; v58 = v6; }
     /* o1 = (sizeof(o1))o1 - o2 */
     v79 = v6;
   // 0x8918 mov [rbp+0x10] rcx
@@ -10779,13 +10696,7 @@ void f8910(
     v60 = v25;
   // 0x8943 and ah 0x7F
     /* calc_flags [sf, zf, pf] (o1 & o2) */
-    { v55 = v32; v56 = v32; v58 = v32; }
-    /* of = (sizeof(of))0x0 */
-    v28 = 0x0;
-    /* cf = (sizeof(cf))0x0 */
-    v29 = 0x0;
-    /* af = (sizeof(af))undefined */
-    v57 = undefined;
+    { }
     /* o1 = (sizeof(o1))o1 & o2 */
     v33 = v32;
     /* type o1 = sizeof(o1)i */
@@ -10795,9 +10706,6 @@ void f8910(
   // 0x8946 mov edx eax
     /* o1 = (sizeof(o1))zero_extend o2 */
     v35 = v34;
-  // 0x8948 mov rax [rbp+0x10]
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v71 = v23;
   // 0x894C mov [rax+0x18] edx
     /* o1 = (sizeof(o1))zero_extend o2 */
     v38 = v37;
@@ -11032,12 +10940,7 @@ void f89e0(
   // 0x89E0 push rbp
     /* rsp = (arch_len)rsp - arch_byte_size */
     v39 = v1;
-  // 0x89E1 mov rbp rsp
-    /* o1 = (sizeof(o1))zero_extend o2 */
-    v36 = v4;
   // 0x89E4 sub rsp 0x20
-    /* calc_flags [of, sf, zf, af, cf, pf] (o1 - o2) */
-    { v29 = v6; v30 = v6; v31 = v6; }
     /* o1 = (sizeof(o1))o1 - o2 */
     v39 = v6;
   // 0x89E8 mov [rbp+0x10] ecx
@@ -11061,6 +10964,8 @@ void f89e0(
     /* o1 = (sizeof(o1))zero_extend o2 */
     v17 = v16;
   // 0x89F9 add rax rax
+    /* calc_flags [of, sf, zf, af, cf, pf] (o1 + o2) */
+    { }
     /* type o1 = sizeof(o1)i */
     ;
     /* type o2 = sizeof(o2)i */
