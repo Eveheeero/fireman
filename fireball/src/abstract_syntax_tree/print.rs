@@ -142,26 +142,32 @@ impl Ast {
 
             // Local variables
             {
-                let mut var_declarations_exist = false;
                 let var_map = func.variables.read().unwrap();
                 let mut var_keys_sorted = var_map.keys().collect::<Vec<_>>();
-                var_keys_sorted.sort_by_cached_key(|key| key.index);
+                var_keys_sorted.sort_by_cached_key(|key| {
+                    let caller_priority = if key.parent == Some(func.id) { 0u8 } else { 1u8 };
+                    (
+                        caller_priority,
+                        key.index,
+                        key.parent.map(|id| id.address).unwrap_or(0),
+                    )
+                });
+                let mut decl_rows: Vec<(String, String, Option<String>)> = Vec::new();
                 for var_key in var_keys_sorted {
                     let var = var_map.get(var_key).unwrap();
                     if let Some(const_value) = &var.const_value {
                         if !config.replace_constant {
-                            var_declarations_exist = true;
-                            let mut line = format!(
-                                "  const {} {} = {};\n",
-                                var.var_type.to_string_with_config(Some(config)),
-                                var.name(),
-                                const_value.to_string_with_config(Some(config))
-                            );
-                            if config.variable_usage_comment {
-                                line.pop();
-                                line.push_str(&format!(" /* {} */\n", variable_usage_summary(var)));
-                            }
-                            output.push_str(&line);
+                            decl_rows.push((
+                                format!("const {}", var.var_type.to_string_with_config(Some(config))),
+                                format!(
+                                    "{} = {}",
+                                    var.name(),
+                                    const_value.to_string_with_config(Some(config))
+                                ),
+                                config
+                                    .variable_usage_comment
+                                    .then(|| variable_usage_summary(var)),
+                            ));
                         } else {
                             debug!(
                                 function=?func.name(),
@@ -172,20 +178,25 @@ impl Ast {
                             );
                         }
                     } else {
-                        var_declarations_exist = true;
-                        let mut line = format!(
-                            "  {} {};\n",
+                        decl_rows.push((
                             var.var_type.to_string_with_config(Some(config)),
-                            var.name()
-                        );
-                        if config.variable_usage_comment {
-                            line.pop();
-                            line.push_str(&format!(" /* {} */\n", variable_usage_summary(var)));
-                        }
-                        output.push_str(&line);
+                            var.name(),
+                            config
+                                .variable_usage_comment
+                                .then(|| variable_usage_summary(var)),
+                        ));
                     }
                 }
-                if var_declarations_exist {
+
+                if !decl_rows.is_empty() {
+                    let left_width = decl_rows.iter().map(|(left, _, _)| left.len()).max().unwrap_or(0);
+                    for (left, right, usage_comment) in decl_rows {
+                        output.push_str(&format!("  {:<width$} {};", left, right, width = left_width));
+                        if let Some(comment) = usage_comment {
+                            output.push_str(&format!(" /* {} */", comment));
+                        }
+                        output.push('\n');
+                    }
                     output.push_str("\n");
                 }
             }

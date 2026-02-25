@@ -1,7 +1,7 @@
 use crate::{
     abstract_syntax_tree::{
-        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion,
-        GetRelatedVariables, ProcessedOptimization, AstStatement, WrappedAstStatement,
+        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement,
+        GetRelatedVariables, ProcessedOptimization, WrappedAstStatement,
     },
     ir::data::IrData,
     prelude::{DecompileError, *},
@@ -33,7 +33,8 @@ pub(super) fn collapse_unused_variables(
     for mut stmt in body.into_iter().rev() {
         if let AstStatement::Call(_) = &stmt.statement {
             for (_, var_id) in stmt.statement.get_related_variables() {
-                if let Some(location) = super::utils::var_id_to_access_location(&variables, var_id) {
+                if let Some(location) = super::utils::var_id_to_access_location(&variables, var_id)
+                {
                     overwritten_locations.remove(&location);
                 }
             }

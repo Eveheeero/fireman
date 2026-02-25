@@ -47,6 +47,9 @@ impl Ast {
 
         if config.pattern_matching_enabled {
             for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
                 pattern_matching::apply_patterns(
                     &mut ast,
                     function_id,
@@ -59,10 +62,16 @@ impl Ast {
 
         if config.ir_analyzation {
             for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
                 ir_analyzation::analyze_ir_function(&mut ast, function_id, to_version)?;
             }
             if config.pattern_matching_enabled {
                 for (function_id, to_version) in versions.iter().copied() {
+                    if !has_function_version(&ast, function_id, to_version) {
+                        continue;
+                    }
                     pattern_matching::apply_patterns(
                         &mut ast,
                         function_id,
@@ -75,10 +84,16 @@ impl Ast {
         }
         if config.parameter_analyzation {
             for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
                 parameter_analyzation::analyze_parameters(&mut ast, function_id, to_version)?;
             }
             if config.pattern_matching_enabled {
                 for (function_id, to_version) in versions.iter().copied() {
+                    if !has_function_version(&ast, function_id, to_version) {
+                        continue;
+                    }
                     pattern_matching::apply_patterns(
                         &mut ast,
                         function_id,
@@ -91,6 +106,9 @@ impl Ast {
         }
         if config.call_argument_analyzation {
             for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
                 call_argument_analyzation::analyze_call_arguments(
                     &mut ast,
                     function_id,
@@ -99,6 +117,9 @@ impl Ast {
             }
             if config.pattern_matching_enabled {
                 for (function_id, to_version) in versions.iter().copied() {
+                    if !has_function_version(&ast, function_id, to_version) {
+                        continue;
+                    }
                     pattern_matching::apply_patterns(
                         &mut ast,
                         function_id,
@@ -122,18 +143,27 @@ impl Ast {
 
                 if config.constant_folding {
                     for (function_id, to_version) in versions.iter().copied() {
+                        if !has_function_version(&ast, function_id, to_version) {
+                            continue;
+                        }
                         constant_folding::fold_constants(&mut ast, function_id, to_version)?;
                     }
                 }
 
                 if config.loop_analyzation {
                     for (function_id, to_version) in versions.iter().copied() {
+                        if !has_function_version(&ast, function_id, to_version) {
+                            continue;
+                        }
                         loop_analyzation::analyze_loops(&mut ast, function_id, to_version)?;
                     }
                 }
 
                 if config.collapse_unused_varaible {
                     for (function_id, to_version) in versions.iter().copied() {
+                        if !has_function_version(&ast, function_id, to_version) {
+                            continue;
+                        }
                         collapse_unused_variable::collapse_unused_variables(
                             &mut ast,
                             function_id,
@@ -144,6 +174,9 @@ impl Ast {
 
                 if config.control_flow_cleanup {
                     for (function_id, to_version) in versions.iter().copied() {
+                        if !has_function_version(&ast, function_id, to_version) {
+                            continue;
+                        }
                         control_flow_cleanup::cleanup_control_flow(
                             &mut ast,
                             function_id,
@@ -154,6 +187,9 @@ impl Ast {
 
                 if config.pattern_matching_enabled {
                     for (function_id, to_version) in versions.iter().copied() {
+                        if !has_function_version(&ast, function_id, to_version) {
+                            continue;
+                        }
                         pattern_matching::apply_patterns(
                             &mut ast,
                             function_id,
@@ -173,6 +209,9 @@ impl Ast {
 
         if config.pattern_matching_enabled {
             for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
                 pattern_matching::apply_patterns(
                     &mut ast,
                     function_id,
@@ -194,16 +233,31 @@ fn snapshot_optimized_functions(
     let functions = ast.functions.read().unwrap();
     let mut hasher = DefaultHasher::new();
     for (function_id, function_version) in versions.iter().copied() {
-        function_id.hash(&mut hasher);
-        function_version.hash(&mut hasher);
-        let function = functions
+        let Some(function) = functions
             .get(&function_id)
             .and_then(|version_map| version_map.get(&function_version))
-            .unwrap();
+        else {
+            continue;
+        };
+        function_id.hash(&mut hasher);
+        function_version.hash(&mut hasher);
         function.name.hash(&mut hasher);
         function.parameters.len().hash(&mut hasher);
         function.processed_optimizations.len().hash(&mut hasher);
         format!("{:?}", function.body).hash(&mut hasher);
     }
     hasher.finish()
+}
+
+fn has_function_version(
+    ast: &Ast,
+    function_id: AstFunctionId,
+    function_version: AstFunctionVersion,
+) -> bool {
+    ast.functions
+        .read()
+        .unwrap()
+        .get(&function_id)
+        .and_then(|version_map| version_map.get(&function_version))
+        .is_some()
 }

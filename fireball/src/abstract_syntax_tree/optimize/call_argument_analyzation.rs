@@ -2,7 +2,7 @@ use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstCall, AstExpression, AstFunction, AstFunctionId,
         AstFunctionVersion, AstParameter, AstParameterLocation, AstStatement, AstStatementOrigin,
-        AstValueOrigin, AstValueType, AstVariableId, ProcessedOptimization, Wrapped,
+        AstValueOrigin, AstValueType, AstVariable, AstVariableId, ProcessedOptimization, Wrapped,
         WrappedAstStatement,
     },
     ir::{
@@ -125,6 +125,16 @@ pub(super) fn analyze_call_arguments(
     // propagate that information back into callee signatures when they are missing.
     propagate_observed_call_args_to_callee_parameters(ast, &body);
 
+    merge_single_non_recursive_callees(ast, function_id, &variables, &mut body);
+    // Merging can introduce fresh goto-only tails from inlined callees.
+    // Re-run goto->call rewriting so nested inlined branches are normalized too.
+    rebuild_goto_as_call_if_possible(ast, function_id, &mut body);
+    // The rewrite above can expose new zero-arg direct calls created from nested gotos.
+    // Run merge once more so single-use non-recursive callees created by that rewrite
+    // are still folded back into the caller.
+    merge_single_non_recursive_callees(ast, function_id, &variables, &mut body);
+    rebuild_goto_as_call_if_possible(ast, function_id, &mut body);
+
     if let Some(main_target) = detect_real_main_target_from_startup(ast, &body) {
         apply_real_main_special_case(ast, function_id, main_target, &mut body);
     }
@@ -149,7 +159,11 @@ pub(super) fn analyze_call_arguments(
         function.body = body;
     }
 
-    if let Some((target_addr, tail_body)) = split_tail {
+    if let Some((target_addr, mut tail_body)) = split_tail {
+        let tail_scope = AstFunctionId {
+            address: target_addr,
+        };
+        rebuild_goto_as_call_if_possible(ast, tail_scope, &mut tail_body);
         materialize_split_tail_function(
             ast,
             target_addr,
@@ -406,44 +420,42 @@ fn detect_real_main_target_from_startup(
         return None;
     }
 
-    let last_termination_call = body.iter().rposition(|stmt| {
-        let AstStatement::Call(call) = &stmt.statement else {
-            return false;
-        };
+    let mut ordered_calls = Vec::new();
+    collect_calls_in_order(body, &mut ordered_calls);
+    let termination_boundary = ordered_calls.iter().rposition(|call| {
         call_matches_symbol(ast, call, is_termination_symbol)
-    })?;
+            || call_matches_symbol(ast, call, is_amsg_exit_symbol)
+    });
+    let search_end = termination_boundary.unwrap_or(ordered_calls.len());
+    let last_initterm_call = ordered_calls[..search_end]
+        .iter()
+        .rposition(|call| call_matches_symbol(ast, call, is_initterm_symbol))?;
 
-    for stmt in body[..last_termination_call].iter().rev() {
-        let AstStatement::Call(call) = &stmt.statement else {
+    let mut fallback_target = None;
+    for call in ordered_calls[last_initterm_call + 1..search_end]
+        .iter()
+        .rev()
+    {
+        let Some((target, argc)) = resolve_call_target_and_arity(ast, call) else {
             continue;
         };
-        match call {
-            AstCall::Function { target, args } => {
-                if args.len() >= 3 {
-                    return Some(*target);
-                }
-            }
-            AstCall::Unknown(name, args) => {
-                if args.len() < 3 {
-                    continue;
-                }
-                let Some(addr) = parse_default_function_name(name) else {
-                    continue;
-                };
-                if let Some(target) = resolve_function_id_by_address(ast, addr) {
-                    return Some(target);
-                }
-            }
-            _ => {}
+        if is_runtime_startup_helper_target(ast, target) {
+            continue;
+        }
+        if argc >= 3 {
+            return Some(target);
+        }
+        if fallback_target.is_none() {
+            fallback_target = Some(target);
         }
     }
 
-    None
+    fallback_target
 }
 
 fn has_crt_startup_markers(ast: &Ast, body: &[WrappedAstStatement]) -> bool {
     let mut has_initterm = false;
-    let mut has_termination = false;
+    let mut has_local_termination = false;
     visit_calls_recursive(body, &mut |call| {
         if call_matches_symbol(ast, call, is_initterm_symbol) {
             has_initterm = true;
@@ -451,10 +463,14 @@ fn has_crt_startup_markers(ast: &Ast, body: &[WrappedAstStatement]) -> bool {
         if call_matches_symbol(ast, call, is_termination_symbol)
             || call_matches_symbol(ast, call, is_amsg_exit_symbol)
         {
-            has_termination = true;
+            has_local_termination = true;
         }
     });
-    has_initterm && has_termination
+    let has_global_termination = ast
+        .pre_defined_symbols
+        .values()
+        .any(|name| is_termination_symbol(name) || is_amsg_exit_symbol(name));
+    has_initterm && (has_local_termination || has_global_termination)
 }
 
 fn visit_calls_recursive(body: &[WrappedAstStatement], visitor: &mut impl FnMut(&AstCall)) {
@@ -476,6 +492,336 @@ fn visit_calls_recursive(body: &[WrappedAstStatement], visitor: &mut impl FnMut(
             _ => {}
         }
     }
+}
+
+fn collect_calls_in_order<'a>(body: &'a [WrappedAstStatement], out: &mut Vec<&'a AstCall>) {
+    for stmt in body.iter() {
+        match &stmt.statement {
+            AstStatement::Call(call) => out.push(call),
+            AstStatement::If(_, true_branch, false_branch) => {
+                collect_calls_in_order(true_branch, out);
+                if let Some(false_branch) = false_branch {
+                    collect_calls_in_order(false_branch, out);
+                }
+            }
+            AstStatement::While(_, block) | AstStatement::Block(block) => {
+                collect_calls_in_order(block, out);
+            }
+            AstStatement::For(_, _, _, block) => {
+                collect_calls_in_order(block, out);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn resolve_call_target_and_arity(ast: &Ast, call: &AstCall) -> Option<(AstFunctionId, usize)> {
+    match call {
+        AstCall::Function { target, args } => Some((*target, args.len())),
+        AstCall::Unknown(name, args) => {
+            let addr = parse_default_function_name(name)?;
+            let target = resolve_function_id_by_address(ast, addr)?;
+            Some((target, args.len()))
+        }
+        _ => None,
+    }
+}
+
+fn is_runtime_startup_helper_target(ast: &Ast, target: AstFunctionId) -> bool {
+    let Some(name) = function_symbol_hint(ast, target) else {
+        return false;
+    };
+    let lower = name.to_ascii_lowercase();
+    lower.starts_with("ext_")
+        || is_initterm_symbol(&lower)
+        || is_termination_symbol(&lower)
+        || is_amsg_exit_symbol(&lower)
+}
+
+fn merge_single_non_recursive_callees(
+    ast: &mut Ast,
+    caller_id: AstFunctionId,
+    caller_variables: &ArcAstVariableMap,
+    caller_body: &mut Vec<WrappedAstStatement>,
+) {
+    let mut active_function_ids: Vec<_> = ast.function_versions.keys().copied().collect();
+    if active_function_ids.is_empty() {
+        return;
+    }
+    active_function_ids.sort_unstable_by_key(|id| id.address);
+
+    let caller_targets = collect_called_function_ids(caller_body);
+    if caller_targets.is_empty() {
+        return;
+    }
+
+    let mut function_bodies: HashMap<AstFunctionId, Vec<WrappedAstStatement>> = HashMap::new();
+    {
+        let functions = ast.functions.read().unwrap();
+        for function_id in active_function_ids.iter().copied() {
+            if function_id == caller_id {
+                function_bodies.insert(function_id, caller_body.clone());
+                continue;
+            }
+            let Some(version) = ast.function_versions.get(&function_id).copied() else {
+                continue;
+            };
+            let Some(function) = functions.get(&function_id).and_then(|m| m.get(&version)) else {
+                continue;
+            };
+            function_bodies.insert(function_id, function.body.clone());
+        }
+    }
+
+    let active_function_set: HashSet<AstFunctionId> = active_function_ids.iter().copied().collect();
+    let mut call_counts: HashMap<AstFunctionId, usize> = HashMap::new();
+    let mut call_graph: HashMap<AstFunctionId, HashSet<AstFunctionId>> = HashMap::new();
+    for function_id in active_function_ids.iter().copied() {
+        let edges = call_graph.entry(function_id).or_default();
+        let Some(body) = function_bodies.get(&function_id) else {
+            continue;
+        };
+
+        let mut called_ids = Vec::new();
+        collect_called_function_ids_recursive(body, &mut called_ids);
+        for callee_id in called_ids.iter().copied() {
+            *call_counts.entry(callee_id).or_insert(0) += 1;
+            if active_function_set.contains(&callee_id) {
+                edges.insert(callee_id);
+            }
+        }
+    }
+
+    let recursive_functions = detect_recursive_functions(&call_graph);
+    let mut replacements: HashMap<AstFunctionId, Vec<WrappedAstStatement>> = HashMap::new();
+    let mut callee_variable_maps: HashMap<AstFunctionId, ArcAstVariableMap> = HashMap::new();
+    {
+        let functions = ast.functions.read().unwrap();
+        for target in caller_targets {
+            if target == caller_id {
+                continue;
+            }
+            if call_counts.get(&target).copied().unwrap_or(0) != 1 {
+                continue;
+            }
+            if recursive_functions.contains(&target) {
+                continue;
+            }
+
+            let Some(version) = ast.function_versions.get(&target).copied() else {
+                continue;
+            };
+            let Some(callee) = functions.get(&target).and_then(|m| m.get(&version)) else {
+                continue;
+            };
+            if !callee.parameters.is_empty() {
+                continue;
+            }
+            if infer_external_import_symbol_from_body(ast, &callee.body).is_some() {
+                continue;
+            }
+            replacements.insert(target, strip_trailing_void_return(callee.body.clone()));
+            callee_variable_maps.insert(target, callee.variables.clone());
+        }
+    }
+
+    if replacements.is_empty() {
+        return;
+    }
+
+    let inlined_callees = inline_single_call_callees_recursive(caller_body, &replacements);
+    if inlined_callees.is_empty() {
+        return;
+    }
+
+    let mut merged_vars = Vec::new();
+    for callee_id in inlined_callees.iter().copied() {
+        let Some(callee_var_map) = callee_variable_maps.get(&callee_id) else {
+            continue;
+        };
+        let callee_vars = callee_var_map.read().unwrap();
+        merged_vars.extend(callee_vars.iter().map(|(var_id, var)| (*var_id, var.clone())));
+    }
+    {
+        let mut caller_vars = caller_variables.write().unwrap();
+        for (var_id, var) in merged_vars {
+            caller_vars.entry(var_id).or_insert(var);
+        }
+        deduplicate_variable_names_in_scope(&mut caller_vars, caller_id);
+    }
+
+    {
+        let mut functions = ast.functions.write().unwrap();
+        for callee_id in inlined_callees.iter().copied() {
+            functions.remove(&callee_id);
+        }
+    }
+    for callee_id in inlined_callees {
+        ast.function_versions.remove(&callee_id);
+    }
+}
+
+fn deduplicate_variable_names_in_scope(
+    vars: &mut HashMap<AstVariableId, AstVariable>,
+    caller_id: AstFunctionId,
+) {
+    let mut ids: Vec<_> = vars.keys().copied().collect();
+    ids.sort_unstable_by_key(|id| {
+        let caller_priority = if id.parent == Some(caller_id) { 0u8 } else { 1u8 };
+        (caller_priority, id.index, id.parent.map(|x| x.address).unwrap_or(0))
+    });
+
+    let mut used_names: HashSet<String> = HashSet::new();
+    for id in ids {
+        let Some(var) = vars.get_mut(&id) else {
+            continue;
+        };
+        let base = var.name.clone().unwrap_or_else(|| var.id.get_default_name());
+        if used_names.insert(base.clone()) {
+            continue;
+        }
+
+        let mut suffix = 2usize;
+        let mut candidate = format!("{}_{}", base, suffix);
+        while used_names.contains(&candidate) {
+            suffix += 1;
+            candidate = format!("{}_{}", base, suffix);
+        }
+        var.name = Some(candidate.clone());
+        used_names.insert(candidate);
+    }
+}
+
+fn collect_called_function_ids(body: &[WrappedAstStatement]) -> HashSet<AstFunctionId> {
+    let mut called_ids = Vec::new();
+    collect_called_function_ids_recursive(body, &mut called_ids);
+    called_ids.into_iter().collect()
+}
+
+fn collect_called_function_ids_recursive(
+    body: &[WrappedAstStatement],
+    called_ids: &mut Vec<AstFunctionId>,
+) {
+    for stmt in body.iter() {
+        match &stmt.statement {
+            AstStatement::Call(AstCall::Function { target, .. }) => called_ids.push(*target),
+            AstStatement::If(_, branch_true, branch_false) => {
+                collect_called_function_ids_recursive(branch_true, called_ids);
+                if let Some(branch_false) = branch_false {
+                    collect_called_function_ids_recursive(branch_false, called_ids);
+                }
+            }
+            AstStatement::While(_, block) | AstStatement::Block(block) => {
+                collect_called_function_ids_recursive(block, called_ids);
+            }
+            AstStatement::For(_, _, _, block) => {
+                collect_called_function_ids_recursive(block, called_ids);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn detect_recursive_functions(
+    call_graph: &HashMap<AstFunctionId, HashSet<AstFunctionId>>,
+) -> HashSet<AstFunctionId> {
+    let mut recursive_functions = HashSet::new();
+    let mut function_ids: Vec<_> = call_graph.keys().copied().collect();
+    function_ids.sort_unstable_by_key(|id| id.address);
+
+    for function_id in function_ids {
+        if is_function_recursive(function_id, call_graph) {
+            recursive_functions.insert(function_id);
+        }
+    }
+
+    recursive_functions
+}
+
+fn is_function_recursive(
+    start: AstFunctionId,
+    call_graph: &HashMap<AstFunctionId, HashSet<AstFunctionId>>,
+) -> bool {
+    let mut stack: Vec<AstFunctionId> = call_graph
+        .get(&start)
+        .map(|targets| targets.iter().copied().collect())
+        .unwrap_or_default();
+    let mut visited: HashSet<AstFunctionId> = HashSet::new();
+
+    while let Some(current) = stack.pop() {
+        if current == start {
+            return true;
+        }
+        if !visited.insert(current) {
+            continue;
+        }
+        if let Some(next_targets) = call_graph.get(&current) {
+            stack.extend(next_targets.iter().copied());
+        }
+    }
+
+    false
+}
+
+fn inline_single_call_callees_recursive(
+    stmts: &mut Vec<WrappedAstStatement>,
+    replacements: &HashMap<AstFunctionId, Vec<WrappedAstStatement>>,
+) -> HashSet<AstFunctionId> {
+    let mut inlined_callees: HashSet<AstFunctionId> = HashSet::new();
+    let mut rebuilt_body: Vec<WrappedAstStatement> = Vec::with_capacity(stmts.len());
+
+    for mut stmt in std::mem::take(stmts) {
+        match &mut stmt.statement {
+            AstStatement::If(_, branch_true, branch_false) => {
+                inlined_callees.extend(inline_single_call_callees_recursive(
+                    branch_true,
+                    replacements,
+                ));
+                if let Some(branch_false) = branch_false {
+                    inlined_callees.extend(inline_single_call_callees_recursive(
+                        branch_false,
+                        replacements,
+                    ));
+                }
+            }
+            AstStatement::While(_, block) | AstStatement::Block(block) => {
+                inlined_callees.extend(inline_single_call_callees_recursive(block, replacements));
+            }
+            AstStatement::For(_, _, _, block) => {
+                inlined_callees.extend(inline_single_call_callees_recursive(block, replacements));
+            }
+            _ => {}
+        }
+
+        let AstStatement::Call(AstCall::Function { target, args }) = &stmt.statement else {
+            rebuilt_body.push(stmt);
+            continue;
+        };
+        if !args.is_empty() {
+            rebuilt_body.push(stmt);
+            continue;
+        }
+        let Some(replacement) = replacements.get(target) else {
+            rebuilt_body.push(stmt);
+            continue;
+        };
+
+        rebuilt_body.extend(replacement.iter().cloned());
+        inlined_callees.insert(*target);
+    }
+
+    *stmts = rebuilt_body;
+    inlined_callees
+}
+
+fn strip_trailing_void_return(mut body: Vec<WrappedAstStatement>) -> Vec<WrappedAstStatement> {
+    if body
+        .last()
+        .is_some_and(|stmt| matches!(stmt.statement, AstStatement::Return(None)))
+    {
+        body.pop();
+    }
+    body
 }
 
 fn parse_default_function_name(name: &str) -> Option<u64> {
@@ -531,7 +877,7 @@ fn apply_real_main_special_case(
     ast: &Ast,
     startup_function_id: AstFunctionId,
     main_target: AstFunctionId,
-    body: &mut [WrappedAstStatement],
+    body: &mut Vec<WrappedAstStatement>,
 ) {
     {
         let mut functions = ast.functions.write().unwrap();
@@ -560,6 +906,16 @@ fn apply_real_main_special_case(
     }
 
     rewrite_calls_to_named_target(body, main_target, "main");
+    if has_named_call_recursive(body, "main") && !has_top_level_named_call(body, "main") {
+        body.insert(
+            0,
+            WrappedAstStatement {
+                statement: AstStatement::Call(AstCall::Unknown("main".to_string(), Vec::new())),
+                origin: AstStatementOrigin::Unknown,
+                comment: None,
+            },
+        );
+    }
 }
 
 fn should_apply_special_name(current_name: &Option<String>, default_name: &str) -> bool {
@@ -599,6 +955,27 @@ fn rewrite_calls_to_named_target(
             _ => {}
         }
     }
+}
+
+fn has_named_call_recursive(body: &[WrappedAstStatement], name: &str) -> bool {
+    let mut found = false;
+    visit_calls_recursive(body, &mut |call| {
+        if let AstCall::Unknown(call_name, _) = call
+            && call_name == name
+        {
+            found = true;
+        }
+    });
+    found
+}
+
+fn has_top_level_named_call(body: &[WrappedAstStatement], name: &str) -> bool {
+    body.iter().any(|stmt| {
+        matches!(
+            &stmt.statement,
+            AstStatement::Call(AstCall::Unknown(call_name, _)) if call_name == name
+        )
+    })
 }
 
 fn truncate_after_terminal_control_flow(
@@ -699,18 +1076,29 @@ fn rebuild_goto_as_call_if_possible(
     scope: AstFunctionId,
     body: &mut Vec<WrappedAstStatement>,
 ) {
+    rebuild_goto_as_call_if_possible_inner(ast, scope, body, 0);
+}
+
+fn rebuild_goto_as_call_if_possible_inner(
+    ast: &Ast,
+    scope: AstFunctionId,
+    body: &mut Vec<WrappedAstStatement>,
+    depth: usize,
+) {
     for stmt in body.iter_mut() {
         match &mut stmt.statement {
             AstStatement::If(_, t, f) => {
-                rebuild_goto_as_call_if_possible(ast, scope, t);
+                rebuild_goto_as_call_if_possible_inner(ast, scope, t, depth + 1);
                 if let Some(f) = f {
-                    rebuild_goto_as_call_if_possible(ast, scope, f);
+                    rebuild_goto_as_call_if_possible_inner(ast, scope, f, depth + 1);
                 }
             }
             AstStatement::While(_, b) | AstStatement::Block(b) => {
-                rebuild_goto_as_call_if_possible(ast, scope, b);
+                rebuild_goto_as_call_if_possible_inner(ast, scope, b, depth + 1);
             }
-            AstStatement::For(_, _, _, b) => rebuild_goto_as_call_if_possible(ast, scope, b),
+            AstStatement::For(_, _, _, b) => {
+                rebuild_goto_as_call_if_possible_inner(ast, scope, b, depth + 1)
+            }
             _ => {}
         }
     }
@@ -724,26 +1112,20 @@ fn rebuild_goto_as_call_if_possible(
         if let AstStatement::Goto(jump) = &stmt.statement {
             let tail_position = original_suffix_is_non_effectful(&original, idx + 1);
             let origin_is_unconditional_jump = stmt_origin_is_unconditional_jump(&stmt);
+            let allow_nested_goto_conversion = depth > 0;
 
-            if let Some(target) = jump_target_to_function_id(ast, jump) {
-                if tail_position && origin_is_unconditional_jump && target != scope {
-                    stmt.statement = AstStatement::Call(AstCall::Function {
-                        target,
-                        args: Vec::new(),
-                    });
-                    should_stop_after = true;
-                }
+            if tail_position
+                && (origin_is_unconditional_jump || allow_nested_goto_conversion)
+                && let Some(call) = jump_target_to_call(ast, scope, &stmt, jump)
+            {
+                stmt.statement = AstStatement::Call(call);
+                should_stop_after = true;
             }
         }
 
         rebuilt.push(stmt);
 
         if should_stop_after {
-            rebuilt.push(WrappedAstStatement {
-                statement: AstStatement::Return(None),
-                origin: AstStatementOrigin::Unknown,
-                comment: None,
-            });
             break;
         }
     }
@@ -778,15 +1160,91 @@ fn stmt_origin_is_unconditional_jump(stmt: &WrappedAstStatement) -> bool {
     inst.is_jmp() && !inst.is_jcc() && !inst.is_call()
 }
 
-fn jump_target_to_function_id(
+fn jump_target_to_call(
     ast: &Ast,
+    current_scope: AstFunctionId,
+    stmt: &WrappedAstStatement,
     jump: &crate::abstract_syntax_tree::AstJumpTarget,
-) -> Option<AstFunctionId> {
-    if let Some(addr) = jump_target_constant_address(jump) {
-        resolve_function_id_by_address(ast, addr)
-    } else {
-        None
+) -> Option<AstCall> {
+    match jump {
+        crate::abstract_syntax_tree::AstJumpTarget::Function { target } => {
+            if *target == current_scope {
+                None
+            } else {
+                Some(AstCall::Function {
+                    target: *target,
+                    args: Vec::new(),
+                })
+            }
+        }
+        crate::abstract_syntax_tree::AstJumpTarget::Unknown(raw) => {
+            if let Some(addr) = external_slot_address_from_unknown_target(raw) {
+                call_from_jump_address(ast, current_scope, addr)
+            } else {
+                Some(AstCall::Unknown(raw.clone(), Vec::new()))
+            }
+        }
+        crate::abstract_syntax_tree::AstJumpTarget::Variable {
+            scope: var_scope,
+            var_map,
+            var_id,
+        } => {
+            if let Some(addr) = variable_constant_address(var_map, *var_id) {
+                call_from_jump_address(ast, current_scope, addr)
+            } else if let Some(addr) = stmt_origin_fallthrough_address(stmt) {
+                call_from_jump_address(ast, current_scope, addr).or_else(|| {
+                    Some(AstCall::Variable {
+                        scope: *var_scope,
+                        var_map: var_map.clone(),
+                        var_id: *var_id,
+                        args: Vec::new(),
+                    })
+                })
+            } else {
+                Some(AstCall::Variable {
+                    scope: *var_scope,
+                    var_map: var_map.clone(),
+                    var_id: *var_id,
+                    args: Vec::new(),
+                })
+            }
+        }
+        crate::abstract_syntax_tree::AstJumpTarget::Instruction { .. } => None,
     }
+}
+
+fn call_from_jump_address(ast: &Ast, scope: AstFunctionId, addr: u64) -> Option<AstCall> {
+    if let Some(target) = resolve_function_id_by_address(ast, addr) {
+        if target == scope {
+            return None;
+        }
+        return Some(AstCall::Function {
+            target,
+            args: Vec::new(),
+        });
+    }
+
+    if let Some(symbol) = external_symbol_name_from_slot(ast, addr) {
+        return Some(AstCall::Unknown(external_symbol_identifier(&symbol), Vec::new()));
+    }
+
+    Some(AstCall::Unknown(function_like_name_from_address(ast, addr), Vec::new()))
+}
+
+fn stmt_origin_fallthrough_address(stmt: &WrappedAstStatement) -> Option<u64> {
+    let AstStatementOrigin::Ir(desc) = &stmt.origin else {
+        return None;
+    };
+    let ir_index = desc.descriptor().ir_index() as usize;
+    let ir = desc.ir().get_ir().get(ir_index)?;
+    let inst = desc.ir().get_instructions().get(ir_index)?;
+    let inst_len = inst
+        .inner
+        .bytes
+        .as_ref()
+        .map(|x| x.len() as u64)
+        .unwrap_or(0);
+    Some(ir.address.get_virtual_address() + inst_len)
 }
 
 fn jump_target_constant_address(jump: &crate::abstract_syntax_tree::AstJumpTarget) -> Option<u64> {

@@ -4,7 +4,8 @@ use std::ops::Deref;
 
 #[inline]
 fn jcc(condition_data: Aos<IrData>) -> IrStatement {
-    condition(condition_data, [jump(o1())], [])
+    let fallthrough = b::add(rip.clone(), instruction_byte_size());
+    condition(condition_data, [jump(o1())], [jump(fallthrough)])
 }
 
 #[inline]
