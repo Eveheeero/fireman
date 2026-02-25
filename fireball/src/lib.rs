@@ -30,6 +30,18 @@ impl Fireball {
         Ok(Fireball::Pe(pe::Pe::from_binary(binary)?))
     }
 
+    pub fn cancel_analysis(&self) {
+        match self {
+            Self::Pe(pe) => pe.cancel_analysis(),
+        }
+    }
+
+    pub fn reset_analysis_cancellation(&self) {
+        match self {
+            Self::Pe(pe) => pe.reset_analysis_cancellation(),
+        }
+    }
+
     /// Returns the decompiler object.
     pub fn get_object(&self) -> &impl FireRaw {
         match self {

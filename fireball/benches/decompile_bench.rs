@@ -1,11 +1,15 @@
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use fireball::{Fire, Fireball};
+use fireball::{Fire, Fireball, core::FireRaw};
 #[cfg(unix)]
 use pprof::criterion::{Output, PProfProfiler};
 use std::{hint::black_box, time::Duration};
 
+fn hello_world_binary() -> &'static [u8] {
+    include_bytes!("../tests/resources/hello_world.exe")
+}
+
 fn benchmark_decompile_from_entry(c: &mut Criterion) {
-    let binary = include_bytes!("../tests/resources/hello_world.exe").to_vec();
+    let binary = hello_world_binary().to_vec();
 
     c.bench_function("fireball/decompile_from_entry/hello_world", |b| {
         b.iter_batched(
@@ -18,6 +22,44 @@ fn benchmark_decompile_from_entry(c: &mut Criterion) {
                     .decompile_from_entry()
                     .expect("decompile_from_entry must succeed");
                 black_box(decompiled);
+            },
+            BatchSize::SmallInput,
+        );
+    });
+}
+
+fn benchmark_analyze_from_entry(c: &mut Criterion) {
+    let binary = hello_world_binary().to_vec();
+
+    c.bench_function("fireball/analyze_from_entry/hello_world", |b| {
+        b.iter_batched(
+            || {
+                Fireball::from_binary(binary.clone())
+                    .expect("failed to create Fireball from binary")
+            },
+            |fireball| {
+                let analyzed = fireball
+                    .analyze_from_entry()
+                    .expect("analyze_from_entry must succeed");
+                black_box(analyzed);
+            },
+            BatchSize::SmallInput,
+        );
+    });
+}
+
+fn benchmark_analyze_all(c: &mut Criterion) {
+    let binary = hello_world_binary().to_vec();
+
+    c.bench_function("fireball/analyze_all/hello_world", |b| {
+        b.iter_batched(
+            || {
+                Fireball::from_binary(binary.clone())
+                    .expect("failed to create Fireball from binary")
+            },
+            |fireball| {
+                let analyzed = fireball.analyze_all().expect("analyze_all must succeed");
+                black_box(analyzed);
             },
             BatchSize::SmallInput,
         );
@@ -44,6 +86,6 @@ fn benchmark_config() -> Criterion {
 criterion_group! {
     name = fireball_decompile_benches;
     config = benchmark_config();
-    targets = benchmark_decompile_from_entry
+    targets = benchmark_decompile_from_entry, benchmark_analyze_from_entry, benchmark_analyze_all
 }
 criterion_main!(fireball_decompile_benches);

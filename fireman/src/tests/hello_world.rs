@@ -1,3 +1,4 @@
+use super::hello_world_binary;
 use fireball::{
     abstract_syntax_tree::AstPrintConfig,
     core::{Fire, FireRaw},
@@ -8,16 +9,12 @@ use fireball::{
 use std::path::Path;
 use tracing::Dispatch;
 
-fn get_binary() -> &'static [u8] {
-    include_bytes!("../../../fireball/tests/resources/hello_world.exe")
-}
-
 #[test]
 fn hello_world() {
     let subscriber = test_log_subscriber_with_file("logs/fireman_hello_world.log");
 
     tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
-        let binary = get_binary();
+        let binary = hello_world_binary();
 
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
         let result = pe.decompile_all().unwrap();
@@ -34,7 +31,7 @@ fn hello_world_all_print_config_trace() {
     let subscriber = test_log_subscriber_with_file("logs/fireman_hello_world_all_print_config.log");
 
     tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
-        let binary = get_binary();
+        let binary = hello_world_binary();
 
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
         let ast =

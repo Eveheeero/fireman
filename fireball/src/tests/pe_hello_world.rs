@@ -1,3 +1,4 @@
+use super::hello_world_binary;
 use crate::{
     core::{Address, FireRaw, RelationType},
     pe::Pe,
@@ -6,16 +7,12 @@ use crate::{
 };
 use tracing::Dispatch;
 
-fn get_binary() -> &'static [u8] {
-    include_bytes!("../../tests/resources/hello_world.exe")
-}
-
 #[test]
 fn pe_hello_world() {
     let subscriber = test_log_subscriber_with_file("logs/fireball_pe_hello_world.log");
 
     tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
-        let binary = get_binary();
+        let binary = hello_world_binary();
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
         dbg!(pe);
     });
@@ -26,7 +23,7 @@ fn pe_hello_world_entry() {
     let subscriber = test_log_subscriber_with_file("logs/fireball_pe_hello_world_entry.log");
 
     tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
-        let binary = get_binary();
+        let binary = hello_world_binary();
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
         let gl = goblin::pe::PE::parse(binary).unwrap();
         let sections = pe.get_sections();
@@ -41,7 +38,7 @@ fn pe_hello_world_entry_parse() {
     let subscriber = test_log_subscriber_with_file("logs/fireball_pe_hello_world_entry_parse.log");
 
     tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
-        let binary = get_binary();
+        let binary = hello_world_binary();
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
         let gl = goblin::pe::PE::parse(binary).unwrap();
 
@@ -85,7 +82,7 @@ fn pe_hello_world_detect_block_entry() {
         test_log_subscriber_with_file("logs/fireball_pe_hello_world_detect_block_entry.log");
 
     tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
-        let binary = get_binary();
+        let binary = hello_world_binary();
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
         let entry = pe.entry();
         let block = pe.generate_block_from_address(entry);
@@ -102,7 +99,7 @@ fn pe_hello_world_detect_block_etc() {
         test_log_subscriber_with_file("logs/fireball_pe_hello_world_detect_block_etc.log");
 
     tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
-        let binary = get_binary();
+        let binary = hello_world_binary();
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
         let gl = goblin::pe::PE::parse(binary).unwrap();
         let sections = pe.get_sections();
@@ -129,7 +126,7 @@ fn pe_hello_world_block_relation() {
         test_log_subscriber_with_file("logs/fireball_pe_hello_world_block_relation.log");
 
     tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
-        let binary = get_binary();
+        let binary = hello_world_binary();
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
         /* Validate parsing and relation creation for the entry block */
@@ -184,7 +181,7 @@ fn pe_hello_world_decom_block() {
     let subscriber = test_log_subscriber_with_file("logs/fireball_pe_hello_world_decom_block.log");
 
     tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
-        let binary = get_binary();
+        let binary = hello_world_binary();
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
         /* Start decompilation from the entry point */
@@ -221,7 +218,7 @@ fn pe_hello_world_analyze_variables() {
         test_log_subscriber_with_file("logs/fireball_pe_hello_world_analyze_variables.log");
 
     tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
-        let binary = get_binary();
+        let binary = hello_world_binary();
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
         /* Start decompilation from the entry point */
@@ -245,7 +242,7 @@ fn pe_hello_world_print_statements() {
         test_log_subscriber_with_file("logs/fireball_pe_hello_world_print_statements.log");
 
     tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
-        let binary = get_binary();
+        let binary = hello_world_binary();
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
 
         /* Start decompilation from the entry point */
@@ -270,7 +267,7 @@ fn pe_hello_world_print_assem_entry() {
         test_log_subscriber_with_file("logs/fireball_pe_hello_world_print_assem_entry.log");
 
     tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
-        let binary = get_binary();
+        let binary = hello_world_binary();
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
         let entry = pe.entry();
         let insts = pe.parse_assem_range(entry, 0x60).unwrap();

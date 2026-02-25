@@ -7,7 +7,10 @@ mod fire;
 mod fmt;
 
 use crate::core::{Address, Blocks, PreDefinedOffsets, Relations, Sections};
-use std::{pin::Pin, sync::Arc};
+use std::{
+    pin::Pin,
+    sync::{Arc, atomic::AtomicBool},
+};
 
 pub struct Pe {
     /// Entry address
@@ -27,4 +30,6 @@ pub struct Pe {
     blocks: Arc<Blocks>,
     /// Block relation information data
     relations: Arc<Relations>,
+    /// Cooperative cancellation flag for long-running analysis
+    cancel_token: Arc<AtomicBool>,
 }

@@ -2527,7 +2527,7 @@ void f188f(
   unknown_t v24; /* range 13:0..13:0, access r:0 w:1, where w rax */
   unknown_t v25; /* range 14:0..21:0, access r:2 w:0, where r zero_extend edx */
   unknown_t v26; /* range 14:0..14:0, access r:0 w:1, where w edx */
-  unknown_t v27; /* range 15:0..31:2, access r:4 w:0, where r rax, r zero_extend undefined */
+  unknown_t v27; /* range 15:0..31:2, access r:4 w:0, where r rax, r zero_extend rax + rdx * 0x8 */
   unknown_t v28; /* range 15:0..15:0, access r:0 w:1, where w rax */
   unknown_t v30; /* range 16:1..16:1, access r:0 w:1, where w of */
   unknown_t v31; /* range 16:2..16:2, access r:0 w:1, where w cf */
@@ -2620,7 +2620,7 @@ void f18b7() {
   unknown_t v24; /* range 13:0..13:0, access r:0 w:1, where w rax */
   unknown_t v25; /* range 14:0..21:0, access r:2 w:0, where r zero_extend edx */
   unknown_t v26; /* range 14:0..14:0, access r:0 w:1, where w edx */
-  unknown_t v27; /* range 15:0..31:2, access r:4 w:0, where r rax, r zero_extend undefined */
+  unknown_t v27; /* range 15:0..31:2, access r:4 w:0, where r rax, r zero_extend rax + rdx * 0x8 */
   unknown_t v28; /* range 15:0..15:0, access r:0 w:1, where w rax */
   unknown_t v30; /* range 16:1..16:1, access r:0 w:1, where w of */
   unknown_t v31; /* range 16:2..16:2, access r:0 w:1, where w cf */
@@ -2680,7 +2680,7 @@ void f18b7() {
   // 0x18C4 mov edx edx
     /* o1 = (sizeof(o1))zero_extend o2 */
     v48 = v25;
-  // 0x18C6 mov rax
+  // 0x18C6 mov rax [rax+rdx*0x8]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v56 = v27;
   // 0x18CA test rax rax
@@ -2706,7 +2706,7 @@ void f18b7() {
   // 0x18C4 mov edx edx
     /* o1 = (sizeof(o1))zero_extend o2 */
     v48 = v25;
-  // 0x18C6 mov rax
+  // 0x18C6 mov rax [rax+rdx*0x8]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v56 = v27;
   // 0x18CA test rax rax
@@ -2735,7 +2735,7 @@ void f18b7() {
   // 0x18DE mov edx [rbp-0x8]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v48 = v47;
-  // 0x18E1 mov rax
+  // 0x18E1 mov rax [rax+rdx*0x8]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v56 = v27;
   // 0x18E5 call rax

@@ -216,7 +216,8 @@ impl From<&iceball::Argument> for Aos<IrData> {
 
                 let mut iter = v.iter();
                 let Some(arg1) = iter.next() else {
-                    return IrData::Dereference(IrData::Intrinsic(IrIntrinsic::Unknown).into()).into();
+                    return IrData::Dereference(IrData::Intrinsic(IrIntrinsic::Unknown).into())
+                        .into();
                 };
                 let to_ir_operand = |arg: &RelativeAddressingArgument| -> Option<Aos<IrData>> {
                     match arg {

@@ -3,28 +3,29 @@
 use super::Pe;
 use crate::{
     core::{Address, Blocks, PreDefinedOffset, PreDefinedOffsets, Relations, Sections},
-    prelude::IoError,
+    prelude::*,
 };
 use capstone::prelude::BuildsCapstone;
+use std::sync::atomic::Ordering;
 
 impl Pe {
-    pub fn from_path(path: &str) -> Result<Pe, IoError> {
+    pub fn from_path(path: &str) -> Result<Pe, FireballError> {
         let binary = std::fs::read(path)?;
-        Ok(Pe::new(Some(path.to_owned()), binary))
+        Pe::new(Some(path.to_owned()), binary)
     }
 
-    pub fn from_binary(binary: Vec<u8>) -> Result<Pe, IoError> {
-        Ok(Pe::new(None, binary))
+    pub fn from_binary(binary: Vec<u8>) -> Result<Pe, FireballError> {
+        Pe::new(None, binary)
     }
 
     /// Creates a PE struct from binary data.
-    pub(crate) fn new(path: Option<String>, binary: Vec<u8>) -> Self {
+    pub(crate) fn new(path: Option<String>, binary: Vec<u8>) -> Result<Self, FireballError> {
         // 1. Build section information
         // 2. Create Capstone object
         // 3. Generate predefined binary offset information
 
         // Common objects used throughout
-        let gl = goblin::pe::PE::parse(&binary).unwrap();
+        let gl = goblin::pe::PE::parse(&binary)?;
 
         // Build section information for the entire binary
         let sections = Sections::new();
@@ -43,8 +44,7 @@ impl Pe {
                 } else {
                     capstone::arch::x86::ArchMode::Mode64
                 })
-                .build()
-                .unwrap();
+                .build()?;
 
             Box::pin(capstone)
         };
@@ -67,12 +67,20 @@ impl Pe {
             }
 
             for export in exports {
+                let Some(offset_raw) = export.offset else {
+                    warn!(
+                        "Skipping malformed export without offset: {}",
+                        export.name.unwrap_or("<unnamed>")
+                    );
+                    continue;
+                };
+
                 let name = if let Some(name) = export.name {
                     name.to_string()
                 } else {
-                    format!("0x{:x}", export.offset.unwrap())
+                    format!("0x{:x}", offset_raw)
                 };
-                let offset = export.offset.unwrap() as u64;
+                let offset = offset_raw as u64;
 
                 defined.insert(PreDefinedOffset {
                     name,
@@ -84,7 +92,7 @@ impl Pe {
         };
 
         let relations = Relations::new();
-        Pe {
+        Ok(Pe {
             entry: Address::from_virtual_address(&sections, gl.entry as u64),
             path,
             binary,
@@ -93,10 +101,19 @@ impl Pe {
             sections,
             relations: relations.clone(),
             blocks: Blocks::new(relations),
-        }
+            cancel_token: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        })
     }
 
     pub fn entry(&self) -> &Address {
         &self.entry
+    }
+
+    pub fn cancel_analysis(&self) {
+        self.cancel_token.store(true, Ordering::Relaxed);
+    }
+
+    pub fn reset_analysis_cancellation(&self) {
+        self.cancel_token.store(false, Ordering::Relaxed);
     }
 }

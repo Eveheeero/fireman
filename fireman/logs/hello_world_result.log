@@ -2406,7 +2406,7 @@ void f18b7() {
   // 0x18C4 mov edx edx
     /* o1 = (sizeof(o1))zero_extend o2 */
     v48 = v25;
-  // 0x18C6 mov rax
+  // 0x18C6 mov rax [rax+rdx*0x8]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v56 = v27;
   // 0x18CA test rax rax
@@ -2430,7 +2430,7 @@ void f18b7() {
   // 0x18C4 mov edx edx
     /* o1 = (sizeof(o1))zero_extend o2 */
     v48 = v25;
-  // 0x18C6 mov rax
+  // 0x18C6 mov rax [rax+rdx*0x8]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v56 = v27;
   // 0x18CA test rax rax
@@ -2457,7 +2457,7 @@ void f18b7() {
   // 0x18DE mov edx [rbp-0x8]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v48 = v47;
-  // 0x18E1 mov rax
+  // 0x18E1 mov rax [rax+rdx*0x8]
     /* o1 = (sizeof(o1))zero_extend o2 */
     v56 = v27;
   // 0x18E5 call rax

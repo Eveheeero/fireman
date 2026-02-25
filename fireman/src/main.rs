@@ -6,6 +6,7 @@ pub mod utils;
 
 use fireball::{Fireball, core::FireRaw};
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Setting {
     path: String,

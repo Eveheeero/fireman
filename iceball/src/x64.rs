@@ -13,7 +13,8 @@ pub fn parse_argument(op: impl AsRef<str>) -> Result<crate::Argument, crate::Dis
     /* Constant */
     if op.as_bytes()[0] == b'0' {
         let data = if op.len() == 1 {
-            op.parse::<u64>().map_err(|_| crate::DisassembleError::Unknown)?
+            op.parse::<u64>()
+                .map_err(|_| crate::DisassembleError::Unknown)?
         } else {
             u64::from_str_radix(&op[2..], 16).map_err(|_| crate::DisassembleError::Unknown)?
         };
