@@ -28,8 +28,6 @@ use std::{
 };
 use tracing::{debug, error, info, trace, warn};
 
-const PREDEFINED_REMOVE_EMPTY_STATEMENTS_FB: &str =
-    include_str!("../../../../patterns/remove-empty-statements.fb");
 const PREDEFINED_PRUNE_EMPTY_ELSE_FB: &str =
     include_str!("../../../../patterns/prune-empty-else.fb");
 const PREDEFINED_COLLAPSE_EMPTY_BLOCKS_FB: &str =
@@ -134,10 +132,6 @@ impl AstPattern {
             Self::from_predefined_include(
                 "collapse-empty-blocks.fb",
                 PREDEFINED_COLLAPSE_EMPTY_BLOCKS_FB,
-            ),
-            Self::from_predefined_include(
-                "remove-empty-statements.fb",
-                PREDEFINED_REMOVE_EMPTY_STATEMENTS_FB,
             ),
             Self::from_predefined_include("prune-empty-else.fb", PREDEFINED_PRUNE_EMPTY_ELSE_FB),
         ]

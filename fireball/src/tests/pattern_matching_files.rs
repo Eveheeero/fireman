@@ -460,12 +460,6 @@ fn pattern_matching_predefined_patterns_apply_without_explicit_pattern_list() {
     assert!(
         !body
             .iter()
-            .any(|stmt| matches!(stmt.statement, AstStatement::Empty)),
-        "predefined remove-empty-statements should remove empty statements"
-    );
-    assert!(
-        !body
-            .iter()
             .any(|stmt| matches!(&stmt.statement, AstStatement::Block(block) if block.is_empty())),
         "predefined collapse-empty-blocks should remove empty blocks"
     );

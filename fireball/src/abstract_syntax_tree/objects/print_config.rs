@@ -9,8 +9,8 @@ pub struct AstPrintConfig {
 }
 impl AstPrintConfig {
     pub const DEFAULT: Self = Self {
-        print_instruction: true,
-        print_ir: true,
+        print_instruction: false,
+        print_ir: false,
         print_empty_statement: false,
         replace_constant: true,
         parameter_usage_comment: true,

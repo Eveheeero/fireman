@@ -126,6 +126,68 @@ fn write_inline_block(
     }
 }
 
+fn trim_trailing_semicolon(text: &str) -> &str {
+    let trimmed = text.trim_end();
+    trimmed
+        .strip_suffix(';')
+        .map(str::trim_end)
+        .unwrap_or(trimmed)
+}
+
+fn render_for_header_statement(stmt: &WrappedAstStatement, config: AstPrintConfig) -> String {
+    let rendered = stmt.statement.to_string_with_config(Some(config));
+    trim_trailing_semicolon(&rendered).to_string()
+}
+
+fn binary_operator_precedence(op: &AstBinaryOperator) -> u8 {
+    match op {
+        AstBinaryOperator::LogicOr => 1,
+        AstBinaryOperator::LogicAnd => 2,
+        AstBinaryOperator::BitOr => 3,
+        AstBinaryOperator::BitXor => 4,
+        AstBinaryOperator::BitAnd => 5,
+        AstBinaryOperator::Equal | AstBinaryOperator::NotEqual => 6,
+        AstBinaryOperator::Less
+        | AstBinaryOperator::LessEqual
+        | AstBinaryOperator::Greater
+        | AstBinaryOperator::GreaterEqual => 7,
+        AstBinaryOperator::LeftShift | AstBinaryOperator::RightShift => 8,
+        AstBinaryOperator::Add | AstBinaryOperator::Sub => 9,
+        AstBinaryOperator::Mul | AstBinaryOperator::Div | AstBinaryOperator::Mod => 10,
+    }
+}
+
+fn render_binary_operand(
+    expr: &Wrapped<AstExpression>,
+    parent_op: &AstBinaryOperator,
+    is_right_operand: bool,
+    config: AstPrintConfig,
+) -> String {
+    let rendered = expr.to_string_with_config(Some(config));
+    if let AstExpression::BinaryOp(child_op, _, _) = expr.as_ref() {
+        let parent_precedence = binary_operator_precedence(parent_op);
+        let child_precedence = binary_operator_precedence(child_op);
+        let needs_parentheses = child_precedence < parent_precedence
+            || (is_right_operand && child_precedence == parent_precedence);
+        if needs_parentheses {
+            format!("({rendered})")
+        } else {
+            rendered
+        }
+    } else {
+        rendered
+    }
+}
+
+fn render_prefixed_operand(expr: &Wrapped<AstExpression>, config: AstPrintConfig) -> String {
+    let rendered = expr.to_string_with_config(Some(config));
+    if matches!(expr.as_ref(), AstExpression::BinaryOp(_, _, _)) {
+        format!("({rendered})")
+    } else {
+        rendered
+    }
+}
+
 impl PrintWithConfig for AstValueType {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
@@ -233,29 +295,10 @@ impl PrintWithConfig for AstStatement {
                     return Ok(());
                 }
 
-                write!(f, "for (")?;
-                if let AstStatement::Declaration(var, _) = init.as_ref().as_ref() {
-                    write!(
-                        f,
-                        "{} {};",
-                        var.var_type.to_string_with_config(Some(config)),
-                        var.name()
-                    )?;
-                } else {
-                    write!(f, "{};", init.to_string_with_config(Some(config)))?;
-                }
-                write!(f, " {};", cond.to_string_with_config(Some(config)))?;
-                if let AstStatement::Assignment(left, right) = update.as_ref().as_ref() {
-                    write!(
-                        f,
-                        "{} = {};",
-                        left.to_string_with_config(Some(config)),
-                        right.to_string_with_config(Some(config))
-                    )?;
-                } else {
-                    write!(f, "{};", update.to_string_with_config(Some(config)))?;
-                }
-                write!(f, ") ")?;
+                let init_text = render_for_header_statement(init.as_ref(), config);
+                let cond_text = cond.to_string_with_config(Some(config));
+                let update_text = render_for_header_statement(update.as_ref(), config);
+                write!(f, "for ({}; {}; {}) ", init_text, cond_text, update_text)?;
                 write_inline_block(f, body, config)
             }
             AstStatement::Return(expr) => {
@@ -367,7 +410,7 @@ impl PrintWithConfig for AstStatement {
             AstStatement::Exception(e) => write!(f, "<EXCEPTION: {e}>"),
             AstStatement::Assembly(code) => write!(f, "<ASSEMBLY: {code}>"),
             AstStatement::Comment(comment) => write!(f, "/* {} */", comment),
-            AstStatement::Ir(ir) => write!(f, "<IR: {ir}>)"),
+            AstStatement::Ir(ir) => write!(f, "<IR: {ir}>"),
         }
     }
 }
@@ -397,19 +440,21 @@ impl PrintWithConfig for AstExpression {
                     write!(f, "{}", var.name())
                 }
             }
-            AstExpression::UnaryOp(op, expr) => write!(
-                f,
-                "{}{}",
-                op.to_string_with_config(Some(config)),
-                expr.to_string_with_config(Some(config))
-            ),
-            AstExpression::BinaryOp(op, left, right) => write!(
-                f,
-                "({} {} {})",
-                left.to_string_with_config(Some(config)),
-                op.to_string_with_config(Some(config)),
-                right.to_string_with_config(Some(config))
-            ),
+            AstExpression::UnaryOp(op, expr) => {
+                let expr = render_prefixed_operand(expr, config);
+                write!(f, "{}{}", op.to_string_with_config(Some(config)), expr)
+            }
+            AstExpression::BinaryOp(op, left, right) => {
+                let left_text = render_binary_operand(left, op, false, config);
+                let right_text = render_binary_operand(right, op, true, config);
+                write!(
+                    f,
+                    "{} {} {}",
+                    left_text,
+                    op.to_string_with_config(Some(config)),
+                    right_text
+                )
+            }
             AstExpression::Call(call) => match call {
                 AstCall::Variable {
                     var_map,
@@ -496,26 +541,26 @@ impl PrintWithConfig for AstExpression {
                 f,
                 "({}){}",
                 ctype.to_string_with_config(Some(config)),
-                expression.to_string_with_config(Some(config))
+                render_prefixed_operand(expression, config)
             ),
             AstExpression::Deref(expression) => {
-                write!(f, "*{}", expression.to_string_with_config(Some(config)))
+                write!(f, "*{}", render_prefixed_operand(expression, config))
             }
             AstExpression::AddressOf(expression) => {
-                write!(f, "&{}", expression.to_string_with_config(Some(config)))
+                write!(f, "&{}", render_prefixed_operand(expression, config))
             }
             AstExpression::ArrayAccess(expression, expression1) => {
                 write!(
                     f,
                     "{}[{}]",
-                    expression.to_string_with_config(Some(config)),
+                    render_prefixed_operand(expression, config),
                     expression1.to_string_with_config(Some(config))
                 )
             }
             AstExpression::MemberAccess(expression, member) => write!(
                 f,
                 "{}.{}",
-                expression.to_string_with_config(Some(config)),
+                render_prefixed_operand(expression, config),
                 member
             ),
             AstExpression::ArchitectureBitSize => write!(f, "ARCH_BIT_SIZE"),
@@ -689,7 +734,7 @@ impl PrintWithConfig for AstJumpTarget {
                 let var = var_map.get(var_id).unwrap();
                 write!(f, "{}", var.to_string_with_config(Some(config)))
             }
-            AstJumpTarget::Function { target } => write!(f, "function{:?}", target),
+            AstJumpTarget::Function { target } => write!(f, "{}", target.get_default_name()),
             AstJumpTarget::Instruction { target } => {
                 write!(f, "ir{}", target.descriptor().ir_index())
             }
