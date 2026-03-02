@@ -8,10 +8,7 @@ mod parameter_analyzation;
 pub mod pattern_matching;
 
 use super::*;
-use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
-};
+use std::hash::Hash;
 
 impl Ast {
     pub fn optimize(&self, config: Option<AstOptimizationConfig>) -> Result<Self, DecompileError> {
@@ -231,7 +228,7 @@ fn snapshot_optimized_functions(
     versions: &[(AstFunctionId, AstFunctionVersion)],
 ) -> u64 {
     let functions = ast.functions.read().unwrap();
-    let mut hasher = DefaultHasher::new();
+    let mut hasher = pattern_matching::Blake3StdHasher::new();
     for (function_id, function_version) in versions.iter().copied() {
         let Some(function) = functions
             .get(&function_id)
@@ -243,10 +240,9 @@ fn snapshot_optimized_functions(
         function_version.hash(&mut hasher);
         function.name.hash(&mut hasher);
         function.parameters.len().hash(&mut hasher);
-        function.processed_optimizations.len().hash(&mut hasher);
-        format!("{:?}", function.body).hash(&mut hasher);
+        pattern_matching::hash_statement_list(&mut hasher, &function.body);
     }
-    hasher.finish()
+    hasher.finish64()
 }
 
 fn has_function_version(

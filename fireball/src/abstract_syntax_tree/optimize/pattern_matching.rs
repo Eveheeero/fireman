@@ -22,11 +22,15 @@ use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
     fs,
+    hash::Hash,
     num::NonZeroU8,
     panic::AssertUnwindSafe,
     time::SystemTime,
 };
 use tracing::{debug, error, info, trace, warn};
+
+mod hashing;
+pub(super) use hashing::{Blake3StdHasher, hash_statement_list, structural_statement_hash};
 
 const PREDEFINED_PRUNE_EMPTY_ELSE_FB: &str =
     include_str!("../../../../patterns/prune-empty-else.fb");
@@ -178,7 +182,7 @@ enum AstPatternParsed {
     ParseError(String),
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 struct AstPatternMatch {
     asm_statement_range: Option<(usize, usize)>,
     ast_statement_range: Option<(usize, usize)>,
@@ -852,103 +856,127 @@ fn apply_file_pattern_rules_recursive(
     ir_debug: &str,
     function_ir_statements: &[IrStatement],
     phase: AstPatternApplyPhase,
-) {
-    for loaded_rule in rules {
-        apply_single_file_rule(
-            stmts,
-            &loaded_rule.rule,
-            loaded_rule.input_type,
-            ir_debug,
-            function_ir_statements,
-            phase,
-        );
-    }
+) -> bool {
+    let mut changed = false;
+    let mut seen_states = HashSet::new();
 
-    for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
-            AstStatement::If(_, branch_true, branch_false) => {
-                apply_file_pattern_rules_recursive(
-                    branch_true,
-                    rules,
-                    ir_debug,
-                    function_ir_statements,
-                    phase,
-                );
-                if let Some(branch_false) = branch_false {
-                    apply_file_pattern_rules_recursive(
-                        branch_false,
+    loop {
+        let state_before = structural_statement_hash(stmts);
+        if !seen_states.insert(state_before) {
+            break;
+        }
+
+        let mut pass_changed = false;
+
+        for loaded_rule in rules {
+            pass_changed |= apply_single_file_rule(
+                stmts,
+                &loaded_rule.rule,
+                loaded_rule.input_type,
+                ir_debug,
+                function_ir_statements,
+                phase,
+            );
+        }
+
+        for stmt in stmts.iter_mut() {
+            match &mut stmt.statement {
+                AstStatement::If(_, branch_true, branch_false) => {
+                    pass_changed |= apply_file_pattern_rules_recursive(
+                        branch_true,
+                        rules,
+                        ir_debug,
+                        function_ir_statements,
+                        phase,
+                    );
+                    if let Some(branch_false) = branch_false {
+                        pass_changed |= apply_file_pattern_rules_recursive(
+                            branch_false,
+                            rules,
+                            ir_debug,
+                            function_ir_statements,
+                            phase,
+                        );
+                    }
+                }
+                AstStatement::While(_, body) => {
+                    pass_changed |= apply_file_pattern_rules_recursive(
+                        body,
                         rules,
                         ir_debug,
                         function_ir_statements,
                         phase,
                     );
                 }
-            }
-            AstStatement::While(_, body) => {
-                apply_file_pattern_rules_recursive(
-                    body,
-                    rules,
-                    ir_debug,
-                    function_ir_statements,
-                    phase,
-                );
-            }
-            AstStatement::For(init, _, update, body) => {
-                let mut init_vec = vec![(**init).clone()];
-                apply_file_pattern_rules_recursive(
-                    &mut init_vec,
-                    rules,
-                    ir_debug,
-                    function_ir_statements,
-                    phase,
-                );
-                if let Some(next_init) = init_vec.into_iter().next() {
-                    **init = next_init;
-                }
+                AstStatement::For(init, _, update, body) => {
+                    let mut init_vec = vec![(**init).clone()];
+                    pass_changed |= apply_file_pattern_rules_recursive(
+                        &mut init_vec,
+                        rules,
+                        ir_debug,
+                        function_ir_statements,
+                        phase,
+                    );
+                    if let Some(next_init) = init_vec.into_iter().next() {
+                        **init = next_init;
+                    }
 
-                let mut update_vec = vec![(**update).clone()];
-                apply_file_pattern_rules_recursive(
-                    &mut update_vec,
-                    rules,
-                    ir_debug,
-                    function_ir_statements,
-                    phase,
-                );
-                if let Some(next_update) = update_vec.into_iter().next() {
-                    **update = next_update;
-                }
+                    let mut update_vec = vec![(**update).clone()];
+                    pass_changed |= apply_file_pattern_rules_recursive(
+                        &mut update_vec,
+                        rules,
+                        ir_debug,
+                        function_ir_statements,
+                        phase,
+                    );
+                    if let Some(next_update) = update_vec.into_iter().next() {
+                        **update = next_update;
+                    }
 
-                apply_file_pattern_rules_recursive(
-                    body,
-                    rules,
-                    ir_debug,
-                    function_ir_statements,
-                    phase,
-                );
+                    pass_changed |= apply_file_pattern_rules_recursive(
+                        body,
+                        rules,
+                        ir_debug,
+                        function_ir_statements,
+                        phase,
+                    );
+                }
+                AstStatement::Block(body) => {
+                    pass_changed |= apply_file_pattern_rules_recursive(
+                        body,
+                        rules,
+                        ir_debug,
+                        function_ir_statements,
+                        phase,
+                    );
+                }
+                AstStatement::Declaration(_, _)
+                | AstStatement::Assignment(_, _)
+                | AstStatement::Return(_)
+                | AstStatement::Call(_)
+                | AstStatement::Label(_)
+                | AstStatement::Goto(_)
+                | AstStatement::Assembly(_)
+                | AstStatement::Undefined
+                | AstStatement::Exception(_)
+                | AstStatement::Comment(_)
+                | AstStatement::Ir(_)
+                | AstStatement::Empty => {}
             }
-            AstStatement::Block(body) => {
-                apply_file_pattern_rules_recursive(
-                    body,
-                    rules,
-                    ir_debug,
-                    function_ir_statements,
-                    phase,
-                );
-            }
-            AstStatement::Declaration(_, _)
-            | AstStatement::Assignment(_, _)
-            | AstStatement::Return(_)
-            | AstStatement::Call(_)
-            | AstStatement::Label(_)
-            | AstStatement::Goto(_)
-            | AstStatement::Assembly(_)
-            | AstStatement::Undefined
-            | AstStatement::Exception(_)
-            | AstStatement::Comment(_)
-            | AstStatement::Ir(_)
-            | AstStatement::Empty => {}
+        }
+
+        let state_after = structural_statement_hash(stmts);
+        if state_after != state_before {
+            pass_changed = true;
+            changed = true;
+        }
+
+        if !pass_changed {
+            break;
         }
     }
+
+    changed
 }
 
 fn apply_single_file_rule(
@@ -958,9 +986,9 @@ fn apply_single_file_rule(
     ir_debug: &str,
     function_ir_statements: &[IrStatement],
     phase: AstPatternApplyPhase,
-) {
+) -> bool {
     if stmts.is_empty() {
-        return;
+        return false;
     }
 
     let need_script = has_script_in_blocks(&rule.in_blocks);
@@ -970,95 +998,133 @@ fn apply_single_file_rule(
         AstPatternInputType::WithIr => (false, false, true),
         AstPatternInputType::Complex => (true, true, true),
     };
+    let mut changed = false;
+    let mut seen_states = HashSet::new();
+    let mut skipped_matches = HashSet::new();
 
-    let ast_debug = if need_script {
-        collect_ast_debug(stmts)
-    } else {
-        String::new()
-    };
-    let ast_statements = if need_ast {
-        collect_ast_statements(stmts)
-    } else {
-        Vec::new()
-    };
-    let ir_statements = if need_ir {
-        collect_ir_statements(function_ir_statements, stmts)
-    } else {
-        Vec::new()
-    };
-    let asm_lines = if need_asm || need_script {
-        collect_asm_lines(stmts)
-    } else {
-        Vec::new()
-    };
-    let asm_debug = if need_script {
-        asm_lines
-            .iter()
-            .map(|line| line.line.as_str())
-            .collect::<Vec<_>>()
-            .join("\n")
-    } else {
-        String::new()
-    };
-    let script_context = AstPatternScriptContext {
-        source: &rule.source,
-        ast_debug: &ast_debug,
-        ir_debug,
-        asm_debug: &asm_debug,
-        statement_count: stmts.len() as i64,
-        asm_count: asm_lines.len() as i64,
-    };
-    let matched = rule.in_blocks.iter().find_map(|block| {
-        match_if_block(
-            block,
-            &script_context,
-            &asm_lines,
-            &ast_statements,
-            &ir_statements,
-            phase,
-        )
-    });
-    let Some(matched) = matched else {
-        return;
-    };
+    loop {
+        if stmts.is_empty() {
+            break;
+        }
 
-    for action in &rule.out_actions {
-        match action {
-            AstPatternOutAction::ReplaceAsm(replacement) => {
-                apply_replace_asm(stmts, &matched, replacement);
+        let state_before = structural_statement_hash(stmts);
+        if !seen_states.insert(state_before) {
+            break;
+        }
+
+        let ast_debug = if need_script {
+            collect_ast_debug(stmts)
+        } else {
+            String::new()
+        };
+        let ast_statements = if need_ast {
+            collect_ast_statements(stmts)
+        } else {
+            Vec::new()
+        };
+        let ir_statements = if need_ir {
+            collect_ir_statements(function_ir_statements, stmts)
+        } else {
+            Vec::new()
+        };
+        let asm_lines = if need_asm || need_script {
+            collect_asm_lines(stmts)
+        } else {
+            Vec::new()
+        };
+        let asm_debug = if need_script {
+            asm_lines
+                .iter()
+                .map(|line| line.line.as_str())
+                .collect::<Vec<_>>()
+                .join("\n")
+        } else {
+            String::new()
+        };
+        let script_context = AstPatternScriptContext {
+            source: &rule.source,
+            ast_debug: &ast_debug,
+            ir_debug,
+            asm_debug: &asm_debug,
+            statement_count: stmts.len() as i64,
+            asm_count: asm_lines.len() as i64,
+        };
+        let matched = rule.in_blocks.iter().find_map(|block| {
+            let matched = match_if_block(
+                block,
+                &script_context,
+                &asm_lines,
+                &ast_statements,
+                &ir_statements,
+                phase,
+            )?;
+            if skipped_matches.contains(&matched) {
+                None
+            } else {
+                Some(matched)
             }
-            AstPatternOutAction::ReplaceIr(replacement) => {
-                apply_replace_ir(stmts, &matched, replacement);
-            }
-            AstPatternOutAction::ReplaceAst(replacement) => {
-                apply_replace_ast(stmts, &matched, replacement);
-            }
-            AstPatternOutAction::Delete(target) => {
-                apply_delete_action(stmts, &matched, target);
-            }
-            AstPatternOutAction::Script(script) => {
-                if !execute_do_script(script, &script_context) {
-                    break;
+        });
+        let Some(matched) = matched else {
+            break;
+        };
+
+        for action in &rule.out_actions {
+            match action {
+                AstPatternOutAction::ReplaceAsm(replacement) => {
+                    apply_replace_asm(stmts, &matched, replacement);
                 }
-            }
-            AstPatternOutAction::Log(level, msg) => match level {
-                AstPatternLogLevel::Info => info!("Pattern `{}` matched: {}", rule.source, msg),
-                AstPatternLogLevel::Warn => warn!("Pattern `{}` matched: {}", rule.source, msg),
-                AstPatternLogLevel::Error => {
-                    error!("Pattern `{}` matched: {}", rule.source, msg)
+                AstPatternOutAction::ReplaceIr(replacement) => {
+                    apply_replace_ir(stmts, &matched, replacement);
                 }
-                AstPatternLogLevel::Debug => {
-                    debug!("Pattern `{}` matched: {}", rule.source, msg)
+                AstPatternOutAction::ReplaceAst(replacement) => {
+                    apply_replace_ast(stmts, &matched, replacement);
                 }
-                AstPatternLogLevel::Trace => {
-                    trace!("Pattern `{}` matched: {}", rule.source, msg)
+                AstPatternOutAction::Delete(target) => {
+                    apply_delete_action(stmts, &matched, target);
                 }
-            },
-            AstPatternOutAction::PruneEmptyElse => {
-                prune_empty_else_recursive(stmts);
+                AstPatternOutAction::Script(script) => {
+                    if !execute_do_script(script, &script_context) {
+                        break;
+                    }
+                }
+                AstPatternOutAction::Log(level, msg) => match level {
+                    AstPatternLogLevel::Info => {
+                        info!("Pattern `{}` matched: {}", rule.source, msg)
+                    }
+                    AstPatternLogLevel::Warn => {
+                        warn!("Pattern `{}` matched: {}", rule.source, msg)
+                    }
+                    AstPatternLogLevel::Error => {
+                        error!("Pattern `{}` matched: {}", rule.source, msg)
+                    }
+                    AstPatternLogLevel::Debug => {
+                        debug!("Pattern `{}` matched: {}", rule.source, msg)
+                    }
+                    AstPatternLogLevel::Trace => {
+                        trace!("Pattern `{}` matched: {}", rule.source, msg)
+                    }
+                },
+                AstPatternOutAction::PruneEmptyElse => {
+                    prune_empty_else_recursive(stmts);
+                }
             }
         }
+
+        let state_after = structural_statement_hash(stmts);
+        if state_after != state_before {
+            changed = true;
+            if matched.asm_statement_range.is_some() || matched.ast_statement_range.is_some() {
+                skipped_matches.clear();
+            } else {
+                skipped_matches.insert(matched);
+            }
+            continue;
+        } else {
+            skipped_matches.insert(matched);
+        }
     }
+
+    changed
 }
 
 fn prune_empty_else_recursive(stmts: &mut [WrappedAstStatement]) {

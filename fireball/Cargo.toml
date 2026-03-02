@@ -29,6 +29,7 @@ hashbrown.workspace = true
 num-bigint.workspace = true
 either.workspace = true
 rhai.workspace = true
+blake3.workspace = true
 
 [dev-dependencies]
 criterion = "0.5"

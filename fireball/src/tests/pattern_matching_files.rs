@@ -229,6 +229,38 @@ fn build_predefined_pattern_test_ast() -> (Ast, AstFunctionId) {
     )
 }
 
+fn build_multi_return_pattern_test_ast() -> (Ast, AstFunctionId) {
+    let function_id = AstFunctionId { address: 0x4800 };
+    let version = AstFunctionVersion(1);
+    let variable_map = Arc::new(RwLock::new(HashMap::new()));
+
+    let body = vec![
+        wrap_statement(AstStatement::Return(None)),
+        wrap_statement(AstStatement::Comment("keep-me".to_string())),
+        wrap_statement(AstStatement::Return(None)),
+        wrap_statement(AstStatement::Return(None)),
+    ];
+
+    let function = build_test_function(
+        function_id,
+        "pattern_multi_return_target",
+        body,
+        variable_map,
+    );
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+
+    (
+        Ast {
+            function_versions: HashMap::from([(function_id, version)]),
+            functions: Arc::new(RwLock::new(functions)),
+            last_variable_id: HashMap::new(),
+            pre_defined_symbols: HashMap::new(),
+        },
+        function_id,
+    )
+}
+
 fn pattern_examples_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../patterns/pattern_matching_examples")
@@ -373,6 +405,46 @@ fn pattern_matching_do_del_syntax_deletes_statement_based_ranges() {
     assert!(
         function.body.len() <= 1,
         "do-del syntax should delete statements using statement indices, even when pattern matching runs repeatedly"
+    );
+}
+
+#[test]
+fn pattern_matching_single_iteration_reaches_fixed_point_for_repeated_matches() {
+    let pattern = AstPattern::new(
+        "multi-return-delete",
+        r#"
+if:
+  ast return
+do:
+  del start[0]
+"#,
+    );
+
+    let (ast, function_id) = build_multi_return_pattern_test_ast();
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(1),
+            ),
+        )
+        .expect("fixed-point multi-match test must optimize successfully");
+
+    let body = optimized_function_body(&optimized, function_id);
+    assert_eq!(
+        body.iter()
+            .filter(|stmt| matches!(&stmt.statement, AstStatement::Return(_)))
+            .count(),
+        0,
+        "single optimizer iteration should consume all matching `ast return` statements"
+    );
+    assert_eq!(
+        comment_count(&body, "keep-me"),
+        1,
+        "non-matching statements should remain after fixed-point convergence"
     );
 }
 
@@ -609,7 +681,7 @@ do:
 }
 
 #[test]
-fn pattern_matching_at_after_iteration_runs_each_iteration() {
+fn pattern_matching_at_after_iteration_reaches_fixed_point() {
     let pattern = AstPattern::new(
         "at-after-iteration",
         r#"
@@ -636,8 +708,8 @@ do:
     let body = optimized_function_body(&optimized, function_id);
     assert_eq!(
         body.len(),
-        2,
-        "at afterIteration should run once per loop iteration and delete one statement each time"
+        0,
+        "at afterIteration should keep applying matching rules until the statement list reaches a fixed-point"
     );
 }
 
@@ -706,8 +778,9 @@ fn pattern_matching_multiple_at_clauses_use_or_semantics() {
 if:
   at beforeIrAnalyzation
   at afterIteration
+  ast return
 do:
-  del start[0]
+  ast comment at-or-hit
 "#,
     );
 
@@ -726,8 +799,8 @@ do:
     let body = optimized_function_body(&optimized, function_id);
 
     assert_eq!(
-        body.len(),
+        comment_count(&body, "at-or-hit"),
         1,
-        "multiple at clauses should be OR'ed and run once for each matching phase"
+        "multiple at clauses should be OR'ed so a match can run when either phase is active"
     );
 }
