@@ -1,9 +1,9 @@
 use crate::{
     abstract_syntax_tree::{
-        ArcAstVariableMap, Ast, AstCall, AstExpression, AstFunction, AstFunctionId,
-        AstFunctionVersion, AstParameter, AstParameterLocation, AstStatement, AstStatementOrigin,
-        AstValueOrigin, AstValueType, AstVariable, AstVariableId, ProcessedOptimization, Wrapped,
-        WrappedAstStatement,
+        ArcAstVariableMap, Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunction,
+        AstFunctionId, AstFunctionVersion, AstJumpTarget, AstParameter, AstParameterLocation,
+        AstStatement, AstStatementOrigin, AstValueOrigin, AstValueType, AstVariable, AstVariableId,
+        ProcessedOptimization, Wrapped, WrappedAstStatement,
     },
     ir::{
         Architecture, Register, VirtualMachine,
@@ -640,14 +640,24 @@ fn merge_single_non_recursive_callees(
             continue;
         };
         let callee_vars = callee_var_map.read().unwrap();
-        merged_vars.extend(callee_vars.iter().map(|(var_id, var)| (*var_id, var.clone())));
+        merged_vars.extend(
+            callee_vars
+                .iter()
+                .map(|(var_id, var)| (*var_id, var.clone())),
+        );
     }
     {
         let mut caller_vars = caller_variables.write().unwrap();
         for (var_id, var) in merged_vars {
             caller_vars.entry(var_id).or_insert(var);
         }
+        rename_merged_default_variables_by_scope(&mut caller_vars, caller_id);
         deduplicate_variable_names_in_scope(&mut caller_vars, caller_id);
+    }
+    rebind_statement_variable_maps(caller_body, &caller_variables);
+    {
+        let caller_vars = caller_variables.read().unwrap();
+        synchronize_declaration_variable_names(caller_body, &caller_vars);
     }
 
     {
@@ -667,8 +677,16 @@ fn deduplicate_variable_names_in_scope(
 ) {
     let mut ids: Vec<_> = vars.keys().copied().collect();
     ids.sort_unstable_by_key(|id| {
-        let caller_priority = if id.parent == Some(caller_id) { 0u8 } else { 1u8 };
-        (caller_priority, id.index, id.parent.map(|x| x.address).unwrap_or(0))
+        let caller_priority = if id.parent == Some(caller_id) {
+            0u8
+        } else {
+            1u8
+        };
+        (
+            caller_priority,
+            id.index,
+            id.parent.map(|x| x.address).unwrap_or(0),
+        )
     });
 
     let mut used_names: HashSet<String> = HashSet::new();
@@ -676,7 +694,10 @@ fn deduplicate_variable_names_in_scope(
         let Some(var) = vars.get_mut(&id) else {
             continue;
         };
-        let base = var.name.clone().unwrap_or_else(|| var.id.get_default_name());
+        let base = var
+            .name
+            .clone()
+            .unwrap_or_else(|| var.id.get_default_name());
         if used_names.insert(base.clone()) {
             continue;
         }
@@ -689,6 +710,251 @@ fn deduplicate_variable_names_in_scope(
         }
         var.name = Some(candidate.clone());
         used_names.insert(candidate);
+    }
+}
+
+fn rename_merged_default_variables_by_scope(
+    vars: &mut HashMap<AstVariableId, AstVariable>,
+    caller_id: AstFunctionId,
+) {
+    let mut callee_scopes: Vec<_> = vars
+        .keys()
+        .filter_map(|id| {
+            if id.parent.is_some() && id.parent != Some(caller_id) {
+                id.parent
+            } else {
+                None
+            }
+        })
+        .collect();
+    callee_scopes.sort_unstable_by_key(|scope| scope.address);
+    callee_scopes.dedup();
+    if callee_scopes.is_empty() {
+        return;
+    }
+
+    let scope_suffix_map: HashMap<AstFunctionId, usize> = callee_scopes
+        .into_iter()
+        .enumerate()
+        .map(|(idx, scope)| (scope, idx + 1))
+        .collect();
+
+    let mut used_names: HashSet<String> = vars.values().map(|var| var.name()).collect();
+    let mut callee_ids: Vec<_> = vars
+        .keys()
+        .copied()
+        .filter(|id| id.parent.is_some() && id.parent != Some(caller_id))
+        .collect();
+    callee_ids.sort_unstable_by_key(|id| {
+        let scope_suffix = id
+            .parent
+            .and_then(|scope| scope_suffix_map.get(&scope).copied())
+            .unwrap_or(usize::MAX);
+        (scope_suffix, id.index)
+    });
+
+    for id in callee_ids {
+        let Some(var) = vars.get_mut(&id) else {
+            continue;
+        };
+        let Some(scope) = id.parent else {
+            continue;
+        };
+        let Some(scope_suffix) = scope_suffix_map.get(&scope).copied() else {
+            continue;
+        };
+
+        let default_name = id.get_default_name();
+        let is_default_named = var.name.as_ref().is_none_or(|name| {
+            *name == default_name || is_scope_suffixed_default_name(name, &default_name)
+        });
+        if !is_default_named {
+            continue;
+        }
+
+        let current_name = var.name();
+        used_names.remove(&current_name);
+
+        let base_candidate = format!("{}_{}", default_name, scope_suffix);
+        let mut candidate = base_candidate.clone();
+        let mut extra_suffix = 2usize;
+        while used_names.contains(&candidate) {
+            candidate = format!("{}_{}", base_candidate, extra_suffix);
+            extra_suffix += 1;
+        }
+        var.name = Some(candidate.clone());
+        used_names.insert(candidate);
+    }
+}
+
+fn is_scope_suffixed_default_name(name: &str, default_name: &str) -> bool {
+    let Some(suffix) = name
+        .strip_prefix(default_name)
+        .and_then(|rest| rest.strip_prefix('_'))
+    else {
+        return false;
+    };
+    !suffix.is_empty() && suffix.chars().all(|ch| ch.is_ascii_digit())
+}
+
+fn synchronize_declaration_variable_names(
+    body: &mut [WrappedAstStatement],
+    vars: &HashMap<AstVariableId, AstVariable>,
+) {
+    for stmt in body.iter_mut() {
+        synchronize_declaration_variable_names_in_statement(&mut stmt.statement, vars);
+    }
+}
+
+fn synchronize_declaration_variable_names_in_statement(
+    statement: &mut AstStatement,
+    vars: &HashMap<AstVariableId, AstVariable>,
+) {
+    match statement {
+        AstStatement::Declaration(var, _) => {
+            if let Some(canonical) = vars.get(&var.id) {
+                var.name = canonical.name.clone();
+            }
+        }
+        AstStatement::If(_, then_body, else_body) => {
+            synchronize_declaration_variable_names(then_body, vars);
+            if let Some(else_body) = else_body {
+                synchronize_declaration_variable_names(else_body, vars);
+            }
+        }
+        AstStatement::While(_, body) | AstStatement::Block(body) => {
+            synchronize_declaration_variable_names(body, vars);
+        }
+        AstStatement::For(init, _, step, body) => {
+            synchronize_declaration_variable_names_in_statement(&mut init.statement, vars);
+            synchronize_declaration_variable_names_in_statement(&mut step.statement, vars);
+            synchronize_declaration_variable_names(body, vars);
+        }
+        _ => {}
+    }
+}
+
+fn rebind_statement_variable_maps(body: &mut [WrappedAstStatement], variables: &ArcAstVariableMap) {
+    for stmt in body.iter_mut() {
+        rebind_statement_variable_maps_in_statement(&mut stmt.statement, variables);
+    }
+}
+
+fn rebind_statement_variable_maps_in_statement(
+    statement: &mut AstStatement,
+    variables: &ArcAstVariableMap,
+) {
+    match statement {
+        AstStatement::Declaration(_, init) => {
+            if let Some(init) = init {
+                rebind_statement_variable_maps_in_expression(init, variables);
+            }
+        }
+        AstStatement::Assignment(lhs, rhs) => {
+            rebind_statement_variable_maps_in_expression(lhs, variables);
+            rebind_statement_variable_maps_in_expression(rhs, variables);
+        }
+        AstStatement::If(cond, then_body, else_body) => {
+            rebind_statement_variable_maps_in_expression(cond, variables);
+            rebind_statement_variable_maps(then_body, variables);
+            if let Some(else_body) = else_body {
+                rebind_statement_variable_maps(else_body, variables);
+            }
+        }
+        AstStatement::While(cond, body) => {
+            rebind_statement_variable_maps_in_expression(cond, variables);
+            rebind_statement_variable_maps(body, variables);
+        }
+        AstStatement::For(init, cond, step, body) => {
+            rebind_statement_variable_maps_in_statement(&mut init.statement, variables);
+            rebind_statement_variable_maps_in_expression(cond, variables);
+            rebind_statement_variable_maps_in_statement(&mut step.statement, variables);
+            rebind_statement_variable_maps(body, variables);
+        }
+        AstStatement::Return(expr) => {
+            if let Some(expr) = expr {
+                rebind_statement_variable_maps_in_expression(expr, variables);
+            }
+        }
+        AstStatement::Call(call) => {
+            rebind_statement_variable_maps_in_call(call, variables);
+        }
+        AstStatement::Goto(AstJumpTarget::Variable { var_map, .. }) => {
+            *var_map = variables.clone();
+        }
+        AstStatement::Block(body) => {
+            rebind_statement_variable_maps(body, variables);
+        }
+        _ => {}
+    }
+}
+
+fn rebind_statement_variable_maps_in_expression(
+    expr: &mut Wrapped<AstExpression>,
+    variables: &ArcAstVariableMap,
+) {
+    match &mut expr.item {
+        AstExpression::Variable(var_map, _) => {
+            *var_map = variables.clone();
+        }
+        AstExpression::UnaryOp(_, arg)
+        | AstExpression::Cast(_, arg)
+        | AstExpression::Deref(arg)
+        | AstExpression::AddressOf(arg)
+        | AstExpression::MemberAccess(arg, _) => {
+            rebind_statement_variable_maps_in_expression(arg, variables);
+        }
+        AstExpression::BinaryOp(_, lhs, rhs) | AstExpression::ArrayAccess(lhs, rhs) => {
+            rebind_statement_variable_maps_in_expression(lhs, variables);
+            rebind_statement_variable_maps_in_expression(rhs, variables);
+        }
+        AstExpression::Call(call) => {
+            rebind_statement_variable_maps_in_call(call, variables);
+        }
+        AstExpression::Unknown
+        | AstExpression::Undefined
+        | AstExpression::ArchitectureBitSize
+        | AstExpression::ArchitectureByteSize
+        | AstExpression::Literal(_) => {}
+    }
+}
+
+fn rebind_statement_variable_maps_in_call(call: &mut AstCall, variables: &ArcAstVariableMap) {
+    match call {
+        AstCall::Variable { var_map, args, .. } => {
+            *var_map = variables.clone();
+            for arg in args.iter_mut() {
+                rebind_statement_variable_maps_in_expression(arg, variables);
+            }
+        }
+        AstCall::Function { args, .. } | AstCall::Unknown(_, args) => {
+            for arg in args.iter_mut() {
+                rebind_statement_variable_maps_in_expression(arg, variables);
+            }
+        }
+        AstCall::Builtin(_, arg) => match arg.as_mut() {
+            AstBuiltinFunctionArgument::None => {}
+            AstBuiltinFunctionArgument::Print(args) => {
+                for arg in args.iter_mut() {
+                    rebind_statement_variable_maps_in_expression(arg, variables);
+                }
+            }
+            AstBuiltinFunctionArgument::ByteSizeOf(arg)
+            | AstBuiltinFunctionArgument::BitSizeOf(arg)
+            | AstBuiltinFunctionArgument::OperandExists(arg)
+            | AstBuiltinFunctionArgument::SignedMax(arg)
+            | AstBuiltinFunctionArgument::SignedMin(arg)
+            | AstBuiltinFunctionArgument::UnsignedMax(arg)
+            | AstBuiltinFunctionArgument::UnsignedMin(arg)
+            | AstBuiltinFunctionArgument::BitOnes(arg)
+            | AstBuiltinFunctionArgument::BitZeros(arg) => {
+                rebind_statement_variable_maps_in_expression(arg, variables);
+            }
+            AstBuiltinFunctionArgument::Sized(lhs, rhs) => {
+                rebind_statement_variable_maps_in_expression(lhs, variables);
+                rebind_statement_variable_maps_in_expression(rhs, variables);
+            }
+        },
     }
 }
 
@@ -806,7 +1072,31 @@ fn inline_single_call_callees_recursive(
             continue;
         };
 
-        rebuilt_body.extend(replacement.iter().cloned());
+        let mut inlined_body = replacement.clone();
+        if let Some(callsite_comment) = stmt.comment.take() {
+            if let Some(first) = inlined_body.first_mut() {
+                if first.comment.is_none() {
+                    first.comment = Some(callsite_comment);
+                } else {
+                    inlined_body.insert(
+                        0,
+                        WrappedAstStatement {
+                            statement: AstStatement::Comment(callsite_comment),
+                            origin: stmt.origin.clone(),
+                            comment: None,
+                        },
+                    );
+                }
+            } else {
+                inlined_body.push(WrappedAstStatement {
+                    statement: AstStatement::Comment(callsite_comment),
+                    origin: stmt.origin.clone(),
+                    comment: None,
+                });
+            }
+        }
+
+        rebuilt_body.extend(inlined_body.into_iter());
         inlined_callees.insert(*target);
     }
 
@@ -819,7 +1109,16 @@ fn strip_trailing_void_return(mut body: Vec<WrappedAstStatement>) -> Vec<Wrapped
         .last()
         .is_some_and(|stmt| matches!(stmt.statement, AstStatement::Return(None)))
     {
-        body.pop();
+        let removed = body.pop();
+        if let Some(removed) = removed
+            && let Some(comment) = removed.comment
+        {
+            body.push(WrappedAstStatement {
+                statement: AstStatement::Comment(comment),
+                origin: removed.origin,
+                comment: None,
+            });
+        }
     }
     body
 }
@@ -907,11 +1206,13 @@ fn apply_real_main_special_case(
 
     rewrite_calls_to_named_target(body, main_target, "main");
     if has_named_call_recursive(body, "main") && !has_top_level_named_call(body, "main") {
+        let inherited_origin =
+            find_named_call_origin_recursive(body, "main").unwrap_or(AstStatementOrigin::Unknown);
         body.insert(
             0,
             WrappedAstStatement {
                 statement: AstStatement::Call(AstCall::Unknown("main".to_string(), Vec::new())),
-                origin: AstStatementOrigin::Unknown,
+                origin: inherited_origin,
                 comment: None,
             },
         );
@@ -967,6 +1268,43 @@ fn has_named_call_recursive(body: &[WrappedAstStatement], name: &str) -> bool {
         }
     });
     found
+}
+
+fn find_named_call_origin_recursive(
+    body: &[WrappedAstStatement],
+    name: &str,
+) -> Option<AstStatementOrigin> {
+    for stmt in body.iter() {
+        match &stmt.statement {
+            AstStatement::Call(AstCall::Unknown(call_name, _)) if call_name == name => {
+                return Some(stmt.origin.clone());
+            }
+            AstStatement::If(_, true_branch, false_branch) => {
+                if let Some(origin) = find_named_call_origin_recursive(true_branch, name) {
+                    return Some(origin);
+                }
+
+                if let Some(false_branch) = false_branch
+                    && let Some(origin) = find_named_call_origin_recursive(false_branch, name)
+                {
+                    return Some(origin);
+                }
+            }
+            AstStatement::While(_, block) | AstStatement::Block(block) => {
+                if let Some(origin) = find_named_call_origin_recursive(block, name) {
+                    return Some(origin);
+                }
+            }
+            AstStatement::For(_, _, _, block) => {
+                if let Some(origin) = find_named_call_origin_recursive(block, name) {
+                    return Some(origin);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
 }
 
 fn has_top_level_named_call(body: &[WrappedAstStatement], name: &str) -> bool {
@@ -1111,13 +1449,7 @@ fn rebuild_goto_as_call_if_possible_inner(
         let mut should_stop_after = false;
         if let AstStatement::Goto(jump) = &stmt.statement {
             let tail_position = original_suffix_is_non_effectful(&original, idx + 1);
-            let origin_is_unconditional_jump = stmt_origin_is_unconditional_jump(&stmt);
-            let allow_nested_goto_conversion = depth > 0;
-
-            if tail_position
-                && (origin_is_unconditional_jump || allow_nested_goto_conversion)
-                && let Some(call) = jump_target_to_call(ast, scope, &stmt, jump)
-            {
+            if tail_position && let Some(call) = jump_target_to_call(ast, scope, &stmt, jump) {
                 stmt.statement = AstStatement::Call(call);
                 should_stop_after = true;
             }
@@ -1225,10 +1557,16 @@ fn call_from_jump_address(ast: &Ast, scope: AstFunctionId, addr: u64) -> Option<
     }
 
     if let Some(symbol) = external_symbol_name_from_slot(ast, addr) {
-        return Some(AstCall::Unknown(external_symbol_identifier(&symbol), Vec::new()));
+        return Some(AstCall::Unknown(
+            external_symbol_identifier(&symbol),
+            Vec::new(),
+        ));
     }
 
-    Some(AstCall::Unknown(function_like_name_from_address(ast, addr), Vec::new()))
+    Some(AstCall::Unknown(
+        function_like_name_from_address(ast, addr),
+        Vec::new(),
+    ))
 }
 
 fn stmt_origin_fallthrough_address(stmt: &WrappedAstStatement) -> Option<u64> {

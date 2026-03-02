@@ -1,20 +1,80 @@
 use super::*;
+use std::collections::HashSet;
 
-// to_string_with_config(Some(config))
+fn collect_statement_ir_origins<'a>(
+    origin: &'a AstStatementOrigin,
+    out: &mut Vec<&'a AstDescriptor>,
+) {
+    match origin {
+        AstStatementOrigin::Ir(descriptor) => out.push(descriptor),
+        AstStatementOrigin::Combination(origins) => {
+            for origin in origins {
+                collect_statement_ir_origins(origin, out);
+            }
+        }
+        _ => {}
+    }
+}
 
-fn inline_statement_body(stmts: &[WrappedAstStatement], config: AstPrintConfig) -> String {
-    stmts
-        .iter()
-        .map(|stmt| stmt.to_string_with_config(Some(config)))
-        .filter(|stmt| !stmt.is_empty())
-        .collect::<Vec<_>>()
-        .join(" ")
+fn descriptor_source_key(descriptor: &AstDescriptor) -> usize {
+    std::sync::Arc::as_ptr(descriptor.ir()) as usize
+}
+
+fn wrapped_statement_with_origin(stmt: &WrappedAstStatement, config: AstPrintConfig) -> String {
+    let statement_text = stmt.to_string_with_config(Some(config));
+    if statement_text.is_empty() {
+        return statement_text;
+    }
+
+    let mut origins = Vec::new();
+    collect_statement_ir_origins(&stmt.origin, &mut origins);
+
+    let mut origin_lines = Vec::new();
+    let mut printed_instruction = HashSet::new();
+    let mut printed_ir = HashSet::new();
+
+    for descriptor in origins {
+        let source_key = descriptor_source_key(descriptor);
+        if config.print_instruction {
+            let ir_key = (source_key, descriptor.descriptor().ir_index());
+            if printed_instruction.insert(ir_key)
+                && let Some(instruction) = descriptor
+                    .ir()
+                    .get_instructions()
+                    .get(descriptor.descriptor().ir_index() as usize)
+            {
+                origin_lines.push(format!("// {}", instruction));
+            }
+        }
+
+        if config.print_ir
+            && let Some(statement_index) = descriptor.descriptor().statement_index()
+        {
+            let descriptor_key = (source_key, *descriptor.descriptor());
+            if printed_ir.insert(descriptor_key)
+                && let Some(ir) = descriptor
+                    .ir()
+                    .get_ir()
+                    .get(descriptor.descriptor().ir_index() as usize)
+                && let Some(statements) = ir.statements.as_ref()
+                && let Some(ir_stmt) = statements.get(*statement_index as usize)
+            {
+                origin_lines.push(format!("/* {} */", ir_stmt));
+            }
+        }
+    }
+
+    if origin_lines.is_empty() {
+        statement_text
+    } else {
+        format!("{}\n{}", origin_lines.join("\n"), statement_text)
+    }
 }
 
 fn statement_body(stmts: &[WrappedAstStatement], config: AstPrintConfig) -> Vec<String> {
     stmts
         .iter()
-        .map(|stmt| stmt.to_string_with_config(Some(config)))
+        .map(|stmt| wrapped_statement_with_origin(stmt, config))
         .filter(|stmt| !stmt.is_empty())
         .collect()
 }
@@ -56,11 +116,13 @@ fn write_inline_block(
     stmts: &[WrappedAstStatement],
     config: AstPrintConfig,
 ) -> std::fmt::Result {
-    let body = inline_statement_body(stmts, config);
+    let body = statement_body(stmts, config);
     if body.is_empty() {
         write!(f, "{{ }}")
+    } else if body.len() > 1 || body.iter().any(|stmt| stmt.contains('\n')) {
+        write_multiline_block_from_body(f, &body)
     } else {
-        write!(f, "{{ {} }}", body)
+        write!(f, "{{ {} }}", body.join(" "))
     }
 }
 
@@ -147,10 +209,14 @@ impl PrintWithConfig for AstStatement {
                 }
 
                 write!(f, "if ({}) ", cond.to_string_with_config(Some(config)))?;
-                write_block_with_style(f, &then_stmts, then_stmts.len() > 1)?;
+                let then_multiline =
+                    then_stmts.len() > 1 || then_stmts.iter().any(|stmt| stmt.contains('\n'));
+                write_block_with_style(f, &then_stmts, then_multiline)?;
                 if let Some(else_stmts) = else_stmts {
                     write!(f, " else ")?;
-                    write_block_with_style(f, &else_stmts, else_stmts.len() > 1)?;
+                    let else_multiline =
+                        else_stmts.len() > 1 || else_stmts.iter().any(|stmt| stmt.contains('\n'));
+                    write_block_with_style(f, &else_stmts, else_multiline)?;
                 }
                 Ok(())
             }

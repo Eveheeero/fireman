@@ -1,12 +1,12 @@
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstCall, AstExpression, AstFunction, AstFunctionId, AstFunctionVersion, AstJumpTarget,
-        AstLiteral, AstOptimizationConfig, AstPrintConfig, AstStatement, AstStatementOrigin,
-        AstValue, AstValueOrigin, AstValueType, AstVariable, AstVariableId, Wrapped,
-        WrappedAstStatement,
+        Ast, AstCall, AstDescriptor, AstExpression, AstFunction, AstFunctionId, AstFunctionVersion,
+        AstJumpTarget, AstLiteral, AstOptimizationConfig, AstPrintConfig, AstStatement,
+        AstStatementOrigin, AstValue, AstValueOrigin, AstValueType, AstVariable, AstVariableId,
+        Wrapped, WrappedAstStatement,
     },
-    core::Instruction,
-    ir::analyze::IrFunction,
+    core::{Instruction, Sections},
+    ir::{Ir, analyze::IrFunction, statements::IrStatement, utils::IrStatementDescriptor},
     utils::version_map::VersionMap,
 };
 use hashbrown::HashMap;
@@ -47,6 +47,30 @@ fn build_test_function(
         body,
         processed_optimizations: Vec::new(),
     }
+}
+
+fn build_ir_origin_descriptor(address: u64, byte: u8) -> AstDescriptor {
+    let sections = Sections::new();
+    let instruction = Instruction {
+        address,
+        inner: iceball::Instruction {
+            statement: Err(iceball::DisassembleError::Unknown),
+            arguments: Vec::new().into_boxed_slice(),
+            bytes: Some(vec![byte].into_boxed_slice()),
+        },
+    };
+    let ir_statements: &'static [IrStatement] =
+        Box::leak(vec![IrStatement::Undefined].into_boxed_slice());
+    let ir = Ir {
+        address: crate::core::Address::from_virtual_address(&sections, address),
+        statements: Some(ir_statements),
+    };
+    let ir_fn = Arc::new(IrFunction::new(
+        vec![instruction].into(),
+        vec![ir],
+        Vec::new(),
+    ));
+    AstDescriptor::new(ir_fn, IrStatementDescriptor::new(0, Some(0)))
 }
 
 #[test]
@@ -507,10 +531,23 @@ fn optimize_call_argument_keeps_recursive_callee_split() {
         ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
+    let caller_start = printed
+        .find("int caller(")
+        .expect("caller function should be printed");
+    let caller_end = printed[caller_start + 1..]
+        .find("\nint ")
+        .map(|idx| caller_start + 1 + idx)
+        .unwrap_or(printed.len());
+    let caller_section = &printed[caller_start..caller_end];
 
     assert!(
-        printed.contains("f2000();"),
-        "recursive callee callsite should remain as call, got:\n{}",
+        caller_section.contains("f2000();"),
+        "caller goto should be converted to call, got:\n{}",
+        printed
+    );
+    assert!(
+        !caller_section.contains("goto"),
+        "caller should not keep goto after conversion, got:\n{}",
         printed
     );
     assert!(
@@ -626,7 +663,12 @@ fn optimize_call_argument_renames_merged_callee_variable_name_conflicts() {
 
     let caller_body = vec![
         wrap_statement(AstStatement::Declaration(
-            caller_vars.read().unwrap().get(&caller_var_id).unwrap().clone(),
+            caller_vars
+                .read()
+                .unwrap()
+                .get(&caller_var_id)
+                .unwrap()
+                .clone(),
             None,
         )),
         wrap_statement(AstStatement::Call(AstCall::Function {
@@ -636,8 +678,17 @@ fn optimize_call_argument_renames_merged_callee_variable_name_conflicts() {
     ];
     let callee_body = vec![
         wrap_statement(AstStatement::Declaration(
-            callee_vars.read().unwrap().get(&callee_var_id).unwrap().clone(),
+            callee_vars
+                .read()
+                .unwrap()
+                .get(&callee_var_id)
+                .unwrap()
+                .clone(),
             None,
+        )),
+        wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(callee_vars.clone(), callee_var_id)),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
         )),
         wrap_statement(AstStatement::Return(None)),
     ];
@@ -673,8 +724,412 @@ fn optimize_call_argument_renames_merged_callee_variable_name_conflicts() {
         printed
     );
     assert!(
-        printed.contains("int v1_2;"),
-        "merged callee variable should be renamed to avoid collision, got:\n{}",
+        printed.contains("int v1_1;"),
+        "merged callee variable should use callee scope suffix, got:\n{}",
+        printed
+    );
+    assert_eq!(
+        printed.matches("    int v1;").count(),
+        1,
+        "function body should keep only caller declaration name for v1, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("    int v1_1;"),
+        "function body should use renamed callee variable declaration, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("    v1_1 = 2;"),
+        "function body should use renamed callee variable in expressions, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_call_argument_renames_callee_default_variable_without_caller_conflict() {
+    let caller_id = AstFunctionId { address: 0x1100 };
+    let callee_id = AstFunctionId { address: 0x2200 };
+    let version = AstFunctionVersion(1);
+
+    let caller_var_id = AstVariableId {
+        index: 17,
+        parent: Some(caller_id),
+    };
+    let callee_var_id = AstVariableId {
+        index: 18,
+        parent: Some(callee_id),
+    };
+
+    let caller_vars = Arc::new(RwLock::new(HashMap::from([(
+        caller_var_id,
+        AstVariable {
+            name: None,
+            id: caller_var_id,
+            var_type: AstValueType::Int,
+            const_value: None,
+            data_access_ir: None,
+        },
+    )])));
+    let callee_vars = Arc::new(RwLock::new(HashMap::from([(
+        callee_var_id,
+        AstVariable {
+            name: None,
+            id: callee_var_id,
+            var_type: AstValueType::Int,
+            const_value: None,
+            data_access_ir: None,
+        },
+    )])));
+
+    let caller_body = vec![
+        wrap_statement(AstStatement::Declaration(
+            caller_vars
+                .read()
+                .unwrap()
+                .get(&caller_var_id)
+                .unwrap()
+                .clone(),
+            None,
+        )),
+        wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(caller_vars.clone(), caller_var_id)),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+        )),
+        wrap_statement(AstStatement::Call(AstCall::Function {
+            target: callee_id,
+            args: Vec::new(),
+        })),
+    ];
+    let callee_body = vec![
+        wrap_statement(AstStatement::Declaration(
+            callee_vars
+                .read()
+                .unwrap()
+                .get(&callee_var_id)
+                .unwrap()
+                .clone(),
+            None,
+        )),
+        wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(callee_vars.clone(), callee_var_id)),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+        )),
+        wrap_statement(AstStatement::Return(None)),
+    ];
+
+    let caller = build_test_function(caller_id, "caller", caller_body, caller_vars);
+    let callee = build_test_function(
+        callee_id,
+        &callee_id.get_default_name(),
+        callee_body,
+        callee_vars,
+    );
+
+    let mut functions = HashMap::new();
+    functions.insert(caller_id, VersionMap::new(version, caller));
+    functions.insert(callee_id, VersionMap::new(version, callee));
+    let ast = Ast {
+        function_versions: HashMap::from([(caller_id, version), (callee_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize(Some(
+            AstOptimizationConfig::NONE.call_argument_analyzation(true),
+        ))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+
+    assert!(
+        printed.contains("int v18_1;"),
+        "callee default variable should use first callee suffix, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("    v18_1 = 2;"),
+        "callee expression should use renamed variable, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("    v17 = 1;"),
+        "caller variable should keep its original name, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_call_argument_renames_callee_default_variable_with_scope_suffix_when_v10_2_exists() {
+    let caller_id = AstFunctionId { address: 0x1300 };
+    let callee_id = AstFunctionId { address: 0x2300 };
+    let version = AstFunctionVersion(1);
+
+    let caller_var_id = AstVariableId {
+        index: 1,
+        parent: Some(caller_id),
+    };
+    let callee_var_id = AstVariableId {
+        index: 10,
+        parent: Some(callee_id),
+    };
+
+    let caller_vars = Arc::new(RwLock::new(HashMap::from([(
+        caller_var_id,
+        AstVariable {
+            name: Some("v10_2".to_string()),
+            id: caller_var_id,
+            var_type: AstValueType::Int,
+            const_value: None,
+            data_access_ir: None,
+        },
+    )])));
+    let callee_vars = Arc::new(RwLock::new(HashMap::from([(
+        callee_var_id,
+        AstVariable {
+            name: None,
+            id: callee_var_id,
+            var_type: AstValueType::Int,
+            const_value: None,
+            data_access_ir: None,
+        },
+    )])));
+
+    let caller_body = vec![
+        wrap_statement(AstStatement::Declaration(
+            caller_vars
+                .read()
+                .unwrap()
+                .get(&caller_var_id)
+                .unwrap()
+                .clone(),
+            None,
+        )),
+        wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(caller_vars.clone(), caller_var_id)),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+        )),
+        wrap_statement(AstStatement::Call(AstCall::Function {
+            target: callee_id,
+            args: Vec::new(),
+        })),
+    ];
+    let callee_body = vec![
+        wrap_statement(AstStatement::Declaration(
+            callee_vars
+                .read()
+                .unwrap()
+                .get(&callee_var_id)
+                .unwrap()
+                .clone(),
+            None,
+        )),
+        wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(callee_vars.clone(), callee_var_id)),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+        )),
+        wrap_statement(AstStatement::Return(None)),
+    ];
+
+    let caller = build_test_function(caller_id, "caller", caller_body, caller_vars);
+    let callee = build_test_function(
+        callee_id,
+        &callee_id.get_default_name(),
+        callee_body,
+        callee_vars,
+    );
+
+    let mut functions = HashMap::new();
+    functions.insert(caller_id, VersionMap::new(version, caller));
+    functions.insert(callee_id, VersionMap::new(version, callee));
+    let ast = Ast {
+        function_versions: HashMap::from([(caller_id, version), (callee_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize(Some(
+            AstOptimizationConfig::NONE.call_argument_analyzation(true),
+        ))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+
+    assert!(
+        printed.contains("int v10_2;"),
+        "existing caller v10_2 should stay unchanged, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("int v10_1;"),
+        "merged callee v10 should use first callee suffix, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("    v10_1 = 2;"),
+        "callee expression should use v10_1, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_call_argument_applies_incremental_scope_suffixes_for_multiple_callees() {
+    let caller_id = AstFunctionId { address: 0x1400 };
+    let callee1_id = AstFunctionId { address: 0x2400 };
+    let callee2_id = AstFunctionId { address: 0x2500 };
+    let version = AstFunctionVersion(1);
+
+    let caller_var_ids: Vec<_> = (1..=4)
+        .map(|idx| AstVariableId {
+            index: idx,
+            parent: Some(caller_id),
+        })
+        .collect();
+    let caller_vars = Arc::new(RwLock::new(HashMap::from_iter(caller_var_ids.iter().map(
+        |id| {
+            (
+                *id,
+                AstVariable {
+                    name: None,
+                    id: *id,
+                    var_type: AstValueType::Int,
+                    const_value: None,
+                    data_access_ir: None,
+                },
+            )
+        },
+    ))));
+
+    let callee1_var_id = AstVariableId {
+        index: 10,
+        parent: Some(callee1_id),
+    };
+    let callee1_vars = Arc::new(RwLock::new(HashMap::from([(
+        callee1_var_id,
+        AstVariable {
+            name: None,
+            id: callee1_var_id,
+            var_type: AstValueType::Int,
+            const_value: None,
+            data_access_ir: None,
+        },
+    )])));
+
+    let callee2_var_id = AstVariableId {
+        index: 20,
+        parent: Some(callee2_id),
+    };
+    let callee2_vars = Arc::new(RwLock::new(HashMap::from([(
+        callee2_var_id,
+        AstVariable {
+            name: None,
+            id: callee2_var_id,
+            var_type: AstValueType::Int,
+            const_value: None,
+            data_access_ir: None,
+        },
+    )])));
+
+    let caller_body = vec![
+        wrap_statement(AstStatement::Call(AstCall::Function {
+            target: callee1_id,
+            args: Vec::new(),
+        })),
+        wrap_statement(AstStatement::Call(AstCall::Function {
+            target: callee2_id,
+            args: Vec::new(),
+        })),
+    ];
+    let callee1_body = vec![
+        wrap_statement(AstStatement::Declaration(
+            callee1_vars
+                .read()
+                .unwrap()
+                .get(&callee1_var_id)
+                .unwrap()
+                .clone(),
+            None,
+        )),
+        wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(
+                callee1_vars.clone(),
+                callee1_var_id,
+            )),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(10))),
+        )),
+        wrap_statement(AstStatement::Return(None)),
+    ];
+    let callee2_body = vec![
+        wrap_statement(AstStatement::Declaration(
+            callee2_vars
+                .read()
+                .unwrap()
+                .get(&callee2_var_id)
+                .unwrap()
+                .clone(),
+            None,
+        )),
+        wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(
+                callee2_vars.clone(),
+                callee2_var_id,
+            )),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(20))),
+        )),
+        wrap_statement(AstStatement::Return(None)),
+    ];
+
+    let caller = build_test_function(caller_id, "caller", caller_body, caller_vars);
+    let callee1 = build_test_function(
+        callee1_id,
+        &callee1_id.get_default_name(),
+        callee1_body,
+        callee1_vars,
+    );
+    let callee2 = build_test_function(
+        callee2_id,
+        &callee2_id.get_default_name(),
+        callee2_body,
+        callee2_vars,
+    );
+
+    let mut functions = HashMap::new();
+    functions.insert(caller_id, VersionMap::new(version, caller));
+    functions.insert(callee1_id, VersionMap::new(version, callee1));
+    functions.insert(callee2_id, VersionMap::new(version, callee2));
+    let ast = Ast {
+        function_versions: HashMap::from([
+            (caller_id, version),
+            (callee1_id, version),
+            (callee2_id, version),
+        ]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize(Some(
+            AstOptimizationConfig::NONE.call_argument_analyzation(true),
+        ))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+
+    assert!(
+        printed.contains("int v4;"),
+        "caller variables should keep unsuffixed names up to v4, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("int v10_1;"),
+        "first merged callee variables should use _1 suffix, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("int v20_2;"),
+        "second merged callee variables should use _2 suffix, got:\n{}",
         printed
     );
 }
@@ -744,23 +1199,9 @@ fn print_aligns_local_variables_and_sorts_same_index_by_scope() {
         printed
     );
 
-    let caller_line = printed
-        .lines()
-        .find(|line| line.contains("caller_var;"))
-        .expect("caller declaration line should exist");
-    let merged_line = printed
-        .lines()
-        .find(|line| line.contains("merged_var"))
-        .expect("merged declaration line should exist");
     assert!(
-        merged_line.contains("const int"),
-        "merged variable should be printed as const declaration, got:\n{}",
-        printed
-    );
-    assert_eq!(
-        caller_line.find("caller_var").unwrap(),
-        merged_line.find("merged_var").unwrap(),
-        "variable names should be column-aligned in local declarations, got:\n{}",
+        printed.contains("int caller_var;\n\n  const int merged_var = 0x7;"),
+        "variables should be grouped/aligned by source function scope in print output, got:\n{}",
         printed
     );
 }
@@ -816,6 +1257,131 @@ fn print_if_with_multi_statement_branch_uses_multiline_block() {
     assert!(
         printed.contains("if (true) {\n        x = 1;\n        x = 2;\n    } else { x = 3; }"),
         "if true-branch with multiple statements should be printed as multiline block, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_call_argument_preserves_comments_when_inlining_blocks() {
+    let caller_id = AstFunctionId { address: 0x4000 };
+    let callee_id = AstFunctionId { address: 0x5000 };
+    let version = AstFunctionVersion(1);
+    let empty_vars = Arc::new(RwLock::new(HashMap::new()));
+
+    let caller_body = vec![WrappedAstStatement {
+        statement: AstStatement::Call(AstCall::Function {
+            target: callee_id,
+            args: Vec::new(),
+        }),
+        origin: AstStatementOrigin::Unknown,
+        comment: Some("callsite comment".to_string()),
+    }];
+    let callee_body = vec![
+        wrap_statement(AstStatement::Comment("callee block comment".to_string())),
+        WrappedAstStatement {
+            statement: AstStatement::Return(None),
+            origin: AstStatementOrigin::Unknown,
+            comment: Some("tail return comment".to_string()),
+        },
+    ];
+
+    let caller = build_test_function(caller_id, "caller", caller_body, empty_vars.clone());
+    let callee = build_test_function(
+        callee_id,
+        &callee_id.get_default_name(),
+        callee_body,
+        empty_vars,
+    );
+
+    let mut functions = HashMap::new();
+    functions.insert(caller_id, VersionMap::new(version, caller));
+    functions.insert(callee_id, VersionMap::new(version, callee));
+    let ast = Ast {
+        function_versions: HashMap::from([(caller_id, version), (callee_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize(Some(
+            AstOptimizationConfig::NONE.call_argument_analyzation(true),
+        ))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+
+    assert!(
+        printed.contains("callsite comment"),
+        "callsite comment should be preserved after inlining, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("callee block comment"),
+        "callee block comment should remain after inlining, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("tail return comment"),
+        "trailing return comment should be preserved after stripping return, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn print_keeps_origin_comments_for_different_ir_sources_with_same_descriptor_index() {
+    let function_id = AstFunctionId { address: 0x6100 };
+    let version = AstFunctionVersion(1);
+    let empty_vars = Arc::new(RwLock::new(HashMap::new()));
+    let body = vec![
+        WrappedAstStatement {
+            statement: AstStatement::Comment("from first source".to_string()),
+            origin: AstStatementOrigin::Ir(build_ir_origin_descriptor(0x401000, 0x90)),
+            comment: None,
+        },
+        WrappedAstStatement {
+            statement: AstStatement::Comment("from second source".to_string()),
+            origin: AstStatementOrigin::Ir(build_ir_origin_descriptor(0x402000, 0xCC)),
+            comment: None,
+        },
+    ];
+
+    let function = build_test_function(function_id, "origin_print_test", body, empty_vars);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let printed = ast.print(Some(
+        AstPrintConfig::NONE.print_instruction(true).print_ir(true),
+    ));
+    let instruction_comment_count = printed
+        .lines()
+        .filter(|line| line.trim_start().starts_with("// 0x"))
+        .count();
+    let ir_comment_count = printed.matches("/* undefined */").count();
+
+    assert_eq!(
+        instruction_comment_count, 2,
+        "expected two distinct instruction comments, got:\n{}",
+        printed
+    );
+    assert_eq!(
+        ir_comment_count, 2,
+        "expected two distinct IR comments, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("// 0x401000 90"),
+        "missing first source instruction origin comment, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("// 0x402000 CC"),
+        "missing second source instruction origin comment, got:\n{}",
         printed
     );
 }

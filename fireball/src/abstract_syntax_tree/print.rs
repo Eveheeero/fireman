@@ -1,5 +1,5 @@
 use super::*;
-use hashbrown::HashSet;
+use hashbrown::{HashMap, HashSet};
 
 fn format_descriptor(ir_index: u32, statement_index: Option<u8>) -> String {
     match statement_index {
@@ -93,6 +93,25 @@ fn push_indented_lines(output: &mut String, indent: &str, content: &str) {
     }
 }
 
+fn collect_statement_ir_origins<'a>(
+    origin: &'a AstStatementOrigin,
+    out: &mut Vec<&'a AstDescriptor>,
+) {
+    match origin {
+        AstStatementOrigin::Ir(descriptor) => out.push(descriptor),
+        AstStatementOrigin::Combination(origins) => {
+            for origin in origins {
+                collect_statement_ir_origins(origin, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn descriptor_source_key(descriptor: &AstDescriptor) -> usize {
+    std::sync::Arc::as_ptr(descriptor.ir()) as usize
+}
+
 impl Ast {
     pub fn print(&self, config: Option<AstPrintConfig>) -> String {
         let config = config.unwrap_or_default();
@@ -153,20 +172,33 @@ impl Ast {
                 let var_map = func.variables.read().unwrap();
                 let mut var_keys_sorted = var_map.keys().collect::<Vec<_>>();
                 var_keys_sorted.sort_by_cached_key(|key| {
-                    let caller_priority = if key.parent == Some(func.id) { 0u8 } else { 1u8 };
-                    (
-                        caller_priority,
-                        key.index,
-                        key.parent.map(|id| id.address).unwrap_or(0),
-                    )
+                    let (kind_priority, parent_addr) = if key.parent == Some(func.id) {
+                        (0u8, func.id.address)
+                    } else if key.parent.is_none() {
+                        (1u8, 0)
+                    } else {
+                        (2u8, key.parent.map(|id| id.address).unwrap_or(0))
+                    };
+                    (kind_priority, parent_addr, key.index)
                 });
-                let mut decl_rows: Vec<(String, String, Option<String>)> = Vec::new();
+                let mut decl_rows: Vec<((u8, u64), String, String, Option<String>)> = Vec::new();
                 for var_key in var_keys_sorted {
                     let var = var_map.get(var_key).unwrap();
+                    let group_key = if var_key.parent == Some(func.id) {
+                        (0u8, func.id.address)
+                    } else if var_key.parent.is_none() {
+                        (1u8, 0)
+                    } else {
+                        (2u8, var_key.parent.map(|id| id.address).unwrap_or(0))
+                    };
                     if let Some(const_value) = &var.const_value {
                         if !config.replace_constant {
                             decl_rows.push((
-                                format!("const {}", var.var_type.to_string_with_config(Some(config))),
+                                group_key,
+                                format!(
+                                    "const {}",
+                                    var.var_type.to_string_with_config(Some(config))
+                                ),
                                 format!(
                                     "{} = {}",
                                     var.name(),
@@ -187,6 +219,7 @@ impl Ast {
                         }
                     } else {
                         decl_rows.push((
+                            group_key,
                             var.var_type.to_string_with_config(Some(config)),
                             var.name(),
                             config
@@ -197,13 +230,29 @@ impl Ast {
                 }
 
                 if !decl_rows.is_empty() {
-                    let left_width = decl_rows.iter().map(|(left, _, _)| left.len()).max().unwrap_or(0);
-                    for (left, right, usage_comment) in decl_rows {
-                        output.push_str(&format!("  {:<width$} {};", left, right, width = left_width));
+                    let mut group_left_width: HashMap<(u8, u64), usize> = HashMap::new();
+                    for (group_key, left, _, _) in decl_rows.iter() {
+                        let width = group_left_width.entry(*group_key).or_insert(0);
+                        *width = (*width).max(left.len());
+                    }
+
+                    let mut prev_group: Option<(u8, u64)> = None;
+                    for (group_key, left, right, usage_comment) in decl_rows {
+                        if prev_group.is_some() && prev_group != Some(group_key) {
+                            output.push('\n');
+                        }
+                        let left_width = group_left_width.get(&group_key).copied().unwrap_or(0);
+                        output.push_str(&format!(
+                            "  {:<width$} {};",
+                            left,
+                            right,
+                            width = left_width
+                        ));
                         if let Some(comment) = usage_comment {
                             output.push_str(&format!(" /* {} */", comment));
                         }
                         output.push('\n');
+                        prev_group = Some(group_key);
                     }
                     output.push_str("\n");
                 }
@@ -217,28 +266,34 @@ impl Ast {
                 if content.is_empty() {
                     continue;
                 }
+                let mut origins = Vec::new();
+                collect_statement_ir_origins(&stmt.origin, &mut origins);
                 if config.print_instruction {
-                    if let AstStatementOrigin::Ir(descriptor) = &stmt.origin
-                        && !visited_ir.contains(&descriptor.descriptor().ir_index())
-                    {
-                        let instruction = &descriptor.ir().get_instructions()
-                            [descriptor.descriptor().ir_index() as usize];
-                        output.push_str(&format!("  // {}\n", instruction));
-                        visited_ir.insert(descriptor.descriptor().ir_index());
+                    for descriptor in &origins {
+                        let source_key = descriptor_source_key(descriptor);
+                        let ir_key = (source_key, descriptor.descriptor().ir_index());
+                        if !visited_ir.contains(&ir_key) {
+                            let instruction = &descriptor.ir().get_instructions()
+                                [descriptor.descriptor().ir_index() as usize];
+                            output.push_str(&format!("  // {}\n", instruction));
+                            visited_ir.insert(ir_key);
+                        }
                     }
                 }
                 if config.print_ir {
-                    if let AstStatementOrigin::Ir(descriptor) = &stmt.origin
-                        && let Some(statement_index) = descriptor.descriptor().statement_index()
-                    {
-                        if prev_stmt != Some(descriptor.descriptor()) {
-                            let stmt = &descriptor.ir().get_ir()
-                                [descriptor.descriptor().ir_index() as usize]
-                                .statements
-                                .as_ref()
-                                .unwrap()[*statement_index as usize];
-                            output.push_str(&format!("    /* {} */\n", stmt));
-                            prev_stmt = Some(descriptor.descriptor());
+                    for descriptor in &origins {
+                        if let Some(statement_index) = descriptor.descriptor().statement_index() {
+                            let source_key = descriptor_source_key(descriptor);
+                            let descriptor_key = (source_key, *descriptor.descriptor());
+                            if prev_stmt != Some(descriptor_key) {
+                                let stmt = &descriptor.ir().get_ir()
+                                    [descriptor.descriptor().ir_index() as usize]
+                                    .statements
+                                    .as_ref()
+                                    .unwrap()[*statement_index as usize];
+                                output.push_str(&format!("    /* {} */\n", stmt));
+                                prev_stmt = Some(descriptor_key);
+                            }
                         }
                     }
                 }
