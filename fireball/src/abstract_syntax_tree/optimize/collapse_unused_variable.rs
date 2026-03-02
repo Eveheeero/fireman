@@ -139,6 +139,34 @@ pub(super) fn collapse_unused_variables(
                 new_body.push(stmt);
                 continue;
             }
+            AstStatement::Switch(_discrim, cases, default) => {
+                if cases.is_empty() && default.is_none() {
+                    new_body.push(stmt);
+                    continue;
+                }
+                let mut branch_overwritten: Vec<HashSet<Aos<IrData>>> = Vec::new();
+                for (_lit, case_body) in cases.iter_mut() {
+                    let mut case_overwritten = overwritten_locations.clone();
+                    collapse(&variables, &mut case_overwritten, case_body);
+                    branch_overwritten.push(case_overwritten);
+                }
+                if let Some(default_body) = default {
+                    let mut default_overwritten = overwritten_locations.clone();
+                    collapse(&variables, &mut default_overwritten, default_body);
+                    branch_overwritten.push(default_overwritten);
+                }
+                if branch_overwritten.is_empty() {
+                    overwritten_locations.clear();
+                } else {
+                    let mut result = branch_overwritten[0].clone();
+                    for other in &branch_overwritten[1..] {
+                        result = result.intersection(other).cloned().collect();
+                    }
+                    overwritten_locations = result;
+                }
+                new_body.push(stmt);
+                continue;
+            }
             AstStatement::Block(stmts) => {
                 collapse(&variables, &mut overwritten_locations, stmts);
                 new_body.push(stmt);
@@ -290,6 +318,32 @@ fn collapse(
                     let mut loop_overwritten_locations: HashSet<Aos<IrData>> = HashSet::new();
                     collapse(variables, &mut loop_overwritten_locations, stmts);
                     overwritten_locations.clear();
+                }
+                AstStatement::Switch(_discrim, cases, default) => {
+                    if cases.is_empty() && default.is_none() {
+                        // nothing to do
+                    } else {
+                        let mut branch_overwritten: Vec<HashSet<Aos<IrData>>> = Vec::new();
+                        for (_lit, case_body) in cases.iter_mut() {
+                            let mut case_overwritten = overwritten_locations.clone();
+                            collapse(variables, &mut case_overwritten, case_body);
+                            branch_overwritten.push(case_overwritten);
+                        }
+                        if let Some(default_body) = default {
+                            let mut default_overwritten = overwritten_locations.clone();
+                            collapse(variables, &mut default_overwritten, default_body);
+                            branch_overwritten.push(default_overwritten);
+                        }
+                        if branch_overwritten.is_empty() {
+                            overwritten_locations.clear();
+                        } else {
+                            let mut result = branch_overwritten[0].clone();
+                            for other in &branch_overwritten[1..] {
+                                result = result.intersection(other).cloned().collect();
+                            }
+                            *overwritten_locations = result;
+                        }
+                    }
                 }
                 AstStatement::Block(stmts) => {
                     collapse(variables, overwritten_locations, stmts);

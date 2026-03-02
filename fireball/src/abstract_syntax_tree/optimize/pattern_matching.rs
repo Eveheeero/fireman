@@ -947,6 +947,26 @@ fn apply_file_pattern_rules_recursive(
                         phase,
                     );
                 }
+                AstStatement::Switch(_, cases, default) => {
+                    for (_lit, case_body) in cases.iter_mut() {
+                        pass_changed |= apply_file_pattern_rules_recursive(
+                            case_body,
+                            rules,
+                            ir_debug,
+                            function_ir_statements,
+                            phase,
+                        );
+                    }
+                    if let Some(default_body) = default {
+                        pass_changed |= apply_file_pattern_rules_recursive(
+                            default_body,
+                            rules,
+                            ir_debug,
+                            function_ir_statements,
+                            phase,
+                        );
+                    }
+                }
                 AstStatement::Block(body) => {
                     pass_changed |= apply_file_pattern_rules_recursive(
                         body,
@@ -1158,6 +1178,14 @@ fn prune_empty_else_statement_recursive(stmt: &mut WrappedAstStatement) {
             prune_empty_else_statement_recursive(init);
             prune_empty_else_statement_recursive(update);
             prune_empty_else_recursive(body);
+        }
+        AstStatement::Switch(_, cases, default) => {
+            for (_lit, case_body) in cases.iter_mut() {
+                prune_empty_else_recursive(case_body);
+            }
+            if let Some(default_body) = default {
+                prune_empty_else_recursive(default_body);
+            }
         }
         AstStatement::Block(body) => {
             prune_empty_else_recursive(body);

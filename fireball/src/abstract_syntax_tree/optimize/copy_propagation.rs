@@ -5,7 +5,7 @@ use crate::{
     },
     prelude::DecompileError,
 };
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 
 pub(super) fn propagate_copies(
     ast: &mut Ast,
@@ -112,19 +112,53 @@ fn propagate_statement(
             }
         }
         AstStatement::While(cond, body) => {
-            // Conservative: clear all before entering loop
-            env.clear();
+            // Pre-scan loop body for written variables; only invalidate those
+            let mut written = HashSet::new();
+            collect_written_vars_list(body, &mut written);
+            invalidate_written(env, &written);
             substitute_expression(cond, env);
-            propagate_statement_list(body, &mut HashMap::new());
-            // After loop, nothing is safe
+            let mut env_body = env.clone();
+            propagate_statement_list(body, &mut env_body);
+            // After loop, invalidate written vars again (loop may or may not execute)
+            invalidate_written(env, &written);
         }
         AstStatement::For(init, cond, update, body) => {
             propagate_statement(init, env);
-            // Conservative: clear all before loop body
-            env.clear();
+            // Pre-scan loop body + update for written variables; only invalidate those
+            let mut written = HashSet::new();
+            collect_written_vars_list(body, &mut written);
+            collect_written_vars_stmt(&update.statement, &mut written);
+            invalidate_written(env, &written);
             substitute_expression(cond, env);
-            propagate_statement_list(body, &mut HashMap::new());
-            propagate_statement(&mut *update, &mut HashMap::new());
+            let mut env_body = env.clone();
+            propagate_statement_list(body, &mut env_body);
+            propagate_statement(&mut *update, &mut env_body);
+            // After loop, invalidate written vars
+            invalidate_written(env, &written);
+        }
+        AstStatement::Switch(discrim, cases, default) => {
+            substitute_expression(discrim, env);
+            let env_before = env.clone();
+            let mut branch_envs: Vec<HashMap<AstVariableId, AstVariableId>> = Vec::new();
+            for (_lit, case_body) in cases.iter_mut() {
+                let mut env_case = env_before.clone();
+                propagate_statement_list(case_body, &mut env_case);
+                branch_envs.push(env_case);
+            }
+            if let Some(default_body) = default {
+                let mut env_default = env_before.clone();
+                propagate_statement_list(default_body, &mut env_default);
+                branch_envs.push(env_default);
+            }
+            if branch_envs.is_empty() {
+                *env = env_before;
+            } else {
+                let mut result = branch_envs[0].clone();
+                for other in &branch_envs[1..] {
+                    result = intersect_envs(&result, other);
+                }
+                *env = result;
+            }
         }
         AstStatement::Block(body) => {
             propagate_statement_list(body, env);
@@ -189,6 +223,11 @@ fn substitute_expression(
             substitute_expression(base, env);
             substitute_expression(idx, env);
         }
+        AstExpression::Ternary(cond, true_expr, false_expr) => {
+            substitute_expression(cond, env);
+            substitute_expression(true_expr, env);
+            substitute_expression(false_expr, env);
+        }
         AstExpression::Literal(_)
         | AstExpression::Unknown
         | AstExpression::Undefined
@@ -235,6 +274,57 @@ fn substitute_call(call: &mut AstCall, env: &HashMap<AstVariableId, AstVariableI
 /// Remove all env entries whose source (value) is the given variable.
 fn invalidate_source(env: &mut HashMap<AstVariableId, AstVariableId>, source: AstVariableId) {
     env.retain(|_dst, src| *src != source);
+}
+
+/// Collect all variable IDs that are written (assigned/declared) in a statement list.
+fn collect_written_vars_list(stmts: &[WrappedAstStatement], out: &mut HashSet<AstVariableId>) {
+    for stmt in stmts {
+        collect_written_vars_stmt(&stmt.statement, out);
+    }
+}
+
+fn collect_written_vars_stmt(stmt: &AstStatement, out: &mut HashSet<AstVariableId>) {
+    match stmt {
+        AstStatement::Assignment(lhs, _) => {
+            if let AstExpression::Variable(_, var_id) = &lhs.item {
+                out.insert(*var_id);
+            }
+        }
+        AstStatement::Declaration(var, _) => {
+            out.insert(var.id);
+        }
+        AstStatement::If(_, bt, bf) => {
+            collect_written_vars_list(bt, out);
+            if let Some(bf) = bf {
+                collect_written_vars_list(bf, out);
+            }
+        }
+        AstStatement::While(_, body) => {
+            collect_written_vars_list(body, out);
+        }
+        AstStatement::For(init, _, update, body) => {
+            collect_written_vars_stmt(&init.statement, out);
+            collect_written_vars_stmt(&update.statement, out);
+            collect_written_vars_list(body, out);
+        }
+        AstStatement::Switch(_, cases, default) => {
+            for (_lit, case_body) in cases {
+                collect_written_vars_list(case_body, out);
+            }
+            if let Some(default_body) = default {
+                collect_written_vars_list(default_body, out);
+            }
+        }
+        AstStatement::Block(body) => {
+            collect_written_vars_list(body, out);
+        }
+        _ => {}
+    }
+}
+
+/// Invalidate env entries where the dst or src is in the written set.
+fn invalidate_written(env: &mut HashMap<AstVariableId, AstVariableId>, written: &HashSet<AstVariableId>) {
+    env.retain(|dst, src| !written.contains(dst) && !written.contains(src));
 }
 
 fn intersect_envs(

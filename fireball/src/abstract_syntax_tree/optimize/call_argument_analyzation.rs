@@ -908,6 +908,11 @@ fn rebind_statement_variable_maps_in_expression(
             rebind_statement_variable_maps_in_expression(lhs, variables);
             rebind_statement_variable_maps_in_expression(rhs, variables);
         }
+        AstExpression::Ternary(cond, true_expr, false_expr) => {
+            rebind_statement_variable_maps_in_expression(cond, variables);
+            rebind_statement_variable_maps_in_expression(true_expr, variables);
+            rebind_statement_variable_maps_in_expression(false_expr, variables);
+        }
         AstExpression::Call(call) => {
             rebind_statement_variable_maps_in_call(call, variables);
         }
@@ -2609,6 +2614,7 @@ fn is_barrier(stmt: &AstStatement) -> bool {
         AstStatement::If(_, _, _)
         | AstStatement::While(_, _)
         | AstStatement::For(_, _, _, _)
+        | AstStatement::Switch(_, _, _)
         | AstStatement::Block(_) => true,
 
         AstStatement::Declaration(_, _)

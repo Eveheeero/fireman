@@ -63,6 +63,14 @@ fn normalize_statement(stmt: &mut WrappedAstStatement) {
                 stmt.statement = AstStatement::While(cond.clone(), std::mem::take(body));
             }
         }
+        AstStatement::Switch(_, cases, default) => {
+            for (_lit, case_body) in cases.iter_mut() {
+                normalize_statement_list(case_body);
+            }
+            if let Some(default_body) = default {
+                normalize_statement_list(default_body);
+            }
+        }
         AstStatement::Block(body) => {
             normalize_statement_list(body);
         }

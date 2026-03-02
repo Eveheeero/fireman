@@ -8,6 +8,10 @@ mod ir_analyzation;
 mod loop_analyzation;
 mod parameter_analyzation;
 pub mod pattern_matching;
+mod opt_utils;
+mod boolean_recovery;
+mod switch_reconstruction;
+mod ternary_recovery;
 
 use super::*;
 use std::hash::Hash;
@@ -173,7 +177,9 @@ impl Ast {
             || config.pattern_matching_enabled
             || config.collapse_unused_varaible
             || config.copy_propagation
-            || config.expression_inlining;
+            || config.expression_inlining
+            || config.ternary_recovery
+            || config.boolean_recovery;
         let max_pass_iterations = config.max_pass_iterations.max(1);
         if run_iterative_passes {
             for _ in 0..max_pass_iterations {
@@ -249,6 +255,32 @@ impl Ast {
                     }
                 }
 
+                if config.boolean_recovery {
+                    for (function_id, to_version) in versions.iter().copied() {
+                        if !has_function_version(&ast, function_id, to_version) {
+                            continue;
+                        }
+                        boolean_recovery::recover_boolean(
+                            &mut ast,
+                            function_id,
+                            to_version,
+                        )?;
+                    }
+                }
+
+                if config.ternary_recovery {
+                    for (function_id, to_version) in versions.iter().copied() {
+                        if !has_function_version(&ast, function_id, to_version) {
+                            continue;
+                        }
+                        ternary_recovery::recover_ternary(
+                            &mut ast,
+                            function_id,
+                            to_version,
+                        )?;
+                    }
+                }
+
                 if config.pattern_matching_enabled {
                     for (function_id, to_version) in versions.iter().copied() {
                         if !has_function_version(&ast, function_id, to_version) {
@@ -268,6 +300,19 @@ impl Ast {
                 if before == after {
                     break;
                 }
+            }
+        }
+
+        if config.switch_reconstruction {
+            for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
+                switch_reconstruction::reconstruct_switches(
+                    &mut ast,
+                    function_id,
+                    to_version,
+                )?;
             }
         }
 

@@ -388,6 +388,33 @@ impl PrintWithConfig for AstStatement {
                     write!(f, ");")
                 }
             },
+            AstStatement::Switch(discrim, cases, default) => {
+                write!(
+                    f,
+                    "switch ({}) ",
+                    discrim.to_string_with_config(Some(config))
+                )?;
+                write!(f, "{{\n")?;
+                for (lit, case_body) in cases {
+                    let body_strs = statement_body(case_body, config);
+                    write!(
+                        f,
+                        "    case {}:\n",
+                        lit.to_string_with_config(Some(config))
+                    )?;
+                    for s in &body_strs {
+                        write!(f, "{}\n", indent_multiline(s, "        "))?;
+                    }
+                }
+                if let Some(default_body) = default {
+                    let body_strs = statement_body(default_body, config);
+                    write!(f, "    default:\n")?;
+                    for s in &body_strs {
+                        write!(f, "{}\n", indent_multiline(s, "        "))?;
+                    }
+                }
+                write!(f, "}}")
+            }
             AstStatement::Label(name) => write!(f, "{}:", name),
             AstStatement::Goto(name) => {
                 write!(f, "goto {};", name.to_string_with_config(Some(config)))
@@ -563,6 +590,15 @@ impl PrintWithConfig for AstExpression {
                 render_prefixed_operand(expression, config),
                 member
             ),
+            AstExpression::Ternary(cond, true_expr, false_expr) => {
+                write!(
+                    f,
+                    "{} ? {} : {}",
+                    render_prefixed_operand(cond, config),
+                    true_expr.to_string_with_config(Some(config)),
+                    false_expr.to_string_with_config(Some(config))
+                )
+            }
             AstExpression::ArchitectureBitSize => write!(f, "ARCH_BIT_SIZE"),
             AstExpression::ArchitectureByteSize => write!(f, "ARCH_BYTE_SIZE"),
         }

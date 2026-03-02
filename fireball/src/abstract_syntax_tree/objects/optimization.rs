@@ -13,6 +13,9 @@ pub struct AstOptimizationConfig {
     pub loop_analyzation: bool,
     pub copy_propagation: bool,
     pub expression_inlining: bool,
+    pub ternary_recovery: bool,
+    pub boolean_recovery: bool,
+    pub switch_reconstruction: bool,
     pub max_pass_iterations: usize,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,6 +30,9 @@ pub enum ProcessedOptimization {
     LoopAnalyzation,
     CopyPropagation,
     ExpressionInlining,
+    TernaryRecovery,
+    BooleanRecovery,
+    SwitchReconstruction,
 }
 impl AstOptimizationConfig {
     pub const DEFAULT: Self = Self {
@@ -41,6 +47,9 @@ impl AstOptimizationConfig {
         loop_analyzation: true,
         copy_propagation: true,
         expression_inlining: true,
+        ternary_recovery: true,
+        boolean_recovery: true,
+        switch_reconstruction: true,
         max_pass_iterations: 3,
     };
     pub const ALL: Self = Self {
@@ -55,6 +64,9 @@ impl AstOptimizationConfig {
         loop_analyzation: true,
         copy_propagation: true,
         expression_inlining: true,
+        ternary_recovery: true,
+        boolean_recovery: true,
+        switch_reconstruction: true,
         max_pass_iterations: 3,
     };
     pub const NONE: Self = Self {
@@ -69,6 +81,9 @@ impl AstOptimizationConfig {
         loop_analyzation: false,
         copy_propagation: false,
         expression_inlining: false,
+        ternary_recovery: false,
+        boolean_recovery: false,
+        switch_reconstruction: false,
         max_pass_iterations: 1,
     };
 
@@ -117,6 +132,18 @@ impl AstOptimizationConfig {
     }
     pub fn expression_inlining(mut self, value: bool) -> Self {
         self.expression_inlining = value;
+        self
+    }
+    pub fn ternary_recovery(mut self, value: bool) -> Self {
+        self.ternary_recovery = value;
+        self
+    }
+    pub fn boolean_recovery(mut self, value: bool) -> Self {
+        self.boolean_recovery = value;
+        self
+    }
+    pub fn switch_reconstruction(mut self, value: bool) -> Self {
+        self.switch_reconstruction = value;
         self
     }
     pub fn max_pass_iterations(mut self, value: usize) -> Self {

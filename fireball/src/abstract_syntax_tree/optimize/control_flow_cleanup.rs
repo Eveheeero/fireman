@@ -74,6 +74,14 @@ fn cleanup_statement(stmt: &mut WrappedAstStatement, noreturn_targets: &HashSet<
             cleanup_statement(update, noreturn_targets);
             cleanup_statement_list(body, noreturn_targets);
         }
+        AstStatement::Switch(_, cases, default) => {
+            for (_lit, case_body) in cases.iter_mut() {
+                cleanup_statement_list(case_body, noreturn_targets);
+            }
+            if let Some(default_body) = default {
+                cleanup_statement_list(default_body, noreturn_targets);
+            }
+        }
         AstStatement::Block(body) => cleanup_statement_list(body, noreturn_targets),
         AstStatement::Declaration(_, _)
         | AstStatement::Assignment(_, _)
@@ -130,6 +138,31 @@ fn statement_outcome(
             statement_list_outcome(branch_true, noreturn_targets),
             statement_list_outcome(branch_false, noreturn_targets),
         ),
+        AstStatement::Switch(_, cases, default) => {
+            // Switch terminates only if every case AND default all terminate
+            if let Some(default_body) = default {
+                let mut all_terminate = true;
+                let mut combined = statement_list_outcome(default_body, noreturn_targets);
+                if combined == TerminationOutcome::NoTerminate {
+                    all_terminate = false;
+                }
+                for (_lit, case_body) in cases.iter() {
+                    let case_outcome = statement_list_outcome(case_body, noreturn_targets);
+                    if case_outcome == TerminationOutcome::NoTerminate {
+                        all_terminate = false;
+                        break;
+                    }
+                    combined = combine_branch_outcomes(combined, case_outcome);
+                }
+                if all_terminate {
+                    combined
+                } else {
+                    TerminationOutcome::NoTerminate
+                }
+            } else {
+                TerminationOutcome::NoTerminate
+            }
+        }
         AstStatement::Declaration(_, _)
         | AstStatement::Assignment(_, _)
         | AstStatement::If(_, _, None)

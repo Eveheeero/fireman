@@ -115,6 +115,21 @@ fn hash_statement(state: &mut Blake3StdHasher, stmt: &AstStatement) {
         AstStatement::Exception(message) => message.hash(state),
         AstStatement::Comment(comment) => comment.hash(state),
         AstStatement::Ir(ir) => hash_ir_statement(state, ir.as_ref()),
+        AstStatement::Switch(discrim, cases, default) => {
+            hash_wrapped_expression(state, discrim);
+            cases.len().hash(state);
+            for (lit, case_body) in cases {
+                hash_literal(state, lit);
+                hash_statement_list(state, case_body);
+            }
+            match default {
+                Some(default_body) => {
+                    true.hash(state);
+                    hash_statement_list(state, default_body);
+                }
+                None => false.hash(state),
+            }
+        }
         AstStatement::Undefined | AstStatement::Empty => {}
     }
 }
@@ -156,6 +171,11 @@ fn hash_expression(state: &mut Blake3StdHasher, expr: &AstExpression) {
         AstExpression::MemberAccess(value, member) => {
             hash_wrapped_expression(state, value);
             member.hash(state);
+        }
+        AstExpression::Ternary(cond, true_expr, false_expr) => {
+            hash_wrapped_expression(state, cond);
+            hash_wrapped_expression(state, true_expr);
+            hash_wrapped_expression(state, false_expr);
         }
     }
 }

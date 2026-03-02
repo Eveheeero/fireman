@@ -1,9 +1,9 @@
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstCall, AstDescriptor, AstExpression, AstFunction, AstFunctionId, AstFunctionVersion,
-        AstJumpTarget, AstLiteral, AstOptimizationConfig, AstPrintConfig, AstStatement,
-        AstStatementOrigin, AstValue, AstValueOrigin, AstValueType, AstVariable, AstVariableId,
-        Wrapped, WrappedAstStatement,
+        Ast, AstBinaryOperator, AstCall, AstDescriptor, AstExpression, AstFunction, AstFunctionId,
+        AstFunctionVersion, AstJumpTarget, AstLiteral, AstOptimizationConfig, AstPrintConfig,
+        AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue, AstValueOrigin, AstValueType,
+        AstVariable, AstVariableId, Wrapped, WrappedAstStatement,
     },
     core::{Instruction, Sections},
     ir::{Ir, analyze::IrFunction, statements::IrStatement, utils::IrStatementDescriptor},
@@ -1382,6 +1382,560 @@ fn print_keeps_origin_comments_for_different_ir_sources_with_same_descriptor_ind
     assert!(
         printed.contains("// 0x402000 CC"),
         "missing second source instruction origin comment, got:\n{}",
+        printed
+    );
+}
+
+// --- Helper to build a simple test AST with N variables ---
+fn build_simple_test_ast(
+    _num_vars: usize,
+    body: Vec<WrappedAstStatement>,
+    variable_map: Arc<RwLock<HashMap<AstVariableId, AstVariable>>>,
+) -> Ast {
+    let function_id = AstFunctionId { address: 0x9000 };
+    let version = AstFunctionVersion(1);
+    let function = build_test_function(function_id, "test_fn", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    }
+}
+
+fn make_var_map(
+    function_id: AstFunctionId,
+    names: &[&str],
+) -> (
+    Vec<AstVariableId>,
+    Arc<RwLock<HashMap<AstVariableId, AstVariable>>>,
+) {
+    let mut ids = Vec::new();
+    let mut map = HashMap::new();
+    for (i, name) in names.iter().enumerate() {
+        let id = AstVariableId {
+            index: (i + 1) as u32,
+            parent: Some(function_id),
+        };
+        ids.push(id);
+        map.insert(
+            id,
+            AstVariable {
+                name: Some(name.to_string()),
+                id,
+                var_type: AstValueType::Int,
+                const_value: None,
+                data_access_ir: None,
+            },
+        );
+    }
+    (ids, Arc::new(RwLock::new(map)))
+}
+
+// ============ Phase 1 Tests: Algebraic Simplification ============
+
+#[test]
+fn optimize_same_operand_sub_to_zero() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x"]);
+    let x = ids[0];
+
+    // return x - x; => should fold to return 0;
+    let body = vec![wrap_statement(AstStatement::Return(Some(
+        wrap_expression(AstExpression::BinaryOp(
+            AstBinaryOperator::Sub,
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+        )),
+    )))];
+
+    let ast = build_simple_test_ast(1, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("return 0;"),
+        "x - x should fold to 0, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_same_operand_xor_to_zero() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x"]);
+    let x = ids[0];
+
+    let body = vec![wrap_statement(AstStatement::Return(Some(
+        wrap_expression(AstExpression::BinaryOp(
+            AstBinaryOperator::BitXor,
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+        )),
+    )))];
+
+    let ast = build_simple_test_ast(1, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("return 0;"),
+        "x ^ x should fold to 0, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_same_operand_and_identity() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x"]);
+    let x = ids[0];
+
+    let body = vec![wrap_statement(AstStatement::Return(Some(
+        wrap_expression(AstExpression::BinaryOp(
+            AstBinaryOperator::BitAnd,
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+        )),
+    )))];
+
+    let ast = build_simple_test_ast(1, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("return x;"),
+        "x & x should fold to x, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_same_operand_eq_to_true() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x"]);
+    let x = ids[0];
+
+    let body = vec![wrap_statement(AstStatement::Return(Some(
+        wrap_expression(AstExpression::BinaryOp(
+            AstBinaryOperator::Equal,
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+        )),
+    )))];
+
+    let ast = build_simple_test_ast(1, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("return true;"),
+        "x == x should fold to true, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_double_bitnot_cancellation() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x"]);
+    let x = ids[0];
+
+    let body = vec![wrap_statement(AstStatement::Return(Some(
+        wrap_expression(AstExpression::UnaryOp(
+            AstUnaryOperator::BitNot,
+            Box::new(wrap_expression(AstExpression::UnaryOp(
+                AstUnaryOperator::BitNot,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+            ))),
+        )),
+    )))];
+
+    let ast = build_simple_test_ast(1, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("return x;"),
+        "~~x should fold to x, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_absorbing_mul_zero() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x"]);
+    let x = ids[0];
+
+    let body = vec![wrap_statement(AstStatement::Return(Some(
+        wrap_expression(AstExpression::BinaryOp(
+            AstBinaryOperator::Mul,
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+            Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(0)))),
+        )),
+    )))];
+
+    let ast = build_simple_test_ast(1, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("return 0;"),
+        "x * 0 should fold to 0, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_reassociation() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x"]);
+    let x = ids[0];
+
+    // (x + 3) + 7 => x + 10
+    let body = vec![wrap_statement(AstStatement::Return(Some(
+        wrap_expression(AstExpression::BinaryOp(
+            AstBinaryOperator::Add,
+            Box::new(wrap_expression(AstExpression::BinaryOp(
+                AstBinaryOperator::Add,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(3)))),
+            ))),
+            Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(7)))),
+        )),
+    )))];
+
+    let ast = build_simple_test_ast(1, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("return x + 10;"),
+        "(x + 3) + 7 should reassociate to x + 10, got:\n{}",
+        printed
+    );
+}
+
+// ============ Phase 2 Tests: Expression Inlining Improvements ============
+
+#[test]
+fn optimize_expression_inlining_wider_window() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["a", "b", "c"]);
+    let (a, b, c) = (ids[0], ids[1], ids[2]);
+
+    // a = 1; b = 2; c = a + b; return c;
+    let body = vec![
+        wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(vm.clone(), a)),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+        )),
+        wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(vm.clone(), b)),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+        )),
+        wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(vm.clone(), c)),
+            wrap_expression(AstExpression::BinaryOp(
+                AstBinaryOperator::Add,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), a))),
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), b))),
+            )),
+        )),
+        wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::Variable(vm.clone(), c),
+        )))),
+    ];
+
+    let ast = build_simple_test_ast(3, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(
+            AstOptimizationConfig::NONE
+                .expression_inlining(true)
+                .constant_folding(true)
+                .max_pass_iterations(2),
+        ))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("return 3;"),
+        "wider window inlining + folding should produce return 3, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_declaration_inlining() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x"]);
+    let x = ids[0];
+
+    // int x = 42; return x;
+    let body = vec![
+        wrap_statement(AstStatement::Declaration(
+            vm.read().unwrap().get(&x).unwrap().clone(),
+            Some(wrap_expression(AstExpression::Literal(AstLiteral::Int(42)))),
+        )),
+        wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::Variable(vm.clone(), x),
+        )))),
+    ];
+
+    let ast = build_simple_test_ast(1, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(
+            AstOptimizationConfig::NONE.expression_inlining(true),
+        ))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("return 42;"),
+        "declaration should inline into return, got:\n{}",
+        printed
+    );
+}
+
+// ============ Phase 3 Tests: Ternary Recovery ============
+
+#[test]
+fn optimize_ternary_recovery_basic() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["cond", "result"]);
+    let (cond, result) = (ids[0], ids[1]);
+
+    // if (cond) { result = 1; } else { result = 2; }
+    let body = vec![
+        wrap_statement(AstStatement::If(
+            wrap_expression(AstExpression::Variable(vm.clone(), cond)),
+            vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), result)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            ))],
+            Some(vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), result)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+            ))]),
+        )),
+        wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::Variable(vm.clone(), result),
+        )))),
+    ];
+
+    let ast = build_simple_test_ast(2, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.ternary_recovery(true)))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("?") && printed.contains(":"),
+        "should recover ternary operator, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_ternary_recovery_rejects_different_vars() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["cond", "a", "b"]);
+    let (cond, a, b) = (ids[0], ids[1], ids[2]);
+
+    // if (cond) { a = 1; } else { b = 2; } -- should NOT convert
+    let body = vec![wrap_statement(AstStatement::If(
+        wrap_expression(AstExpression::Variable(vm.clone(), cond)),
+        vec![wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(vm.clone(), a)),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+        ))],
+        Some(vec![wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(vm.clone(), b)),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+        ))]),
+    ))];
+
+    let ast = build_simple_test_ast(3, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.ternary_recovery(true)))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("if"),
+        "should NOT convert to ternary with different target vars, got:\n{}",
+        printed
+    );
+}
+
+// ============ Phase 4 Tests: Boolean Recovery & Switch Reconstruction ============
+
+#[test]
+fn optimize_boolean_recovery_and_pattern() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["a", "b", "v"]);
+    let (a, b, v) = (ids[0], ids[1], ids[2]);
+
+    // if (a) { if (b) { v = true; } else { v = false; } } else { v = false; }
+    let body = vec![
+        wrap_statement(AstStatement::If(
+            wrap_expression(AstExpression::Variable(vm.clone(), a)),
+            vec![wrap_statement(AstStatement::If(
+                wrap_expression(AstExpression::Variable(vm.clone(), b)),
+                vec![wrap_statement(AstStatement::Assignment(
+                    wrap_expression(AstExpression::Variable(vm.clone(), v)),
+                    wrap_expression(AstExpression::Literal(AstLiteral::Bool(true))),
+                ))],
+                Some(vec![wrap_statement(AstStatement::Assignment(
+                    wrap_expression(AstExpression::Variable(vm.clone(), v)),
+                    wrap_expression(AstExpression::Literal(AstLiteral::Bool(false))),
+                ))]),
+            ))],
+            Some(vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), v)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Bool(false))),
+            ))]),
+        )),
+        wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::Variable(vm.clone(), v),
+        )))),
+    ];
+
+    let ast = build_simple_test_ast(3, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(
+            AstOptimizationConfig::NONE.boolean_recovery(true),
+        ))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("&&"),
+        "should recover && pattern, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_boolean_recovery_or_pattern() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["a", "b", "v"]);
+    let (a, b, v) = (ids[0], ids[1], ids[2]);
+
+    // if (a) { v = true; } else { if (b) { v = true; } else { v = false; } }
+    let body = vec![
+        wrap_statement(AstStatement::If(
+            wrap_expression(AstExpression::Variable(vm.clone(), a)),
+            vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), v)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Bool(true))),
+            ))],
+            Some(vec![wrap_statement(AstStatement::If(
+                wrap_expression(AstExpression::Variable(vm.clone(), b)),
+                vec![wrap_statement(AstStatement::Assignment(
+                    wrap_expression(AstExpression::Variable(vm.clone(), v)),
+                    wrap_expression(AstExpression::Literal(AstLiteral::Bool(true))),
+                ))],
+                Some(vec![wrap_statement(AstStatement::Assignment(
+                    wrap_expression(AstExpression::Variable(vm.clone(), v)),
+                    wrap_expression(AstExpression::Literal(AstLiteral::Bool(false))),
+                ))]),
+            ))]),
+        )),
+        wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::Variable(vm.clone(), v),
+        )))),
+    ];
+
+    let ast = build_simple_test_ast(3, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(
+            AstOptimizationConfig::NONE.boolean_recovery(true),
+        ))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("||"),
+        "should recover || pattern, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_switch_reconstruction_3_cases() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x", "r"]);
+    let (x, r) = (ids[0], ids[1]);
+
+    // if (x == 1) { r = 10; } else if (x == 2) { r = 20; } else if (x == 3) { r = 30; } else { r = 0; }
+    let body = vec![
+        wrap_statement(AstStatement::If(
+            wrap_expression(AstExpression::BinaryOp(
+                AstBinaryOperator::Equal,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(1)))),
+            )),
+            vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), r)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(10))),
+            ))],
+            Some(vec![wrap_statement(AstStatement::If(
+                wrap_expression(AstExpression::BinaryOp(
+                    AstBinaryOperator::Equal,
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(2)))),
+                )),
+                vec![wrap_statement(AstStatement::Assignment(
+                    wrap_expression(AstExpression::Variable(vm.clone(), r)),
+                    wrap_expression(AstExpression::Literal(AstLiteral::Int(20))),
+                ))],
+                Some(vec![wrap_statement(AstStatement::If(
+                    wrap_expression(AstExpression::BinaryOp(
+                        AstBinaryOperator::Equal,
+                        Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(3)))),
+                    )),
+                    vec![wrap_statement(AstStatement::Assignment(
+                        wrap_expression(AstExpression::Variable(vm.clone(), r)),
+                        wrap_expression(AstExpression::Literal(AstLiteral::Int(30))),
+                    ))],
+                    Some(vec![wrap_statement(AstStatement::Assignment(
+                        wrap_expression(AstExpression::Variable(vm.clone(), r)),
+                        wrap_expression(AstExpression::Literal(AstLiteral::Int(0))),
+                    ))]),
+                ))]),
+            ))]),
+        )),
+        wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::Variable(vm.clone(), r),
+        )))),
+    ];
+
+    let ast = build_simple_test_ast(2, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(
+            AstOptimizationConfig::NONE.switch_reconstruction(true),
+        ))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("switch"),
+        "should reconstruct switch statement, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("case 1:") && printed.contains("case 2:") && printed.contains("case 3:"),
+        "should have all 3 cases, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("default:"),
+        "should have default clause, got:\n{}",
         printed
     );
 }

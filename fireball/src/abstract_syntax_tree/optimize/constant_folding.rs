@@ -143,6 +143,30 @@ fn fold_statement(
             fold_statement_list(body, &mut env_loop);
             fold_statement(update, &mut env_loop);
         }
+        AstStatement::Switch(discrim, cases, default) => {
+            fold_expression(discrim, const_env, true);
+            let env_before = const_env.clone();
+            let mut branch_envs: Vec<HashMap<AstVariableId, AstLiteral>> = Vec::new();
+            for (_lit, case_body) in cases.iter_mut() {
+                let mut env_case = env_before.clone();
+                fold_statement_list(case_body, &mut env_case);
+                branch_envs.push(env_case);
+            }
+            if let Some(default_body) = default {
+                let mut env_default = env_before.clone();
+                fold_statement_list(default_body, &mut env_default);
+                branch_envs.push(env_default);
+            }
+            if branch_envs.is_empty() {
+                *const_env = env_before;
+            } else {
+                let mut result = branch_envs[0].clone();
+                for other in &branch_envs[1..] {
+                    result = intersect_envs(&result, other);
+                }
+                *const_env = result;
+            }
+        }
         AstStatement::Block(body) => {
             let mut env_block = const_env.clone();
             fold_statement_list(body, &mut env_block);
@@ -230,6 +254,11 @@ fn fold_expression(
             fold_expression(base, const_env, true);
             fold_expression(idx, const_env, true);
         }
+        AstExpression::Ternary(cond, true_expr, false_expr) => {
+            fold_expression(cond, const_env, true);
+            fold_expression(true_expr, const_env, true);
+            fold_expression(false_expr, const_env, true);
+        }
         AstExpression::Variable(_, _)
         | AstExpression::Unknown
         | AstExpression::Undefined
@@ -254,6 +283,18 @@ fn fold_current(
             .cloned()
             .map(|literal| wrap_with_source(expression, AstExpression::Literal(literal))),
         AstExpression::UnaryOp(operator, arg) => {
+            // Double-unary cancellation: ~~x -> x, --x -> x, !!x -> x
+            if let AstExpression::UnaryOp(inner_op, inner_arg) = &arg.item {
+                let cancels = matches!(
+                    (operator, inner_op),
+                    (AstUnaryOperator::BitNot, AstUnaryOperator::BitNot)
+                        | (AstUnaryOperator::Negate, AstUnaryOperator::Negate)
+                        | (AstUnaryOperator::Not, AstUnaryOperator::Not)
+                );
+                if cancels {
+                    return Some(wrap_with_source(expression, inner_arg.item.clone()));
+                }
+            }
             if let AstExpression::Literal(literal) = &arg.item {
                 return eval_unary(operator, literal)
                     .map(|literal| wrap_with_source(expression, AstExpression::Literal(literal)));
@@ -272,6 +313,7 @@ fn fold_current(
                 }
             }
             fold_identity(expression, operator, left, right)
+                .or_else(|| fold_reassociate(expression, operator, left, right))
         }
         AstExpression::Variable(_, _)
         | AstExpression::Unknown
@@ -284,7 +326,8 @@ fn fold_current(
         | AstExpression::Deref(_)
         | AstExpression::AddressOf(_)
         | AstExpression::ArrayAccess(_, _)
-        | AstExpression::MemberAccess(_, _) => None,
+        | AstExpression::MemberAccess(_, _)
+        | AstExpression::Ternary(_, _, _) => None,
     }
 }
 
@@ -294,6 +337,9 @@ fn fold_identity(
     left: &Wrapped<AstExpression>,
     right: &Wrapped<AstExpression>,
 ) -> Option<Wrapped<AstExpression>> {
+    use super::opt_utils::{expr_structurally_equal, is_pure_expression};
+
+    // Identity element rules: x op identity = x
     match (operator, &left.item, &right.item) {
         (AstBinaryOperator::Add, _, AstExpression::Literal(AstLiteral::Int(0)))
         | (AstBinaryOperator::Add, _, AstExpression::Literal(AstLiteral::UInt(0)))
@@ -305,7 +351,7 @@ fn fold_identity(
         | (AstBinaryOperator::Div, _, AstExpression::Literal(AstLiteral::UInt(1)))
         | (AstBinaryOperator::LogicAnd, _, AstExpression::Literal(AstLiteral::Bool(true)))
         | (AstBinaryOperator::LogicOr, _, AstExpression::Literal(AstLiteral::Bool(false))) => {
-            Some(rewrap_child(source, left))
+            return Some(rewrap_child(source, left));
         }
         (AstBinaryOperator::Add, AstExpression::Literal(AstLiteral::Int(0)), _)
         | (AstBinaryOperator::Add, AstExpression::Literal(AstLiteral::UInt(0)), _)
@@ -313,10 +359,157 @@ fn fold_identity(
         | (AstBinaryOperator::Mul, AstExpression::Literal(AstLiteral::UInt(1)), _)
         | (AstBinaryOperator::LogicAnd, AstExpression::Literal(AstLiteral::Bool(true)), _)
         | (AstBinaryOperator::LogicOr, AstExpression::Literal(AstLiteral::Bool(false)), _) => {
-            Some(rewrap_child(source, right))
+            return Some(rewrap_child(source, right));
         }
-        _ => None,
+        _ => {}
     }
+
+    // Absorbing element rules: x op absorber = absorber (purity guard on discarded operand)
+    match (operator, &left.item, &right.item) {
+        // x * 0 = 0 (if x is pure)
+        (AstBinaryOperator::Mul, _, AstExpression::Literal(AstLiteral::Int(0)))
+        | (AstBinaryOperator::Mul, _, AstExpression::Literal(AstLiteral::UInt(0)))
+        | (AstBinaryOperator::BitAnd, _, AstExpression::Literal(AstLiteral::Int(0)))
+        | (AstBinaryOperator::BitAnd, _, AstExpression::Literal(AstLiteral::UInt(0))) => {
+            if is_pure_expression(&left.item) {
+                return Some(rewrap_child(source, right));
+            }
+        }
+        // 0 * x = 0 (if x is pure)
+        (AstBinaryOperator::Mul, AstExpression::Literal(AstLiteral::Int(0)), _)
+        | (AstBinaryOperator::Mul, AstExpression::Literal(AstLiteral::UInt(0)), _)
+        | (AstBinaryOperator::BitAnd, AstExpression::Literal(AstLiteral::Int(0)), _)
+        | (AstBinaryOperator::BitAnd, AstExpression::Literal(AstLiteral::UInt(0)), _) => {
+            if is_pure_expression(&right.item) {
+                return Some(rewrap_child(source, left));
+            }
+        }
+        // false && x = false (if x is pure)
+        (AstBinaryOperator::LogicAnd, AstExpression::Literal(AstLiteral::Bool(false)), _) => {
+            if is_pure_expression(&right.item) {
+                return Some(rewrap_child(source, left));
+            }
+        }
+        // true || x = true (if x is pure)
+        (AstBinaryOperator::LogicOr, AstExpression::Literal(AstLiteral::Bool(true)), _) => {
+            if is_pure_expression(&right.item) {
+                return Some(rewrap_child(source, left));
+            }
+        }
+        _ => {}
+    }
+
+    // Same-operand simplifications (both operands must be pure to avoid folding f()-f())
+    if expr_structurally_equal(&left.item, &right.item)
+        && is_pure_expression(&left.item)
+        && is_pure_expression(&right.item)
+    {
+        match operator {
+            // x & x = x, x | x = x
+            AstBinaryOperator::BitAnd | AstBinaryOperator::BitOr => {
+                return Some(rewrap_child(source, left));
+            }
+            // x ^ x = 0, x - x = 0
+            AstBinaryOperator::BitXor | AstBinaryOperator::Sub => {
+                return Some(wrap_with_source(
+                    source,
+                    AstExpression::Literal(AstLiteral::Int(0)),
+                ));
+            }
+            // x == x, x <= x, x >= x -> true
+            AstBinaryOperator::Equal
+            | AstBinaryOperator::LessEqual
+            | AstBinaryOperator::GreaterEqual => {
+                return Some(wrap_with_source(
+                    source,
+                    AstExpression::Literal(AstLiteral::Bool(true)),
+                ));
+            }
+            // x != x, x < x, x > x -> false
+            AstBinaryOperator::NotEqual
+            | AstBinaryOperator::Less
+            | AstBinaryOperator::Greater => {
+                return Some(wrap_with_source(
+                    source,
+                    AstExpression::Literal(AstLiteral::Bool(false)),
+                ));
+            }
+            _ => {}
+        }
+    }
+
+    None
+}
+
+/// Commutative constant reassociation:
+///   (x op c1) op c2  ->  x op (c1 op c2)
+///   c2 op (c1 op x)  ->  (c2 op c1) op x
+/// Only for commutative+associative ops: Add, Mul, BitAnd, BitOr, BitXor.
+fn fold_reassociate(
+    source: &Wrapped<AstExpression>,
+    operator: &AstBinaryOperator,
+    left: &Wrapped<AstExpression>,
+    right: &Wrapped<AstExpression>,
+) -> Option<Wrapped<AstExpression>> {
+    let is_reassociable = matches!(
+        operator,
+        AstBinaryOperator::Add
+            | AstBinaryOperator::Mul
+            | AstBinaryOperator::BitAnd
+            | AstBinaryOperator::BitOr
+            | AstBinaryOperator::BitXor
+    );
+    if !is_reassociable {
+        return None;
+    }
+
+    // Form: (non_lit op c1) op c2
+    if let AstExpression::Literal(c2) = &right.item {
+        if let AstExpression::BinaryOp(inner_op, inner_left, inner_right) = &left.item {
+            if std::mem::discriminant(operator) == std::mem::discriminant(inner_op) {
+                if let AstExpression::Literal(c1) = &inner_right.item {
+                    if let Some(folded) = eval_binary(operator, c1, c2) {
+                        return Some(wrap_with_source(
+                            source,
+                            AstExpression::BinaryOp(
+                                operator.clone(),
+                                inner_left.clone(),
+                                Box::new(wrap_with_source(
+                                    source,
+                                    AstExpression::Literal(folded),
+                                )),
+                            ),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    // Mirrored form: c2 op (c1 op non_lit)
+    if let AstExpression::Literal(c2) = &left.item {
+        if let AstExpression::BinaryOp(inner_op, inner_left, inner_right) = &right.item {
+            if std::mem::discriminant(operator) == std::mem::discriminant(inner_op) {
+                if let AstExpression::Literal(c1) = &inner_left.item {
+                    if let Some(folded) = eval_binary(operator, c2, c1) {
+                        return Some(wrap_with_source(
+                            source,
+                            AstExpression::BinaryOp(
+                                operator.clone(),
+                                Box::new(wrap_with_source(
+                                    source,
+                                    AstExpression::Literal(folded),
+                                )),
+                                inner_right.clone(),
+                            ),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }
 
 fn eval_unary(operator: &AstUnaryOperator, value: &AstLiteral) -> Option<AstLiteral> {

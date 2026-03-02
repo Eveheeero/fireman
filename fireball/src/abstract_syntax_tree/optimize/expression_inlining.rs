@@ -40,64 +40,14 @@ pub(super) fn inline_expressions(
     Ok(())
 }
 
-/// Check if an expression is safe to inline:
-/// - No calls (side effects, evaluation order)
-/// - Only contains literals, variables, or simple operators on those
-/// - No Deref/AddressOf/ArrayAccess (potential aliasing)
+/// Check if an expression is safe to inline (delegates to opt_utils::is_pure_expression).
 fn is_safe_to_inline(expr: &AstExpression) -> bool {
-    match expr {
-        AstExpression::Literal(_)
-        | AstExpression::Unknown
-        | AstExpression::Undefined
-        | AstExpression::ArchitectureBitSize
-        | AstExpression::ArchitectureByteSize => true,
-        AstExpression::Variable(_, _) => true,
-        AstExpression::UnaryOp(_, arg) => is_safe_to_inline(&arg.item),
-        AstExpression::BinaryOp(_, left, right) => {
-            is_safe_to_inline(&left.item) && is_safe_to_inline(&right.item)
-        }
-        AstExpression::Cast(_, arg) => is_safe_to_inline(&arg.item),
-        // Not safe: side effects, aliasing
-        AstExpression::Call(_)
-        | AstExpression::Deref(_)
-        | AstExpression::AddressOf(_)
-        | AstExpression::ArrayAccess(_, _)
-        | AstExpression::MemberAccess(_, _) => false,
-    }
+    super::opt_utils::is_pure_expression(expr)
 }
 
-/// Collect all variable IDs referenced (read) in an expression.
+/// Collect all variable IDs referenced (read) in an expression (delegates to opt_utils).
 fn collect_expr_variables(expr: &AstExpression, out: &mut HashSet<AstVariableId>) {
-    match expr {
-        AstExpression::Variable(_, var_id) => {
-            out.insert(*var_id);
-        }
-        AstExpression::UnaryOp(_, arg) => collect_expr_variables(&arg.item, out),
-        AstExpression::BinaryOp(_, left, right) => {
-            collect_expr_variables(&left.item, out);
-            collect_expr_variables(&right.item, out);
-        }
-        AstExpression::Cast(_, arg) => collect_expr_variables(&arg.item, out),
-        AstExpression::Call(call) => {
-            for arg in call_args(call) {
-                collect_expr_variables(&arg.item, out);
-            }
-        }
-        AstExpression::Deref(arg)
-        | AstExpression::AddressOf(arg)
-        | AstExpression::MemberAccess(arg, _) => {
-            collect_expr_variables(&arg.item, out);
-        }
-        AstExpression::ArrayAccess(base, idx) => {
-            collect_expr_variables(&base.item, out);
-            collect_expr_variables(&idx.item, out);
-        }
-        AstExpression::Literal(_)
-        | AstExpression::Unknown
-        | AstExpression::Undefined
-        | AstExpression::ArchitectureBitSize
-        | AstExpression::ArchitectureByteSize => {}
-    }
+    super::opt_utils::collect_expr_variables(expr, out);
 }
 
 fn call_args(call: &AstCall) -> Vec<&Wrapped<AstExpression>> {
@@ -148,6 +98,11 @@ fn count_reads_in_expr(expr: &AstExpression, target: AstVariableId) -> usize {
         | AstExpression::MemberAccess(arg, _) => count_reads_in_expr(&arg.item, target),
         AstExpression::ArrayAccess(base, idx) => {
             count_reads_in_expr(&base.item, target) + count_reads_in_expr(&idx.item, target)
+        }
+        AstExpression::Ternary(cond, true_expr, false_expr) => {
+            count_reads_in_expr(&cond.item, target)
+                + count_reads_in_expr(&true_expr.item, target)
+                + count_reads_in_expr(&false_expr.item, target)
         }
         AstExpression::Literal(_)
         | AstExpression::Unknown
@@ -203,6 +158,22 @@ fn count_reads_in_statement(stmt: &AstStatement, target: AstVariableId) -> usize
                     .map(|s| count_reads_in_statement(&s.statement, target))
                     .sum::<usize>()
         }
+        AstStatement::Switch(discrim, cases, default) => {
+            count_reads_in_expr(&discrim.item, target)
+                + cases
+                    .iter()
+                    .flat_map(|(_, body)| body.iter())
+                    .map(|s| count_reads_in_statement(&s.statement, target))
+                    .sum::<usize>()
+                + default
+                    .as_ref()
+                    .map(|d| {
+                        d.iter()
+                            .map(|s| count_reads_in_statement(&s.statement, target))
+                            .sum::<usize>()
+                    })
+                    .unwrap_or(0)
+        }
         AstStatement::Block(body) => body
             .iter()
             .map(|s| count_reads_in_statement(&s.statement, target))
@@ -250,12 +221,12 @@ fn is_barrier(stmt: &AstStatement) -> bool {
             | AstStatement::Label(_)
             | AstStatement::Assembly(_)
             | AstStatement::Ir(_)
-            | AstStatement::Return(_)
             | AstStatement::Undefined
             | AstStatement::Exception(_)
             | AstStatement::If(_, _, _)
             | AstStatement::While(_, _)
             | AstStatement::For(_, _, _, _)
+            | AstStatement::Switch(_, _, _)
     )
 }
 
@@ -290,6 +261,12 @@ fn substitute_in_expr(
             let b = substitute_in_expr(base, target, replacement);
             let i = substitute_in_expr(idx, target, replacement);
             b || i
+        }
+        AstExpression::Ternary(cond, true_expr, false_expr) => {
+            let c = substitute_in_expr(cond, target, replacement);
+            let t = substitute_in_expr(true_expr, target, replacement);
+            let f = substitute_in_expr(false_expr, target, replacement);
+            c || t || f
         }
         AstExpression::Variable(_, _)
         | AstExpression::Literal(_)
@@ -377,6 +354,41 @@ fn substitute_in_statement(
     }
 }
 
+/// Maximum number of statements to scan forward when looking for an inlining target.
+const INLINE_WINDOW: usize = 4;
+
+/// Check if we can inline into an If statement's condition only (not branches).
+/// Returns true if var_id is read exactly once in the condition and zero times in branches,
+/// the rhs is pure, and no deps are written before the condition is evaluated.
+fn can_inline_into_if_condition(
+    cond: &Wrapped<AstExpression>,
+    bt: &[WrappedAstStatement],
+    bf: &Option<Vec<WrappedAstStatement>>,
+    var_id: AstVariableId,
+) -> bool {
+    let cond_reads = count_reads_in_expr(&cond.item, var_id);
+    if cond_reads != 1 {
+        return false;
+    }
+    let branch_reads: usize = bt
+        .iter()
+        .map(|s| count_reads_in_statement(&s.statement, var_id))
+        .sum();
+    if branch_reads != 0 {
+        return false;
+    }
+    if let Some(bf) = bf {
+        let else_reads: usize = bf
+            .iter()
+            .map(|s| count_reads_in_statement(&s.statement, var_id))
+            .sum();
+        if else_reads != 0 {
+            return false;
+        }
+    }
+    true
+}
+
 fn inline_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
     // Process nested structures first
     for stmt in stmts.iter_mut() {
@@ -394,11 +406,11 @@ fn inline_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
         }
     }
 
-    // Now try to inline in the current list: scan pairs of consecutive statements
+    // Scan candidates and try to inline into subsequent statements within a window
     let mut removals: Vec<usize> = Vec::new();
     let mut i = 0;
     while i + 1 < stmts.len() {
-        // Check if stmts[i] is an assignment v = expr
+        // Extract candidate: Assignment(Variable(_, var_id), rhs) or Declaration(var, Some(rhs))
         let candidate = match &stmts[i].statement {
             AstStatement::Assignment(lhs, rhs) => {
                 if let AstExpression::Variable(_, var_id) = &lhs.item {
@@ -411,6 +423,13 @@ fn inline_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
                     None
                 }
             }
+            AstStatement::Declaration(var, Some(rhs)) => {
+                if is_safe_to_inline(&rhs.item) {
+                    Some((var.id, rhs.clone()))
+                } else {
+                    None
+                }
+            }
             _ => None,
         };
 
@@ -419,41 +438,80 @@ fn inline_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
             continue;
         };
 
-        // Check that the next statement is not a barrier
-        let next = &stmts[i + 1];
-        if is_barrier(&next.statement) {
-            i += 1;
-            continue;
-        }
-
-        // Check that var_id is read exactly once in the next statement
-        let read_count = count_reads_in_statement(&next.statement, var_id);
-        if read_count != 1 {
-            i += 1;
-            continue;
-        }
-
-        // Check dependency stability: the next statement's write target must not
-        // conflict with any variable in the expression we're inlining.
         let mut expr_deps = HashSet::new();
         collect_expr_variables(&rhs_expr.item, &mut expr_deps);
 
-        let next_writes = get_written_var(&next.statement);
-        if let Some(written) = next_writes {
-            if expr_deps.contains(&written) {
-                i += 1;
-                continue;
+        let window_end = (i + 1 + INLINE_WINDOW).min(stmts.len());
+        let mut inlined = false;
+
+        for j in (i + 1)..window_end {
+            // Check if stmts[j] writes var_id (def killed)
+            if let Some(written) = get_written_var(&stmts[j].statement) {
+                if written == var_id {
+                    break;
+                }
+                // Check if stmts[j] writes any dep of rhs_expr (deps modified)
+                if expr_deps.contains(&written) {
+                    break;
+                }
             }
+
+            // Allow inlining into If conditions: if the stmt is an If and the var
+            // is read exactly once in the condition (not in branches), treat it as
+            // a valid target for inlining into the condition expression.
+            if let AstStatement::If(cond, bt, bf) = &stmts[j].statement {
+                if is_safe_to_inline(&rhs_expr.item)
+                    && can_inline_into_if_condition(cond, bt, bf, var_id)
+                {
+                    // No deps written before condition evaluation (condition is first)
+                    let mut deps_ok = true;
+                    for dep in &expr_deps {
+                        if get_written_var(&stmts[j].statement) == Some(*dep) {
+                            deps_ok = false;
+                            break;
+                        }
+                    }
+                    if deps_ok {
+                        if let AstStatement::If(cond, _, _) = &mut stmts[j].statement {
+                            substitute_in_expr(cond, var_id, &rhs_expr);
+                        }
+                        removals.push(i);
+                        inlined = true;
+                        break;
+                    }
+                }
+                // If is normally a barrier, stop scanning
+                break;
+            }
+
+            // Standard barrier check (excluding If which we handle above)
+            if is_barrier(&stmts[j].statement) {
+                break;
+            }
+
+            let read_count = count_reads_in_statement(&stmts[j].statement, var_id);
+            if read_count == 1 {
+                // Single read: inline
+                substitute_in_statement(&mut stmts[j].statement, var_id, &rhs_expr);
+                removals.push(i);
+                inlined = true;
+                break;
+            }
+            if read_count > 0 {
+                // Multiple reads: can't inline, stop
+                break;
+            }
+            // read_count == 0: var not used here, continue scanning
         }
 
-        // All conditions met: substitute
-        substitute_in_statement(&mut stmts[i + 1].statement, var_id, &rhs_expr);
-        removals.push(i);
-        // Skip both statements and continue
-        i += 2;
+        if inlined {
+            i += 2;
+        } else {
+            i += 1;
+        }
     }
 
-    // Remove inlined assignments in reverse order
+    // Remove inlined assignments/declarations in reverse order
     for &idx in removals.iter().rev() {
         stmts.remove(idx);
     }
