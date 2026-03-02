@@ -382,7 +382,7 @@ pub(super) fn convert_stmt(
             false_branch,
         } => {
             let condition = &resolve_operand(condition, instruction_args);
-            let cond = convert_expr(
+            let mut cond = convert_expr(
                 ast,
                 function_id,
                 function_version,
@@ -390,6 +390,10 @@ pub(super) fn convert_stmt(
                 condition,
                 var_map,
             )?;
+            // Evaluate OperandExists at conversion time since we have instruction arg count
+            try_fold_operand_exists(&mut cond, instruction_args.len() as u8);
+            // If the condition resolved to a variable with a boolean const_value, use it
+            try_fold_bool_const_var(ast, function_id, function_version, &mut cond);
             let then_b = true_branch
                 .iter()
                 .map(|s| {
@@ -959,4 +963,45 @@ pub(super) fn resolve_constant(
         IrData::Operand(..) => None,
     };
     Ok(result.map(w))
+}
+
+/// If the expression is a variable whose const_value is a boolean, fold it to a literal.
+fn try_fold_bool_const_var(
+    ast: &Ast,
+    function_id: AstFunctionId,
+    function_version: AstFunctionVersion,
+    expr: &mut Wrapped<AstExpression>,
+) {
+    if let AstExpression::Variable(_, var_id) = &expr.item {
+        let Ok(vars) = ast.get_variables(&function_id, &function_version) else {
+            return;
+        };
+        let vars = vars.read().unwrap();
+        if let Some(var) = vars.get(var_id) {
+            if let Some(const_val) = &var.const_value {
+                if let AstValue::Bool(b) = &const_val.item {
+                    expr.item = AstExpression::Literal(AstLiteral::Bool(*b));
+                }
+            }
+        }
+    }
+}
+
+/// If the expression is `operand_exists(N)`, evaluate it to a bool literal
+/// using the known instruction argument count.
+fn try_fold_operand_exists(expr: &mut Wrapped<AstExpression>, instruction_arg_count: u8) {
+    if let AstExpression::Call(AstCall::Builtin(
+        crate::abstract_syntax_tree::AstBuiltinFunction::OperandExists,
+        args,
+    )) = &expr.item
+    {
+        if let AstBuiltinFunctionArgument::OperandExists(arg) = args.as_ref() {
+            if let AstExpression::Literal(AstLiteral::UInt(n)) = &arg.item {
+                // operand_exists(n): true if instruction has at least n operands
+                // n is 1-based operand index
+                let exists = n.checked_sub(1).is_some_and(|idx| idx < instruction_arg_count as u64);
+                expr.item = AstExpression::Literal(AstLiteral::Bool(exists));
+            }
+        }
+    }
 }

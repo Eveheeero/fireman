@@ -1,7 +1,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId,
-        AstFunctionVersion, AstLiteral, AstStatement, AstUnaryOperator, AstVariableId,
+        AstFunctionVersion, AstLiteral, AstStatement, AstUnaryOperator, AstValue, AstVariableId,
         ProcessedOptimization, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
@@ -80,6 +80,46 @@ fn fold_statement(
         }
         AstStatement::If(cond, branch_true, branch_false) => {
             fold_expression(cond, const_env, true);
+
+            // Dead branch elimination: if condition is a constant bool (either a literal
+            // or a variable with a boolean const_value), replace with the surviving branch.
+            let const_bool = match &cond.item {
+                AstExpression::Literal(AstLiteral::Bool(b)) => Some(*b),
+                AstExpression::Variable(vars, var_id) => {
+                    let vars = vars.read().unwrap();
+                    vars.get(var_id)
+                        .and_then(|var| var.const_value.as_ref())
+                        .and_then(|cv| match &cv.item {
+                            AstValue::Bool(b) => Some(*b),
+                            _ => None,
+                        })
+                }
+                _ => None,
+            };
+            if let Some(constant) = const_bool {
+                if constant {
+                    // if (true) { body } ... → Block(body)
+                    let mut env_true = const_env.clone();
+                    fold_statement_list(branch_true, &mut env_true);
+                    let body = std::mem::take(branch_true);
+                    stmt.statement = AstStatement::Block(body);
+                    *const_env = env_true;
+                } else {
+                    // if (false) { ... } else { else_body } → Block(else_body)
+                    // if (false) { ... } → Empty
+                    if let Some(branch_false) = branch_false {
+                        let mut env_false = const_env.clone();
+                        fold_statement_list(branch_false, &mut env_false);
+                        let body = std::mem::take(branch_false);
+                        stmt.statement = AstStatement::Block(body);
+                        *const_env = env_false;
+                    } else {
+                        stmt.statement = AstStatement::Empty;
+                    }
+                }
+                return;
+            }
+
             let env_before = const_env.clone();
             let mut env_true = env_before.clone();
             fold_statement_list(branch_true, &mut env_true);

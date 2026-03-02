@@ -2,6 +2,8 @@ mod call_argument_analyzation;
 mod collapse_unused_variable;
 mod constant_folding;
 mod control_flow_cleanup;
+mod copy_propagation;
+mod expression_inlining;
 mod ir_analyzation;
 mod loop_analyzation;
 mod parameter_analyzation;
@@ -112,6 +114,43 @@ impl Ast {
                     to_version,
                 )?;
             }
+
+            // Call argument analyzation inlines callee bodies and creates new
+            // split-tail functions, both of which can contain if(true) blocks
+            // from IR analyzation. Run constant folding to eliminate dead branches.
+            // This covers: (1) functions in `versions` whose bodies were modified
+            // by inlining, (2) newly created split-tail functions, and (3)
+            // functions that were removed (inlined) then re-created as split-tails
+            // at a different version than tracked in `versions`.
+            if config.constant_folding {
+                let tracked: std::collections::HashMap<AstFunctionId, AstFunctionVersion> =
+                    versions.iter().copied().collect();
+                let all_funcs: Vec<(AstFunctionId, AstFunctionVersion)> = ast
+                    .function_versions
+                    .iter()
+                    .map(|(&fid, &fver)| {
+                        if let Some(&tracked_ver) = tracked.get(&fid) {
+                            // Function existed before; use the tracked version if it
+                            // still exists, otherwise fall back to the current version
+                            // (the function was re-created as a split-tail).
+                            if has_function_version(&ast, fid, tracked_ver) {
+                                (fid, tracked_ver)
+                            } else {
+                                (fid, fver)
+                            }
+                        } else {
+                            // Newly created function (split-tail).
+                            (fid, fver)
+                        }
+                    })
+                    .collect();
+                for (fid, ver_to_fold) in all_funcs {
+                    if has_function_version(&ast, fid, ver_to_fold) {
+                        constant_folding::fold_constants(&mut ast, fid, ver_to_fold)?;
+                    }
+                }
+            }
+
             if config.pattern_matching_enabled {
                 for (function_id, to_version) in versions.iter().copied() {
                     if !has_function_version(&ast, function_id, to_version) {
@@ -132,7 +171,9 @@ impl Ast {
             || config.constant_folding
             || config.control_flow_cleanup
             || config.pattern_matching_enabled
-            || config.collapse_unused_varaible;
+            || config.collapse_unused_varaible
+            || config.copy_propagation
+            || config.expression_inlining;
         let max_pass_iterations = config.max_pass_iterations.max(1);
         if run_iterative_passes {
             for _ in 0..max_pass_iterations {
@@ -144,6 +185,32 @@ impl Ast {
                             continue;
                         }
                         constant_folding::fold_constants(&mut ast, function_id, to_version)?;
+                    }
+                }
+
+                if config.copy_propagation {
+                    for (function_id, to_version) in versions.iter().copied() {
+                        if !has_function_version(&ast, function_id, to_version) {
+                            continue;
+                        }
+                        copy_propagation::propagate_copies(
+                            &mut ast,
+                            function_id,
+                            to_version,
+                        )?;
+                    }
+                }
+
+                if config.expression_inlining {
+                    for (function_id, to_version) in versions.iter().copied() {
+                        if !has_function_version(&ast, function_id, to_version) {
+                            continue;
+                        }
+                        expression_inlining::inline_expressions(
+                            &mut ast,
+                            function_id,
+                            to_version,
+                        )?;
                     }
                 }
 

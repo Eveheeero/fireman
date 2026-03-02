@@ -11,6 +11,8 @@ pub struct AstOptimizationConfig {
     pub pattern_matching_enabled: bool,
     pub pattern_matching: Vec<AstPattern>,
     pub loop_analyzation: bool,
+    pub copy_propagation: bool,
+    pub expression_inlining: bool,
     pub max_pass_iterations: usize,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,6 +25,8 @@ pub enum ProcessedOptimization {
     CollapseUnusedVariables,
     PatternMatching,
     LoopAnalyzation,
+    CopyPropagation,
+    ExpressionInlining,
 }
 impl AstOptimizationConfig {
     pub const DEFAULT: Self = Self {
@@ -35,6 +39,8 @@ impl AstOptimizationConfig {
         pattern_matching_enabled: true,
         pattern_matching: AstPattern::ALL,
         loop_analyzation: true,
+        copy_propagation: true,
+        expression_inlining: true,
         max_pass_iterations: 3,
     };
     pub const ALL: Self = Self {
@@ -47,6 +53,8 @@ impl AstOptimizationConfig {
         pattern_matching_enabled: true,
         pattern_matching: AstPattern::ALL,
         loop_analyzation: true,
+        copy_propagation: true,
+        expression_inlining: true,
         max_pass_iterations: 3,
     };
     pub const NONE: Self = Self {
@@ -59,6 +67,8 @@ impl AstOptimizationConfig {
         pattern_matching_enabled: false,
         pattern_matching: Vec::new(),
         loop_analyzation: false,
+        copy_propagation: false,
+        expression_inlining: false,
         max_pass_iterations: 1,
     };
 
@@ -99,6 +109,14 @@ impl AstOptimizationConfig {
     }
     pub fn loop_analyzation(mut self, value: bool) -> Self {
         self.loop_analyzation = value;
+        self
+    }
+    pub fn copy_propagation(mut self, value: bool) -> Self {
+        self.copy_propagation = value;
+        self
+    }
+    pub fn expression_inlining(mut self, value: bool) -> Self {
+        self.expression_inlining = value;
         self
     }
     pub fn max_pass_iterations(mut self, value: usize) -> Self {
