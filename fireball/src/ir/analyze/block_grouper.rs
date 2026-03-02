@@ -103,15 +103,8 @@ fn relation_type_rank(ty: RelationType) -> u8 {
 }
 
 #[inline]
-fn is_call_boundary_relation(ty: RelationType) -> bool {
-    matches!(
-        ty,
-        RelationType::Call
-            | RelationType::Jump
-            | RelationType::Jcc
-            | RelationType::Continued
-            | RelationType::Return
-    )
+fn is_function_boundary_relation(ty: RelationType) -> bool {
+    matches!(ty, RelationType::Call | RelationType::Return)
 }
 
 #[derive(Debug, Clone)]
@@ -146,10 +139,9 @@ pub fn analyze_block_groups(blocks: &[Arc<Block>], relations: &[Relation]) -> Ve
         map_to_from.insert(block_id, Vec::new());
     }
     for relation in relations.iter() {
-        // These control-flow edges are treated as function-call boundaries.
-        // Excluding them from connectivity allows downstream AST passes to
-        // represent them as inter-function calls.
-        if is_call_boundary_relation(*relation.relation_type()) {
+        // Keep intra-function control-flow so AST generation can recover loop/if shape.
+        // Only inter-function boundary edges are excluded from connectivity.
+        if is_function_boundary_relation(*relation.relation_type()) {
             continue;
         }
         let from_id = relation.from();
