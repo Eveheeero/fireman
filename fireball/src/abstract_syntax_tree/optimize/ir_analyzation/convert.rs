@@ -310,24 +310,36 @@ pub(super) fn convert_stmt(
         IrStatement::Assignment { from, to, .. } => {
             let from = &resolve_operand(from, instruction_args);
             let to = &resolve_operand(to, instruction_args);
-            AstStatement::Assignment(
-                convert_expr(
-                    ast,
-                    function_id,
-                    function_version,
-                    root_expr.unwrap_or(to),
-                    to,
-                    var_map,
-                )?,
-                convert_expr(
-                    ast,
-                    function_id,
-                    function_version,
-                    root_expr.unwrap_or(to),
-                    from,
-                    var_map,
-                )?,
-            )
+            let lhs = convert_expr(
+                ast,
+                function_id,
+                function_version,
+                root_expr.unwrap_or(to),
+                to,
+                var_map,
+            )?;
+            let rhs = convert_expr(
+                ast,
+                function_id,
+                function_version,
+                root_expr.unwrap_or(to),
+                from,
+                var_map,
+            )?;
+            // Reject assignments to non-assignable LHS (e.g. literal targets
+            // from unresolved IR data). Emit as a comment instead of producing
+            // malformed AST like `0x0 = v31`.
+            if is_assignable_lhs(&lhs.item) {
+                AstStatement::Assignment(lhs, rhs)
+            } else {
+                use crate::abstract_syntax_tree::PrintWithConfig;
+                let lhs_str = lhs.to_string_with_config(None);
+                let rhs_str = rhs.to_string_with_config(None);
+                AstStatement::Comment(format!(
+                    "invalid assignment: {} = {}",
+                    lhs_str, rhs_str
+                ))
+            }
         }
         IrStatement::JumpByCall { target } => {
             let target = &resolve_operand(target, instruction_args);
@@ -985,6 +997,18 @@ fn try_fold_bool_const_var(
             }
         }
     }
+}
+
+/// Check whether an expression is a valid assignment target.
+fn is_assignable_lhs(expr: &AstExpression) -> bool {
+    matches!(
+        expr,
+        AstExpression::Variable(_, _)
+            | AstExpression::Deref(_)
+            | AstExpression::ArrayAccess(_, _)
+            | AstExpression::MemberAccess(_, _)
+            | AstExpression::Unknown
+    )
 }
 
 /// If the expression is `operand_exists(N)`, evaluate it to a bool literal

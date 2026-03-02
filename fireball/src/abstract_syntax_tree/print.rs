@@ -169,8 +169,22 @@ impl Ast {
 
             // Local variables
             {
+                let body_vars: Option<HashSet<AstVariableId>> = if config.hide_unused_declarations {
+                    let mut vars = HashSet::new();
+                    for stmt in &func.body {
+                        for (_, var_id) in stmt.statement.get_related_variables() {
+                            vars.insert(var_id);
+                        }
+                    }
+                    Some(vars)
+                } else {
+                    None
+                };
                 let var_map = func.variables.read().unwrap();
-                let mut var_keys_sorted = var_map.keys().collect::<Vec<_>>();
+                let mut var_keys_sorted: Vec<_> = var_map
+                    .keys()
+                    .filter(|k| body_vars.as_ref().is_none_or(|bv| bv.contains(*k)))
+                    .collect();
                 var_keys_sorted.sort_by_cached_key(|key| {
                     let (kind_priority, parent_addr) = if key.parent == Some(func.id) {
                         (0u8, func.id.address)

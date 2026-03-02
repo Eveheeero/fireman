@@ -3,6 +3,7 @@ mod collapse_unused_variable;
 mod constant_folding;
 mod control_flow_cleanup;
 mod copy_propagation;
+mod dead_store_elimination;
 mod expression_inlining;
 mod ir_analyzation;
 mod loop_analyzation;
@@ -176,6 +177,7 @@ impl Ast {
             || config.control_flow_cleanup
             || config.pattern_matching_enabled
             || config.collapse_unused_varaible
+            || config.dead_store_elimination
             || config.copy_propagation
             || config.expression_inlining
             || config.ternary_recovery
@@ -235,6 +237,19 @@ impl Ast {
                             continue;
                         }
                         collapse_unused_variable::collapse_unused_variables(
+                            &mut ast,
+                            function_id,
+                            to_version,
+                        )?;
+                    }
+                }
+
+                if config.dead_store_elimination {
+                    for (function_id, to_version) in versions.iter().copied() {
+                        if !has_function_version(&ast, function_id, to_version) {
+                            continue;
+                        }
+                        dead_store_elimination::eliminate_dead_stores(
                             &mut ast,
                             function_id,
                             to_version,
