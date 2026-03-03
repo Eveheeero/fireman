@@ -10,6 +10,45 @@ pub(super) fn dec() -> &'static [IrStatement] {
 }
 
 #[box_to_static_reference]
+pub(super) fn idiv() -> &'static [IrStatement] {
+    let operand_bit_size = bit_size_of_o1();
+    let idiv_8 = [
+        assign(
+            b::signed_div(u::sign_extend(ax.clone()), u::sign_extend(o1())),
+            al.clone(),
+            o1_size(),
+        ),
+        assign(
+            b::signed_rem(u::sign_extend(ax.clone()), u::sign_extend(o1())),
+            ah.clone(),
+            o1_size(),
+        ),
+    ];
+    let value = b::add(
+        b::shl(sized(rdx.clone(), o1_size()), operand_bit_size.clone()),
+        sized(rax.clone(), o1_size()),
+    );
+    let idiv_etc = [
+        assign(
+            b::signed_div(u::sign_extend(value.clone()), u::sign_extend(o1())),
+            rax.clone(),
+            o1_size(),
+        ),
+        assign(
+            b::signed_rem(u::sign_extend(value), u::sign_extend(o1())),
+            rdx.clone(),
+            o1_size(),
+        ),
+    ];
+    let idiv = condition(
+        b::equal(operand_bit_size, c(8), size_unlimited()),
+        idiv_8,
+        idiv_etc,
+    );
+    extend_undefined_flags(&[idiv], &[&of, &sf, &zf, &af, &cf, &pf])
+}
+
+#[box_to_static_reference]
 pub(super) fn div() -> &'static [IrStatement] {
     let operand_bit_size = bit_size_of_o1();
     let div_8 = [

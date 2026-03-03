@@ -1,3 +1,4 @@
+use super::opt_utils::expr_structurally_equal;
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
@@ -5,7 +6,6 @@ use crate::{
     },
     prelude::DecompileError,
 };
-use super::opt_utils::expr_structurally_equal;
 
 /// Minimum number of cases required to form a switch.
 const MIN_SWITCH_CASES: usize = 3;

@@ -1,7 +1,8 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
-        AstStatement, ProcessedOptimization, Wrapped, WrappedAstStatement,
+        AstStatement, AstValueOrigin, AstVariableId, ProcessedOptimization, Wrapped,
+        WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -70,139 +71,169 @@ fn recover_boolean_in_list(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
-/// Detect:
-///   if (a) { if (b) { v = true; } else { v = false; } } else { v = false; }
-/// Rewrite to:
-///   v = a && b;
-fn try_recover_and(stmt: &mut WrappedAstStatement) {
-    let AstStatement::If(cond_a, branch_true, Some(branch_false)) = &stmt.statement else {
-        return;
+/// Recursively extract an AND chain from nested if-else patterns.
+///
+/// Matches:
+///   `if(cond) { <inner> } else { v = false }`
+/// where `<inner>` is either:
+///   - `v = true` (base case: returns `[cond]`)
+///   - another AND-chain if-else (recursive: returns `[cond, ...]`)
+///
+/// Returns the target variable and the list of conditions in chain order.
+fn extract_and_chain(stmt: &AstStatement) -> Option<(AstVariableId, Vec<Wrapped<AstExpression>>)> {
+    let AstStatement::If(cond, branch_true, Some(branch_false)) = stmt else {
+        return None;
     };
 
-    // Outer else: must be single assignment `v = false`
+    // Else branch: must be single assignment `v = false`
     if branch_false.len() != 1 {
-        return;
+        return None;
     }
-    let (outer_false_var, outer_false_val) = match_bool_assignment(&branch_false[0].statement);
-    let Some(target_var) = outer_false_var else {
-        return;
-    };
-    if outer_false_val != Some(false) {
-        return;
+    let (false_var, false_val) = match_bool_assignment(&branch_false[0].statement);
+    let target_var = false_var?;
+    if false_val != Some(false) {
+        return None;
     }
 
-    // Outer true: must be a single if(b) statement
+    // True branch: must be a single statement
     if branch_true.len() != 1 {
-        return;
+        return None;
     }
-    let AstStatement::If(cond_b, inner_true, Some(inner_false)) = &branch_true[0].statement else {
+
+    // Try recursive case: true branch is another AND-chain if-else
+    if let Some((inner_var, inner_conditions)) = extract_and_chain(&branch_true[0].statement) {
+        if inner_var == target_var {
+            let mut conditions = vec![cond.clone()];
+            conditions.extend(inner_conditions);
+            return Some((target_var, conditions));
+        }
+    }
+
+    // Base case: true branch is `v = true`
+    let (true_var, true_val) = match_bool_assignment(&branch_true[0].statement);
+    if true_var == Some(target_var) && true_val == Some(true) {
+        return Some((target_var, vec![cond.clone()]));
+    }
+
+    None
+}
+
+/// Detect:
+///   if (a) { if (b) { ... { v = true; } else { v = false; } ... } else { v = false; } } else { v = false; }
+/// Rewrite to:
+///   v = a && b && ...;
+fn try_recover_and(stmt: &mut WrappedAstStatement) {
+    let Some((_target_var, conditions)) = extract_and_chain(&stmt.statement) else {
         return;
     };
 
-    // Inner true: v = true
-    if inner_true.len() != 1 {
-        return;
-    }
-    let (inner_true_var, inner_true_val) = match_bool_assignment(&inner_true[0].statement);
-    if inner_true_var != Some(target_var) || inner_true_val != Some(true) {
+    if conditions.len() < 2 {
         return;
     }
 
-    // Inner false: v = false
-    if inner_false.len() != 1 {
+    // Find the lhs from the else branch (which is `v = false`)
+    let AstStatement::If(_, _, Some(branch_false)) = &stmt.statement else {
         return;
-    }
-    let (inner_false_var, inner_false_val) = match_bool_assignment(&inner_false[0].statement);
-    if inner_false_var != Some(target_var) || inner_false_val != Some(false) {
-        return;
-    }
-
-    // Build v = a && b
+    };
     let lhs = match &branch_false[0].statement {
         AstStatement::Assignment(lhs, _) => lhs.clone(),
         _ => return,
     };
 
-    let and_expr = AstExpression::BinaryOp(
-        AstBinaryOperator::LogicAnd,
-        Box::new(cond_a.clone()),
-        Box::new(cond_b.clone()),
-    );
-    let rhs = Wrapped {
-        item: and_expr,
-        origin: cond_a.origin.clone(),
-        comment: None,
-    };
-
+    let rhs = build_chain_expr(conditions, AstBinaryOperator::LogicAnd);
     stmt.statement = AstStatement::Assignment(lhs, rhs);
 }
 
-/// Detect:
-///   if (a) { v = true; } else { if (b) { v = true; } else { v = false; } }
-/// Rewrite to:
-///   v = a || b;
-fn try_recover_or(stmt: &mut WrappedAstStatement) {
-    let AstStatement::If(cond_a, branch_true, Some(branch_false)) = &stmt.statement else {
-        return;
+/// Recursively extract an OR chain from nested if-else patterns.
+///
+/// Matches:
+///   `if(cond) { v = true } else { <inner> }`
+/// where `<inner>` is either:
+///   - `v = false` (base case: returns `[cond]`)
+///   - another OR-chain if-else (recursive: returns `[cond, ...]`)
+///
+/// Returns the target variable and the list of conditions in chain order.
+fn extract_or_chain(stmt: &AstStatement) -> Option<(AstVariableId, Vec<Wrapped<AstExpression>>)> {
+    let AstStatement::If(cond, branch_true, Some(branch_false)) = stmt else {
+        return None;
     };
 
-    // Outer true: must be single assignment `v = true`
+    // True branch: must be single assignment `v = true`
     if branch_true.len() != 1 {
-        return;
+        return None;
     }
-    let (outer_true_var, outer_true_val) = match_bool_assignment(&branch_true[0].statement);
-    let Some(target_var) = outer_true_var else {
-        return;
-    };
-    if outer_true_val != Some(true) {
-        return;
+    let (true_var, true_val) = match_bool_assignment(&branch_true[0].statement);
+    let target_var = true_var?;
+    if true_val != Some(true) {
+        return None;
     }
 
-    // Outer false: must be a single if(b) statement
+    // False branch: must be a single statement
     if branch_false.len() != 1 {
-        return;
+        return None;
     }
-    let AstStatement::If(cond_b, inner_true, Some(inner_false)) = &branch_false[0].statement
-    else {
+
+    // Try recursive case: false branch is another OR-chain if-else
+    if let Some((inner_var, inner_conditions)) = extract_or_chain(&branch_false[0].statement) {
+        if inner_var == target_var {
+            let mut conditions = vec![cond.clone()];
+            conditions.extend(inner_conditions);
+            return Some((target_var, conditions));
+        }
+    }
+
+    // Base case: false branch is `v = false`
+    let (false_var, false_val) = match_bool_assignment(&branch_false[0].statement);
+    if false_var == Some(target_var) && false_val == Some(false) {
+        return Some((target_var, vec![cond.clone()]));
+    }
+
+    None
+}
+
+/// Detect:
+///   if (a) { v = true; } else { if (b) { v = true; } else { ... { v = false; } ... } }
+/// Rewrite to:
+///   v = a || b || ...;
+fn try_recover_or(stmt: &mut WrappedAstStatement) {
+    let Some((_target_var, conditions)) = extract_or_chain(&stmt.statement) else {
         return;
     };
 
-    // Inner true: v = true
-    if inner_true.len() != 1 {
-        return;
-    }
-    let (inner_true_var, inner_true_val) = match_bool_assignment(&inner_true[0].statement);
-    if inner_true_var != Some(target_var) || inner_true_val != Some(true) {
+    if conditions.len() < 2 {
         return;
     }
 
-    // Inner false: v = false
-    if inner_false.len() != 1 {
+    // Find the lhs from the true branch (which is `v = true`)
+    let AstStatement::If(_, branch_true, _) = &stmt.statement else {
         return;
-    }
-    let (inner_false_var, inner_false_val) = match_bool_assignment(&inner_false[0].statement);
-    if inner_false_var != Some(target_var) || inner_false_val != Some(false) {
-        return;
-    }
-
-    // Build v = a || b
+    };
     let lhs = match &branch_true[0].statement {
         AstStatement::Assignment(lhs, _) => lhs.clone(),
         _ => return,
     };
 
-    let or_expr = AstExpression::BinaryOp(
-        AstBinaryOperator::LogicOr,
-        Box::new(cond_a.clone()),
-        Box::new(cond_b.clone()),
-    );
-    let rhs = Wrapped {
-        item: or_expr,
-        origin: cond_a.origin.clone(),
-        comment: None,
-    };
-
+    let rhs = build_chain_expr(conditions, AstBinaryOperator::LogicOr);
     stmt.statement = AstStatement::Assignment(lhs, rhs);
+}
+
+/// Build a left-associative chain expression from a list of conditions and a binary operator.
+///
+/// For conditions `[c1, c2, c3]` and operator `&&`, produces `(c1 && c2) && c3`.
+fn build_chain_expr(
+    conditions: Vec<Wrapped<AstExpression>>,
+    op: AstBinaryOperator,
+) -> Wrapped<AstExpression> {
+    let mut iter = conditions.into_iter();
+    let mut result = iter.next().expect("conditions must be non-empty");
+    for cond in iter {
+        result = Wrapped {
+            item: AstExpression::BinaryOp(op.clone(), Box::new(result), Box::new(cond)),
+            origin: AstValueOrigin::Unknown,
+            comment: None,
+        };
+    }
+    result
 }
 
 /// Match `v = true` or `v = false` assignment patterns.

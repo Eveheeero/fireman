@@ -1,18 +1,32 @@
+mod auto_comment;
+mod bit_trick_recognition;
+mod boolean_recovery;
 mod call_argument_analyzation;
+mod cast_minimization;
 mod collapse_unused_variable;
+mod common_subexpression_elimination;
 mod constant_folding;
 mod control_flow_cleanup;
 mod copy_propagation;
 mod dead_store_elimination;
+mod early_return_normalization;
 mod expression_inlining;
+mod goto_containment;
+mod induction_variable_analysis;
 mod ir_analyzation;
+mod lifetime_scoping;
 mod loop_analyzation;
+mod magic_division_recovery;
+mod name_recovery;
+mod operator_canonicalization;
+mod opt_utils;
 mod parameter_analyzation;
 pub mod pattern_matching;
-mod opt_utils;
-mod boolean_recovery;
+mod signedness_inference;
 mod switch_reconstruction;
+mod temporary_elimination;
 mod ternary_recovery;
+mod variable_coalescing;
 
 use super::*;
 use std::hash::Hash;
@@ -172,6 +186,16 @@ impl Ast {
             }
         }
 
+        // Signedness inference: refine Int → UInt based on usage context.
+        if config.signedness_inference {
+            for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
+                signedness_inference::infer_signedness(&mut ast, function_id, to_version)?;
+            }
+        }
+
         let run_iterative_passes = config.loop_analyzation
             || config.constant_folding
             || config.control_flow_cleanup
@@ -187,6 +211,31 @@ impl Ast {
             for _ in 0..max_pass_iterations {
                 let before = snapshot_optimized_functions(&ast, &versions);
 
+                // Operator canonicalization: normalize literal placement and comparison direction.
+                for (function_id, to_version) in versions.iter().copied() {
+                    if !has_function_version(&ast, function_id, to_version) {
+                        continue;
+                    }
+                    operator_canonicalization::canonicalize_operators(
+                        &mut ast,
+                        function_id,
+                        to_version,
+                    )?;
+                }
+
+                // Magic-constant division recovery: before constant folding so
+                // the new Div expressions can be further simplified.
+                for (function_id, to_version) in versions.iter().copied() {
+                    if !has_function_version(&ast, function_id, to_version) {
+                        continue;
+                    }
+                    magic_division_recovery::recover_magic_divisions(
+                        &mut ast,
+                        function_id,
+                        to_version,
+                    )?;
+                }
+
                 if config.constant_folding {
                     for (function_id, to_version) in versions.iter().copied() {
                         if !has_function_version(&ast, function_id, to_version) {
@@ -201,12 +250,21 @@ impl Ast {
                         if !has_function_version(&ast, function_id, to_version) {
                             continue;
                         }
-                        copy_propagation::propagate_copies(
-                            &mut ast,
-                            function_id,
-                            to_version,
-                        )?;
+                        copy_propagation::propagate_copies(&mut ast, function_id, to_version)?;
                     }
+                }
+
+                // Common subexpression elimination: after copy propagation so
+                // copies are resolved, before expression inlining.
+                for (function_id, to_version) in versions.iter().copied() {
+                    if !has_function_version(&ast, function_id, to_version) {
+                        continue;
+                    }
+                    common_subexpression_elimination::eliminate_common_subexpressions(
+                        &mut ast,
+                        function_id,
+                        to_version,
+                    )?;
                 }
 
                 if config.expression_inlining {
@@ -214,11 +272,7 @@ impl Ast {
                         if !has_function_version(&ast, function_id, to_version) {
                             continue;
                         }
-                        expression_inlining::inline_expressions(
-                            &mut ast,
-                            function_id,
-                            to_version,
-                        )?;
+                        expression_inlining::inline_expressions(&mut ast, function_id, to_version)?;
                     }
                 }
 
@@ -275,11 +329,7 @@ impl Ast {
                         if !has_function_version(&ast, function_id, to_version) {
                             continue;
                         }
-                        boolean_recovery::recover_boolean(
-                            &mut ast,
-                            function_id,
-                            to_version,
-                        )?;
+                        boolean_recovery::recover_boolean(&mut ast, function_id, to_version)?;
                     }
                 }
 
@@ -288,12 +338,28 @@ impl Ast {
                         if !has_function_version(&ast, function_id, to_version) {
                             continue;
                         }
-                        ternary_recovery::recover_ternary(
-                            &mut ast,
-                            function_id,
-                            to_version,
-                        )?;
+                        ternary_recovery::recover_ternary(&mut ast, function_id, to_version)?;
                     }
+                }
+
+                // Bit trick recognition runs unconditionally (no config toggle yet).
+                // It is cheap and should run after constant folding has simplified
+                // shift amounts into literals.
+                for (function_id, to_version) in versions.iter().copied() {
+                    if !has_function_version(&ast, function_id, to_version) {
+                        continue;
+                    }
+                    bit_trick_recognition::recognize_bit_tricks(&mut ast, function_id, to_version)?;
+                }
+
+                // Cast minimization runs unconditionally (no config toggle yet).
+                // It removes redundant casts after other passes have simplified
+                // expressions.
+                for (function_id, to_version) in versions.iter().copied() {
+                    if !has_function_version(&ast, function_id, to_version) {
+                        continue;
+                    }
+                    cast_minimization::minimize_casts(&mut ast, function_id, to_version)?;
                 }
 
                 if config.pattern_matching_enabled {
@@ -318,16 +384,102 @@ impl Ast {
             }
         }
 
+        // Goto containment: convert forward goto/label pairs into structured if blocks.
+        // Only run when control-flow cleanup is enabled (it restructures control flow).
+        if config.control_flow_cleanup {
+            for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
+                goto_containment::contain_gotos(&mut ast, function_id, to_version)?;
+            }
+        }
+
+        // Induction variable analysis: clean up for-loop conditions.
+        // Only run when loop analysis is enabled.
+        if config.loop_analyzation {
+            for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
+                induction_variable_analysis::analyze_induction_variables(
+                    &mut ast,
+                    function_id,
+                    to_version,
+                )?;
+            }
+        }
+
         if config.switch_reconstruction {
             for (function_id, to_version) in versions.iter().copied() {
                 if !has_function_version(&ast, function_id, to_version) {
                     continue;
                 }
-                switch_reconstruction::reconstruct_switches(
+                switch_reconstruction::reconstruct_switches(&mut ast, function_id, to_version)?;
+            }
+        }
+
+        // Early return normalization: convert if(cond){return} else{body} to guard clauses.
+        if config.early_return_normalization {
+            for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
+                early_return_normalization::normalize_early_returns(
                     &mut ast,
                     function_id,
                     to_version,
                 )?;
+            }
+        }
+
+        // Temporary elimination: inline single-use non-pure temporaries.
+        if config.expression_inlining {
+            for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
+                temporary_elimination::eliminate_temporaries(&mut ast, function_id, to_version)?;
+            }
+        }
+
+        // Variable coalescing: merge non-interfering same-type variables.
+        if config.collapse_unused_varaible {
+            for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
+                variable_coalescing::coalesce_variables(&mut ast, function_id, to_version)?;
+            }
+        }
+
+        // Lifetime scoping: merge uninitialized declarations with first assignment.
+        if config.lifetime_scoping {
+            for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
+                lifetime_scoping::narrow_lifetimes(&mut ast, function_id, to_version)?;
+            }
+        }
+
+        // Name recovery: assign meaningful names to unnamed variables.
+        if config.name_recovery {
+            for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
+                name_recovery::recover_names(&mut ast, function_id, to_version)?;
+            }
+        }
+
+        // Auto-comment synthesis: insert explanatory comments for common patterns.
+        if config.auto_comment {
+            for (function_id, to_version) in versions.iter().copied() {
+                if !has_function_version(&ast, function_id, to_version) {
+                    continue;
+                }
+                auto_comment::synthesize_comments(&mut ast, function_id, to_version)?;
             }
         }
 

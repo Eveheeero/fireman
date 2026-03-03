@@ -323,7 +323,10 @@ fn collect_written_vars_stmt(stmt: &AstStatement, out: &mut HashSet<AstVariableI
 }
 
 /// Invalidate env entries where the dst or src is in the written set.
-fn invalidate_written(env: &mut HashMap<AstVariableId, AstVariableId>, written: &HashSet<AstVariableId>) {
+fn invalidate_written(
+    env: &mut HashMap<AstVariableId, AstVariableId>,
+    written: &HashSet<AstVariableId>,
+) {
     env.retain(|dst, src| !written.contains(dst) && !written.contains(src));
 }
 

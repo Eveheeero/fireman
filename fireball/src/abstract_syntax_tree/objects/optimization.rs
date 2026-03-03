@@ -17,6 +17,11 @@ pub struct AstOptimizationConfig {
     pub ternary_recovery: bool,
     pub boolean_recovery: bool,
     pub switch_reconstruction: bool,
+    pub lifetime_scoping: bool,
+    pub signedness_inference: bool,
+    pub name_recovery: bool,
+    pub auto_comment: bool,
+    pub early_return_normalization: bool,
     pub max_pass_iterations: usize,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +39,20 @@ pub enum ProcessedOptimization {
     TernaryRecovery,
     BooleanRecovery,
     SwitchReconstruction,
+    OperatorCanonicalization,
+    CommonSubexpressionElimination,
+    BitTrickRecognition,
+    CastMinimization,
+    MagicDivisionRecovery,
+    GotoContainment,
+    InductionVariableAnalysis,
+    TemporaryElimination,
+    LifetimeScoping,
+    VariableCoalescing,
+    SignednessInference,
+    NameRecovery,
+    AutoComment,
+    EarlyReturnNormalization,
 }
 impl AstOptimizationConfig {
     pub const DEFAULT: Self = Self {
@@ -52,6 +71,11 @@ impl AstOptimizationConfig {
         ternary_recovery: true,
         boolean_recovery: true,
         switch_reconstruction: true,
+        lifetime_scoping: true,
+        signedness_inference: true,
+        name_recovery: true,
+        auto_comment: true,
+        early_return_normalization: true,
         max_pass_iterations: 3,
     };
     pub const ALL: Self = Self {
@@ -70,6 +94,11 @@ impl AstOptimizationConfig {
         ternary_recovery: true,
         boolean_recovery: true,
         switch_reconstruction: true,
+        lifetime_scoping: true,
+        signedness_inference: true,
+        name_recovery: true,
+        auto_comment: true,
+        early_return_normalization: true,
         max_pass_iterations: 3,
     };
     pub const NONE: Self = Self {
@@ -88,6 +117,11 @@ impl AstOptimizationConfig {
         ternary_recovery: false,
         boolean_recovery: false,
         switch_reconstruction: false,
+        lifetime_scoping: false,
+        signedness_inference: false,
+        name_recovery: false,
+        auto_comment: false,
+        early_return_normalization: false,
         max_pass_iterations: 1,
     };
 
@@ -152,6 +186,26 @@ impl AstOptimizationConfig {
     }
     pub fn switch_reconstruction(mut self, value: bool) -> Self {
         self.switch_reconstruction = value;
+        self
+    }
+    pub fn lifetime_scoping(mut self, value: bool) -> Self {
+        self.lifetime_scoping = value;
+        self
+    }
+    pub fn signedness_inference(mut self, value: bool) -> Self {
+        self.signedness_inference = value;
+        self
+    }
+    pub fn name_recovery(mut self, value: bool) -> Self {
+        self.name_recovery = value;
+        self
+    }
+    pub fn auto_comment(mut self, value: bool) -> Self {
+        self.auto_comment = value;
+        self
+    }
+    pub fn early_return_normalization(mut self, value: bool) -> Self {
+        self.early_return_normalization = value;
         self
     }
     pub fn max_pass_iterations(mut self, value: usize) -> Self {

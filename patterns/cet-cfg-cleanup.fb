@@ -1,0 +1,10 @@
+if:
+  at beforeIrAnalyzation
+  asm endbr64
+do:
+  del start[0]
+if:
+  at beforeIrAnalyzation
+  asm endbr32
+do:
+  del start[0]

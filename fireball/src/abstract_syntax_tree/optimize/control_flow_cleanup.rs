@@ -1,7 +1,7 @@
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstStatement, ProcessedOptimization,
-        WrappedAstStatement,
+        Ast, AstCall, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement,
+        AstStatementOrigin, AstValueOrigin, ProcessedOptimization, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -74,6 +74,85 @@ fn cleanup_statement_list(
 
     if let Some((index, _outcome)) = first_terminal_index(stmts, noreturn_targets) {
         stmts.truncate(index + 1);
+    }
+
+    // Tail-call detection: merge trailing Call + Return(None) into Return(Some(Call(...))).
+    merge_trailing_call_return(stmts);
+
+    // Thunk/wrapper annotation: mark trivial forwarding bodies with a comment.
+    if detect_thunk_functions(stmts) {
+        stmts.insert(
+            0,
+            WrappedAstStatement {
+                statement: AstStatement::Comment("// thunk".to_string()),
+                origin: AstStatementOrigin::Unknown,
+                comment: None,
+            },
+        );
+    }
+}
+
+/// Merge a trailing `Call(c); Return(None)` pair into `Return(Some(Call(c)))`,
+/// making the tail-call explicit in the AST.
+fn merge_trailing_call_return(stmts: &mut Vec<WrappedAstStatement>) {
+    // Find the indices of the last two meaningful (non-comment, non-empty) statements.
+    let meaningful: Vec<usize> = stmts
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| !matches!(&s.statement, AstStatement::Comment(_) | AstStatement::Empty))
+        .map(|(i, _)| i)
+        .collect();
+
+    if meaningful.len() < 2 {
+        return;
+    }
+
+    let call_idx = meaningful[meaningful.len() - 2];
+    let ret_idx = meaningful[meaningful.len() - 1];
+
+    let is_call = matches!(&stmts[call_idx].statement, AstStatement::Call(_));
+    let is_return_none = matches!(&stmts[ret_idx].statement, AstStatement::Return(None));
+
+    if is_call && is_return_none {
+        // Remove the Return(None) first (higher index), then the Call.
+        stmts.remove(ret_idx);
+        let removed_call = stmts.remove(call_idx);
+
+        if let AstStatement::Call(call) = removed_call.statement {
+            let return_stmt = WrappedAstStatement {
+                statement: AstStatement::Return(Some(Wrapped {
+                    item: AstExpression::Call(call),
+                    origin: AstValueOrigin::Unknown,
+                    comment: None,
+                })),
+                origin: removed_call.origin,
+                comment: removed_call.comment,
+            };
+            stmts.insert(call_idx, return_stmt);
+        }
+    }
+}
+
+/// Detect whether the function body is a trivial thunk/wrapper that only forwards
+/// a call and returns. Returns `true` if the body (ignoring comments and empties) is:
+/// - A single `Return(Some(Call(...)))`, or
+/// - A single `Call(...)` followed by `Return(None)`.
+fn detect_thunk_functions(stmts: &[WrappedAstStatement]) -> bool {
+    let meaningful: Vec<&WrappedAstStatement> = stmts
+        .iter()
+        .filter(|s| !matches!(&s.statement, AstStatement::Comment(_) | AstStatement::Empty))
+        .collect();
+
+    match meaningful.as_slice() {
+        [single] => matches!(
+            &single.statement,
+            AstStatement::Return(Some(expr)) if matches!(&expr.item, AstExpression::Call(_))
+        ),
+        [first, second] => {
+            matches!(&first.statement, AstStatement::Call(_))
+                && matches!(&second.statement, AstStatement::Return(None))
+        }
+        _ => false,
     }
 }
 

@@ -49,21 +49,21 @@ pub fn analyze_datatype(
     }
 }
 
-/// ### TODO
-/// 인스트럭션을 통한 데이터 타입 추가 유추 필요
 pub fn analyze_datatype_raw(insert: &mut impl FnMut(KnownDataType), statement: &IrStatement) {
     match statement {
         IrStatement::Assignment { from, to, size } => {
+            let inferred = infer_type_from_data(from);
             insert(KnownDataType {
                 location: from.clone(),
-                data_type: DataType::Unknown,
+                data_type: inferred,
                 data_size: size.clone(),
             });
             insert(KnownDataType {
                 location: to.clone(),
-                data_type: DataType::Unknown,
+                data_type: inferred,
                 data_size: size.clone(),
             });
+            infer_operand_types(insert, from);
         }
         IrStatement::Jump { target } => {
             insert(KnownDataType {
@@ -105,6 +105,105 @@ pub fn analyze_datatype_raw(insert: &mut impl FnMut(KnownDataType), statement: &
         | IrStatement::Halt
         | IrStatement::Special(IrStatementSpecial::Assertion { .. })
         | IrStatement::Special(IrStatementSpecial::CalcFlagsAutomatically { .. }) => {}
+    }
+}
+
+use crate::ir::{
+    data::IrDataOperation,
+    operator::{IrBinaryOperator, IrUnaryOperator},
+};
+
+fn infer_type_from_data(data: &Aos<IrData>) -> DataType {
+    match data.as_ref() {
+        IrData::Operation(IrDataOperation::Binary { operator, .. }) => match operator {
+            IrBinaryOperator::Equal(_)
+            | IrBinaryOperator::SignedLess(_)
+            | IrBinaryOperator::SignedLessOrEqual(_)
+            | IrBinaryOperator::UnsignedLess(_)
+            | IrBinaryOperator::UnsignedLessOrEqual(_) => DataType::Bool,
+            IrBinaryOperator::SignedDiv
+            | IrBinaryOperator::SignedRem
+            | IrBinaryOperator::Add
+            | IrBinaryOperator::Sub
+            | IrBinaryOperator::Mul => DataType::Int,
+            _ => DataType::Unknown,
+        },
+        IrData::Operation(IrDataOperation::Unary { operator, .. }) => match operator {
+            IrUnaryOperator::Negation => DataType::Int,
+            IrUnaryOperator::Not => DataType::Bool,
+            _ => DataType::Unknown,
+        },
+        IrData::Dereference(_) => DataType::Unknown,
+        _ => DataType::Unknown,
+    }
+}
+
+fn infer_operand_types(insert: &mut impl FnMut(KnownDataType), data: &Aos<IrData>) {
+    match data.as_ref() {
+        IrData::Operation(IrDataOperation::Binary {
+            operator,
+            arg1,
+            arg2,
+        }) => {
+            let operand_type = match operator {
+                IrBinaryOperator::SignedDiv
+                | IrBinaryOperator::SignedRem
+                | IrBinaryOperator::Sar => DataType::Int,
+                IrBinaryOperator::Equal(_)
+                | IrBinaryOperator::SignedLess(_)
+                | IrBinaryOperator::SignedLessOrEqual(_) => DataType::Int,
+                _ => DataType::Unknown,
+            };
+            if operand_type != DataType::Unknown {
+                insert(KnownDataType {
+                    location: arg1.clone(),
+                    data_type: operand_type,
+                    data_size: IrAccessSize::RelativeWith(arg1.clone()),
+                });
+                insert(KnownDataType {
+                    location: arg2.clone(),
+                    data_type: operand_type,
+                    data_size: IrAccessSize::RelativeWith(arg2.clone()),
+                });
+            }
+            if let IrBinaryOperator::Add { .. } = operator {
+                if matches!(arg1.as_ref(), IrData::Dereference(_)) {
+                    insert(KnownDataType {
+                        location: arg1.clone(),
+                        data_type: DataType::Address,
+                        data_size: IrAccessSize::RelativeWith(arg1.clone()),
+                    });
+                }
+                if matches!(arg2.as_ref(), IrData::Dereference(_)) {
+                    insert(KnownDataType {
+                        location: arg2.clone(),
+                        data_type: DataType::Address,
+                        data_size: IrAccessSize::RelativeWith(arg2.clone()),
+                    });
+                }
+            }
+        }
+        IrData::Operation(IrDataOperation::Unary { operator, arg }) => {
+            let operand_type = match operator {
+                IrUnaryOperator::SignExtend => DataType::Int,
+                _ => DataType::Unknown,
+            };
+            if operand_type != DataType::Unknown {
+                insert(KnownDataType {
+                    location: arg.clone(),
+                    data_type: operand_type,
+                    data_size: IrAccessSize::RelativeWith(arg.clone()),
+                });
+            }
+        }
+        IrData::Dereference(inner) => {
+            insert(KnownDataType {
+                location: inner.clone(),
+                data_type: DataType::Address,
+                data_size: IrAccessSize::RelativeWith(inner.clone()),
+            });
+        }
+        _ => {}
     }
 }
 

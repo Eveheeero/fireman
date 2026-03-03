@@ -6,7 +6,9 @@ use crate::{
         AstLiteral, AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue, AstValueOrigin,
         AstValueType, AstVariable, AstVariableId, PrintWithConfig, ProcessedOptimization, Wrapped,
         WrappedAstStatement,
-        optimize::ir_analyzation::convert::{convert_expr, convert_stmt, resolve_constant, ws, wdn},
+        optimize::ir_analyzation::convert::{
+            convert_expr, convert_stmt, resolve_constant, wdn, ws,
+        },
     },
     ir::{
         analyze::{DataType, variables::resolve_operand},
@@ -159,13 +161,19 @@ pub(super) fn analyze_ir_function(
     {
         let mut last_calc: Option<(usize, Aos<IrData>, Vec<Aos<IrData>>)> = None;
         for (idx, item) in body.iter().enumerate() {
-            let AstStatement::Ir(stmt) = &item.statement else { continue; };
+            let AstStatement::Ir(stmt) = &item.statement else {
+                continue;
+            };
             match stmt.as_ref() {
                 IrStatement::Special(IrStatementSpecial::CalcFlagsAutomatically {
-                    operation, flags, ..
+                    operation,
+                    flags,
+                    ..
                 }) => {
                     // Resolve operand references using this instruction's args.
-                    let AstStatementOrigin::Ir(pos) = &item.origin else { continue; };
+                    let AstStatementOrigin::Ir(pos) = &item.origin else {
+                        continue;
+                    };
                     let ir_idx = usize::try_from(pos.descriptor().ir_index())
                         .expect("does your architecture smaller than 32bit?");
                     let inst = &map[ir_idx];
@@ -390,8 +398,10 @@ fn recover_ir_condition(
     condition: &Aos<IrData>,
     operation_expr: &Wrapped<AstExpression>,
 ) -> Option<AstExpression> {
-    use crate::ir::data::IrDataOperation;
-    use crate::ir::operator::{IrBinaryOperator as IrBinOp, IrUnaryOperator as IrUnOp};
+    use crate::ir::{
+        data::IrDataOperation,
+        operator::{IrBinaryOperator as IrBinOp, IrUnaryOperator as IrUnOp},
+    };
 
     match condition.as_ref() {
         // Bare flag register (e.g., zf for je, cf for jb, sf for js)
@@ -559,7 +569,9 @@ fn recover_flag_equality_ir(
 }
 
 /// Decompose a binary operation expression into (operation_name, lhs, rhs).
-fn decompose_operation(expr: &AstExpression) -> Option<(&'static str, AstExpression, AstExpression)> {
+fn decompose_operation(
+    expr: &AstExpression,
+) -> Option<(&'static str, AstExpression, AstExpression)> {
     match expr {
         AstExpression::BinaryOp(op, lhs, rhs) => {
             let name = match op {

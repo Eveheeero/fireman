@@ -397,11 +397,7 @@ impl PrintWithConfig for AstStatement {
                 write!(f, "{{\n")?;
                 for (lit, case_body) in cases {
                     let body_strs = statement_body(case_body, config);
-                    write!(
-                        f,
-                        "    case {}:\n",
-                        lit.to_string_with_config(Some(config))
-                    )?;
+                    write!(f, "    case {}:\n", lit.to_string_with_config(Some(config)))?;
                     for s in &body_strs {
                         write!(f, "{}\n", indent_multiline(s, "        "))?;
                     }

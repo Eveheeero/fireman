@@ -426,9 +426,7 @@ fn fold_identity(
                 ));
             }
             // x != x, x < x, x > x -> false
-            AstBinaryOperator::NotEqual
-            | AstBinaryOperator::Less
-            | AstBinaryOperator::Greater => {
+            AstBinaryOperator::NotEqual | AstBinaryOperator::Less | AstBinaryOperator::Greater => {
                 return Some(wrap_with_source(
                     source,
                     AstExpression::Literal(AstLiteral::Bool(false)),
@@ -474,10 +472,7 @@ fn fold_reassociate(
                             AstExpression::BinaryOp(
                                 operator.clone(),
                                 inner_left.clone(),
-                                Box::new(wrap_with_source(
-                                    source,
-                                    AstExpression::Literal(folded),
-                                )),
+                                Box::new(wrap_with_source(source, AstExpression::Literal(folded))),
                             ),
                         ));
                     }
@@ -496,10 +491,7 @@ fn fold_reassociate(
                             source,
                             AstExpression::BinaryOp(
                                 operator.clone(),
-                                Box::new(wrap_with_source(
-                                    source,
-                                    AstExpression::Literal(folded),
-                                )),
+                                Box::new(wrap_with_source(source, AstExpression::Literal(folded))),
                                 inner_right.clone(),
                             ),
                         ));

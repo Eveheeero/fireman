@@ -335,10 +335,7 @@ pub(super) fn convert_stmt(
                 use crate::abstract_syntax_tree::PrintWithConfig;
                 let lhs_str = lhs.to_string_with_config(None);
                 let rhs_str = rhs.to_string_with_config(None);
-                AstStatement::Comment(format!(
-                    "invalid assignment: {} = {}",
-                    lhs_str, rhs_str
-                ))
+                AstStatement::Comment(format!("invalid assignment: {} = {}", lhs_str, rhs_str))
             }
         }
         IrStatement::JumpByCall { target } => {
@@ -1023,7 +1020,9 @@ fn try_fold_operand_exists(expr: &mut Wrapped<AstExpression>, instruction_arg_co
             if let AstExpression::Literal(AstLiteral::UInt(n)) = &arg.item {
                 // operand_exists(n): true if instruction has at least n operands
                 // n is 1-based operand index
-                let exists = n.checked_sub(1).is_some_and(|idx| idx < instruction_arg_count as u64);
+                let exists = n
+                    .checked_sub(1)
+                    .is_some_and(|idx| idx < instruction_arg_count as u64);
                 expr.item = AstExpression::Literal(AstLiteral::Bool(exists));
             }
         }
