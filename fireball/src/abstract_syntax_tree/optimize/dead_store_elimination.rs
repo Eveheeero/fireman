@@ -1,7 +1,7 @@
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId,
-        AstFunctionVersion, AstStatement, AstVariableId, WrappedAstStatement,
+        Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
+        AstStatement, AstVariableId, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -120,9 +120,7 @@ fn eliminate_in_list(stmts: &mut Vec<WrappedAstStatement>) {
                     collect_reads_list(bf, &mut live);
                 }
                 // Branches may contain calls
-                if list_contains_call(bt)
-                    || bf.as_ref().is_some_and(|bf| list_contains_call(bf))
-                {
+                if list_contains_call(bt) || bf.as_ref().is_some_and(|bf| list_contains_call(bf)) {
                     all_live = true;
                 }
             }
@@ -334,9 +332,7 @@ fn stmt_contains_call(stmt: &AstStatement) -> bool {
                 || default.as_ref().is_some_and(|d| list_contains_call(d))
         }
         AstStatement::Block(body) => list_contains_call(body),
-        AstStatement::Return(expr) => {
-            expr.as_ref().is_some_and(|e| expr_contains_call(&e.item))
-        }
+        AstStatement::Return(expr) => expr.as_ref().is_some_and(|e| expr_contains_call(&e.item)),
         _ => false,
     }
 }

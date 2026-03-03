@@ -1,5 +1,21 @@
 use super::{super::static_register::*, shortcuts::*};
+use crate::utils::Aos;
 use std::ops::Deref;
+
+#[inline]
+fn cmovcc(condition_data: Aos<IrData>) -> IrStatement {
+    condition(condition_data, [assign(o2(), o1(), o1_size())], [])
+}
+
+#[inline]
+fn sf_eq_of() -> Aos<IrData> {
+    b::equal(sf.clone(), of.clone(), size_relative(sf.clone()))
+}
+
+#[inline]
+fn sf_ne_of() -> Aos<IrData> {
+    u::not(sf_eq_of())
+}
 
 #[box_to_static_reference]
 pub(super) fn call() -> &'static [IrStatement] {
@@ -210,4 +226,128 @@ pub(super) fn cqo() -> &'static [IrStatement] {
     let type1 = type_specified(rax.clone(), size_relative(rax.clone()), DataType::Int);
     let type2 = type_specified(rdx.clone(), size_relative(rdx.clone()), DataType::Int);
     [set_tmp, set_dx, set_ax, type1, type2].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmova() -> &'static [IrStatement] {
+    let cond = b::and(u::not(cf.clone()), u::not(zf.clone()));
+    [cmovcc(cond)].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovae() -> &'static [IrStatement] {
+    [cmovcc(u::not(cf.clone()))].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovb() -> &'static [IrStatement] {
+    [cmovcc(cf.clone())].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovbe() -> &'static [IrStatement] {
+    let cond = b::or(cf.clone(), zf.clone());
+    [cmovcc(cond)].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmove() -> &'static [IrStatement] {
+    [cmovcc(zf.clone())].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovg() -> &'static [IrStatement] {
+    let cond = b::and(u::not(zf.clone()), sf_eq_of());
+    [cmovcc(cond)].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovge() -> &'static [IrStatement] {
+    [cmovcc(sf_eq_of())].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovl() -> &'static [IrStatement] {
+    [cmovcc(sf_ne_of())].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovle() -> &'static [IrStatement] {
+    let cond = b::or(zf.clone(), sf_ne_of());
+    [cmovcc(cond)].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovne() -> &'static [IrStatement] {
+    [cmovcc(u::not(zf.clone()))].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovno() -> &'static [IrStatement] {
+    [cmovcc(u::not(of.clone()))].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovnp() -> &'static [IrStatement] {
+    [cmovcc(u::not(pf.clone()))].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovns() -> &'static [IrStatement] {
+    [cmovcc(u::not(sf.clone()))].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovo() -> &'static [IrStatement] {
+    [cmovcc(of.clone())].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovp() -> &'static [IrStatement] {
+    [cmovcc(pf.clone())].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn cmovs() -> &'static [IrStatement] {
+    [cmovcc(sf.clone())].into()
+}
+
+#[inline]
+pub(super) fn cmovnb() -> &'static [IrStatement] {
+    cmovae()
+}
+
+#[inline]
+pub(super) fn cmovnbe() -> &'static [IrStatement] {
+    cmova()
+}
+
+#[inline]
+pub(super) fn cmovnl() -> &'static [IrStatement] {
+    cmovge()
+}
+
+#[inline]
+pub(super) fn cmovnle() -> &'static [IrStatement] {
+    cmovg()
+}
+
+#[inline]
+pub(super) fn cmovnz() -> &'static [IrStatement] {
+    cmovne()
+}
+
+#[inline]
+pub(super) fn cmovz() -> &'static [IrStatement] {
+    cmove()
+}
+
+#[inline]
+pub(super) fn cmovnc() -> &'static [IrStatement] {
+    cmovae()
+}
+
+#[inline]
+pub(super) fn cmovc() -> &'static [IrStatement] {
+    cmovb()
 }

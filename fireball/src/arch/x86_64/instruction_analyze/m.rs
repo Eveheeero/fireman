@@ -8,6 +8,22 @@ pub(super) fn mov() -> &'static [IrStatement] {
 }
 
 #[box_to_static_reference]
+pub(super) fn movsx() -> &'static [IrStatement] {
+    let assignment = assign(u::sign_extend(o2()), o1(), o1_size());
+    [assignment].into()
+}
+
+#[inline]
+pub(super) fn movsxd() -> &'static [IrStatement] {
+    movsx()
+}
+
+#[inline]
+pub(super) fn movzx() -> &'static [IrStatement] {
+    mov()
+}
+
+#[box_to_static_reference]
 pub(super) fn mul() -> &'static [IrStatement] {
     let assertion = assertion(u::not(is_o2_exists()));
 

@@ -1443,13 +1443,13 @@ fn optimize_same_operand_sub_to_zero() {
     let x = ids[0];
 
     // return x - x; => should fold to return 0;
-    let body = vec![wrap_statement(AstStatement::Return(Some(
-        wrap_expression(AstExpression::BinaryOp(
+    let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        AstExpression::BinaryOp(
             AstBinaryOperator::Sub,
             Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
             Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-        )),
-    )))];
+        ),
+    ))))];
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
@@ -1469,13 +1469,13 @@ fn optimize_same_operand_xor_to_zero() {
     let (ids, vm) = make_var_map(fid, &["x"]);
     let x = ids[0];
 
-    let body = vec![wrap_statement(AstStatement::Return(Some(
-        wrap_expression(AstExpression::BinaryOp(
+    let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        AstExpression::BinaryOp(
             AstBinaryOperator::BitXor,
             Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
             Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-        )),
-    )))];
+        ),
+    ))))];
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
@@ -1495,13 +1495,13 @@ fn optimize_same_operand_and_identity() {
     let (ids, vm) = make_var_map(fid, &["x"]);
     let x = ids[0];
 
-    let body = vec![wrap_statement(AstStatement::Return(Some(
-        wrap_expression(AstExpression::BinaryOp(
+    let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        AstExpression::BinaryOp(
             AstBinaryOperator::BitAnd,
             Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
             Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-        )),
-    )))];
+        ),
+    ))))];
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
@@ -1521,13 +1521,13 @@ fn optimize_same_operand_eq_to_true() {
     let (ids, vm) = make_var_map(fid, &["x"]);
     let x = ids[0];
 
-    let body = vec![wrap_statement(AstStatement::Return(Some(
-        wrap_expression(AstExpression::BinaryOp(
+    let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        AstExpression::BinaryOp(
             AstBinaryOperator::Equal,
             Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
             Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-        )),
-    )))];
+        ),
+    ))))];
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
@@ -1547,15 +1547,15 @@ fn optimize_double_bitnot_cancellation() {
     let (ids, vm) = make_var_map(fid, &["x"]);
     let x = ids[0];
 
-    let body = vec![wrap_statement(AstStatement::Return(Some(
-        wrap_expression(AstExpression::UnaryOp(
+    let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        AstExpression::UnaryOp(
             AstUnaryOperator::BitNot,
             Box::new(wrap_expression(AstExpression::UnaryOp(
                 AstUnaryOperator::BitNot,
                 Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
             ))),
-        )),
-    )))];
+        ),
+    ))))];
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
@@ -1575,13 +1575,13 @@ fn optimize_absorbing_mul_zero() {
     let (ids, vm) = make_var_map(fid, &["x"]);
     let x = ids[0];
 
-    let body = vec![wrap_statement(AstStatement::Return(Some(
-        wrap_expression(AstExpression::BinaryOp(
+    let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        AstExpression::BinaryOp(
             AstBinaryOperator::Mul,
             Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
             Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(0)))),
-        )),
-    )))];
+        ),
+    ))))];
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
@@ -1602,8 +1602,8 @@ fn optimize_reassociation() {
     let x = ids[0];
 
     // (x + 3) + 7 => x + 10
-    let body = vec![wrap_statement(AstStatement::Return(Some(
-        wrap_expression(AstExpression::BinaryOp(
+    let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        AstExpression::BinaryOp(
             AstBinaryOperator::Add,
             Box::new(wrap_expression(AstExpression::BinaryOp(
                 AstBinaryOperator::Add,
@@ -1611,8 +1611,8 @@ fn optimize_reassociation() {
                 Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(3)))),
             ))),
             Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(7)))),
-        )),
-    )))];
+        ),
+    ))))];
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
@@ -1693,9 +1693,7 @@ fn optimize_declaration_inlining() {
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
-        .optimize(Some(
-            AstOptimizationConfig::NONE.expression_inlining(true),
-        ))
+        .optimize(Some(AstOptimizationConfig::NONE.expression_inlining(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -1809,9 +1807,7 @@ fn optimize_boolean_recovery_and_pattern() {
 
     let ast = build_simple_test_ast(3, body, vm.clone());
     let optimized = ast
-        .optimize(Some(
-            AstOptimizationConfig::NONE.boolean_recovery(true),
-        ))
+        .optimize(Some(AstOptimizationConfig::NONE.boolean_recovery(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -1854,9 +1850,7 @@ fn optimize_boolean_recovery_or_pattern() {
 
     let ast = build_simple_test_ast(3, body, vm.clone());
     let optimized = ast
-        .optimize(Some(
-            AstOptimizationConfig::NONE.boolean_recovery(true),
-        ))
+        .optimize(Some(AstOptimizationConfig::NONE.boolean_recovery(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(

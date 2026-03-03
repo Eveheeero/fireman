@@ -1,8 +1,7 @@
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId,
-        AstFunctionVersion, AstStatement, AstVariableId, ProcessedOptimization, Wrapped,
-        WrappedAstStatement,
+        Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
+        AstStatement, AstVariableId, ProcessedOptimization, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -87,12 +86,10 @@ fn count_reads_in_expr(expr: &AstExpression, target: AstVariableId) -> usize {
             count_reads_in_expr(&left.item, target) + count_reads_in_expr(&right.item, target)
         }
         AstExpression::Cast(_, arg) => count_reads_in_expr(&arg.item, target),
-        AstExpression::Call(call) => {
-            call_args(call)
-                .iter()
-                .map(|a| count_reads_in_expr(&a.item, target))
-                .sum()
-        }
+        AstExpression::Call(call) => call_args(call)
+            .iter()
+            .map(|a| count_reads_in_expr(&a.item, target))
+            .sum(),
         AstExpression::Deref(arg)
         | AstExpression::AddressOf(arg)
         | AstExpression::MemberAccess(arg, _) => count_reads_in_expr(&arg.item, target),
@@ -124,11 +121,10 @@ fn count_reads_in_statement(stmt: &AstStatement, target: AstVariableId) -> usize
             };
             lhs_reads + count_reads_in_expr(&rhs.item, target)
         }
-        AstStatement::Declaration(_, rhs) => {
-            rhs.as_ref()
-                .map(|r| count_reads_in_expr(&r.item, target))
-                .unwrap_or(0)
-        }
+        AstStatement::Declaration(_, rhs) => rhs
+            .as_ref()
+            .map(|r| count_reads_in_expr(&r.item, target))
+            .unwrap_or(0),
         AstStatement::If(cond, bt, bf) => {
             count_reads_in_expr(&cond.item, target)
                 + bt.iter()
