@@ -216,8 +216,10 @@ fn log_read_locations_for_call_arg_analysis(
 }
 
 fn external_symbol_identifier(name: &str) -> String {
+    let demangled = demangle_symbol(name);
+    let source = demangled.as_deref().unwrap_or(name);
     let mut out = String::from("ext_");
-    for ch in name.chars() {
+    for ch in source.chars() {
         if ch.is_ascii_alphanumeric() || ch == '_' {
             out.push(ch);
         } else {
@@ -228,6 +230,16 @@ fn external_symbol_identifier(name: &str) -> String {
         out.push_str("unknown");
     }
     out
+}
+
+/// Try to demangle a C++ mangled symbol name.
+/// Returns `Some(demangled)` if the name was successfully demangled, `None` otherwise.
+fn demangle_symbol(name: &str) -> Option<String> {
+    // Try C++ (Itanium ABI) demangling
+    if let Ok(sym) = cpp_demangle::Symbol::new(name) {
+        return sym.demangle().ok();
+    }
+    None
 }
 
 fn external_symbol_name_from_slot(ast: &Ast, slot: u64) -> Option<String> {

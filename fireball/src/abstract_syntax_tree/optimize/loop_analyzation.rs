@@ -1,7 +1,7 @@
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement, AstVariableId,
-        ProcessedOptimization, WrappedAstStatement,
+        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral, AstStatement,
+        AstVariableId, ProcessedOptimization, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -22,6 +22,8 @@ pub(super) fn analyze_loops(
     }
 
     normalize_statement_list(&mut body);
+    normalize_infinite_loops(&mut body);
+    normalize_rotated_loops(&mut body);
     try_convert_while_to_for(&mut body);
 
     {
@@ -87,6 +89,103 @@ fn normalize_statement(stmt: &mut WrappedAstStatement) {
         | AstStatement::Comment(_)
         | AstStatement::Ir(_)
         | AstStatement::Empty => {}
+    }
+}
+
+/// Normalize rotated loops: convert `if(cond) { while(cond) { body; } }` → `while(cond) { body; }`
+/// when the condition is side-effect-free (pure).
+fn normalize_rotated_loops(stmts: &mut Vec<WrappedAstStatement>) {
+    // Recurse into nested structures first.
+    for stmt in stmts.iter_mut() {
+        match &mut stmt.statement {
+            AstStatement::If(_, bt, bf) => {
+                normalize_rotated_loops(bt);
+                if let Some(bf) = bf {
+                    normalize_rotated_loops(bf);
+                }
+            }
+            AstStatement::While(_, body) | AstStatement::Block(body) => {
+                normalize_rotated_loops(body);
+            }
+            AstStatement::For(_, _, _, body) => normalize_rotated_loops(body),
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases.iter_mut() {
+                    normalize_rotated_loops(case_body);
+                }
+                if let Some(default_body) = default {
+                    normalize_rotated_loops(default_body);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Now look for `if(cond) { while(cond) { body } }` at this level.
+    for stmt in stmts.iter_mut() {
+        let AstStatement::If(if_cond, branch_true, branch_false) = &mut stmt.statement else {
+            continue;
+        };
+        // Must be if-without-else, and condition must be pure.
+        if branch_false.is_some() {
+            continue;
+        }
+        if !super::opt_utils::is_pure_expression(&if_cond.item) {
+            continue;
+        }
+        // Branch body must be exactly one statement: a while with the same condition.
+        if branch_true.len() != 1 {
+            continue;
+        }
+        let AstStatement::While(while_cond, _) = &branch_true[0].statement else {
+            continue;
+        };
+        if !super::opt_utils::expr_structurally_equal(&if_cond.item, &while_cond.item) {
+            continue;
+        }
+        // Safe to collapse: replace `if(cond) { while(cond) { body } }` with `while(cond) { body }`.
+        let while_stmt = branch_true.remove(0);
+        stmt.statement = while_stmt.statement;
+    }
+}
+
+/// Normalize infinite loops: convert `while(1)` / `while(nonzero_literal)` to `while(true)`.
+fn normalize_infinite_loops(stmts: &mut Vec<WrappedAstStatement>) {
+    for stmt in stmts.iter_mut() {
+        match &mut stmt.statement {
+            AstStatement::While(cond, body) => {
+                normalize_infinite_loops(body);
+                if is_always_true_literal(&cond.item) {
+                    cond.item = AstExpression::Literal(AstLiteral::Bool(true));
+                }
+            }
+            AstStatement::If(_, bt, bf) => {
+                normalize_infinite_loops(bt);
+                if let Some(bf) = bf {
+                    normalize_infinite_loops(bf);
+                }
+            }
+            AstStatement::For(_, _, _, body) => normalize_infinite_loops(body),
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases.iter_mut() {
+                    normalize_infinite_loops(case_body);
+                }
+                if let Some(default_body) = default {
+                    normalize_infinite_loops(default_body);
+                }
+            }
+            AstStatement::Block(body) => normalize_infinite_loops(body),
+            _ => {}
+        }
+    }
+}
+
+/// Returns true if the expression is a non-zero integer or boolean true literal.
+fn is_always_true_literal(expr: &AstExpression) -> bool {
+    match expr {
+        AstExpression::Literal(AstLiteral::Int(n)) => *n != 0,
+        AstExpression::Literal(AstLiteral::UInt(n)) => *n != 0,
+        AstExpression::Literal(AstLiteral::Bool(true)) => true,
+        _ => false,
     }
 }
 

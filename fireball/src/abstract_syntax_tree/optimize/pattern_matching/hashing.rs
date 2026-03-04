@@ -25,6 +25,10 @@ impl Blake3StdHasher {
         bytes.copy_from_slice(&digest.as_bytes()[..8]);
         u64::from_le_bytes(bytes)
     }
+
+    pub(in super::super) fn finish_bytes(self) -> [u8; 32] {
+        *self.inner.finalize().as_bytes()
+    }
 }
 
 impl Default for Blake3StdHasher {

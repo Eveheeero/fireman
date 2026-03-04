@@ -1,8 +1,8 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId,
-        AstFunctionVersion, AstStatement, AstUnaryOperator, ProcessedOptimization, Wrapped,
-        WrappedAstStatement,
+        AstFunctionVersion, AstLiteral, AstStatement, AstUnaryOperator, ProcessedOptimization,
+        Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -58,6 +58,16 @@ fn canonicalize_statement(stmt: &mut WrappedAstStatement) {
         }
         AstStatement::If(cond, branch_true, branch_false) => {
             canonicalize_expression(cond);
+            simplify_condition_zero_cmp(cond);
+            // If/else inversion: prefer positive conditions.
+            // if(!cond) { A } else { B } → if(cond) { B } else { A }
+            if let Some(false_branch) = branch_false.as_mut() {
+                if let AstExpression::UnaryOp(AstUnaryOperator::Not, inner) = &cond.item {
+                    let positive_cond = inner.item.clone();
+                    cond.item = positive_cond;
+                    std::mem::swap(branch_true, false_branch);
+                }
+            }
             canonicalize_statement_list(branch_true);
             if let Some(branch_false) = branch_false {
                 canonicalize_statement_list(branch_false);
@@ -65,11 +75,13 @@ fn canonicalize_statement(stmt: &mut WrappedAstStatement) {
         }
         AstStatement::While(cond, body) => {
             canonicalize_expression(cond);
+            simplify_condition_zero_cmp(cond);
             canonicalize_statement_list(body);
         }
         AstStatement::For(init, cond, update, body) => {
             canonicalize_statement(init);
             canonicalize_expression(cond);
+            simplify_condition_zero_cmp(cond);
             canonicalize_statement(update);
             canonicalize_statement_list(body);
         }
@@ -209,6 +221,38 @@ fn canonicalize_current(expr: &mut Wrapped<AstExpression>) {
                 // Rule 2: Flip comparison direction when literal is on the left.
                 expr.item = AstExpression::BinaryOp(flipped_op, right.clone(), left.clone());
             }
+        }
+    }
+}
+
+/// Simplify comparison-with-zero in condition contexts:
+/// `x != 0` → `x`, `x == 0` → `!x`
+pub(super) fn simplify_condition_zero_cmp(expr: &mut Wrapped<AstExpression>) {
+    // Recurse into inner conditions first
+    match &mut expr.item {
+        AstExpression::UnaryOp(_, arg) => simplify_condition_zero_cmp(arg),
+        AstExpression::BinaryOp(AstBinaryOperator::LogicAnd | AstBinaryOperator::LogicOr, l, r) => {
+            simplify_condition_zero_cmp(l);
+            simplify_condition_zero_cmp(r);
+        }
+        _ => {}
+    }
+
+    if let AstExpression::BinaryOp(op, left, right) = &expr.item {
+        let is_zero_literal = |e: &AstExpression| {
+            matches!(
+                e,
+                AstExpression::Literal(AstLiteral::Int(0) | AstLiteral::UInt(0))
+            )
+        };
+        match op {
+            AstBinaryOperator::NotEqual if is_zero_literal(&right.item) => {
+                expr.item = left.item.clone();
+            }
+            AstBinaryOperator::Equal if is_zero_literal(&right.item) => {
+                expr.item = AstExpression::UnaryOp(AstUnaryOperator::Not, left.clone());
+            }
+            _ => {}
         }
     }
 }
