@@ -85,6 +85,48 @@ pub(super) fn sub() -> &'static [IrStatement] {
 }
 
 #[box_to_static_reference]
+pub(super) fn stc() -> &'static [IrStatement] {
+    let set_cf = assign(c(1), cf.clone(), size_relative(cf.clone()));
+    [set_cf].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn std_() -> &'static [IrStatement] {
+    let set_df = assign(c(1), df.clone(), size_relative(df.clone()));
+    [set_df].into()
+}
+
+#[box_to_static_reference]
+pub(super) fn sahf() -> &'static [IrStatement] {
+    let sf_assign = assign(
+        b::and(b::shr(ah.clone(), c(7)), c(1)),
+        sf.clone(),
+        size_relative(sf.clone()),
+    );
+    let zf_assign = assign(
+        b::and(b::shr(ah.clone(), c(6)), c(1)),
+        zf.clone(),
+        size_relative(zf.clone()),
+    );
+    let af_assign = assign(
+        b::and(b::shr(ah.clone(), c(4)), c(1)),
+        af.clone(),
+        size_relative(af.clone()),
+    );
+    let pf_assign = assign(
+        b::and(b::shr(ah.clone(), c(2)), c(1)),
+        pf.clone(),
+        size_relative(pf.clone()),
+    );
+    let cf_assign = assign(
+        b::and(ah.clone(), c(1)),
+        cf.clone(),
+        size_relative(cf.clone()),
+    );
+    [sf_assign, zf_assign, af_assign, pf_assign, cf_assign].into()
+}
+
+#[box_to_static_reference]
 pub(super) fn seta() -> &'static [IrStatement] {
     let cond = b::and(u::not(cf.clone()), u::not(zf.clone()));
     [setcc(cond)].into()

@@ -1,5 +1,6 @@
 mod auto_comment;
 mod bit_trick_recognition;
+pub(crate) mod call_graph;
 mod boolean_recovery;
 mod call_argument_analyzation;
 mod cast_minimization;

@@ -76,7 +76,12 @@ impl Pe {
                 };
 
                 let name = if let Some(name) = export.name {
-                    name.to_string()
+                    // Try C++ demangling for exported symbols
+                    if let Ok(sym) = cpp_demangle::Symbol::new(name) {
+                        sym.demangle().unwrap_or_else(|_| name.to_string())
+                    } else {
+                        name.to_string()
+                    }
                 } else {
                     format!("0x{:x}", offset_raw)
                 };

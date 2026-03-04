@@ -296,7 +296,7 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
     Ok(variables)
 }
 
-fn resolve_ir_operand_of_access_size(
+pub fn resolve_ir_operand_of_access_size(
     access_size: &IrAccessSize,
     instruction_args: &[iceball::Argument],
 ) -> IrAccessSize {

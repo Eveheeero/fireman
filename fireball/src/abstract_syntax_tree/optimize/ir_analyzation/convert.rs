@@ -3,7 +3,7 @@ use crate::{
         Ast, AstBinaryOperator, AstBuiltinFunction, AstBuiltinFunctionArgument, AstCall,
         AstDescriptor, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget, AstLiteral,
         AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue, AstValueOrigin,
-        AstVariableId, PrintWithConfig, Wrapped, WrappedAstStatement,
+        AstValueType, AstVariableId, PrintWithConfig, Wrapped, WrappedAstStatement,
     },
     core::Address,
     ir::{
@@ -307,7 +307,7 @@ pub(super) fn convert_stmt(
     instruction_args: &[iceball::Argument],
 ) -> Result<WrappedAstStatement, DecompileError> {
     let result = match stmt {
-        IrStatement::Assignment { from, to, .. } => {
+        IrStatement::Assignment { from, to, size } => {
             let from = &resolve_operand(from, instruction_args);
             let to = &resolve_operand(to, instruction_args);
             let lhs = convert_expr(
@@ -318,7 +318,7 @@ pub(super) fn convert_stmt(
                 to,
                 var_map,
             )?;
-            let rhs = convert_expr(
+            let mut rhs = convert_expr(
                 ast,
                 function_id,
                 function_version,
@@ -326,6 +326,9 @@ pub(super) fn convert_stmt(
                 from,
                 var_map,
             )?;
+            // Refine unsized CastSigned/CastUnsigned into explicit typed casts
+            // using the assignment's target size.
+            refine_extend_cast(&mut rhs, size, instruction_args);
             // Reject assignments to non-assignable LHS (e.g. literal targets
             // from unresolved IR data). Emit as a comment instead of producing
             // malformed AST like `0x0 = v31`.
@@ -1026,5 +1029,80 @@ fn try_fold_operand_exists(expr: &mut Wrapped<AstExpression>, instruction_arg_co
                 expr.item = AstExpression::Literal(AstLiteral::Bool(exists));
             }
         }
+    }
+}
+
+/// Resolve an `IrAccessSize` to a concrete byte count when possible.
+fn resolve_size_bytes(size: &IrAccessSize, instruction_args: &[iceball::Argument]) -> Option<usize> {
+    use crate::ir::analyze::variables::resolve_ir_operand_of_access_size;
+    let resolved = resolve_ir_operand_of_access_size(size, instruction_args);
+    match &resolved {
+        IrAccessSize::ResultOfByte(data) => match data.as_ref() {
+            IrData::Constant(n) => Some(*n),
+            _ => None,
+        },
+        IrAccessSize::ResultOfBit(data) => match data.as_ref() {
+            IrData::Constant(n) => {
+                if *n % 8 == 0 {
+                    Some(*n / 8)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// Convert a byte count to the corresponding signed `AstValueType`.
+fn bytes_to_signed_type(bytes: usize) -> Option<AstValueType> {
+    match bytes {
+        1 => Some(AstValueType::Int8),
+        2 => Some(AstValueType::Int16),
+        4 => Some(AstValueType::Int32),
+        8 => Some(AstValueType::Int64),
+        _ => None,
+    }
+}
+
+/// Convert a byte count to the corresponding unsigned `AstValueType`.
+fn bytes_to_unsigned_type(bytes: usize) -> Option<AstValueType> {
+    match bytes {
+        1 => Some(AstValueType::UInt8),
+        2 => Some(AstValueType::UInt16),
+        4 => Some(AstValueType::UInt32),
+        8 => Some(AstValueType::UInt64),
+        _ => None,
+    }
+}
+
+/// Refine `CastSigned(x)` / `CastUnsigned(x)` into `Cast(sized_type, x)`
+/// using the assignment's target size to determine the appropriate C type.
+fn refine_extend_cast(
+    rhs: &mut Wrapped<AstExpression>,
+    size: &IrAccessSize,
+    instruction_args: &[iceball::Argument],
+) {
+    let AstExpression::UnaryOp(op, inner) = &rhs.item else {
+        return;
+    };
+    let target_type = match op {
+        AstUnaryOperator::CastSigned => {
+            let Some(bytes) = resolve_size_bytes(size, instruction_args) else {
+                return;
+            };
+            bytes_to_signed_type(bytes)
+        }
+        AstUnaryOperator::CastUnsigned => {
+            let Some(bytes) = resolve_size_bytes(size, instruction_args) else {
+                return;
+            };
+            bytes_to_unsigned_type(bytes)
+        }
+        _ => return,
+    };
+    if let Some(ty) = target_type {
+        rhs.item = AstExpression::Cast(ty, inner.clone());
     }
 }
