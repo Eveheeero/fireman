@@ -1,12 +1,12 @@
 # Fireman
 
-![Logo](firebat/src-tauri/icons/icon.png)
+![Logo](firebat/icons/icon.png)
 
-Working In Progress (2025.06 Updated)
+## Why fireman?
+
+While using snowman back in high school, I often imagined a decompiler that would allow me to manually tweak the Intermediate Representation (IR) through a GUI and see the C decompilation results update accordingly. fireman is the realization of that dream, more than a decade later. Because this project is the fulfillment of a long-held personal vision, I chose to build it as a standalone tool rather than a plugin for existing decompilers.
 
 ## Features & Plans
-
-**Currently, There is only IR Based Analyzed Routine.**
 
 - [x] Generate IR Based Environment
 - [X] Complete Instruction Parsing Routine
@@ -24,15 +24,15 @@ Working In Progress (2025.06 Updated)
   - [X] Merged Block Variable Analysis
 - [ ] Simulation Routine
 - [X] Generate C like Code
-  - [ ] Optimization
-- [ ] GUI decompiler
+  - [X] Optimization
+- [X] GUI decompiler
   - [X] Inspect IR
   - [ ] Modify IR or Instruction
   - [X] Generate C like Code
   - [ ] Simulate With Memory / Register
 - [ ] TUI decompiler
 - [ ] CLI decompiler
-- [ ] IR Pattern Matching Routine (to detect well-known library's function like msvc's memcpy)
+- [X] IR Pattern Matching Routine (to detect well-known library's function like msvc's memcpy)
 - [ ] Optimizer
 - [ ] Deobfucasioner (possible?)
 
