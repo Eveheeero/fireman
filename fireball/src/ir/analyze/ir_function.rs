@@ -2,12 +2,15 @@ use crate::{
     core::{Block, Instruction},
     ir::{
         Ir, IrBlock,
-        analyze::{DataType, analyze_function_control_flow, infer_entry_block_id},
+        analyze::{
+            DataType, DominanceFrontier, analyze_function_control_flow, infer_entry_block_id,
+        },
         data::IrDataAccess,
         utils::IrStatementDescriptorMap,
     },
     prelude::*,
 };
+use iceball::{Statement, X64Statement};
 use std::sync::Arc;
 
 fn run_cfg_shape_analysis(blocks: &[Arc<Block>]) {
@@ -29,15 +32,140 @@ fn run_cfg_shape_analysis(blocks: &[Arc<Block>]) {
         })
         .count();
 
+    let reducible = analysis.cfg().is_reducible(analysis.dominators());
+    let dominance_frontier = DominanceFrontier::compute(analysis.dominators());
+    let frontier_count = analysis
+        .cfg()
+        .block_ids()
+        .iter()
+        .filter(|&&id| dominance_frontier.has_frontier(id))
+        .count();
+
     debug!(
-        "CFG shape analysis: entry={}, blocks={}, exits={}, back_edges={}, natural_loops={}, control_dependent_blocks={}",
+        "CFG shape analysis: entry={}, blocks={}, exits={}, back_edges={}, natural_loops={}, control_dependent_blocks={}, reducible={}, df_nodes={}",
         entry_block_id,
         analysis.cfg().block_ids().len(),
         analysis.postdominators().cfg().exit_block_ids().len(),
         analysis.dominators().back_edges().len(),
         analysis.loops().loops().len(),
-        control_dependent_blocks
+        control_dependent_blocks,
+        reducible,
+        frontier_count,
     );
+
+    // Function boundary / compiler fingerprinting
+    if let Some(entry_block) = blocks.iter().find(|b| b.get_id() == entry_block_id) {
+        let prologue = detect_prologue_pattern(entry_block);
+        let compiler = detect_compiler_hint(entry_block);
+        if let Some(prologue) = prologue {
+            debug!("Function prologue: {}", prologue);
+        }
+        if let Some(compiler) = compiler {
+            debug!("Compiler hint: {}", compiler);
+        }
+    }
+
+    // L194: Multi-entry detection
+    let multi_entries = analysis.cfg().multi_entry_blocks(blocks);
+    if !multi_entries.is_empty() {
+        debug!(
+            "Multi-entry blocks detected (shared tails): {:?}",
+            multi_entries
+        );
+    }
+
+    // L192: Hot-cold chunk detection (gap > 4KB suggests split)
+    let chunks = analysis.cfg().detect_address_gap_chunks(blocks, 4096);
+    if chunks.len() > 1 {
+        debug!(
+            "Potential hot-cold split: {} address-separated chunks",
+            chunks.len()
+        );
+    }
+}
+
+/// L11: Detect function prologue patterns from the first few instructions.
+fn detect_prologue_pattern(block: &Block) -> Option<&'static str> {
+    let instructions = block.get_instructions();
+    let stmts: Vec<X64Statement> = instructions
+        .iter()
+        .take(6)
+        .filter_map(|inst| match inst.inner().statement {
+            Ok(Statement::X64(s)) => Some(s),
+            _ => None,
+        })
+        .collect();
+
+    if stmts.len() < 2 {
+        return None;
+    }
+
+    // push rbp; mov rbp, rsp — standard frame pointer prologue
+    if stmts[0] == X64Statement::Push && stmts[1] == X64Statement::Mov {
+        return Some("standard frame-pointer prologue (push rbp; mov rbp, rsp)");
+    }
+
+    // push rbp; push rbx; ... — callee-saved register preservation
+    if stmts[0] == X64Statement::Push && stmts.get(1) == Some(&X64Statement::Push) {
+        return Some("callee-saved register prologue (multiple push)");
+    }
+
+    // sub rsp, N — frame-pointer-omitted (FPO) prologue
+    if stmts[0] == X64Statement::Sub {
+        return Some("FPO prologue (sub rsp, imm)");
+    }
+
+    // endbr64; push rbp — CET-enabled prologue
+    if stmts[0] == X64Statement::Endbr64 && stmts.get(1) == Some(&X64Statement::Push) {
+        return Some("CET-enabled prologue (endbr64; push rbp)");
+    }
+
+    // endbr64; sub rsp — CET + FPO
+    if stmts[0] == X64Statement::Endbr64 && stmts.get(1) == Some(&X64Statement::Sub) {
+        return Some("CET + FPO prologue (endbr64; sub rsp)");
+    }
+
+    None
+}
+
+/// L19: Detect compiler family from instruction patterns and calling conventions.
+fn detect_compiler_hint(block: &Block) -> Option<&'static str> {
+    let instructions = block.get_instructions();
+    let stmts: Vec<X64Statement> = instructions
+        .iter()
+        .take(10)
+        .filter_map(|inst| match inst.inner().statement {
+            Ok(Statement::X64(s)) => Some(s),
+            _ => None,
+        })
+        .collect();
+
+    // MSVC: endbr not used; often starts with mov [rsp+8], rcx (home space)
+    // or sub rsp, imm; mov [rsp+XX], ...
+    // GCC/Clang: endbr64 at function entry when CET is enabled
+    if stmts.first() == Some(&X64Statement::Endbr64) {
+        return Some("likely GCC/Clang (CET endbr64 at entry)");
+    }
+
+    // MSVC often uses `mov qword ptr [rsp+X], reg` as first instruction
+    // for shadow space parameters. Check for mov as first instruction
+    // without a preceding push rbp (MSVC x64 typically omits frame pointer).
+    if stmts.first() == Some(&X64Statement::Mov) && stmts.get(1) == Some(&X64Statement::Mov) {
+        return Some("likely MSVC x64 (shadow space parameter stores at entry)");
+    }
+
+    // Leaf function: no push/sub, starts directly with computation
+    let has_frame_setup = stmts.iter().take(3).any(|s| {
+        matches!(
+            s,
+            X64Statement::Push | X64Statement::Sub | X64Statement::Endbr64
+        )
+    });
+    if !has_frame_setup && !stmts.is_empty() {
+        return Some("leaf function (no frame setup)");
+    }
+
+    None
 }
 
 pub fn generate_ir_function(blocks: &[Arc<Block>]) -> IrFunction {

@@ -96,6 +96,77 @@ impl Pe {
             defined
         };
 
+        // L125: Parse base relocation table to identify pointer-holding addresses.
+        let relocation_addresses = {
+            let mut relocs = std::collections::HashSet::new();
+            if let Some(ref debug_data) = gl.debug_data {
+                // goblin doesn't expose relocations directly on the PE struct,
+                // so we parse the base relocation directory manually.
+                let _ = debug_data; // placeholder — actual reloc parsing below
+            }
+            // goblin >= 0.7 exposes relocations via header.optional_header
+            if let Some(opt) = gl.header.optional_header {
+                if let Some(reloc_table) = opt.data_directories.get_base_relocation_table() {
+                    let reloc_rva = reloc_table.virtual_address as usize;
+                    let reloc_size = reloc_table.size as usize;
+                    if reloc_rva > 0 && reloc_size > 0 {
+                        // Walk the base relocation blocks
+                        let image_base = opt.windows_fields.image_base;
+                        if let Some(offset) = goblin::pe::utils::find_offset(
+                            reloc_rva,
+                            &gl.sections,
+                            0,
+                            &Default::default(),
+                        ) {
+                            let mut pos = offset;
+                            let end = offset + reloc_size;
+                            while pos + 8 <= end && pos + 8 <= binary.len() {
+                                let page_rva = u32::from_le_bytes([
+                                    binary[pos],
+                                    binary[pos + 1],
+                                    binary[pos + 2],
+                                    binary[pos + 3],
+                                ]);
+                                let block_size = u32::from_le_bytes([
+                                    binary[pos + 4],
+                                    binary[pos + 5],
+                                    binary[pos + 6],
+                                    binary[pos + 7],
+                                ]) as usize;
+                                if block_size < 8 || pos + block_size > end {
+                                    break;
+                                }
+                                let entry_count = (block_size - 8) / 2;
+                                for i in 0..entry_count {
+                                    let entry_offset = pos + 8 + i * 2;
+                                    if entry_offset + 2 > binary.len() {
+                                        break;
+                                    }
+                                    let entry = u16::from_le_bytes([
+                                        binary[entry_offset],
+                                        binary[entry_offset + 1],
+                                    ]);
+                                    let reloc_type = entry >> 12;
+                                    let reloc_off = (entry & 0x0FFF) as u32;
+                                    // Type 3 = HIGHLOW (32-bit), Type 10 = DIR64 (64-bit)
+                                    if reloc_type == 3 || reloc_type == 10 {
+                                        let va = image_base + (page_rva + reloc_off) as u64;
+                                        relocs.insert(va);
+                                    }
+                                }
+                                pos += block_size;
+                            }
+                        }
+                        debug!(
+                            "Parsed {} relocation entries from base relocation table",
+                            relocs.len()
+                        );
+                    }
+                }
+            }
+            relocs
+        };
+
         let relations = Relations::new();
         Ok(Pe {
             entry: Address::from_virtual_address(&sections, gl.entry as u64),
@@ -107,6 +178,7 @@ impl Pe {
             relations: relations.clone(),
             blocks: Blocks::new(relations),
             cancel_token: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            relocation_addresses: std::sync::Arc::new(relocation_addresses),
         })
     }
 

@@ -17,6 +17,7 @@ pub(super) fn synthesize_comments(
     let mut body;
     let first_param_var_id;
     let param_count;
+    let all_param_var_ids: Vec<AstVariableId>;
     {
         let mut functions = ast.functions.write().unwrap();
         let function = functions
@@ -29,6 +30,11 @@ pub(super) fn synthesize_comments(
             .parameters
             .first()
             .and_then(|p| p.id.as_ref().left().copied());
+        all_param_var_ids = function
+            .parameters
+            .iter()
+            .filter_map(|p| p.id.as_ref().left().copied())
+            .collect();
     }
 
     annotate_statement_list(&mut body);
@@ -43,6 +49,15 @@ pub(super) fn synthesize_comments(
         }
     }
     annotate_obfuscation_indicators(&mut body);
+    annotate_ptr_len_pairs(&mut body, &all_param_var_ids);
+    annotate_format_string_types(&mut body);
+    annotate_error_propagation(&mut body);
+    annotate_behavioral_cluster(&mut body);
+    annotate_bitfield_patterns(&mut body);
+    annotate_domain_vocabulary(&mut body);
+    annotate_config_string_xrefs(&mut body);
+    annotate_resource_cleanup(&mut body);
+    annotate_sanitizer_shadow(&mut body);
 
     {
         let mut functions = ast.functions.write().unwrap();
@@ -1509,14 +1524,95 @@ fn annotate_this_or_sret_pointer(body: &mut [WrappedAstStatement], first_param: 
 
     // "this" pointer: primarily used as base+offset for member access
     if member_access_count >= 2 && member_access_count > store_through_count {
+        // Refine: check for constructor/destructor patterns (L134)
+        let label = if has_direct_deref_store(body, first_param) {
+            "likely constructor ('this' pointer + vptr/field init)"
+        } else if body_calls_free_or_delete(body) {
+            "likely destructor ('this' pointer + free/delete)"
+        } else {
+            "first parameter likely 'this' pointer (member access pattern)"
+        };
         if let Some(first) = body.first_mut() {
             if first.comment.is_none() {
-                first.comment = Some(
-                    "first parameter likely 'this' pointer (member access pattern)".to_string(),
-                );
+                first.comment = Some(label.to_string());
             }
         }
     }
+}
+
+/// Check if there's a store to *param or param[0] (vptr initialization pattern).
+fn has_direct_deref_store(stmts: &[WrappedAstStatement], var_id: AstVariableId) -> bool {
+    for stmt in stmts {
+        if let AstStatement::Assignment(lhs, _) = &stmt.statement {
+            match &lhs.item {
+                AstExpression::Deref(inner) => {
+                    if matches!(&inner.item, AstExpression::Variable(_, id) if *id == var_id) {
+                        return true;
+                    }
+                }
+                AstExpression::ArrayAccess(base, idx) => {
+                    if matches!(&base.item, AstExpression::Variable(_, id) if *id == var_id)
+                        && matches!(
+                            &idx.item,
+                            AstExpression::Literal(AstLiteral::Int(0) | AstLiteral::UInt(0))
+                        )
+                    {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    false
+}
+
+/// Check if the function body calls free/delete/operator delete (destructor indicator).
+fn body_calls_free_or_delete(stmts: &[WrappedAstStatement]) -> bool {
+    for stmt in stmts {
+        match &stmt.statement {
+            AstStatement::Call(call) => {
+                let name = match call {
+                    AstCall::Unknown(name, _) => name.as_str(),
+                    _ => continue,
+                };
+                if matches!(
+                    name,
+                    "free"
+                        | "_free"
+                        | "operator delete"
+                        | "operator delete[]"
+                        | "_ZdlPv"
+                        | "_ZdaPv"
+                        | "HeapFree"
+                        | "VirtualFree"
+                        | "GlobalFree"
+                        | "LocalFree"
+                ) {
+                    return true;
+                }
+            }
+            AstStatement::If(_, bt, bf) => {
+                if body_calls_free_or_delete(bt) {
+                    return true;
+                }
+                if let Some(bf) = bf {
+                    if body_calls_free_or_delete(bf) {
+                        return true;
+                    }
+                }
+            }
+            AstStatement::While(_, body)
+            | AstStatement::For(_, _, _, body)
+            | AstStatement::Block(body) => {
+                if body_calls_free_or_delete(body) {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+    }
+    false
 }
 
 fn classify_first_param_usage(
@@ -1681,5 +1777,1220 @@ fn measure_complexity(
             }
             _ => {}
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// "ptr+len" pairing detection (L242)
+// ---------------------------------------------------------------------------
+
+/// Detect consecutive parameter pairs where one is used in deref contexts (pointer)
+/// and the next is used in comparison/loop-bound contexts (length).
+fn annotate_ptr_len_pairs(body: &mut Vec<WrappedAstStatement>, params: &[AstVariableId]) {
+    if params.len() < 2 {
+        return;
+    }
+
+    for i in 0..params.len() - 1 {
+        let ptr_var = params[i];
+        let len_var = params[i + 1];
+
+        let ptr_deref = count_deref_uses(body, ptr_var);
+        let len_compare = count_compare_or_bound_uses(body, len_var);
+
+        // Heuristic: ptr used in 1+ deref, len used in 1+ comparison → likely ptr+len pair
+        if ptr_deref >= 1 && len_compare >= 1 {
+            let note = format!(
+                "likely (ptr, len) parameter pair at positions {}, {}",
+                i,
+                i + 1
+            );
+            // Check we haven't already inserted this note
+            let already = body.iter().any(
+                |s| matches!(&s.statement, AstStatement::Comment(c) if c.contains("ptr, len")),
+            );
+            if !already {
+                body.insert(
+                    0,
+                    WrappedAstStatement {
+                        statement: AstStatement::Comment(note),
+                        origin: AstStatementOrigin::Unknown,
+                        comment: None,
+                    },
+                );
+            }
+        }
+    }
+}
+
+fn count_deref_uses(stmts: &[WrappedAstStatement], var_id: AstVariableId) -> usize {
+    let mut count = 0;
+    for stmt in stmts {
+        match &stmt.statement {
+            AstStatement::Assignment(lhs, rhs) => {
+                if is_deref_of_param(var_id, &lhs.item) || is_deref_of_param(var_id, &rhs.item) {
+                    count += 1;
+                }
+            }
+            AstStatement::If(_, bt, bf) => {
+                count += count_deref_uses(bt, var_id);
+                if let Some(bf) = bf {
+                    count += count_deref_uses(bf, var_id);
+                }
+            }
+            AstStatement::While(_, body)
+            | AstStatement::For(_, _, _, body)
+            | AstStatement::Block(body) => {
+                count += count_deref_uses(body, var_id);
+            }
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases {
+                    count += count_deref_uses(case_body, var_id);
+                }
+                if let Some(default_body) = default {
+                    count += count_deref_uses(default_body, var_id);
+                }
+            }
+            _ => {}
+        }
+    }
+    count
+}
+
+fn count_compare_or_bound_uses(stmts: &[WrappedAstStatement], var_id: AstVariableId) -> usize {
+    let mut count = 0;
+    for stmt in stmts {
+        match &stmt.statement {
+            AstStatement::If(cond, bt, bf) => {
+                if is_comparison_involving(var_id, &cond.item) {
+                    count += 1;
+                }
+                count += count_compare_or_bound_uses(bt, var_id);
+                if let Some(bf) = bf {
+                    count += count_compare_or_bound_uses(bf, var_id);
+                }
+            }
+            AstStatement::While(cond, body) => {
+                if is_comparison_involving(var_id, &cond.item) {
+                    count += 1;
+                }
+                count += count_compare_or_bound_uses(body, var_id);
+            }
+            AstStatement::For(_, cond, _, body) => {
+                if is_comparison_involving(var_id, &cond.item) {
+                    count += 1;
+                }
+                count += count_compare_or_bound_uses(body, var_id);
+            }
+            AstStatement::Block(body) => {
+                count += count_compare_or_bound_uses(body, var_id);
+            }
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases {
+                    count += count_compare_or_bound_uses(case_body, var_id);
+                }
+                if let Some(default_body) = default {
+                    count += count_compare_or_bound_uses(default_body, var_id);
+                }
+            }
+            _ => {}
+        }
+    }
+    count
+}
+
+fn is_comparison_involving(var_id: AstVariableId, expr: &AstExpression) -> bool {
+    if let AstExpression::BinaryOp(op, left, right) = expr {
+        if matches!(
+            op,
+            AstBinaryOperator::Less
+                | AstBinaryOperator::LessEqual
+                | AstBinaryOperator::Greater
+                | AstBinaryOperator::GreaterEqual
+                | AstBinaryOperator::Equal
+                | AstBinaryOperator::NotEqual
+        ) {
+            return expr_mentions_var(var_id, &left.item) || expr_mentions_var(var_id, &right.item);
+        }
+    }
+    false
+}
+
+// ---------------------------------------------------------------------------
+// L116: Format-string driven typing — annotate printf/scanf calls with
+// expected argument types parsed from the format string literal.
+// ---------------------------------------------------------------------------
+
+fn annotate_format_string_types(stmts: &mut Vec<WrappedAstStatement>) {
+    let mut insertions: Vec<(usize, String)> = Vec::new();
+    for (i, stmt) in stmts.iter().enumerate() {
+        if let AstStatement::Call(call) = &stmt.statement {
+            if let Some(comment) = detect_format_string_types(call) {
+                insertions.push((i, comment));
+            }
+        }
+    }
+    for (idx, text) in insertions.into_iter().rev() {
+        stmts.insert(
+            idx,
+            WrappedAstStatement {
+                statement: AstStatement::Comment(text),
+                origin: AstStatementOrigin::Unknown,
+                comment: None,
+            },
+        );
+    }
+}
+
+fn detect_format_string_types(call: &AstCall) -> Option<String> {
+    let (name, args) = match call {
+        AstCall::Unknown(name, args) => (name.as_str(), args),
+        _ => return None,
+    };
+    let lower = name.to_ascii_lowercase();
+    let is_printf_family = lower.contains("printf");
+    let is_scanf_family = lower.contains("scanf");
+    if !is_printf_family && !is_scanf_family {
+        return None;
+    }
+    // Find the format string literal among the arguments.
+    let fmt_str = args.iter().find_map(|arg| match &arg.item {
+        AstExpression::Literal(AstLiteral::String(s)) if s.contains('%') => Some(s.as_str()),
+        _ => None,
+    })?;
+    let types = parse_format_specifiers(fmt_str);
+    if types.is_empty() {
+        return None;
+    }
+    let types_str = types.join(", ");
+    Some(format!(
+        "// format string expects: [{types_str}] (from \"{name}\")"
+    ))
+}
+
+fn parse_format_specifiers(fmt: &str) -> Vec<&'static str> {
+    let mut types = Vec::new();
+    let bytes = fmt.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            i += 1;
+            // Skip flags: -, +, 0, space, #
+            while i < bytes.len() && matches!(bytes[i], b'-' | b'+' | b'0' | b' ' | b'#') {
+                i += 1;
+            }
+            // Skip width (digits or *)
+            while i < bytes.len() && (bytes[i].is_ascii_digit() || bytes[i] == b'*') {
+                i += 1;
+            }
+            // Skip precision (.digits or .*)
+            if i < bytes.len() && bytes[i] == b'.' {
+                i += 1;
+                while i < bytes.len() && (bytes[i].is_ascii_digit() || bytes[i] == b'*') {
+                    i += 1;
+                }
+            }
+            // Length modifiers
+            let mut length = "";
+            if i < bytes.len() {
+                match bytes[i] {
+                    b'l' => {
+                        i += 1;
+                        if i < bytes.len() && bytes[i] == b'l' {
+                            length = "ll";
+                            i += 1;
+                        } else {
+                            length = "l";
+                        }
+                    }
+                    b'h' => {
+                        i += 1;
+                        if i < bytes.len() && bytes[i] == b'h' {
+                            length = "hh";
+                            i += 1;
+                        } else {
+                            length = "h";
+                        }
+                    }
+                    b'z' | b'j' | b't' => {
+                        length = match bytes[i] {
+                            b'z' => "z",
+                            b'j' => "j",
+                            _ => "t",
+                        };
+                        i += 1;
+                    }
+                    _ => {}
+                }
+            }
+            // Conversion specifier
+            if i < bytes.len() {
+                let ty = match bytes[i] {
+                    b'd' | b'i' => match length {
+                        "ll" => "long long",
+                        "l" => "long",
+                        "h" => "short",
+                        "hh" => "char",
+                        "z" => "ssize_t",
+                        _ => "int",
+                    },
+                    b'u' => match length {
+                        "ll" => "unsigned long long",
+                        "l" => "unsigned long",
+                        "z" => "size_t",
+                        _ => "unsigned int",
+                    },
+                    b'x' | b'X' | b'o' => match length {
+                        "ll" => "unsigned long long",
+                        "l" => "unsigned long",
+                        _ => "unsigned int",
+                    },
+                    b'f' | b'e' | b'g' | b'F' | b'E' | b'G' => {
+                        if length == "l" {
+                            "double"
+                        } else {
+                            "double"
+                        }
+                    }
+                    b's' => {
+                        if length == "l" {
+                            "wchar_t*"
+                        } else {
+                            "char*"
+                        }
+                    }
+                    b'c' => {
+                        if length == "l" {
+                            "wint_t"
+                        } else {
+                            "char"
+                        }
+                    }
+                    b'p' => "void*",
+                    b'n' => "int*",
+                    b'%' => {
+                        i += 1;
+                        continue;
+                    }
+                    _ => {
+                        i += 1;
+                        continue;
+                    }
+                };
+                types.push(ty);
+                i += 1;
+            }
+        } else {
+            i += 1;
+        }
+    }
+    types
+}
+
+// ---------------------------------------------------------------------------
+// L858: Error-propagation modeling — detect "ret = call(); if (ret < 0)
+// return ret;" patterns and annotate as error-propagation.
+// ---------------------------------------------------------------------------
+
+fn annotate_error_propagation(stmts: &mut Vec<WrappedAstStatement>) {
+    let mut insertions: Vec<(usize, String)> = Vec::new();
+    // Look for: Assignment(var, Call(...)) followed by If(var < 0, [Return(var)])
+    for i in 0..stmts.len().saturating_sub(1) {
+        let assigned_var = match &stmts[i].statement {
+            AstStatement::Assignment(lhs, rhs) => {
+                if matches!(rhs.item, AstExpression::Call(_)) {
+                    if let AstExpression::Variable(_, var_id) = &lhs.item {
+                        Some(*var_id)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            AstStatement::Declaration(decl_var, Some(rhs)) => {
+                if matches!(rhs.item, AstExpression::Call(_)) {
+                    Some(decl_var.id)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        };
+        let Some(var_id) = assigned_var else {
+            continue;
+        };
+        // Check if next statement is: if (var < 0) { return var; }
+        // or: if (var == 0) { return ...; } or: if (var != 0) { return var; }
+        if let AstStatement::If(cond, then_branch, _) = &stmts[i + 1].statement {
+            if is_error_check_on_var(var_id, &cond.item)
+                && then_branch_returns_or_propagates(then_branch, var_id)
+            {
+                insertions.push((i, "// error propagation pattern".to_string()));
+            }
+        }
+    }
+    for (idx, text) in insertions.into_iter().rev() {
+        stmts.insert(
+            idx,
+            WrappedAstStatement {
+                statement: AstStatement::Comment(text),
+                origin: AstStatementOrigin::Unknown,
+                comment: None,
+            },
+        );
+    }
+}
+
+fn is_error_check_on_var(var_id: AstVariableId, cond: &AstExpression) -> bool {
+    if let AstExpression::BinaryOp(op, left, right) = cond {
+        let is_check_op = matches!(
+            op,
+            AstBinaryOperator::Less
+                | AstBinaryOperator::Equal
+                | AstBinaryOperator::NotEqual
+                | AstBinaryOperator::LessEqual
+        );
+        if !is_check_op {
+            return false;
+        }
+        let has_var = matches!(&left.item, AstExpression::Variable(_, v) if *v == var_id)
+            || matches!(&right.item, AstExpression::Variable(_, v) if *v == var_id);
+        let has_zero_or_neg =
+            expr_is_small_constant(&left.item) || expr_is_small_constant(&right.item);
+        return has_var && has_zero_or_neg;
+    }
+    false
+}
+
+fn expr_is_small_constant(expr: &AstExpression) -> bool {
+    matches!(
+        expr,
+        AstExpression::Literal(AstLiteral::Int(v)) if *v <= 0 && *v >= -4096
+    ) || matches!(expr, AstExpression::Literal(AstLiteral::UInt(0)))
+        || matches!(expr, AstExpression::Literal(AstLiteral::Int(0)))
+}
+
+fn then_branch_returns_or_propagates(
+    branch: &[WrappedAstStatement],
+    var_id: AstVariableId,
+) -> bool {
+    // The then-branch should contain a Return statement (possibly with the var).
+    branch.iter().any(|s| match &s.statement {
+        AstStatement::Return(Some(expr)) => {
+            matches!(&expr.item, AstExpression::Variable(_, v) if *v == var_id)
+                || expr_is_small_constant(&expr.item)
+        }
+        AstStatement::Return(None) => true,
+        _ => false,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// L918: Behavioral clustering for naming — detect dominant API call
+// category in a function body and annotate the function accordingly.
+// ---------------------------------------------------------------------------
+
+fn annotate_behavioral_cluster(stmts: &mut Vec<WrappedAstStatement>) {
+    let mut counts = [0u32; 8]; // crypto, io, string, math, memory, network, thread, ui
+    collect_call_categories(stmts, &mut counts);
+    let total: u32 = counts.iter().sum();
+    if total < 3 {
+        return;
+    }
+    let categories = [
+        "crypto/hashing",
+        "file/IO",
+        "string manipulation",
+        "math/numeric",
+        "memory management",
+        "network/socket",
+        "threading/sync",
+        "UI/windowing",
+    ];
+    let max_idx = counts
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, c)| *c)
+        .map(|(i, _)| i)
+        .unwrap_or(0);
+    // Dominant category must be >= 40% of calls and at least 2 occurrences.
+    if counts[max_idx] >= 2 && (counts[max_idx] as f64 / total as f64) >= 0.4 {
+        let already = stmts.iter().any(
+            |s| matches!(&s.statement, AstStatement::Comment(c) if c.contains("dominant API category")),
+        );
+        if !already {
+            stmts.insert(
+                0,
+                WrappedAstStatement {
+                    statement: AstStatement::Comment(format!(
+                        "// dominant API category: {} ({}/{} calls)",
+                        categories[max_idx], counts[max_idx], total
+                    )),
+                    origin: AstStatementOrigin::Unknown,
+                    comment: None,
+                },
+            );
+        }
+    }
+}
+
+fn collect_call_categories(stmts: &[WrappedAstStatement], counts: &mut [u32; 8]) {
+    for stmt in stmts {
+        match &stmt.statement {
+            AstStatement::Call(call) => categorize_call(call, counts),
+            AstStatement::Assignment(_, rhs) => {
+                if let AstExpression::Call(call) = &rhs.item {
+                    categorize_call(call, counts);
+                }
+            }
+            AstStatement::Declaration(_, Some(rhs)) => {
+                if let AstExpression::Call(call) = &rhs.item {
+                    categorize_call(call, counts);
+                }
+            }
+            AstStatement::If(_, t, f) => {
+                collect_call_categories(t, counts);
+                if let Some(f) = f {
+                    collect_call_categories(f, counts);
+                }
+            }
+            AstStatement::While(_, body) | AstStatement::Block(body) => {
+                collect_call_categories(body, counts)
+            }
+            AstStatement::For(_, _, _, body) => collect_call_categories(body, counts),
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases {
+                    collect_call_categories(case_body, counts);
+                }
+                if let Some(d) = default {
+                    collect_call_categories(d, counts);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn categorize_call(call: &AstCall, counts: &mut [u32; 8]) {
+    let name = match call {
+        AstCall::Unknown(name, _) => name.to_ascii_lowercase(),
+        _ => return,
+    };
+    // 0: crypto/hashing
+    if name.contains("aes")
+        || name.contains("sha")
+        || name.contains("md5")
+        || name.contains("hmac")
+        || name.contains("crypt")
+        || name.contains("cipher")
+        || name.contains("hash")
+        || name.contains("pbkdf")
+        || name.contains("chacha")
+        || name.contains("poly1305")
+    {
+        counts[0] += 1;
+    }
+    // 1: file/IO
+    if name.contains("fopen")
+        || name.contains("fclose")
+        || name.contains("fread")
+        || name.contains("fwrite")
+        || name.contains("fseek")
+        || name.contains("ftell")
+        || name.starts_with("read")
+        || name.starts_with("write")
+        || name.starts_with("open")
+        || name.starts_with("close")
+        || name.contains("ioctl")
+        || name.contains("fcntl")
+    {
+        counts[1] += 1;
+    }
+    // 2: string manipulation
+    if name.starts_with("str")
+        || name.starts_with("wcs")
+        || name.contains("sprintf")
+        || name.contains("sscanf")
+        || name.contains("memcpy")
+        || name.contains("memmove")
+        || name.contains("memset")
+        || name.contains("memcmp")
+    {
+        counts[2] += 1;
+    }
+    // 3: math/numeric
+    if name.starts_with("sin")
+        || name.starts_with("cos")
+        || name.starts_with("tan")
+        || name.starts_with("sqrt")
+        || name.starts_with("pow")
+        || name.starts_with("log")
+        || name.starts_with("exp")
+        || name.starts_with("ceil")
+        || name.starts_with("floor")
+        || name.starts_with("fabs")
+        || name.starts_with("fmod")
+    {
+        counts[3] += 1;
+    }
+    // 4: memory management
+    if name.contains("malloc")
+        || name.contains("calloc")
+        || name.contains("realloc")
+        || name == "free"
+        || name.contains("alloc")
+        || name.contains("mmap")
+        || name.contains("munmap")
+        || name.contains("virtualalloc")
+        || name.contains("virtualfree")
+        || name.contains("heapalloc")
+        || name.contains("heapfree")
+    {
+        counts[4] += 1;
+    }
+    // 5: network/socket
+    if name.contains("socket")
+        || name.contains("connect")
+        || name.contains("bind")
+        || name.contains("listen")
+        || name.contains("accept")
+        || name.starts_with("send")
+        || name.starts_with("recv")
+        || name.contains("getaddrinfo")
+        || name.contains("gethostby")
+        || name.contains("select")
+        || name.contains("poll")
+        || name.contains("epoll")
+    {
+        counts[5] += 1;
+    }
+    // 6: threading/sync
+    if name.contains("pthread")
+        || name.contains("mutex")
+        || name.contains("semaphore")
+        || name.contains("critical_section")
+        || name.contains("createthread")
+        || name.contains("waitfor")
+        || name.contains("signal")
+        || name.contains("condvar")
+    {
+        counts[6] += 1;
+    }
+    // 7: UI/windowing
+    if name.contains("createwindow")
+        || name.contains("showwindow")
+        || name.contains("messagebox")
+        || name.contains("getmessage")
+        || name.contains("dispatchmessage")
+        || name.contains("defwindowproc")
+        || name.contains("postmessage")
+        || name.contains("sendmessage")
+    {
+        counts[7] += 1;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// L485: Bitfield pack/unpack reconstruction — detect multiple mask/shift
+// extractions from the same variable, suggesting bitfield access patterns.
+// ---------------------------------------------------------------------------
+
+fn annotate_bitfield_patterns(stmts: &mut Vec<WrappedAstStatement>) {
+    // Collect (var_id, mask_or_shift_count) pairs across the function body.
+    let mut var_extractions: hashbrown::HashMap<AstVariableId, u32> = hashbrown::HashMap::new();
+    count_bitfield_extractions(stmts, &mut var_extractions);
+    // If any variable has 3+ distinct mask/shift extractions, annotate.
+    let candidates: Vec<AstVariableId> = var_extractions
+        .into_iter()
+        .filter(|(_, count)| *count >= 3)
+        .map(|(var_id, _)| var_id)
+        .collect();
+    if candidates.is_empty() {
+        return;
+    }
+    let already = stmts
+        .iter()
+        .any(|s| matches!(&s.statement, AstStatement::Comment(c) if c.contains("bitfield")));
+    if already {
+        return;
+    }
+    stmts.insert(
+        0,
+        WrappedAstStatement {
+            statement: AstStatement::Comment(format!(
+                "// likely bitfield access pattern ({} variable(s) with repeated mask/shift extraction)",
+                candidates.len()
+            )),
+            origin: AstStatementOrigin::Unknown,
+            comment: None,
+        },
+    );
+}
+
+fn count_bitfield_extractions(
+    stmts: &[WrappedAstStatement],
+    map: &mut hashbrown::HashMap<AstVariableId, u32>,
+) {
+    for stmt in stmts {
+        match &stmt.statement {
+            AstStatement::Assignment(_, rhs) => {
+                check_bitfield_expr(&rhs.item, map);
+            }
+            AstStatement::Declaration(_, Some(rhs)) => {
+                check_bitfield_expr(&rhs.item, map);
+            }
+            AstStatement::If(cond, t, f) => {
+                check_bitfield_expr(&cond.item, map);
+                count_bitfield_extractions(t, map);
+                if let Some(f) = f {
+                    count_bitfield_extractions(f, map);
+                }
+            }
+            AstStatement::While(cond, body) => {
+                check_bitfield_expr(&cond.item, map);
+                count_bitfield_extractions(body, map);
+            }
+            AstStatement::For(_, cond, _, body) => {
+                check_bitfield_expr(&cond.item, map);
+                count_bitfield_extractions(body, map);
+            }
+            AstStatement::Block(body) => count_bitfield_extractions(body, map),
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases {
+                    count_bitfield_extractions(case_body, map);
+                }
+                if let Some(d) = default {
+                    count_bitfield_extractions(d, map);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Detect patterns like `(var >> N) & M` or `(var & M) >> N` — bitfield extraction.
+fn check_bitfield_expr(expr: &AstExpression, map: &mut hashbrown::HashMap<AstVariableId, u32>) {
+    match expr {
+        // (something) & mask — check if `something` involves a shift of a variable
+        AstExpression::BinaryOp(AstBinaryOperator::BitAnd, left, right) => {
+            // Either side could be the mask constant
+            if let Some(var_id) = extract_shifted_var(&left.item) {
+                *map.entry(var_id).or_insert(0) += 1;
+            } else if let Some(var_id) = extract_shifted_var(&right.item) {
+                *map.entry(var_id).or_insert(0) += 1;
+            }
+            // Also: var & MASK (no shift) counts if MASK is not all-ones
+            if is_mask_constant(&right.item) {
+                if let AstExpression::Variable(_, var_id) = &left.item {
+                    *map.entry(*var_id).or_insert(0) += 1;
+                }
+            }
+            if is_mask_constant(&left.item) {
+                if let AstExpression::Variable(_, var_id) = &right.item {
+                    *map.entry(*var_id).or_insert(0) += 1;
+                }
+            }
+        }
+        // (var >> N) without mask — still a potential bitfield extraction
+        AstExpression::BinaryOp(AstBinaryOperator::RightShift, inner, _) => {
+            if let AstExpression::Variable(_, var_id) = &inner.item {
+                *map.entry(*var_id).or_insert(0) += 1;
+            }
+        }
+        _ => {}
+    }
+}
+
+fn extract_shifted_var(expr: &AstExpression) -> Option<AstVariableId> {
+    if let AstExpression::BinaryOp(AstBinaryOperator::RightShift, inner, _) = expr {
+        if let AstExpression::Variable(_, var_id) = &inner.item {
+            return Some(*var_id);
+        }
+    }
+    None
+}
+
+fn is_mask_constant(expr: &AstExpression) -> bool {
+    match expr {
+        AstExpression::Literal(AstLiteral::Int(v)) => {
+            let v = *v as u64;
+            // Common masks: 0x1, 0x3, 0x7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, 0xFFFF, etc.
+            v > 0 && v < u64::MAX && (v & (v + 1)) == 0
+        }
+        AstExpression::Literal(AstLiteral::UInt(v)) => {
+            *v > 0 && *v < u64::MAX && (*v & (*v + 1)) == 0
+        }
+        _ => false,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// L916: Domain vocabulary seeding — extract string literals from function
+// body and annotate likely domain/purpose based on keywords.
+// ---------------------------------------------------------------------------
+
+fn annotate_domain_vocabulary(stmts: &mut Vec<WrappedAstStatement>) {
+    let mut strings: Vec<String> = Vec::new();
+    collect_string_literals(stmts, &mut strings);
+    if strings.is_empty() {
+        return;
+    }
+    let mut domains: Vec<&str> = Vec::new();
+    for s in &strings {
+        let lower = s.to_ascii_lowercase();
+        if lower.contains("http")
+            || lower.contains("url")
+            || lower.contains("uri")
+            || lower.contains("://")
+        {
+            if !domains.contains(&"network/URL") {
+                domains.push("network/URL");
+            }
+        }
+        if lower.contains("password")
+            || lower.contains("token")
+            || lower.contains("secret")
+            || lower.contains("apikey")
+            || lower.contains("api_key")
+            || lower.contains("credential")
+        {
+            if !domains.contains(&"authentication/secrets") {
+                domains.push("authentication/secrets");
+            }
+        }
+        if lower.contains("encrypt")
+            || lower.contains("decrypt")
+            || lower.contains("cipher")
+            || lower.contains("aes")
+            || lower.contains("rsa")
+            || lower.contains("sha")
+        {
+            if !domains.contains(&"cryptography") {
+                domains.push("cryptography");
+            }
+        }
+        if lower.contains("sql")
+            || lower.contains("select ")
+            || lower.contains("insert ")
+            || lower.contains("database")
+            || lower.contains("query")
+        {
+            if !domains.contains(&"database/SQL") {
+                domains.push("database/SQL");
+            }
+        }
+        if lower.contains("cookie")
+            || lower.contains("session")
+            || lower.contains("header")
+            || lower.contains("content-type")
+            || lower.contains("user-agent")
+        {
+            if !domains.contains(&"HTTP/web") {
+                domains.push("HTTP/web");
+            }
+        }
+        if lower.contains("registry")
+            || lower.contains("hkey_")
+            || lower.contains("regopen")
+            || lower.contains("regedit")
+        {
+            if !domains.contains(&"Windows registry") {
+                domains.push("Windows registry");
+            }
+        }
+        if (lower.contains('/')
+            && (lower.contains("/etc/")
+                || lower.contains("/usr/")
+                || lower.contains("/tmp/")
+                || lower.contains("/var/")))
+            || lower.contains("c:\\")
+            || lower.contains("c:/")
+        {
+            if !domains.contains(&"filesystem paths") {
+                domains.push("filesystem paths");
+            }
+        }
+    }
+    if domains.is_empty() {
+        return;
+    }
+    let already = stmts.iter().any(
+        |s| matches!(&s.statement, AstStatement::Comment(c) if c.contains("domain vocabulary")),
+    );
+    if already {
+        return;
+    }
+    stmts.insert(
+        0,
+        WrappedAstStatement {
+            statement: AstStatement::Comment(format!(
+                "// domain vocabulary hints: {}",
+                domains.join(", ")
+            )),
+            origin: AstStatementOrigin::Unknown,
+            comment: None,
+        },
+    );
+}
+
+fn collect_string_literals(stmts: &[WrappedAstStatement], out: &mut Vec<String>) {
+    for stmt in stmts {
+        collect_string_literals_from_stmt(stmt, out);
+    }
+}
+
+fn collect_string_literals_from_stmt(stmt: &WrappedAstStatement, out: &mut Vec<String>) {
+    match &stmt.statement {
+        AstStatement::Assignment(_, rhs) => collect_string_literals_from_expr(&rhs.item, out),
+        AstStatement::Declaration(_, Some(rhs)) => {
+            collect_string_literals_from_expr(&rhs.item, out)
+        }
+        AstStatement::Call(call) => collect_string_literals_from_call(call, out),
+        AstStatement::If(cond, t, f) => {
+            collect_string_literals_from_expr(&cond.item, out);
+            collect_string_literals(t, out);
+            if let Some(f) = f {
+                collect_string_literals(f, out);
+            }
+        }
+        AstStatement::While(cond, body) => {
+            collect_string_literals_from_expr(&cond.item, out);
+            collect_string_literals(body, out);
+        }
+        AstStatement::For(_, cond, _, body) => {
+            collect_string_literals_from_expr(&cond.item, out);
+            collect_string_literals(body, out);
+        }
+        AstStatement::Block(body) => collect_string_literals(body, out),
+        AstStatement::Switch(_, cases, default) => {
+            for (_, case_body) in cases {
+                collect_string_literals(case_body, out);
+            }
+            if let Some(d) = default {
+                collect_string_literals(d, out);
+            }
+        }
+        AstStatement::Return(Some(expr)) => collect_string_literals_from_expr(&expr.item, out),
+        _ => {}
+    }
+}
+
+fn collect_string_literals_from_expr(expr: &AstExpression, out: &mut Vec<String>) {
+    match expr {
+        AstExpression::Literal(AstLiteral::String(s)) => out.push(s.clone()),
+        AstExpression::Call(call) => collect_string_literals_from_call(call, out),
+        AstExpression::BinaryOp(_, left, right) => {
+            collect_string_literals_from_expr(&left.item, out);
+            collect_string_literals_from_expr(&right.item, out);
+        }
+        AstExpression::UnaryOp(_, inner) => {
+            collect_string_literals_from_expr(&inner.item, out);
+        }
+        AstExpression::Cast(_, inner) => {
+            collect_string_literals_from_expr(&inner.item, out);
+        }
+        _ => {}
+    }
+}
+
+fn collect_string_literals_from_call(call: &AstCall, out: &mut Vec<String>) {
+    let args = match call {
+        AstCall::Unknown(_, args) => args,
+        AstCall::Function { args, .. } => args,
+        AstCall::Variable { args, .. } => args,
+        _ => return,
+    };
+    for arg in args {
+        collect_string_literals_from_expr(&arg.item, out);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// L375: Config/string xref mining — extract likely config keys, paths, URLs
+// from string literals and annotate their usage context.
+// ---------------------------------------------------------------------------
+
+fn annotate_config_string_xrefs(stmts: &mut Vec<WrappedAstStatement>) {
+    let mut config_strings: Vec<String> = Vec::new();
+    find_config_strings(stmts, &mut config_strings);
+    if config_strings.is_empty() {
+        return;
+    }
+    let already = stmts.iter().any(
+        |s| matches!(&s.statement, AstStatement::Comment(c) if c.contains("config/string references")),
+    );
+    if already {
+        return;
+    }
+    // Show up to 5 config strings.
+    let display: Vec<&str> = config_strings.iter().map(|s| s.as_str()).take(5).collect();
+    let suffix = if config_strings.len() > 5 {
+        format!(" (+{} more)", config_strings.len() - 5)
+    } else {
+        String::new()
+    };
+    stmts.insert(
+        0,
+        WrappedAstStatement {
+            statement: AstStatement::Comment(format!(
+                "// config/string references: [{}]{}",
+                display.join(", "),
+                suffix
+            )),
+            origin: AstStatementOrigin::Unknown,
+            comment: None,
+        },
+    );
+}
+
+fn find_config_strings(stmts: &[WrappedAstStatement], out: &mut Vec<String>) {
+    let mut all_strings: Vec<String> = Vec::new();
+    collect_string_literals(stmts, &mut all_strings);
+    for s in all_strings {
+        if is_config_like_string(&s) && !out.contains(&s) {
+            out.push(s);
+        }
+    }
+}
+
+fn is_config_like_string(s: &str) -> bool {
+    // Config keys: KEY=value, key.subkey, key_name
+    if s.contains("://") {
+        return true; // URL
+    }
+    if s.starts_with('/') && s.len() > 2 && s.chars().filter(|c| *c == '/').count() >= 2 {
+        return true; // Unix path
+    }
+    if s.len() >= 2 && s.chars().nth(1) == Some(':') && (s.starts_with('C') || s.starts_with('c')) {
+        return true; // Windows path
+    }
+    // Environment variable or config key patterns
+    if s.contains('=') && s.len() < 200 && !s.contains(' ') {
+        return true;
+    }
+    // Dotted config key: "app.setting.name"
+    if s.len() > 3
+        && s.len() < 100
+        && !s.contains(' ')
+        && s.chars().filter(|c| *c == '.').count() >= 2
+    {
+        return true;
+    }
+    false
+}
+
+// ---------------------------------------------------------------------------
+// L718: Resource cleanup normalization — detect sequences of resource-release
+// calls (free/close/release/delete) and annotate as cleanup block.
+// ---------------------------------------------------------------------------
+
+fn annotate_resource_cleanup(stmts: &mut Vec<WrappedAstStatement>) {
+    // Look for sequences of 2+ consecutive cleanup calls near the end of the
+    // statement list (or before a return).
+    let len = stmts.len();
+    if len < 2 {
+        return;
+    }
+    let mut insertions: Vec<(usize, String)> = Vec::new();
+    let mut i = 0;
+    while i < len {
+        let mut run = 0;
+        let start = i;
+        while i < len && is_cleanup_call(&stmts[i].statement) {
+            run += 1;
+            i += 1;
+        }
+        if run >= 2 {
+            insertions.push((start, format!("// resource cleanup ({run} release calls)")));
+        }
+        i += 1;
+    }
+    for (idx, text) in insertions.into_iter().rev() {
+        stmts.insert(
+            idx,
+            WrappedAstStatement {
+                statement: AstStatement::Comment(text),
+                origin: AstStatementOrigin::Unknown,
+                comment: None,
+            },
+        );
+    }
+    // Also recurse into sub-blocks.
+    for stmt in stmts.iter_mut() {
+        match &mut stmt.statement {
+            AstStatement::If(_, t, f) => {
+                annotate_resource_cleanup(t);
+                if let Some(f) = f {
+                    annotate_resource_cleanup(f);
+                }
+            }
+            AstStatement::While(_, body) | AstStatement::Block(body) => {
+                annotate_resource_cleanup(body);
+            }
+            AstStatement::For(_, _, _, body) => annotate_resource_cleanup(body),
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases {
+                    annotate_resource_cleanup(case_body);
+                }
+                if let Some(d) = default {
+                    annotate_resource_cleanup(d);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn is_cleanup_call(stmt: &AstStatement) -> bool {
+    let call = match stmt {
+        AstStatement::Call(call) => call,
+        _ => return false,
+    };
+    let name = match call {
+        AstCall::Unknown(name, _) => name.to_ascii_lowercase(),
+        _ => return false,
+    };
+    name == "free"
+        || name.contains("close")
+        || name.contains("release")
+        || name.contains("destroy")
+        || name.contains("delete")
+        || name.contains("unref")
+        || name.contains("dealloc")
+        || name.contains("munmap")
+        || name.contains("freeaddrinfo")
+        || name.contains("closehandle")
+        || name.contains("regclosekey")
+}
+
+// ---------------------------------------------------------------------------
+// L908: Sanitizer shadow-memory modeling — detect ASan/TSan/MSan shadow
+// address computation patterns and annotate.
+// ---------------------------------------------------------------------------
+
+fn annotate_sanitizer_shadow(stmts: &mut Vec<WrappedAstStatement>) {
+    let mut found = false;
+    check_sanitizer_patterns(stmts, &mut found);
+    if !found {
+        return;
+    }
+    let already = stmts.iter().any(
+        |s| matches!(&s.statement, AstStatement::Comment(c) if c.contains("sanitizer shadow")),
+    );
+    if already {
+        return;
+    }
+    stmts.insert(
+        0,
+        WrappedAstStatement {
+            statement: AstStatement::Comment(
+                "// contains sanitizer shadow-memory access pattern (likely ASan/MSan instrumentation)"
+                    .to_string(),
+            ),
+            origin: AstStatementOrigin::Unknown,
+            comment: None,
+        },
+    );
+}
+
+fn check_sanitizer_patterns(stmts: &[WrappedAstStatement], found: &mut bool) {
+    if *found {
+        return;
+    }
+    for stmt in stmts {
+        if *found {
+            return;
+        }
+        match &stmt.statement {
+            AstStatement::Assignment(_, rhs) => {
+                if expr_has_shadow_pattern(&rhs.item) {
+                    *found = true;
+                }
+            }
+            AstStatement::Declaration(_, Some(rhs)) => {
+                if expr_has_shadow_pattern(&rhs.item) {
+                    *found = true;
+                }
+            }
+            AstStatement::If(cond, t, f) => {
+                if expr_has_shadow_pattern(&cond.item) {
+                    *found = true;
+                }
+                check_sanitizer_patterns(t, found);
+                if let Some(f) = f {
+                    check_sanitizer_patterns(f, found);
+                }
+            }
+            AstStatement::While(cond, body) => {
+                if expr_has_shadow_pattern(&cond.item) {
+                    *found = true;
+                }
+                check_sanitizer_patterns(body, found);
+            }
+            AstStatement::For(_, cond, _, body) => {
+                if expr_has_shadow_pattern(&cond.item) {
+                    *found = true;
+                }
+                check_sanitizer_patterns(body, found);
+            }
+            AstStatement::Block(body) => check_sanitizer_patterns(body, found),
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases {
+                    check_sanitizer_patterns(case_body, found);
+                }
+                if let Some(d) = default {
+                    check_sanitizer_patterns(d, found);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Detect ASan-like shadow address pattern: `*(addr >> 3) + SHADOW_OFFSET`
+/// or `addr >> 3` combined with a large constant offset (0x7fff8000 etc.)
+fn expr_has_shadow_pattern(expr: &AstExpression) -> bool {
+    match expr {
+        // *(expr >> 3 + offset) or deref of shifted address
+        AstExpression::Deref(inner) => {
+            if let AstExpression::BinaryOp(AstBinaryOperator::Add, left, right) = &inner.item {
+                let has_shift = is_shadow_shift(&left.item) || is_shadow_shift(&right.item);
+                let has_large_const = is_shadow_offset(&left.item) || is_shadow_offset(&right.item);
+                return has_shift && has_large_const;
+            }
+            is_shadow_shift(&inner.item)
+        }
+        AstExpression::BinaryOp(AstBinaryOperator::Add, left, right) => {
+            let has_shift = is_shadow_shift(&left.item) || is_shadow_shift(&right.item);
+            let has_large_const = is_shadow_offset(&left.item) || is_shadow_offset(&right.item);
+            has_shift && has_large_const
+        }
+        _ => false,
+    }
+}
+
+fn is_shadow_shift(expr: &AstExpression) -> bool {
+    // addr >> 3 (ASan) or addr >> 1 (MSan character-level)
+    if let AstExpression::BinaryOp(AstBinaryOperator::RightShift, _, shift_amt) = expr {
+        if let AstExpression::Literal(AstLiteral::Int(n)) = &shift_amt.item {
+            return *n == 3 || *n == 1;
+        }
+        if let AstExpression::Literal(AstLiteral::UInt(n)) = &shift_amt.item {
+            return *n == 3 || *n == 1;
+        }
+    }
+    false
+}
+
+fn is_shadow_offset(expr: &AstExpression) -> bool {
+    // Common ASan shadow offsets: 0x7fff8000, 0x20000000, 0x100000000000, etc.
+    match expr {
+        AstExpression::Literal(AstLiteral::Int(v)) => {
+            let v = *v as u64;
+            v >= 0x1000_0000 && (v & 0xFFF) == 0
+        }
+        AstExpression::Literal(AstLiteral::UInt(v)) => *v >= 0x1000_0000 && (*v & 0xFFF) == 0,
+        _ => false,
     }
 }

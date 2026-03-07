@@ -8,16 +8,16 @@
 - [x] Recursive traversal disassembly — Follow control-flow targets to decode only reachable code; misses hidden/obfuscated code.
 - [ ] Hybrid disassembly — Combine sweep + traversal with conflict resolution and probability scoring.
   > 디스어셈블러 코어 재설계 필요 — 현재 재귀 순회 방식과 병행 불가
-- [ ] Function boundary detection — Infer function starts/ends from call targets, prologues, epilogues, and fallthrough patterns.
-  > CFG/블록 분석 코어 변경 필요
+- [~] Function boundary detection — Infer function starts/ends from call targets, prologues, epilogues, and fallthrough patterns.
+  > ir_function.rs에서 entry block의 prologue 패턴(push rbp/mov rbp,rsp, FPO sub rsp, CET endbr64) 감지 및 로그 출력. call target 기반 함수 경계 추론은 block_grouper에서 수행. 고급 fallthrough 패턴은 미구현
 - [x] Prologue/epilogue pattern matching — Detect common stack frame setup/teardown idioms per compiler/ABI.
 - [x] Tail-call detection — Recognize jump-as-call patterns and preserve call semantics in output.
 - [x] Thunk/wrapper collapsing — Identify tiny forwarding functions and collapse or annotate them.
 - [~] Import/IAT/PLT resolution — Bind external call sites to known API symbols for better names and types.
 - [~] Signature-based library identification — Match standard runtime/library routines (e.g., memcpy/memset) by byte/IR patterns.
   > 호출 이름 기반 memcpy/memset/strcpy 등 표준 라이브러리 함수 감지 및 주석 추가 (바이트 패턴 매칭 미구현)
-- [ ] Compiler/optimization fingerprinting — Detect compiler family/flags to tune heuristics (prologues, idioms, EH layout).
-  > 바이너리 분석 레이어 필요
+- [~] Compiler/optimization fingerprinting — Detect compiler family/flags to tune heuristics (prologues, idioms, EH layout).
+  > ir_function.rs에서 entry block 명령어 패턴으로 GCC/Clang(endbr64), MSVC(shadow space mov), leaf function 감지 및 로그 출력. EH 레이아웃/최적화 플래그 감지는 미구현
 - [~] Instruction decoding normalization — Canonicalize instruction variants (aliases, addressing modes) before lifting.
 - [~] Architecture/ABI modeling — Encode calling conventions, callee/caller-saved regs, stack alignment, red zones.
 - [x] CFG construction — Build basic blocks and directed edges from branches/calls/returns.
@@ -27,21 +27,22 @@
 - [~] Control-dependence analysis — Determine which predicates guard which statements for clean high-level control.
   > IR CFG 기준 control-dependence 계산 구현 완료 (dominator.rs::ControlDependence). AST statement origin이 block topology를 보존하지 않아 cleanup_control_flow/loop_analyzation 연결은 미구현
 - [~] Indirect branch target recovery — Resolve computed jumps via dataflow, value sets, and table recognition.
-- [ ] Jump table detection — Recognize switch tables (bounds checks + indexed loads + indirect jump).
-  > IR/디스어셈블러 레이어 변경 필요
+- [~] Jump table detection — Recognize switch tables (bounds checks + indexed loads + indirect jump).
+  > switch_reconstruction.rs에서 if-else chain을 switch로 재구성. IR 레벨 bounds check + indexed load + indirect jump 직접 감지는 미구현
 - [x] Switch reconstruction — Emit switch/case from jump tables or compare chains with case clustering.
 - [~] Exception-handling recovery — Parse unwind metadata and reconstruct try/catch/finally regions and edges.
   > auto_comment.rs에서 __cxa_throw/__cxa_begin_catch 등 C++ EH 런타임 호출 감지 및 주석 추가 (메타데이터 파서 미구현)
 - [~] Setjmp/longjmp modeling — Special-case non-local control flow to avoid misleading structured output.
   > setjmp/longjmp/sigsetjmp 호출 감지 및 주석 추가 (제어흐름 모델링 미구현)
 - [ ] SSA conversion — Translate IR to SSA form to simplify analysis and reconstruction.
-  > IR 프레임워크 전면 변경 필요
-- [ ] Phi-node placement — Insert merges at CFG joins to represent value merging cleanly.
-  > SSA 선행 필요
+  > IR 프레임워크 전면 변경 필요. dominance frontier 계산은 구현 완료 (dominator.rs::DominanceFrontier) — phi 삽입 위치 결정 가능. 실제 SSA 변환은 IR 자체가 SSA 형태(phi 노드, 버전 관리)를 지원하도록 재설계 필요
+- [~] Phi-node placement — Insert merges at CFG joins to represent value merging cleanly.
+  > dominator.rs에 DominanceFrontier 구현 완료 — phi 삽입 위치 결정 가능. 실제 phi 노드 삽입은 SSA IR 형태 선행 필요
 - [x] Def-use / use-def chains — Track where values come from and where they flow for variable/type recovery.
 - [~] Reaching definitions — Determine which assignments may reach each use (critical for decompilation accuracy).
 - [~] Liveness analysis — Compute live ranges to create source-like variables and reduce temporary noise.
-- [ ] Value numbering — Identify equivalent expressions to eliminate redundancy and stabilize output.
+- [~] Value numbering — Identify equivalent expressions to eliminate redundancy and stabilize output.
+  > common_subexpression_elimination.rs에서 해시 기반 CSE로 동치 표현식 제거 구현. GVN(Global Value Numbering)은 SSA 형태 선행 필요
   > SSA 형태 선행 시 효과적 — 현재는 CSE로 대체
 - [x] Constant propagation — Push constants through IR to simplify conditions, addresses, and expressions.
 - [x] Constant folding — Evaluate constant expressions (including bit tricks) into simpler literals.
@@ -58,8 +59,8 @@
 - [x] Ternary operator recovery — Recognize select/phi patterns to emit cond ? a : b.
 - [ ] Region/structural analysis — Convert CFG into structured if/else, while, for, do-while regions.
   > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
-- [ ] Reducibility transformation — Apply node splitting/edge rewriting to structure irreducible CFGs when possible.
-  > 비환원 CFG 노드 분할 알고리즘 구현 필요 — 도미네이터 트리는 구현 완료 (dominator.rs)
+- [~] Reducibility transformation — Apply node splitting/edge rewriting to structure irreducible CFGs when possible.
+  > dominator.rs에 CFG::is_reducible() 환원성 검사 구현 완료. 비환원 CFG에 대한 노드 분할/간선 재작성 변환은 미구현
 - [x] Loop detection via back-edges — Identify natural loops using dominators and back-edge discovery.
 - [x] Loop reconstruction heuristics — Choose while vs do-while vs for based on header/test placement.
 - [x] Induction variable analysis — Detect counters/strides/bounds to emit for (i=…; …; i+=…).
@@ -69,11 +70,11 @@
 - [x] Goto containment heuristics — Use labeled blocks sparingly; prefer structured constructs when safe.
 - [~] Stack pointer tracking — Track SP deltas across blocks to recover frame layout even without frame pointers.
 - [ ] Frame-pointer omission handling — Infer locals/spills when compiler omits FP (FPO) and uses SP-relative addressing.
-  > 스택 레이아웃 분석 코어 변경 필요
+  > 스택 레이아웃 분석 코어 변경 필요. ir_function에서 FPO prologue 감지는 구현 완료 — 실제 SP-relative 로컬 추론은 스택 델타 추적 프레임워크 필요
 - [ ] Stack realignment recovery — Detect alignment prologues/epilogues and suppress them in high-level output.
-  > 스택 프레임 분석기 구현 필요 — SP 기반 프레임 레이아웃 복구 알고리즘 없음
+  > SP 기반 프레임 레이아웃 복구 알고리즘 필요. `and rsp, -16` 패턴 감지는 prologue detection에서 확장 가능하나, 출력 억제는 AST 변환 필요
 - [ ] Stack slot coalescing (reverse) — Split merged stack slots back into distinct variables using lifetimes/types.
-  > 스택 슬롯 생명주기/타입 분석기 구현 필요
+  > 스택 슬롯 생명주기 분석 필요. 현재 variable_coalescing.rs에서 레지스터 기반 병합은 수행하나 스택 슬롯 분할은 미구현
 - [x] Register-to-variable recovery — Turn register lifetimes into named locals and parameters.
 - [x] Temporary elimination — Merge short-lived SSA temps into expressions to look like C code.
 - [x] Parameter recovery — Infer which incoming values are true parameters (registers/stack slots) vs incidental.
@@ -89,13 +90,13 @@
 - [ ] Summary-based interprocedural analysis — Build per-function summaries (effects, returns, param usage) to scale.
   > 함수별 요약 프레임워크 필요
 - [ ] Context-sensitive analysis — Distinguish behaviors per call site for more precise type/target recovery.
-  > 호출 컨텍스트 프레임워크 필요
+  > 호출 컨텍스트 프레임워크 필요. call_graph.rs에서 함수간 호출 관계는 추적하나 call-site별 동작 구분은 미구현
 - [ ] Points-to analysis — Approximate what pointers can reference to improve indirect load/store understanding.
-  > 포인터 분석 프레임워크 필요
+  > 포인터 분석 프레임워크 필요. Andersen/Steensgaard 스타일 분석을 위해 IR에 allocation site 추적 + 포인터 제약 수집 인프라 선행
 - [ ] Alias analysis — Determine when two memory references may overlap to drive simplification safely.
-  > 포인터 분석 선행 필요
+  > points-to 분석 선행 필요. 현재 dead_store_elimination/copy_propagation에서 보수적 별칭 가정 사용
 - [ ] Memory SSA — Bring loads/stores into SSA-like form to reason about memory dependencies.
-  > IR SSA 프레임워크 선행 필요
+  > SSA 변환(L37) + alias 분석(L95) 선행 필요. dominance frontier 구현 완료로 MemorySSA phi 삽입 위치는 결정 가능
 - [ ] Value-set analysis — Track possible integer/address ranges to resolve indirect jumps and bounds checks.
   > 추상 해석 프레임워크 필요
 - [ ] Range analysis — Infer variable ranges to simplify conditions and reconstruct comparisons.
@@ -113,16 +114,16 @@
 - [~] Enum inference — Identify constant sets used in compares/switches and label them as enums.
   > auto_comment.rs에서 switch 케이스 3개 이상 시 상수 집합 주석 추가 (이름 부여는 미구현)
 - [x] String literal propagation — Track string references to improve variable/function naming and format inference.
-- [ ] Format-string driven typing — Infer argument types from printf/scanf-like format strings.
-  > 바이너리 메모리에서 문자열 리터럴 추출 인프라 선행 필요 — AST에 문자열 내용 없음
+- [~] Format-string driven typing — Infer argument types from printf/scanf-like format strings.
+  > auto_comment에서 printf/scanf 계열 호출의 문자열 리터럴 인자에서 포맷 지정자 파싱하여 예상 인자 타입 주석 생성. 타입 시스템 반영은 미구현
 - [ ] API prototype seeding — Use known library prototypes to seed parameter/return types at call sites.
   > 외부 프로토타입 DB 필요 — 현재 인프라 없음
 - [ ] Global variable recovery — Identify globals/TLS, their references, and assign stable names/types.
   > 전역 변수 분석기 필요
 - [~] TLS recovery — Recognize thread-local storage access sequences (GS/FS, TLV) and model them as TLS vars.
   > auto_comment.rs에서 TlsAlloc/TlsGetValue/pthread_getspecific 등 TLS API 호출 감지 및 주석 추가
-- [ ] Relocation-aware pointer typing — Use relocations/symbol refs to distinguish pointers from integers.
-  > 재배치 정보 활용 인프라 필요
+- [~] Relocation-aware pointer typing — Use relocations/symbol refs to distinguish pointers from integers.
+  > PE 기반 재배치 테이블 파싱 구현 완료 (_pe.rs) — HIGHLOW/DIR64 엔트리에서 포인터 주소 수집. 타입 추론 파이프라인에 relocation_addresses 전달 및 포인터/정수 구분 로직은 미구현
 - [ ] PIC/GOT/PLT modeling — Correctly lift position-independent addressing and external linkage scaffolding.
   > 위치 독립 코드 모델링 필요
 - [ ] Vtable detection — Identify vtables via RTTI patterns and indirect call sites.
@@ -130,15 +131,15 @@
 - [ ] RTTI parsing — Use RTTI metadata (where present) to recover class names and inheritance links.
   > RTTI 메타데이터 파서 필요
 - [ ] Devirtualization — Resolve virtual calls to concrete targets using type/points-to constraints.
-  > vtable 분석 선행 필요
-- [ ] Constructor/destructor identification — Detect ctor/dtor patterns (vptr writes, base calls) for better class output.
-  > C++ 객체 모델링 선행 필요
+  > vtable 분석 및 points-to 분석 선행 필요 — vtable 탐지(L129), RTTI 파싱(L131) 모두 미구현 상태
+- [~] Constructor/destructor identification — Detect ctor/dtor patterns (vptr writes, base calls) for better class output.
+  > auto_comment에서 첫 번째 파라미터의 deref store / free/delete 호출 패턴으로 ctor/dtor 주석 생성. 완전한 C++ 객체 모델링은 vtable 분석 선행 필요
 - [ ] Inlining detection/undo — Identify inlined library/user functions and optionally “outline” them as calls.
   > 인라인 탐지 프레임워크 필요
-- [ ] Idiom-to-intrinsic lifting — Map SIMD/bit ops to intrinsics or clean C equivalents.
-  > SIMD 명령어 모델링 필요 — IR 변경
+- [~] Idiom-to-intrinsic lifting — Map SIMD/bit ops to intrinsics or clean C equivalents.
+  > bit_trick_recognition.rs에 try_recognize_intrinsic_idiom() 구현 — branchless abs, branchless min/max, de Bruijn ctz/clz 패턴 감지 및 주석 추가. SIMD intrinsic 매핑은 IR 수준 SIMD 모델링 선행 필요
 - [ ] Floating-point semantic modeling — Properly handle x87 stack vs SSE registers and rounding modes.
-  > x87/SSE 레지스터 모델링 필요 — IR 변경
+  > x87 스택/SSE 레지스터 구분 및 라운딩 모드 추적이 IR 수준에서 필요 — Ir enum에 FP 관련 variant 추가, x87 스택 시뮬레이션, MXCSR 모델링 등 대규모 IR 변경 필요
 - [~] Atomic/volatile recognition — Detect atomic sequences and volatile accesses to preserve ordering/side effects.
   > __atomic_*/__sync_*/InterlockedCompareExchange 등 원자 연산 호출 감지 및 주석 추가
 - [ ] Self-modifying code detection — Detect writes to code pages; fall back to dynamic techniques when needed.
@@ -156,7 +157,7 @@
 - [ ] Opaque predicate pruning — Prove predicates constant (or near-constant) via abstract interpretation/value sets.
   > 추상 해석/SMT 프레임워크 필요
 - [ ] Control-flow flattening undo — Recover dispatcher-based state machines into structured control flow when possible.
-  > CFG 구조 복구 프레임워크 필요
+  > dispatcher 변수 식별, state→block 매핑 복원, 상태 전이 분석 필요. 추상 해석 또는 symbolic execution으로 switch 변수 값 추적 필요 — 현재 인프라 없음
 - [ ] String/constant decryption patterning — Detect decode loops and represent results as recovered literals/arrays.
   > 에뮬레이션/심볼릭 실행 필요
 - [ ] VM/protector detection — Identify virtualization/protection stubs and isolate them from normal decompilation flow.
@@ -174,12 +175,12 @@
 - [ ] DWARF debug-info parsing — Use DWARF to recover types, variables, scopes, and source file/line mappings.
   > 디버그 정보 파서 필요
 - [ ] PDB/CodeView parsing — Use Windows PDB/CodeView records to recover symbols, types, and function boundaries.
-  > PDB 파서 필요
+  > PDB 파서 필요. pdb crate (https://crates.io/crates/pdb) 활용 가능하나 통합 작업 필요 — 타입 스트림, 심볼 스트림, 섹션 기여 매핑 등
 - [~] Symbol table ingestion — Import ELF symbols/export tables to seed names, sizes, and addresses.
 - [~] Name demangling — Convert mangled C++/Swift/Rust symbol names into human-readable identifiers.
   > C++ Itanium ABI 디맹글링 구현 완료 (cpp_demangle); Swift/Rust 디맹글링 미구현
 - [ ] Linker map parsing — Read linker map files to seed symbol ranges and section-to-symbol ownership.
-  > 링커 맵 파서 필요
+  > MSVC .map / GNU ld map 파일 포맷 파싱 필요 — 텍스트 기반이므로 파서 구현은 비교적 단순하나, 심볼 데이터를 PreDefinedOffsets에 통합하는 인터페이스 설계 필요
 - [ ] Build-ID / UUID correlation — Match binaries to symbol servers/artifacts using build identifiers.
   > 심볼 서버 통합 필요
 - [ ] .eh_frame / CFI exploitation — Use unwind CFI to infer stack layout, saved regs, and call frame structure.
@@ -188,10 +189,10 @@
 - [x] Stack probing suppression — Identify_chkstk/stack-touch loops and render as allocation semantics.
 - [x] CET/CFG pattern recognition — Detect indirect-branch hardening (CET IBT/SHSTK, CFG) and de-noise it.
 - [x] NOP/padding classification — Treat alignment padding and multi-byte NOPs as non-semantic fillers.
-- [ ] Hot–cold function chunk stitching — Reconnect split function fragments produced by PGO or linker optimizations.
-  > 함수 청크 재조합 필요
-- [ ] Multi-entry “function” handling — Represent shared code tails/entries safely without inventing invalid C.
-  > CFG 구조화 확장 필요
+- [~] Hot–cold function chunk stitching — Reconnect split function fragments produced by PGO or linker optimizations.
+  > ir_function.rs에 detect_address_gap_chunks() 구현 — 4KB 이상 주소 갭으로 hot-cold 분리 감지 및 로깅. 실제 청크 재조합(블록 재배치/함수 병합)은 미구현
+- [~] Multi-entry “function” handling — Represent shared code tails/entries safely without inventing invalid C.
+  > dominator.rs에 multi_entry_blocks() 구현 — 외부 진입점 감지 및 로깅. 공유 꼬리 블록의 안전한 C 표현(goto/label 또는 함수 분리)은 미구현
 - [ ] Trampoline/hook stub detection — Identify detours/patch stubs and recover the intended target flow.
   > 바이너리 패턴 분석 필요
 - [ ] Overlapping decode detection — Flag overlapping instruction streams (common in obfuscation) and branch accordingly.
@@ -239,8 +240,8 @@
   > 추상 해석 프레임워크 선행 필요
 - [ ] Nullness analysis — Infer where pointers can/can’t be null to simplify guards and improve types.
   > 포인터 분석 프레임워크 필요
-- [ ] “ptr+len” pairing detection — Detect common buffer pointer/length parameter pairs to label and type them.
-  > 함수 시그니처 분석 확장 필요
+- [~] “ptr+len” pairing detection — Detect common buffer pointer/length parameter pairs to label and type them.
+  > auto_comment에서 연속 파라미터의 deref/comparison 사용 패턴으로 ptr+len 쌍 주석 생성. 타입 시스템 반영은 시그니처 분석 확장 필요
 - [ ] Bounds/size inference — Infer buffer sizes from compares, loop trip counts, and allocation sizes.
   > 범위 분석 프레임워크 필요
 - [ ] Heap allocation site typing — Infer heap object “types” from allocation size + subsequent field accesses.
@@ -372,8 +373,8 @@
   > auto_comment.rs에서 QueryPerformanceCounter/GetTickCount/rdtsc 등 호출 감지 및 주석 추가
 - [~] Decompression routine detection — Detect inflate/LZ-like loops and label them to reduce noise in reverse engineering.
   > auto_comment.rs에서 zlib/DEFLATE/LZ 상수 핑거프린팅으로 압축 해제 루틴 감지 및 주석 추가
-- [ ] Config/string xref mining — Extract likely config keys/paths/URLs by xref patterns and usage context.
-  > 문자열 xref 분석 프레임워크 필요
+- [~] Config/string xref mining — Extract likely config keys/paths/URLs by xref patterns and usage context.
+  > auto_comment에서 함수 내 문자열 리터럴에서 URL/경로/config 키 패턴 추출하여 주석 생성. xref 기반 전체 바이너리 분석은 미구현
 - [x] Function purity/effect inference — Infer pure/readonly-like behavior to enable stronger simplifications.
   > infer_pure_functions: 로컬 바디 분석 + 호출 그래프 전이적 추론으로 순수 함수 식별 (call_graph.rs)
 - [ ] API effect modeling — Maintain a database of external function effects (alloc/free/throws/locks) for safer DCE.
@@ -482,8 +483,8 @@
   > x != 0 → x, x == 0 → !x 조건 정규화 구현 완료 (operator_canonicalization.rs)
 - [x] Sign/zero-extend cast recovery — Turn extension sequences into explicit (int8_t), (uint32_t) casts.
   > IR→AST 변환 시 할당 크기(IrAccessSize)로 CastSigned/CastUnsigned를 Cast(Int32)/(UInt8) 등 명시적 타입 캐스트로 변환
-- [ ] Bitfield pack/unpack reconstruction — Convert repeated mask/shift sequences into named fields or helper macros.
-  > 타입 제약 풀이 프레임워크 필요
+- [~] Bitfield pack/unpack reconstruction — Convert repeated mask/shift sequences into named fields or helper macros.
+  > auto_comment에서 동일 변수에 대한 mask/shift 추출 패턴 3회 이상 감지 시 bitfield 접근 주석 생성. 구조체 필드 복원은 타입 제약 풀이 필요
 - [~] Byte-order field recovery — Recognize htons/ntohl-like patterns and annotate endianness conversions.
   > bit_trick_recognition.rs에서 bswap16/bswap32 시프트+OR 패턴 감지 및 주석 추가
 - [ ] Floating compare special-case handling — Preserve NaN-sensitive compare semantics when mapping to C operators.
@@ -715,8 +716,8 @@
 - [x] Assertion pattern recovery — Recognize if(!cond) abort() or trap patterns and emit assert(cond)-like constructs.
 - [~] Logging/telemetry scaffolding de-noising — Collapse repeated logging macros/wrappers into concise calls with inferred formats.
   > auto_comment.rs에서 syslog/NSLog/OutputDebugString/ETW 등 호출 감지 및 주석 추가
-- [ ] Resource cleanup normalization — Detect multi-resource release patterns and synthesize a single cleanup block.
-  > 고급 휴리스틱 프레임워크 필요 — 현재 인프라 부족
+- [~] Resource cleanup normalization — Detect multi-resource release patterns and synthesize a single cleanup block.
+  > auto_comment에서 연속 2+ free/close/release/destroy 호출 감지하여 cleanup 블록 주석 생성. 블록 합성은 미구현
 - [ ] Interrupt/vector table recognition — For firmware, parse vector tables to discover handlers and true entrypoints.
   > 펌웨어/임베디드 전용 분석 필요
 - [ ] Memory-mapped I/O modeling — Detect volatile MMIO address ranges and preserve volatile semantics + typed registers.
@@ -855,14 +856,14 @@
   > 인터프로시저럴 분석 프레임워크 필요
 - [~] Resource flow tracking — Track acquire/release pairs (malloc/free, open/close) interprocedurally for annotation.
   > fopen/fclose, socket/closesocket, CreateFile/CloseHandle, 레지스트리 API 등 리소스 I/O 호출 감지 및 주석 추가
-- [ ] Error-propagation modeling — Detect “return last error” conventions and simplify redundant error paths.
-  > 인터프로시저럴 분석 프레임워크 필요
+- [~] Error-propagation modeling — Detect “return last error” conventions and simplify redundant error paths.
+  > auto_comment에서 `var = call(); if (var < 0) return var;` 에러 전파 패턴 감지 및 주석 생성. 경로 단순화는 인터프로시저럴 분석 필요
 - [~] errno/GetLastError propagation inference — Recognize wrappers that set/read last-error and annotate semantics.
   > GetLastError/SetLastError/__errno_location 호출 감지 및 주석 추가
 - [ ] Capability/permission flag inference — Cluster bitwise flag usage into named flag sets for enums/bitmasks.
   > 타입 제약 풀이 프레임워크 필요
-- [ ] Finite-domain enum recovery — Infer enums from repeated small constant sets used in compares and tables.
-  > 타입 제약 풀이 프레임워크 필요
+- [~] Finite-domain enum recovery — Infer enums from repeated small constant sets used in compares and tables.
+  > auto_comment에서 switch 3+ 케이스의 정수 상수 집합을 주석으로 출력. 타입 시스템에 enum 정의 반영은 타입 제약 풀이 필요
 - [ ] Pointer tagging scheme mining — Learn tag masks/shifts globally and normalize tagged pointers to untagged views.
   > ML/통계 모델 필요 — 현재 인프라 없음
 - [ ] Refinement-type constraints — Infer constraints like “non-null”, “range-limited”, “aligned” and annotate output.
@@ -903,20 +904,20 @@
   > 난독화 해제 프레임워크 필요 — 현재 인프라 없음
 - [~] Security-mitigation scaffold collapsing — Detect and condense mitigation glue (IBT landing pads, fence sequences) into annotations.
   > lfence/mfence/sfence, __chkstk, __safestack_*, retpoline 등 보안 완화 패턴 감지 및 주석 추가
-- [ ] Instrumentation signature catalogs — Recognize compiler-inserted probes/counters and fold into “instrumentation” nodes.
-  > 컴파일러 계측 패턴 DB + IR 레벨 인식 필요
-- [ ] Sanitizer shadow-memory modeling — Treat ASan/TSan shadow checks as side-effect-free guards to simplify output.
-  > 컴파일러 계측 패턴 DB + IR 레벨 인식 필요
+- [~] Instrumentation signature catalogs — Recognize compiler-inserted probes/counters and fold into “instrumentation” nodes.
+  > auto_comment에서 sanitizer/coverage 계측 호출 감지 및 주석 생성. IR 레벨 노드 폴딩은 미구현
+- [~] Sanitizer shadow-memory modeling — Treat ASan/TSan shadow checks as side-effect-free guards to simplify output.
+  > auto_comment에서 shadow address 계산 패턴 (addr >> 3 + large_offset) 감지하여 ASan 계측 주석 생성. TSan 패턴 감지 및 guard 제거는 미구현
 - [ ] Safe UB-free emission mode — Emit helper functions/macros to preserve machine semantics without C undefined behavior.
   > C 의미론 모델링 프레임워크 필요
 - [ ] Cross-function constant pool intern — Deduplicate literal pools across functions and give stable symbolic names.
   > IR 리프팅/디코딩 레이어 확장 필요
 - [~] String role classification — Label strings as format/path/url/registry key/etc. by nearby API usage patterns.
   > 문자열 조작 함수(strcpy/strlen/memcpy 등) 호출 감지 및 주석 추가, 수학 라이브러리 호출 감지 추가
-- [ ] Domain vocabulary seeding — Use extracted strings to seed likely names/types (e.g., “cookie”, “token”, “hdr”).
-  > 고급 휴리스틱 프레임워크 필요 — 현재 인프라 부족
-- [ ] Behavioral clustering for naming — Cluster functions by side effects/API sets (crypto, IO, parsing) to guide labels.
-  > ML/통계 모델 필요 — 현재 인프라 없음
+- [~] Domain vocabulary seeding — Use extracted strings to seed likely names/types (e.g., “cookie”, “token”, “hdr”).
+  > auto_comment에서 함수 내 문자열 리터럴의 도메인 키워드(URL/crypto/auth/SQL/registry/filesystem) 감지하여 vocabulary 힌트 주석 생성. 변수 이름 반영은 미구현
+- [~] Behavioral clustering for naming — Cluster functions by side effects/API sets (crypto, IO, parsing) to guide labels.
+  > auto_comment에서 함수 내 API 호출 카테고리(crypto/IO/string/math/memory/network/thread/UI) 분류 후 dominant 카테고리 주석 생성. ML 기반 정밀 클러스터링은 미구현
 - [ ] Graph grammar structuring — Apply grammar rules over CFG motifs to recover higher-level constructs reliably.
   > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] SPQR decomposition for CFGs — Use graph decomposition to guide structured region extraction in complex graphs.
