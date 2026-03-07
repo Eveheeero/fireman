@@ -157,6 +157,9 @@ fn annotate_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
                 if call_name_matches_atomic(call) {
                     insertions.push((i, "// atomic operation".to_string()));
                 }
+                if call_name_matches_vararg(call) {
+                    insertions.push((i, "// vararg call".to_string()));
+                }
             }
             AstStatement::Assembly(asm_text) => {
                 let lower = asm_text.to_ascii_lowercase();
@@ -1130,6 +1133,46 @@ fn call_name_matches_math(call: &AstCall) -> bool {
             | "fabsf"
             | "fmod"
             | "fmodf"
+    )
+}
+
+/// Detect well-known variadic (vararg) function calls.
+fn call_name_matches_vararg(call: &AstCall) -> bool {
+    let name = match call {
+        AstCall::Unknown(name, _) => name.as_str(),
+        _ => return false,
+    };
+    matches!(
+        name,
+        "printf"
+            | "fprintf"
+            | "sprintf"
+            | "snprintf"
+            | "dprintf"
+            | "wprintf"
+            | "fwprintf"
+            | "swprintf"
+            | "_snwprintf"
+            | "scanf"
+            | "fscanf"
+            | "sscanf"
+            | "swscanf"
+            | "vprintf"
+            | "vfprintf"
+            | "vsprintf"
+            | "vsnprintf"
+            | "vasprintf"
+            | "vwprintf"
+            | "vswprintf"
+            | "vscanf"
+            | "vfscanf"
+            | "vsscanf"
+            | "ioctl"
+            | "fcntl"
+            | "open"
+            | "execl"
+            | "execlp"
+            | "execle"
     )
 }
 

@@ -369,24 +369,42 @@ fn cluster_switch_cases(stmt: &mut WrappedAstStatement) {
         return;
     }
 
-    fn body_digest(body: &[WrappedAstStatement]) -> [u8; 32] {
+    fn body_digest(body: &[WrappedAstStatement]) -> Option<[u8; 32]> {
+        let filtered: Vec<_> = body
+            .iter()
+            .filter(|stmt| {
+                !matches!(
+                    &stmt.statement,
+                    AstStatement::Comment(_) | AstStatement::Empty
+                )
+            })
+            .cloned()
+            .collect();
+        if filtered.is_empty() {
+            return None;
+        }
         let mut hasher = Blake3StdHasher::new();
-        hash_statement_list(&mut hasher, body);
-        hasher.finish_bytes()
+        hash_statement_list(&mut hasher, &filtered);
+        Some(hasher.finish_bytes())
     }
 
-    // Compute full 256-bit digests for all case bodies.
-    let digests: Vec<[u8; 32]> = cases.iter().map(|(_, body)| body_digest(body)).collect();
+    // Compute comment/empty-insensitive digests for all case bodies.
+    let digests: Vec<Option<[u8; 32]>> = cases.iter().map(|(_, body)| body_digest(body)).collect();
 
-    // Merge adjacent cases with identical digests (identical structural content).
-    // Walk backwards so index arithmetic stays simple.
-    let mut i = cases.len() - 1;
-    while i > 0 {
-        if digests[i] == digests[i - 1] {
-            // Adjacent cases have identical bodies — clear the earlier one's body
-            // so it becomes a fallthrough label.
-            cases[i - 1].1.clear();
+    // Walk backwards so placeholder labels can collapse into the next meaningful
+    // body, and repeated meaningful bodies collapse into a single trailing block.
+    let mut trailing_digest = None;
+    for i in (0..cases.len()).rev() {
+        match digests[i] {
+            Some(digest) if Some(digest) == trailing_digest => {
+                cases[i].1.clear();
+            }
+            Some(digest) => {
+                trailing_digest = Some(digest);
+            }
+            None => {
+                cases[i].1.clear();
+            }
         }
-        i -= 1;
     }
 }

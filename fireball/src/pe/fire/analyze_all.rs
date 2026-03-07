@@ -30,14 +30,16 @@ impl Pe {
             }
             let block = self.analyze_block(&address)?;
             result.push(block.clone());
-            let connected_to = block.get_connected_to();
-            for connected_to in connected_to.iter() {
-                if let Some(address) = connected_to.to() {
-                    if visited.contains(&address.get_virtual_address()) {
-                        continue;
-                    }
-                    queue.push(address);
-                }
+            let mut discovered = block
+                .get_connected_to()
+                .iter()
+                .filter_map(|relation| relation.to())
+                .filter(|address| !visited.contains(&address.get_virtual_address()))
+                .collect::<Vec<_>>();
+            // Keep traversal logs deterministic even when relation storage order varies.
+            discovered.sort_unstable_by_key(|address| address.get_virtual_address());
+            for address in discovered.into_iter().rev() {
+                queue.push(address);
             }
         }
 
