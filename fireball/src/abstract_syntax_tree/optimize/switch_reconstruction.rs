@@ -301,8 +301,7 @@ fn collect_binary_search_cases(
             };
 
             let true_ok = collect_cases_from_branch(branch_true, discriminant, cases, default_body);
-            let false_ok =
-                collect_cases_from_branch(else_stmts, discriminant, cases, default_body);
+            let false_ok = collect_cases_from_branch(else_stmts, discriminant, cases, default_body);
 
             true_ok && false_ok
         }

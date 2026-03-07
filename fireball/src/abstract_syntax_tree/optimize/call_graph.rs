@@ -95,7 +95,9 @@ fn collect_call_targets_in_expr(expr: &AstExpression, out: &mut HashSet<AstFunct
             collect_call_targets_in_expr(&l.item, out);
             collect_call_targets_in_expr(&r.item, out);
         }
-        AstExpression::Deref(e) | AstExpression::AddressOf(e) | AstExpression::MemberAccess(e, _) => {
+        AstExpression::Deref(e)
+        | AstExpression::AddressOf(e)
+        | AstExpression::MemberAccess(e, _) => {
             collect_call_targets_in_expr(&e.item, out);
         }
         AstExpression::ArrayAccess(base, idx) => {
@@ -285,17 +287,13 @@ fn stmt_is_locally_pure(stmt: &AstStatement) -> bool {
     match stmt {
         // Assignments to dereferenced/array/member targets are side-effectful
         AstStatement::Assignment(lhs, _rhs) => {
-            matches!(
-                &lhs.item,
-                AstExpression::Variable(_, _)
-            )
+            matches!(&lhs.item, AstExpression::Variable(_, _))
         }
         AstStatement::Declaration(_, _) => true,
         AstStatement::Return(_) => true,
         AstStatement::Empty | AstStatement::Comment(_) => true,
         AstStatement::If(_, bt, bf) => {
-            body_is_locally_pure(bt)
-                && bf.as_ref().map_or(true, |bf| body_is_locally_pure(bf))
+            body_is_locally_pure(bt) && bf.as_ref().map_or(true, |bf| body_is_locally_pure(bf))
         }
         AstStatement::While(_, body) | AstStatement::Block(body) => body_is_locally_pure(body),
         AstStatement::For(init, _, update, body) => {

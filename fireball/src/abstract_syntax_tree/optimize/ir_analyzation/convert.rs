@@ -2,8 +2,8 @@ use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstBuiltinFunction, AstBuiltinFunctionArgument, AstCall,
         AstDescriptor, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget, AstLiteral,
-        AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue, AstValueOrigin,
-        AstValueType, AstVariableId, PrintWithConfig, Wrapped, WrappedAstStatement,
+        AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue, AstValueOrigin, AstValueType,
+        AstVariableId, PrintWithConfig, Wrapped, WrappedAstStatement,
     },
     core::Address,
     ir::{
@@ -1033,7 +1033,10 @@ fn try_fold_operand_exists(expr: &mut Wrapped<AstExpression>, instruction_arg_co
 }
 
 /// Resolve an `IrAccessSize` to a concrete byte count when possible.
-fn resolve_size_bytes(size: &IrAccessSize, instruction_args: &[iceball::Argument]) -> Option<usize> {
+fn resolve_size_bytes(
+    size: &IrAccessSize,
+    instruction_args: &[iceball::Argument],
+) -> Option<usize> {
     use crate::ir::analyze::variables::resolve_ir_operand_of_access_size;
     let resolved = resolve_ir_operand_of_access_size(size, instruction_args);
     match &resolved {
