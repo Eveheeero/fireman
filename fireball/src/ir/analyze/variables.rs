@@ -278,18 +278,16 @@ pub fn analyze_variables(ir_block: &IrBlock) -> Result<Vec<IrVariable>, &'static
         operand_resolved_location_to_variable_ids.retain(|_, ids| !ids.is_empty());
     }
 
-    for variable in variables.iter() {
-        trace!("{} {:?}", variable.data_type, variable.shown_in);
-        let das = variable.get_all_data_accesses();
-        let mut das = Vec::from_iter(das.iter().flat_map(|x| x.1.iter()).cloned());
-        use std::hash::{Hash, Hasher};
-        das.sort_by_cached_key(|x| {
-            let mut h = std::hash::DefaultHasher::new();
-            x.hash(&mut h);
-            h.finish()
-        });
-        for da in das {
-            trace!("- {} {}", da.access_type(), da.location());
+    if tracing::enabled!(tracing::Level::TRACE) {
+        for variable in variables.iter() {
+            trace!("{} {:?}", variable.data_type, variable.shown_in);
+            let das = variable.get_all_data_accesses();
+            let mut das = Vec::from_iter(das.iter().flat_map(|x| x.1.iter()).cloned());
+            // Keep trace output deterministic even when upstream map iteration order changes.
+            das.sort_by_cached_key(|x| format!("{x:?}"));
+            for da in das {
+                trace!("- {} {}", da.access_type(), da.location());
+            }
         }
     }
 

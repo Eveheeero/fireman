@@ -78,8 +78,8 @@
 - [x] Temporary elimination — Merge short-lived SSA temps into expressions to look like C code.
 - [x] Parameter recovery — Infer which incoming values are true parameters (registers/stack slots) vs incidental.
 - [~] Return value recovery — Infer returned expressions, including hidden returns (sret) and multi-register returns.
-- [ ] Varargs detection — Identify vararg call sites and apply format-string/type heuristics.
-  > 호출 규약 분석 심층 변경 필요
+- [~] Varargs detection — Identify vararg call sites and apply format-string/type heuristics.
+  > auto_comment.rs: call_name_matches_vararg()로 printf/scanf/exec 계열 vararg 호출 탐지 및 주석 부착 구현. 포맷 문자열 파싱/타입 추론은 미구현.
 - [~] Calling convention inference — Infer ABI per function (cdecl/stdcall/thiscall/sysv/ms) from usage patterns.
 - [ ] “this” pointer inference — Detect implicit object pointer in C++ methods from member access and vtable usage.
   > C++ 객체 모델링 필요 — 현재 인프라 없음
@@ -249,8 +249,8 @@
   > 이스케이프 분석 프레임워크 필요
 - [x] Lifetime-based scoping — Emit tighter C scopes based on live ranges to reduce variable clutter.
 - [x] Variable coalescing by interference — Merge non-overlapping temporaries into a single C local when safe/readable.
-- [ ] Register spill pattern recovery — Identify spill/reload sequences and treat them as variable preservation, not logic.
-  > 레지스터 할당 역추적 필요
+- [~] Register spill pattern recovery — Identify spill/reload sequences and treat them as variable preservation, not logic.
+  > control_flow_cleanup.rs: annotate_register_spill_patterns()로 temp=var; call(); var=temp 패턴 탐지 및 주석 부착 구현. 레지스터 할당 역추적 기반 제거는 미구현.
 - [ ] Shadow-space modeling (Win64) — Recognize Win64 home space usage and suppress it in output.
   > Win64 ABI 스택 모델링 필요
 - [ ] Red-zone modeling (SysV) — Recognize red-zone stack usage and prevent mis-classifying it as locals.
@@ -341,6 +341,7 @@
 - [ ] Parallel per-function pipeline — Run independent analyses concurrently with deterministic merge rules.
   > 병렬 분석 프레임워크 필요
 - [x] Deterministic tie-breaking — Ensure stable output by deterministic ordering in heuristics and naming.
+  > Reinforced with deterministic successor batching in `pe/fire/analyze_all.rs` and deterministic trace ordering in `ir/analyze/variables.rs`.
 - [ ] Confidence scoring per recovery — Attach confidence to inferred types/structuring to guide UI and fallbacks.
   > 신뢰도 추적 프레임워크 필요
 - [x] Provenance tracking — Track “why” a type/name/structure was inferred to enable explainable decompilation.
@@ -420,17 +421,17 @@
 - [ ] Fallthrough intent inference — Decide whether adjacent blocks represent switch fallthrough vs accidental layout.
   > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [x] Case clustering — Group cases with identical bodies into case A: case B: patterns.
-  > blake3 구조적 해싱으로 인접 동일 케이스 바디 병합 구현 완료 (switch_reconstruction.rs)
+  > Structural Blake3 hashing merges adjacent identical bodies, including comment/empty-only placeholder labels (`switch_reconstruction.rs`).
 - [x] If-ladder to switch promotion — Upgrade compare/jump ladders into switch even without explicit tables.
   > if-else 체인에서 x==c 패턴 감지 → switch문 변환 구현 완료 (switch_reconstruction.rs)
-- [ ] Loop exit classification — Distinguish break, continue, return, and goto-like exits from edge shapes.
-  > AST에 Break/Continue 문 타입이 없음 — AstStatement 확장 필요
-- [ ] Multi-exit loop rewriting — Rewrite nested gotos into structured loops with break flags where safe.
-  > 루프 구조/시맨틱 분석 프레임워크 구현 필요
+- [~] Loop exit classification — Distinguish break, continue, return, and goto-like exits from edge shapes.
+  > loop_analyzation.rs: annotate_loop_exit_patterns()로 루프 내 goto-as-break 및 return 탈출 패턴 탐지 및 주석 부착 구현. Break/Continue AST 문 타입 확장은 미구현.
+- [~] Multi-exit loop rewriting — Rewrite nested gotos into structured loops with break flags where safe.
+  > loop_analyzation.rs: annotate_loop_exit_patterns()로 다중 탈출 루프(2+ exits) 탐지 및 주석 부착 구현. break 플래그 기반 구조 변환은 미구현.
 - [x] Infinite-loop recognition — Detect for(;;) loops (watchdog, event loop) and suppress misleading conditions.
   > while(1)/while(nonzero) → while(true) 정규화 구현 완료 (loop_analyzation.rs)
-- [ ] Finite-state variable detection — Identify the “state” variable driving dispatch to reconstruct state machines.
-  > 고급 휴리스틱 프레임워크 필요 — 현재 인프라 부족
+- [~] Finite-state variable detection — Identify the “state” variable driving dispatch to reconstruct state machines.
+  > loop_analyzation.rs: annotate_state_machine_loops()로 while(true)+switch 패턴 탐지 및 상태 머신 주석 부착 구현. 상태 변수 추출 및 enum 복원은 미구현.
 - [ ] Dispatcher-variable recovery — Reconstruct flattened CFG dispatch variables used by obfuscators or coroutines.
   > 난독화 해제 프레임워크 필요 — 현재 인프라 없음
 - [ ] Region reordering heuristics — Choose source-like block order based on dominator/postdominator relationships.
@@ -469,12 +470,12 @@
   > auto_comment.rs에서 malloc/free/HeapAlloc/VirtualAlloc 등 호출 감지 및 주석 추가
 - [ ] Heap metadata avoidance — Recognize allocator bookkeeping patterns to avoid mis-typing metadata as user fields.
   > 메모리/힙 분석 프레임워크 필요
-- [ ] Memcpy/memset loop lifting — Replace byte/word copy/set loops with memcpy/memset equivalents.
-  > 루프 구조/시맨틱 분석 프레임워크 구현 필요
-- [ ] Memcmp/strcmp loop lifting — Replace compare loops with memcmp/strcmp when semantics match.
-  > 루프 구조/시맨틱 분석 프레임워크 구현 필요
-- [ ] Strlen/scan loop lifting — Detect null-terminated scans and emit strlen/strchr-style calls.
-  > 루프 구조/시맨틱 분석 프레임워크 구현 필요
+- [~] Memcpy/memset loop lifting — Replace byte/word copy/set loops with memcpy/memset equivalents.
+  > loop_analyzation.rs: annotate_loop_semantics()로 memcpy/memset 루프 패턴 탐지 및 주석 부착 구현. 실제 함수 호출 치환은 미구현.
+- [~] Memcmp/strcmp loop lifting — Replace compare loops with memcmp/strcmp when semantics match.
+  > loop_analyzation.rs: annotate_loop_semantics()로 memcmp/strcmp 루프 패턴 탐지 및 주석 부착 구현. 실제 함수 호출 치환은 미구현.
+- [~] Strlen/scan loop lifting — Detect null-terminated scans and emit strlen/strchr-style calls.
+  > loop_analyzation.rs: annotate_loop_semantics()로 strlen/scan 루프 패턴 탐지 및 주석 부착 구현. 실제 함수 호출 치환은 미구현.
 - [ ] Bounds-check synthesis — Emit explicit bounds checks from compare+branch patterns around loads/stores.
   > 타입 제약 풀이 프레임워크 필요
 - [x] Null-check canonicalization — Normalize pointer guards into if (p == NULL) / if (!p) forms.
@@ -614,6 +615,7 @@
   > IR 리프팅/디코딩 레이어 확장 필요
 - [x] Non-returning function inference — Detect noreturn callees (abort, exit, fatal) to prune impossible fallthrough edges.
 - [~] Unreachable block pruning — Remove blocks proven unreachable after CFG + noreturn + constant-condition analysis.
+  > control_flow_cleanup.rs에서 if(true/false), if(!0/!1), 정수 상수 조건 분기를 AST 단계에서 제거
 - [ ] Cross-reference graph saturation — Iteratively add xrefs from decoded instructions/data to converge on full coverage.
   > IR 리프팅/디코딩 레이어 확장 필요
 - [ ] Inter-segment pointer chasing — Follow pointers across segments (code↔rodata↔data) to find hidden tables and thunks.
@@ -702,8 +704,8 @@
   > 타입 제약 풀이 프레임워크 필요
 - [ ] Fat-pointer modeling — Recover (ptr,len) fat pointers (Rust slices, Go slices) into struct-like C representations.
   > 언어별 런타임 분석 필요 — 현재 인프라 없음
-- [ ] Iterator pattern recognition — Detect “begin/end + step” idioms and rewrite loops into cleaner iteration forms.
-  > 루프 구조/시맨틱 분석 프레임워크 구현 필요
+- [~] Iterator pattern recognition — Detect “begin/end + step” idioms and rewrite loops into cleaner iteration forms.
+  > loop_analyzation.rs: annotate_iterator_traversals()로 while(p){...p=p->next} 연결 리스트/반복자 순회 패턴 탐지 및 주석 부착 구현. 루프 형태 변환은 미구현.
 - [ ] State machine extraction (high-level) — Lift dispatch loops and state variables into explicit enums + switch-based machines.
   > 고급 휴리스틱 프레임워크 필요 — 현재 인프라 부족
 - [ ] Protocol/parser feature inference — Infer token classes/states from branch patterns and table-driven transitions.
@@ -759,8 +761,8 @@
 - [x] Switch fallthrough annotation synthesis — Emit explicit fallthrough comments/markers when semantics require it.
   > 비터미널 switch case에 "fallthrough" 주석 자동 부착 구현 완료 (control_flow_cleanup.rs)
 - [x] Macro-like pattern lifting — Recognize MIN/MAX/CLAMP, ARRAY_SIZE, ROUND_UP, etc., and emit as helpers/macros.
-- [ ] Canonical error-handling templates — Rewrite common goto fail shapes into consistent, compact patterns.
-  > 고급 휴리스틱 프레임워크 필요 — 현재 인프라 부족
+- [~] Canonical error-handling templates — Rewrite common goto fail shapes into consistent, compact patterns.
+  > control_flow_cleanup.rs: annotate_goto_cleanup_patterns()로 goto-fail 에러 처리 패턴 탐지 및 주석 부착 구현. 구조 변환은 미구현.
 - [ ] Scope recovery via dominance frontiers — Use dominance + liveness to introduce minimal scopes and reduce variable lifetime.
   > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Relational memory modeling — Track correlations between multiple variables (e.g., i < n implies bounds) beyond intervals.
@@ -821,8 +823,8 @@
   > IR 리프팅/디코딩 레이어 확장 필요
 - [ ] Computed-goto pattern lifting — Recognize state dispatch using labels-as-values idioms and emit switch/dispatch.
   > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
-- [ ] Loop “continue” edge normalization — Rewire back-edges to canonical continue targets to improve for/while output.
-  > AST에 Break/Continue 문 타입이 없음 — AstStatement 확장 필요
+- [~] Loop “continue” edge normalization — Rewire back-edges to canonical continue targets to improve for/while output.
+  > loop_analyzation.rs: annotate_continue_like_gotos()로 루프 본문 첫 레이블로의 goto를 continue-like 백엣지로 탐지 및 주석 부착 구현. Break/Continue AST 문 타입 확장은 미구현.
 - [ ] Irreducible loop splitting with heuristics — Split nodes to create reducible regions when it reduces gotos.
   > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Structured exception edge integration — Merge EH edges into region structuring instead of leaving as raw gotos.
