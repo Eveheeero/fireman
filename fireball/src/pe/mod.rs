@@ -32,4 +32,7 @@ pub struct Pe {
     relations: Arc<Relations>,
     /// Cooperative cancellation flag for long-running analysis
     cancel_token: Arc<AtomicBool>,
+    /// L125: Relocation entries — addresses that hold pointers (not integers).
+    /// Populated from the PE base relocation table.
+    relocation_addresses: Arc<std::collections::HashSet<u64>>,
 }

@@ -83,6 +83,93 @@ impl ControlFlowGraph {
     pub fn exit_block_ids(&self) -> &[usize] {
         &self.exit_block_ids
     }
+
+    /// L194: Detect blocks that are reachable from outside the function's
+    /// normal entry — i.e., non-entry blocks with incoming CFG edges from
+    /// blocks NOT in this CFG. These represent potential multi-entry points
+    /// (shared tails). Requires the original block list to inspect raw relations.
+    pub fn multi_entry_blocks(&self, blocks: &[Arc<Block>]) -> Vec<usize> {
+        let block_set: HashSet<usize> = self.block_ids.iter().copied().collect();
+        let mut result = Vec::new();
+        for block in blocks {
+            let id = block.get_id();
+            if id == self.entry_block_id || !block_set.contains(&id) {
+                continue;
+            }
+            // Check raw incoming relations for edges from blocks outside this CFG.
+            let has_external_pred = block.get_connected_from().iter().any(|rel| {
+                matches!(
+                    rel.relation_type(),
+                    RelationType::Jump | RelationType::Jcc | RelationType::Continued
+                ) && !block_set.contains(&rel.from())
+            });
+            if has_external_pred {
+                result.push(id);
+            }
+        }
+        result
+    }
+
+    /// L192: Detect potential hot-cold split chunks — blocks that are
+    /// separated from the main body by a large address gap, suggesting
+    /// PGO/linker cold-path splitting.
+    pub fn detect_address_gap_chunks(
+        &self,
+        blocks: &[Arc<Block>],
+        gap_threshold: u64,
+    ) -> Vec<Vec<usize>> {
+        let mut block_addrs: Vec<(usize, u64)> = blocks
+            .iter()
+            .filter(|b| self.block_ids.contains(&b.get_id()))
+            .map(|b| (b.get_id(), b.get_start_address().get_virtual_address()))
+            .collect();
+        block_addrs.sort_by_key(|(_, addr)| *addr);
+
+        let mut chunks: Vec<Vec<usize>> = Vec::new();
+        let mut current_chunk: Vec<usize> = Vec::new();
+        let mut prev_addr: Option<u64> = None;
+
+        for (id, addr) in &block_addrs {
+            if let Some(prev) = prev_addr {
+                if *addr > prev && (*addr - prev) > gap_threshold {
+                    if !current_chunk.is_empty() {
+                        chunks.push(std::mem::take(&mut current_chunk));
+                    }
+                }
+            }
+            current_chunk.push(*id);
+            prev_addr = Some(*addr);
+        }
+        if !current_chunk.is_empty() {
+            chunks.push(current_chunk);
+        }
+        chunks
+    }
+
+    /// Check whether this CFG is reducible (all loops are natural loops).
+    /// A CFG is reducible iff every back edge (where target dominates source)
+    /// accounts for ALL retreating edges. Equivalently, after removing all
+    /// back edges identified by the dominator tree, the remaining graph is a DAG.
+    pub fn is_reducible(&self, dominator_tree: &DominatorTree) -> bool {
+        let back_edges: HashSet<(usize, usize)> = dominator_tree.back_edges().into_iter().collect();
+        // Build a graph without back edges and check for cycles (DFS).
+        let mut visited = HashSet::new();
+        let mut on_stack = HashSet::new();
+        for &block_id in &self.block_ids {
+            if !visited.contains(&block_id)
+                && has_cycle_without_back_edges(
+                    block_id,
+                    &self.successors,
+                    &back_edges,
+                    &mut visited,
+                    &mut on_stack,
+                )
+            {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -658,6 +745,65 @@ fn build_immediate_map_for_exits(
     immediate_map
 }
 
+/// Dominance frontier: for each block B, the set of blocks where B's
+/// dominance stops — i.e., blocks that have a predecessor dominated by B
+/// but are NOT strictly dominated by B. Essential for SSA phi-node placement.
+#[derive(Debug, Clone)]
+pub struct DominanceFrontier {
+    frontiers: HashMap<usize, Vec<usize>>,
+}
+
+impl DominanceFrontier {
+    pub fn compute(dominator_tree: &DominatorTree) -> Self {
+        let cfg = dominator_tree.cfg();
+        let mut frontiers: HashMap<usize, HashSet<usize>> = HashMap::new();
+        for &block_id in cfg.block_ids() {
+            frontiers.insert(block_id, HashSet::new());
+        }
+
+        for &block_id in cfg.block_ids() {
+            let preds = cfg.predecessors_of(block_id);
+            if preds.len() < 2 {
+                continue;
+            }
+            for &pred in preds {
+                let mut runner = pred;
+                let idom = dominator_tree.immediate_dominator_of(block_id);
+                while Some(runner) != idom {
+                    frontiers.entry(runner).or_default().insert(block_id);
+                    if let Some(next) = dominator_tree.immediate_dominator_of(runner) {
+                        runner = next;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        Self {
+            frontiers: frontiers
+                .into_iter()
+                .map(|(k, v)| {
+                    let mut v = v.into_iter().collect::<Vec<_>>();
+                    v.sort_unstable();
+                    (k, v)
+                })
+                .collect(),
+        }
+    }
+
+    pub fn frontier_of(&self, block_id: usize) -> &[usize] {
+        self.frontiers
+            .get(&block_id)
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
+    }
+
+    pub fn has_frontier(&self, block_id: usize) -> bool {
+        !self.frontier_of(block_id).is_empty()
+    }
+}
+
 fn collect_natural_loop_nodes(
     cfg: &ControlFlowGraph,
     source_id: usize,
@@ -685,4 +831,33 @@ fn into_sorted_vec_map(map: HashMap<usize, HashSet<usize>>) -> HashMap<usize, Ve
             (block_id, related_ids)
         })
         .collect()
+}
+
+/// DFS cycle detection on the CFG with back edges removed.
+fn has_cycle_without_back_edges(
+    block_id: usize,
+    successors: &HashMap<usize, Vec<usize>>,
+    back_edges: &HashSet<(usize, usize)>,
+    visited: &mut HashSet<usize>,
+    on_stack: &mut HashSet<usize>,
+) -> bool {
+    visited.insert(block_id);
+    on_stack.insert(block_id);
+    if let Some(succs) = successors.get(&block_id) {
+        for &succ in succs {
+            if back_edges.contains(&(block_id, succ)) {
+                continue;
+            }
+            if on_stack.contains(&succ) {
+                return true;
+            }
+            if !visited.contains(&succ)
+                && has_cycle_without_back_edges(succ, successors, back_edges, visited, on_stack)
+            {
+                return true;
+            }
+        }
+    }
+    on_stack.remove(&block_id);
+    false
 }

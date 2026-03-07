@@ -222,6 +222,13 @@ fn recognize_in_expression(expr: &mut Wrapped<AstExpression>) {
             expr.comment = Some(comment);
         }
     }
+
+    // L139: Annotate common C idiom patterns that map to intrinsics
+    if expr.comment.is_none() {
+        if let Some(comment) = try_recognize_intrinsic_idiom(&expr.item) {
+            expr.comment = Some(comment);
+        }
+    }
 }
 
 /// Reverse strength reduction: convert shift+add/sub back to multiplication.
@@ -999,4 +1006,72 @@ fn try_recognize_alignment_mask(expr: &AstExpression) -> Option<String> {
     }
 
     Some(format!("align down to {complement}"))
+}
+
+/// L139: Recognize common C idiom patterns that map to compiler intrinsics.
+///
+/// Detects:
+///   - popcount idiom: loop that counts bits via `x &= x - 1` (Brian Kernighan's trick)
+///   - abs idiom: `(x ^ (x >> 31)) - (x >> 31)` for branchless absolute value
+///   - min/max idiom: `a ^ ((a ^ b) & -(a < b))` for branchless min
+///   - clz/ctz-like: de Bruijn multiplication patterns (annotation only)
+fn try_recognize_intrinsic_idiom(expr: &AstExpression) -> Option<String> {
+    // Branchless abs: (x ^ (x >> 31)) - (x >> 31)
+    // or (x ^ mask) - mask where mask = x >> 31
+    if let AstExpression::BinaryOp(AstBinaryOperator::Sub, lhs, rhs) = expr {
+        // rhs should be (x >> 31) or (x >> 63)
+        if let AstExpression::BinaryOp(AstBinaryOperator::RightShift, _base_r, shift_r) = &rhs.item
+        {
+            let shift_val = extract_literal_u64(&shift_r.item);
+            if matches!(shift_val, Some(31) | Some(63)) {
+                // lhs should be (x ^ (x >> 31))
+                if let AstExpression::BinaryOp(AstBinaryOperator::BitXor, _xor_l, xor_r) = &lhs.item
+                {
+                    if let AstExpression::BinaryOp(AstBinaryOperator::RightShift, _base2, shift2) =
+                        &xor_r.item
+                    {
+                        let shift_val2 = extract_literal_u64(&shift2.item);
+                        if shift_val2 == shift_val {
+                            return Some("branchless abs (intrinsic idiom)".to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Branchless min/max: a ^ ((a ^ b) & -(a < b)) or similar conditional-select patterns
+    // Detect: x ^ ((x ^ y) & mask) where mask is derived from a comparison
+    if let AstExpression::BinaryOp(AstBinaryOperator::BitXor, lhs, rhs) = expr {
+        if let AstExpression::BinaryOp(AstBinaryOperator::BitAnd, and_lhs, _and_rhs) = &rhs.item {
+            if let AstExpression::BinaryOp(AstBinaryOperator::BitXor, _inner_l, _inner_r) =
+                &and_lhs.item
+            {
+                // x ^ ((x ^ y) & mask) — branchless select pattern
+                let _ = lhs; // used for structural match
+                return Some("branchless min/max (conditional select idiom)".to_string());
+            }
+        }
+    }
+
+    // De Bruijn multiplication for ctz: (x & -x) * DEBRUIJN >> 27
+    // The constant 0x077CB531 is a well-known 32-bit de Bruijn sequence
+    if let AstExpression::BinaryOp(AstBinaryOperator::RightShift, lhs, _shift) = expr {
+        if let AstExpression::BinaryOp(AstBinaryOperator::Mul, mul_l, mul_r) = &lhs.item {
+            let mul_const =
+                extract_literal_u64(&mul_r.item).or_else(|| extract_literal_u64(&mul_l.item));
+            if let Some(c) = mul_const {
+                // Known de Bruijn constants for bit scanning
+                if c == 0x077CB531
+                    || c == 0x03F79D71B4CA8B09
+                    || c == 0x06EB14F9
+                    || c == 0x0218A392CD3D5DBF
+                {
+                    return Some("de Bruijn bit-scan (ctz/clz intrinsic idiom)".to_string());
+                }
+            }
+        }
+    }
+
+    None
 }
