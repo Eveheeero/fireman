@@ -2,10 +2,12 @@ use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
         AstLiteral, AstStatement, AstStatementOrigin, AstUnaryOperator, AstValueType,
-        ProcessedOptimization, WrappedAstStatement,
+        AstVariableAccessType, AstVariableId, GetRelatedVariables, ProcessedOptimization,
+        WrappedAstStatement,
     },
     prelude::DecompileError,
 };
+use hashbrown::HashSet;
 
 pub(super) fn synthesize_comments(
     ast: &mut Ast,
@@ -27,6 +29,7 @@ pub(super) fn synthesize_comments(
     annotate_decompression_fingerprint(&mut body);
     annotate_xor_decryption_loop(&mut body);
     annotate_integrity_check_loop(&mut body);
+    annotate_loop_invariants(&mut body);
 
     {
         let mut functions = ast.functions.write().unwrap();
@@ -157,13 +160,17 @@ fn annotate_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
             }
             AstStatement::Assembly(asm_text) => {
                 let lower = asm_text.to_ascii_lowercase();
-                if lower.contains("lfence") || lower.contains("mfence") || lower.contains("sfence") {
+                if lower.contains("lfence") || lower.contains("mfence") || lower.contains("sfence")
+                {
                     insertions.push((i, "// memory fence (speculation barrier)".to_string()));
                 }
                 if lower.contains("cpuid") {
                     insertions.push((i, "// serializing instruction (cpuid)".to_string()));
                 }
-                if lower.contains("int 3") || lower.contains("int3") || lower.contains("__debugbreak") {
+                if lower.contains("int 3")
+                    || lower.contains("int3")
+                    || lower.contains("__debugbreak")
+                {
                     insertions.push((i, "// breakpoint / debug trap".to_string()));
                 }
                 if lower.contains("ud2") {
@@ -430,7 +437,12 @@ fn annotate_crypto_fingerprint(body: &mut Vec<WrappedAstStatement>) {
 
     // SHA-256 init constants
     let sha256_inits: &[u64] = &[0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A];
-    if sha256_inits.iter().filter(|c| constants.contains(c)).count() >= 3 {
+    if sha256_inits
+        .iter()
+        .filter(|c| constants.contains(c))
+        .count()
+        >= 3
+    {
         labels.push("SHA-256");
     }
 
@@ -480,7 +492,10 @@ fn collect_integer_literals_from_list(
     }
 }
 
-fn collect_integer_literals_from_stmt(stmt: &AstStatement, out: &mut std::collections::HashSet<u64>) {
+fn collect_integer_literals_from_stmt(
+    stmt: &AstStatement,
+    out: &mut std::collections::HashSet<u64>,
+) {
     match stmt {
         AstStatement::Declaration(_, Some(init)) => {
             collect_integer_literals_from_expr(&init.item, out);
@@ -524,7 +539,10 @@ fn collect_integer_literals_from_stmt(stmt: &AstStatement, out: &mut std::collec
     }
 }
 
-fn collect_integer_literals_from_expr(expr: &AstExpression, out: &mut std::collections::HashSet<u64>) {
+fn collect_integer_literals_from_expr(
+    expr: &AstExpression,
+    out: &mut std::collections::HashSet<u64>,
+) {
     match expr {
         AstExpression::Literal(AstLiteral::Int(v)) if *v >= 0 => {
             out.insert(*v as u64);
@@ -539,7 +557,9 @@ fn collect_integer_literals_from_expr(expr: &AstExpression, out: &mut std::colle
             collect_integer_literals_from_expr(&l.item, out);
             collect_integer_literals_from_expr(&r.item, out);
         }
-        AstExpression::Deref(e) | AstExpression::AddressOf(e) | AstExpression::MemberAccess(e, _) => {
+        AstExpression::Deref(e)
+        | AstExpression::AddressOf(e)
+        | AstExpression::MemberAccess(e, _) => {
             collect_integer_literals_from_expr(&e.item, out);
         }
         AstExpression::ArrayAccess(base, idx) => {
@@ -659,8 +679,7 @@ fn call_name_matches_retpoline(call: &AstCall) -> bool {
         AstCall::Unknown(name, _) => name.as_str(),
         _ => return false,
     };
-    name.starts_with("__x86_indirect_thunk_")
-        || name.starts_with("__x86_return_thunk")
+    name.starts_with("__x86_indirect_thunk_") || name.starts_with("__x86_return_thunk")
 }
 
 /// Detect lock/unlock synchronization API calls.
@@ -731,12 +750,10 @@ fn call_name_matches_alloc(call: &AstCall) -> Option<&'static str> {
         _ => return None,
     };
     match name {
-        "malloc" | "calloc" | "realloc" | "_aligned_malloc" | "HeapAlloc"
-        | "VirtualAlloc" | "mmap" | "GlobalAlloc" | "LocalAlloc" => {
-            Some("// heap allocation")
-        }
-        "free" | "_aligned_free" | "HeapFree" | "VirtualFree" | "munmap"
-        | "GlobalFree" | "LocalFree" => Some("// heap free"),
+        "malloc" | "calloc" | "realloc" | "_aligned_malloc" | "HeapAlloc" | "VirtualAlloc"
+        | "mmap" | "GlobalAlloc" | "LocalAlloc" => Some("// heap allocation"),
+        "free" | "_aligned_free" | "HeapFree" | "VirtualFree" | "munmap" | "GlobalFree"
+        | "LocalFree" => Some("// heap free"),
         _ if name.starts_with("operator new") => Some("// heap allocation"),
         _ if name.starts_with("operator delete") => Some("// heap free"),
         _ => None,
@@ -824,12 +841,12 @@ fn annotate_decompression_fingerprint(body: &mut Vec<WrappedAstStatement>) {
 
     // LZ77/LZ4/LZSS markers
     let lz_markers: &[u64] = &[
-        0x1000,  // 4096 ring buffer
-        0x1FFF,  // ring buffer mask
-        0xFEE,   // LZSS initial fill position
-        0x0F,    // LZ4 token nibble mask
-        0xF0,    // LZ4 token nibble mask
-        0x7F,    // length encoding
+        0x1000, // 4096 ring buffer
+        0x1FFF, // ring buffer mask
+        0xFEE,  // LZSS initial fill position
+        0x0F,   // LZ4 token nibble mask
+        0xF0,   // LZ4 token nibble mask
+        0x7F,   // length encoding
     ];
     let lz_hits = lz_markers.iter().filter(|c| literals.contains(c)).count();
     if lz_hits >= 3 {
@@ -854,9 +871,7 @@ fn call_name_matches_safestack(call: &AstCall) -> bool {
         AstCall::Unknown(name, _) => name.as_str(),
         _ => return false,
     };
-    name.starts_with("__safestack_")
-        || name.starts_with("__splitstack_")
-        || name == "__morestack"
+    name.starts_with("__safestack_") || name.starts_with("__splitstack_") || name == "__morestack"
 }
 
 /// Detect C++ exception handling runtime calls.
@@ -901,21 +916,16 @@ fn call_name_matches_process_thread(call: &AstCall) -> Option<&'static str> {
         _ => return None,
     };
     match name {
-        "CreateProcessA" | "CreateProcessW" | "CreateProcess" | "fork" | "vfork"
-        | "execve" | "execvp" | "posix_spawn" => Some("// process creation"),
-        "ExitProcess" | "_exit" | "_Exit" | "exit" | "quick_exit" => {
-            Some("// process termination")
+        "CreateProcessA" | "CreateProcessW" | "CreateProcess" | "fork" | "vfork" | "execve"
+        | "execvp" | "posix_spawn" => Some("// process creation"),
+        "ExitProcess" | "_exit" | "_Exit" | "exit" | "quick_exit" => Some("// process termination"),
+        "CreateThread" | "CreateRemoteThread" | "pthread_create" | "_beginthreadex"
+        | "_beginthread" => Some("// thread creation"),
+        "WaitForSingleObject" | "WaitForMultipleObjects" | "pthread_join" | "waitpid" | "wait" => {
+            Some("// wait / synchronization")
         }
-        "CreateThread" | "CreateRemoteThread" | "pthread_create"
-        | "_beginthreadex" | "_beginthread" => Some("// thread creation"),
-        "WaitForSingleObject" | "WaitForMultipleObjects" | "pthread_join"
-        | "waitpid" | "wait" => Some("// wait / synchronization"),
-        "VirtualProtect" | "VirtualProtectEx" | "mprotect" => {
-            Some("// memory protection change")
-        }
-        "VirtualAlloc" | "VirtualAllocEx" | "VirtualFree" => {
-            Some("// virtual memory management")
-        }
+        "VirtualProtect" | "VirtualProtectEx" | "mprotect" => Some("// memory protection change"),
+        "VirtualAlloc" | "VirtualAllocEx" | "VirtualFree" => Some("// virtual memory management"),
         _ => None,
     }
 }
@@ -927,8 +937,9 @@ fn call_name_matches_dynload(call: &AstCall) -> Option<&'static str> {
         _ => return None,
     };
     match name {
-        "LoadLibraryA" | "LoadLibraryW" | "LoadLibraryExA" | "LoadLibraryExW"
-        | "dlopen" => Some("// dynamic library load"),
+        "LoadLibraryA" | "LoadLibraryW" | "LoadLibraryExA" | "LoadLibraryExW" | "dlopen" => {
+            Some("// dynamic library load")
+        }
         "GetProcAddress" | "dlsym" => Some("// dynamic symbol resolve"),
         "FreeLibrary" | "dlclose" => Some("// dynamic library unload"),
         _ => None,
@@ -993,8 +1004,9 @@ fn call_name_matches_errno(call: &AstCall) -> Option<&'static str> {
         _ => return None,
     };
     match name {
-        "GetLastError" | "__errno_location" | "__errno" | "_errno"
-        | "errno" | "___error" => Some("// read last error code"),
+        "GetLastError" | "__errno_location" | "__errno" | "_errno" | "errno" | "___error" => {
+            Some("// read last error code")
+        }
         "SetLastError" | "WSASetLastError" => Some("// set last error code"),
         _ => None,
     }
@@ -1007,17 +1019,13 @@ fn call_name_matches_resource_io(call: &AstCall) -> Option<&'static str> {
         _ => return None,
     };
     match name {
-        "fopen" | "fopen64" | "_wfopen" | "CreateFileA" | "CreateFileW"
-        | "CreateFile" | "open" | "open64" | "_open" => Some("// file open"),
+        "fopen" | "fopen64" | "_wfopen" | "CreateFileA" | "CreateFileW" | "CreateFile" | "open"
+        | "open64" | "_open" => Some("// file open"),
         "fclose" | "close" | "_close" | "CloseHandle" => Some("// resource close"),
-        "fread" | "fwrite" | "read" | "write" | "ReadFile" | "WriteFile" => {
-            Some("// file I/O")
-        }
+        "fread" | "fwrite" | "read" | "write" | "ReadFile" | "WriteFile" => Some("// file I/O"),
         "socket" | "WSASocketA" | "WSASocketW" => Some("// socket creation"),
         "connect" | "WSAConnect" => Some("// socket connect"),
-        "send" | "recv" | "sendto" | "recvfrom" | "WSASend" | "WSARecv" => {
-            Some("// network I/O")
-        }
+        "send" | "recv" | "sendto" | "recvfrom" | "WSASend" | "WSARecv" => Some("// network I/O"),
         "bind" | "listen" | "accept" | "WSAAccept" => Some("// socket server"),
         "RegOpenKeyExA" | "RegOpenKeyExW" | "RegOpenKey" => Some("// registry open"),
         "RegQueryValueExA" | "RegQueryValueExW" => Some("// registry read"),
@@ -1035,15 +1043,42 @@ fn call_name_matches_string_op(call: &AstCall) -> bool {
     };
     matches!(
         name,
-        "strcpy" | "strncpy" | "strcat" | "strncat" | "strcmp" | "strncmp"
-        | "strlen" | "strtok" | "strstr" | "strchr" | "strrchr"
-        | "wcscpy" | "wcsncpy" | "wcscat" | "wcsncat" | "wcscmp"
-        | "wcsncmp" | "wcslen" | "wcsstr" | "wcschr"
-        | "memcpy" | "memmove" | "memset" | "memcmp"
-        | "lstrcpyA" | "lstrcpyW" | "lstrcmpA" | "lstrcmpW"
-        | "lstrlenA" | "lstrlenW"
-        | "sprintf" | "snprintf" | "swprintf" | "_snwprintf"
-        | "sscanf" | "swscanf"
+        "strcpy"
+            | "strncpy"
+            | "strcat"
+            | "strncat"
+            | "strcmp"
+            | "strncmp"
+            | "strlen"
+            | "strtok"
+            | "strstr"
+            | "strchr"
+            | "strrchr"
+            | "wcscpy"
+            | "wcsncpy"
+            | "wcscat"
+            | "wcsncat"
+            | "wcscmp"
+            | "wcsncmp"
+            | "wcslen"
+            | "wcsstr"
+            | "wcschr"
+            | "memcpy"
+            | "memmove"
+            | "memset"
+            | "memcmp"
+            | "lstrcpyA"
+            | "lstrcpyW"
+            | "lstrcmpA"
+            | "lstrcmpW"
+            | "lstrlenA"
+            | "lstrlenW"
+            | "sprintf"
+            | "snprintf"
+            | "swprintf"
+            | "_snwprintf"
+            | "sscanf"
+            | "swscanf"
     )
 }
 
@@ -1055,13 +1090,46 @@ fn call_name_matches_math(call: &AstCall) -> bool {
     };
     matches!(
         name,
-        "sin" | "cos" | "tan" | "asin" | "acos" | "atan" | "atan2"
-        | "sinf" | "cosf" | "tanf" | "asinf" | "acosf" | "atanf" | "atan2f"
-        | "sqrt" | "sqrtf" | "cbrt" | "cbrtf"
-        | "pow" | "powf" | "exp" | "expf" | "exp2" | "exp2f"
-        | "log" | "logf" | "log2" | "log2f" | "log10" | "log10f"
-        | "floor" | "floorf" | "ceil" | "ceilf" | "round" | "roundf"
-        | "fabs" | "fabsf" | "fmod" | "fmodf"
+        "sin"
+            | "cos"
+            | "tan"
+            | "asin"
+            | "acos"
+            | "atan"
+            | "atan2"
+            | "sinf"
+            | "cosf"
+            | "tanf"
+            | "asinf"
+            | "acosf"
+            | "atanf"
+            | "atan2f"
+            | "sqrt"
+            | "sqrtf"
+            | "cbrt"
+            | "cbrtf"
+            | "pow"
+            | "powf"
+            | "exp"
+            | "expf"
+            | "exp2"
+            | "exp2f"
+            | "log"
+            | "logf"
+            | "log2"
+            | "log2f"
+            | "log10"
+            | "log10f"
+            | "floor"
+            | "floorf"
+            | "ceil"
+            | "ceilf"
+            | "round"
+            | "roundf"
+            | "fabs"
+            | "fabsf"
+            | "fmod"
+            | "fmodf"
     )
 }
 
@@ -1245,5 +1313,106 @@ fn expr_accesses_memory(expr: &AstExpression) -> bool {
         }
         AstExpression::UnaryOp(_, arg) => expr_accesses_memory(&arg.item),
         _ => false,
+    }
+}
+
+/// Collect all variable IDs that are written (assigned/declared) anywhere in a
+/// statement list, recursing into nested control flow.
+fn collect_written_variables(stmts: &[WrappedAstStatement], out: &mut HashSet<AstVariableId>) {
+    for stmt in stmts {
+        for (access, var_id) in stmt.statement.get_related_variables() {
+            if access == AstVariableAccessType::Write {
+                out.insert(var_id);
+            }
+        }
+    }
+}
+
+/// Check whether an expression only reads variables that are NOT in `written`
+/// and has no side effects (pure + no memory writes).
+fn is_loop_invariant_expr(expr: &AstExpression, written: &HashSet<AstVariableId>) -> bool {
+    use super::opt_utils::is_pure_expression;
+    if !is_pure_expression(expr) {
+        return false;
+    }
+    let mut read_vars = HashSet::new();
+    super::opt_utils::collect_expr_variables(expr, &mut read_vars);
+    read_vars.is_disjoint(written)
+}
+
+/// Annotate assignments inside loop bodies whose RHS is loop-invariant (all
+/// referenced variables are never written inside the loop and the expression
+/// has no side effects). This is annotation-only — no code motion is performed.
+fn annotate_loop_invariants(stmts: &mut Vec<WrappedAstStatement>) {
+    for stmt in stmts.iter_mut() {
+        annotate_loop_invariants_in_stmt(stmt);
+    }
+}
+
+fn annotate_loop_invariants_in_stmt(stmt: &mut WrappedAstStatement) {
+    match &mut stmt.statement {
+        AstStatement::While(_, body) => {
+            annotate_loop_body_invariants(body);
+            annotate_loop_invariants(body);
+        }
+        AstStatement::For(init, _, update, body) => {
+            annotate_loop_invariants_in_stmt(init);
+            annotate_loop_invariants_in_stmt(update);
+            annotate_loop_body_invariants(body);
+            annotate_loop_invariants(body);
+        }
+        AstStatement::Block(body) => {
+            annotate_loop_invariants(body);
+        }
+        AstStatement::If(_, branch_true, branch_false) => {
+            annotate_loop_invariants(branch_true);
+            if let Some(branch_false) = branch_false {
+                annotate_loop_invariants(branch_false);
+            }
+        }
+        AstStatement::Switch(_, cases, default) => {
+            for (_lit, case_body) in cases.iter_mut() {
+                annotate_loop_invariants(case_body);
+            }
+            if let Some(default_body) = default {
+                annotate_loop_invariants(default_body);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn annotate_loop_body_invariants(body: &mut Vec<WrappedAstStatement>) {
+    let mut written = HashSet::new();
+    collect_written_variables(body, &mut written);
+
+    if written.is_empty() {
+        return;
+    }
+
+    let mut insertions: Vec<(usize, String)> = Vec::new();
+
+    for (i, stmt) in body.iter().enumerate() {
+        if let AstStatement::Assignment(_, rhs) = &stmt.statement {
+            if is_loop_invariant_expr(&rhs.item, &written) {
+                insertions.push((i, "// loop-invariant".to_string()));
+            }
+        }
+        if let AstStatement::Declaration(_, Some(init)) = &stmt.statement {
+            if is_loop_invariant_expr(&init.item, &written) {
+                insertions.push((i, "// loop-invariant".to_string()));
+            }
+        }
+    }
+
+    for (idx, comment_text) in insertions.into_iter().rev() {
+        body.insert(
+            idx,
+            WrappedAstStatement {
+                statement: AstStatement::Comment(comment_text),
+                origin: AstStatementOrigin::Unknown,
+                comment: None,
+            },
+        );
     }
 }

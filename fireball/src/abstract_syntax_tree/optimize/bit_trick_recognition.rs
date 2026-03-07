@@ -241,8 +241,7 @@ fn try_reverse_strength_reduction(expr: &Wrapped<AstExpression>) -> Option<Wrapp
     };
 
     // Pattern 1: (x << N) +/- x
-    if let AstExpression::BinaryOp(AstBinaryOperator::LeftShift, shifted_x, shift_amt) =
-        &left.item
+    if let AstExpression::BinaryOp(AstBinaryOperator::LeftShift, shifted_x, shift_amt) = &left.item
     {
         let n = extract_literal_u64(&shift_amt.item)?;
         if n == 0 || n >= 64 {
@@ -429,7 +428,8 @@ fn try_recognize_sentinel_comparison(expr: &AstExpression) -> Option<String> {
         return None;
     }
 
-    let lit_val = extract_sentinel_literal(&rhs.item).or_else(|| extract_sentinel_literal(&lhs.item))?;
+    let lit_val =
+        extract_sentinel_literal(&rhs.item).or_else(|| extract_sentinel_literal(&lhs.item))?;
 
     match lit_val {
         SentinelKind::NegativeOne => Some("sentinel check (-1 / INVALID_HANDLE_VALUE)".to_string()),
@@ -489,8 +489,7 @@ fn try_recognize_bitfield_access(expr: &AstExpression) -> Option<String> {
     // Pattern 2: (x & mask) >> shift (mask then shift)
     if let AstExpression::BinaryOp(AstBinaryOperator::RightShift, lhs, rhs) = expr {
         if let Some(shift) = extract_literal_u64(&rhs.item) {
-            if let AstExpression::BinaryOp(AstBinaryOperator::BitAnd, inner_l, inner_r) =
-                &lhs.item
+            if let AstExpression::BinaryOp(AstBinaryOperator::BitAnd, inner_l, inner_r) = &lhs.item
             {
                 if let Some(mask) = extract_literal_u64(&inner_r.item) {
                     let width = mask.count_ones() as u64;
@@ -516,8 +515,7 @@ fn try_shift_then_mask(
     mask_expr: &Wrapped<AstExpression>,
 ) -> Option<String> {
     let mask = extract_literal_u64(&mask_expr.item)?;
-    let AstExpression::BinaryOp(AstBinaryOperator::RightShift, _, shift_amt) = &shifted.item
-    else {
+    let AstExpression::BinaryOp(AstBinaryOperator::RightShift, _, shift_amt) = &shifted.item else {
         return None;
     };
     let shift = extract_literal_u64(&shift_amt.item)?;
@@ -679,7 +677,10 @@ fn try_recognize_saturating(expr: &Wrapped<AstExpression>) -> Option<String> {
 
     // Pattern: x >(=) C ? C : x  →  saturate(max=C)
     // cond.lhs = x, cond.rhs = C (literal), true_expr = C, false_expr = x
-    if matches!(op, AstBinaryOperator::Greater | AstBinaryOperator::GreaterEqual) {
+    if matches!(
+        op,
+        AstBinaryOperator::Greater | AstBinaryOperator::GreaterEqual
+    ) {
         if let Some(c) = extract_literal_u64(&rhs.item) {
             if extract_literal_u64(&true_expr.item) == Some(c)
                 && expr_structurally_equal(&lhs.item, &false_expr.item)
@@ -712,7 +713,10 @@ fn try_recognize_saturating(expr: &Wrapped<AstExpression>) -> Option<String> {
     }
 
     // Reversed: C >(=) x ? C : x  →  saturate(min=C)
-    if matches!(op, AstBinaryOperator::Greater | AstBinaryOperator::GreaterEqual) {
+    if matches!(
+        op,
+        AstBinaryOperator::Greater | AstBinaryOperator::GreaterEqual
+    ) {
         if let Some(c) = extract_literal_u64(&lhs.item) {
             if extract_literal_u64(&true_expr.item) == Some(c)
                 && expr_structurally_equal(&rhs.item, &false_expr.item)
@@ -783,8 +787,7 @@ fn extract_mul_stride(expr: &AstExpression) -> Option<u64> {
     if !matches!(op, AstBinaryOperator::Mul) {
         return None;
     }
-    extract_literal_u64(&right.item)
-        .or_else(|| extract_literal_u64(&left.item))
+    extract_literal_u64(&right.item).or_else(|| extract_literal_u64(&left.item))
 }
 
 /// Detect byte-swap patterns and annotate with bswap16/bswap32.
@@ -921,9 +924,7 @@ fn try_simplify_identity_op(expr: &Wrapped<AstExpression>) -> Option<Wrapped<Ast
     if left_lit == Some(0)
         && matches!(
             op,
-            AstBinaryOperator::Add
-                | AstBinaryOperator::BitXor
-                | AstBinaryOperator::BitOr
+            AstBinaryOperator::Add | AstBinaryOperator::BitXor | AstBinaryOperator::BitOr
         )
     {
         return Some(keep(right));
@@ -970,8 +971,7 @@ fn try_recognize_alignment_mask(expr: &AstExpression) -> Option<String> {
 
     // Check if either side is a mask that's the bitwise NOT of (power_of_two - 1)
     // i.e., 0xFFFFFFF0 for align-16, 0xFFFFFFFC for align-4, etc.
-    let mask_val = extract_literal_u64(&right.item)
-        .or_else(|| extract_literal_u64(&left.item))?;
+    let mask_val = extract_literal_u64(&right.item).or_else(|| extract_literal_u64(&left.item))?;
 
     // ~(N-1) for power of two N means the mask has all high bits set and low bits clear
     // The complement +1 should be a power of two

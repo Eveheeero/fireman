@@ -163,6 +163,18 @@ fn detect_thunk_functions(stmts: &[WrappedAstStatement]) -> bool {
     }
 }
 
+fn meaningful_statement_count(stmts: &[WrappedAstStatement]) -> usize {
+    stmts
+        .iter()
+        .filter(|stmt| {
+            !matches!(
+                &stmt.statement,
+                AstStatement::Comment(_) | AstStatement::Empty
+            )
+        })
+        .count()
+}
+
 fn cleanup_statement(stmt: &mut WrappedAstStatement, noreturn_targets: &HashSet<AstFunctionId>) {
     match &mut stmt.statement {
         AstStatement::If(_, branch_true, branch_false) => {
@@ -431,9 +443,7 @@ fn prune_constant_condition_branches(stmts: &mut Vec<WrappedAstStatement>) {
                     prune_constant_condition_branches(bf);
                 }
                 let const_truth = match &cond.item {
-                    AstExpression::Literal(AstLiteral::Int(0) | AstLiteral::UInt(0)) => {
-                        Some(false)
-                    }
+                    AstExpression::Literal(AstLiteral::Int(0) | AstLiteral::UInt(0)) => Some(false),
                     AstExpression::Literal(AstLiteral::Int(_) | AstLiteral::UInt(_)) => Some(true),
                     _ => None,
                 };
@@ -503,10 +513,7 @@ fn merge_consecutive_same_condition_ifs(stmts: &mut Vec<WrappedAstStatement>) {
             let first_stmt = &first[i].statement;
             let next_stmt = &rest[0].statement;
             match (first_stmt, next_stmt) {
-                (
-                    AstStatement::If(cond1, _, None),
-                    AstStatement::If(cond2, _, _),
-                ) => {
+                (AstStatement::If(cond1, _, None), AstStatement::If(cond2, _, _)) => {
                     super::opt_utils::is_pure_expression(&cond1.item)
                         && super::opt_utils::expr_structurally_equal(&cond1.item, &cond2.item)
                 }
@@ -532,8 +539,8 @@ fn merge_consecutive_same_condition_ifs(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
-/// Invert `if(!cond) { A } else { B }` → `if(cond) { B } else { A }` to remove
-/// the leading negation and improve readability. Only applies when both branches exist.
+/// Invert `if(!cond) { A } else { B }` → `if(cond) { B } else { A }` when doing
+/// so keeps the larger branch on the positive path and improves readability.
 fn invert_negated_branches(stmts: &mut Vec<WrappedAstStatement>) {
     for stmt in stmts.iter_mut() {
         match &mut stmt.statement {
@@ -545,10 +552,14 @@ fn invert_negated_branches(stmts: &mut Vec<WrappedAstStatement>) {
                 // Only invert when both branches exist and condition is `!expr`.
                 if let Some(bf) = bf {
                     if let AstExpression::UnaryOp(AstUnaryOperator::Not, inner) = &cond.item {
-                        // Unwrap the negation: condition becomes inner expression.
-                        cond.item = inner.item.clone();
-                        // Swap true and false branches.
-                        std::mem::swap(bt, bf);
+                        let true_branch_size = meaningful_statement_count(bt);
+                        let false_branch_size = meaningful_statement_count(bf);
+
+                        if false_branch_size > true_branch_size {
+                            // Unwrap the negation only when the positive path stays dominant.
+                            cond.item = inner.item.clone();
+                            std::mem::swap(bt, bf);
+                        }
                     }
                 }
             }
@@ -657,9 +668,7 @@ fn classify_return_expr(expr: &Option<Wrapped<AstExpression>>) -> ReturnKind {
     match expr {
         Some(w) => match &w.item {
             AstExpression::Literal(AstLiteral::Int(0) | AstLiteral::UInt(0)) => ReturnKind::Zero,
-            AstExpression::Literal(AstLiteral::Int(_) | AstLiteral::UInt(_)) => {
-                ReturnKind::NonZero
-            }
+            AstExpression::Literal(AstLiteral::Int(_) | AstLiteral::UInt(_)) => ReturnKind::NonZero,
             _ => ReturnKind::Other,
         },
         None => ReturnKind::Other,

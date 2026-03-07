@@ -1,12 +1,49 @@
 use crate::{
     core::{Block, Instruction},
-    ir::{Ir, IrBlock, analyze::DataType, data::IrDataAccess, utils::IrStatementDescriptorMap},
+    ir::{
+        Ir, IrBlock,
+        analyze::{DataType, analyze_function_control_flow, infer_entry_block_id},
+        data::IrDataAccess,
+        utils::IrStatementDescriptorMap,
+    },
     prelude::*,
 };
 use std::sync::Arc;
 
+fn run_cfg_shape_analysis(blocks: &[Arc<Block>]) {
+    let Some(entry_block_id) = infer_entry_block_id(blocks) else {
+        debug!("Skip CFG shape analysis: failed to infer entry block");
+        return;
+    };
+
+    let analysis = analyze_function_control_flow(blocks, entry_block_id);
+    let control_dependent_blocks = analysis
+        .cfg()
+        .block_ids()
+        .iter()
+        .filter(|&&block_id| {
+            !analysis
+                .control_dependence()
+                .controlling_predicates_of(block_id)
+                .is_empty()
+        })
+        .count();
+
+    debug!(
+        "CFG shape analysis: entry={}, blocks={}, exits={}, back_edges={}, natural_loops={}, control_dependent_blocks={}",
+        entry_block_id,
+        analysis.cfg().block_ids().len(),
+        analysis.postdominators().cfg().exit_block_ids().len(),
+        analysis.dominators().back_edges().len(),
+        analysis.loops().loops().len(),
+        control_dependent_blocks
+    );
+}
+
 pub fn generate_ir_function(blocks: &[Arc<Block>]) -> IrFunction {
     info!("Generate IR function from {} blocks", blocks.len());
+    run_cfg_shape_analysis(blocks);
+
     // Merge IR from all blocks in execution order
     let mut combined_ir = Vec::new();
     let mut instructions = Vec::new();

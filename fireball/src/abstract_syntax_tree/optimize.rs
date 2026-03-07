@@ -1,8 +1,8 @@
 mod auto_comment;
 mod bit_trick_recognition;
-pub(crate) mod call_graph;
 mod boolean_recovery;
 mod call_argument_analyzation;
+pub(crate) mod call_graph;
 mod cast_minimization;
 mod collapse_unused_variable;
 mod common_subexpression_elimination;

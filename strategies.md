@@ -22,12 +22,10 @@
 - [~] Architecture/ABI modeling — Encode calling conventions, callee/caller-saved regs, stack alignment, red zones.
 - [x] CFG construction — Build basic blocks and directed edges from branches/calls/returns.
 - [x] Basic block normalization — Split/merge blocks at targets/fallthroughs to stabilize later structuring.
-- [ ] Dominator tree computation — Compute dominators to support loop finding, structuring, and SSA placement.
-  > 도미네이터 트리 알고리즘 구현 필요 — 현재 CFG에 도미네이터 정보 없음
-- [ ] Postdominator analysis — Support if/else recovery, region formation, and structured exits.
-  > dominator tree 선행 필요
-- [ ] Control-dependence analysis — Determine which predicates guard which statements for clean high-level control.
-  > dominator/postdominator 선행 필요
+- [x] Dominator tree computation — Compute dominators to support loop finding, structuring, and SSA placement.
+- [x] Postdominator analysis — Support if/else recovery, region formation, and structured exits.
+- [~] Control-dependence analysis — Determine which predicates guard which statements for clean high-level control.
+  > IR CFG 기준 control-dependence 계산 구현 완료 (dominator.rs::ControlDependence). AST statement origin이 block topology를 보존하지 않아 cleanup_control_flow/loop_analyzation 연결은 미구현
 - [~] Indirect branch target recovery — Resolve computed jumps via dataflow, value sets, and table recognition.
 - [ ] Jump table detection — Recognize switch tables (bounds checks + indexed loads + indirect jump).
   > IR/디스어셈블러 레이어 변경 필요
@@ -59,15 +57,14 @@
 - [x] Short-circuit boolean reconstruction — Convert branch patterns into &&/|| when semantics match.
 - [x] Ternary operator recovery — Recognize select/phi patterns to emit cond ? a : b.
 - [ ] Region/structural analysis — Convert CFG into structured if/else, while, for, do-while regions.
-  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Reducibility transformation — Apply node splitting/edge rewriting to structure irreducible CFGs when possible.
-  > 비환원 CFG 노드 분할 알고리즘 구현 필요
-- [ ] Loop detection via back-edges — Identify natural loops using dominators and back-edge discovery.
-  > dominator tree 선행 필요
+  > 비환원 CFG 노드 분할 알고리즘 구현 필요 — 도미네이터 트리는 구현 완료 (dominator.rs)
+- [x] Loop detection via back-edges — Identify natural loops using dominators and back-edge discovery.
 - [x] Loop reconstruction heuristics — Choose while vs do-while vs for based on header/test placement.
 - [x] Induction variable analysis — Detect counters/strides/bounds to emit for (i=…; …; i+=…).
-- [ ] Loop-invariant code motion (reverse) — Recognize hoisted expressions and place them naturally in source output.
-  > dominator tree + 루프 분석 선행 필요
+- [~] Loop-invariant code motion (reverse) — Recognize hoisted expressions and place them naturally in source output.
+  > 루프 본문 내 불변 표현식 감지 및 주석 추가 구현 (auto_comment.rs). 실제 코드 이동은 포인터/앨리어싱 분석 선행 필요
 - [x] Control-flow simplification — Remove redundant gotos, invert conditions, merge equivalent tails.
 - [x] Goto containment heuristics — Use labeled blocks sparingly; prefer structured constructs when safe.
 - [~] Stack pointer tracking — Track SP deltas across blocks to recover frame layout even without frame pointers.
@@ -393,17 +390,17 @@
 - [ ] Taint analysis — Mark data from sources and follow it through transforms to classify inputs/outputs and checks.
   > 인터프로시저럴 분석 프레임워크 필요
 - [ ] Data-dependence graph construction — Build def-use dependencies as a graph to drive refactoring and naming.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [~] Control-equivalence detection — Find predicates that are logically the same to simplify repeated conditions.
   > 구조적 동등성(expr_structurally_equal) + 연산자 정규화(operator_canonicalization) + 연속 조건 병합으로 부분 구현. SMT 기반 논리적 동치는 미구현
 - [ ] Predicate abstraction — Replace complex expressions with boolean symbols during structuring; refine later.
   > SMT/형식 검증 프레임워크 필요
 - [ ] SESE region discovery — Identify single-entry/single-exit regions to map cleanly into structured C blocks.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Interval-based structuring — Use interval analysis to structure CFGs into loops/conditionals deterministically.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Relooper-style structuring — Convert irreducible CFGs into structured forms using labeled regions and dispatch.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] If-conversion reversal — Detect predicated/select-based code and recover explicit if/else.
   > 기존 ternary_recovery 패스와 상충 — 복잡한 ternary 역변환 휴리스틱 필요
 - [ ] Duff’s device detection — Recognize unrolled switch/loop hybrids and emit canonical loop + switch forms.
@@ -415,13 +412,13 @@
   > (x<<N)+x → x*(2^N+1), (x<<N)-x → x*(2^N-1), (x<<N)+(x<<M) → x*(2^N+2^M) 변환 (bit_trick_recognition.rs). 루프 인덕션 변수 역변환은 미구현
 - [x] Common tail factoring — Merge duplicated tails into shared blocks or structured break/return paths.
   > if/else 분기의 동일한 후미 문장을 blake3 해싱으로 감지 후 분기 밖으로 추출 (control_flow_cleanup.rs)
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [x] Early-return normalization — Transform nested conditionals into guard clauses to resemble typical source style.
 - [x] Guarded-call recovery — Detect if (ptr) call(ptr) patterns from compare+branch around indirect calls.
 - [ ] Call/ret pairing validation — Sanity-check stack/ABI effects around call sites to catch bad disassembly.
   > IR 리프팅/디코딩 레이어 확장 필요
 - [ ] Fallthrough intent inference — Decide whether adjacent blocks represent switch fallthrough vs accidental layout.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [x] Case clustering — Group cases with identical bodies into case A: case B: patterns.
   > blake3 구조적 해싱으로 인접 동일 케이스 바디 병합 구현 완료 (switch_reconstruction.rs)
 - [x] If-ladder to switch promotion — Upgrade compare/jump ladders into switch even without explicit tables.
@@ -437,7 +434,7 @@
 - [ ] Dispatcher-variable recovery — Reconstruct flattened CFG dispatch variables used by obfuscators or coroutines.
   > 난독화 해제 프레임워크 필요 — 현재 인프라 없음
 - [ ] Region reordering heuristics — Choose source-like block order based on dominator/postdominator relationships.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Code layout de-biasing — Ignore physical layout heuristics when PGO/hot-cold splitting skews adjacency.
   > 고급 휴리스틱 프레임워크 필요 — 현재 인프라 부족
 - [ ] Pointer escape analysis — Infer whether a pointer escapes a scope to decide stack vs heap semantics.
@@ -765,7 +762,7 @@
 - [ ] Canonical error-handling templates — Rewrite common goto fail shapes into consistent, compact patterns.
   > 고급 휴리스틱 프레임워크 필요 — 현재 인프라 부족
 - [ ] Scope recovery via dominance frontiers — Use dominance + liveness to introduce minimal scopes and reduce variable lifetime.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Relational memory modeling — Track correlations between multiple variables (e.g., i < n implies bounds) beyond intervals.
   > SMT/형식 검증 프레임워크 필요
 - [ ] Stride-aware range analysis — Use modular arithmetic to refine ranges for index variables and switch discriminants.
@@ -803,7 +800,7 @@
 - [ ] Instruction entropy profiling — Use local entropy and decode stability to identify packed/data regions.
   > IR 리프팅/디코딩 레이어 확장 필요
 - [ ] Basic-block “shape” scoring — Prefer block splits that maximize valid terminators and minimize weird fallthrough.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Branch-target alignment heuristics — Use typical alignment patterns to rank plausible jump/call targets.
   > IR 리프팅/디코딩 레이어 확장 필요
 - [ ] Call-site sanity constraints — Reject targets that violate ABI expectations (stack alignment, arg setup patterns).
@@ -811,7 +808,7 @@
 - [ ] Return-address stack simulation — Track plausible return targets to validate call/ret structure in CFG.
   > IR 리프팅/디코딩 레이어 확장 필요
 - [ ] CFG edge plausibility via stack delta — Down-rank edges that create impossible SP/FP deltas.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Indirect-call signature matching — Infer function-pointer types from how arguments are prepared before call [reg].
   > 인터프로시저럴 분석 프레임워크 필요
 - [ ] Vtable slot indexing inference — Recover virtual method indices from this->vptr[idx] patterns for naming.
@@ -823,19 +820,19 @@
 - [ ] Range-check + bias switch recovery — Detect cmp/sub; ja; jmp [table+idx] with biased indices.
   > IR 리프팅/디코딩 레이어 확장 필요
 - [ ] Computed-goto pattern lifting — Recognize state dispatch using labels-as-values idioms and emit switch/dispatch.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Loop “continue” edge normalization — Rewire back-edges to canonical continue targets to improve for/while output.
   > AST에 Break/Continue 문 타입이 없음 — AstStatement 확장 필요
 - [ ] Irreducible loop splitting with heuristics — Split nodes to create reducible regions when it reduces gotos.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Structured exception edge integration — Merge EH edges into region structuring instead of leaving as raw gotos.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Speculative region forming with cost model — Try multiple structuring trees and keep the lowest “gotos + complexity” cost.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [~] Predicate hoisting/reassociation — Combine repeated guards across blocks into a single dominating if.
   > 연속 if(같은조건) 병합 구현 (control_flow_cleanup.rs). 도미네이터 기반 비연속 블록 병합은 미구현
 - [~] Edge inversion for readability — Flip branches to keep fallthrough as “likely” path for cleaner output.
-  > if(!cond) { A } else { B } → if(cond) { B } else { A } 변환 구현 (control_flow_cleanup.rs). 크기 기반 휴리스틱은 미구현
+  > if(!cond) { A } else { B } → if(cond) { B } else { A } 변환 + 분기 본문 크기 비교 휴리스틱 구현 (control_flow_cleanup.rs). hello_world 검증 출력이 비결정적이라 [~] 유지
 - [ ] Congruence analysis (mod arithmetic) — Infer facts like x ≡ k (mod m) to tighten switch/index reasoning.
   > SMT/형식 검증 프레임워크 필요
 - [ ] Wrap-around aware range analysis — Model unsigned overflow explicitly to avoid incorrect simplifications.
@@ -919,13 +916,13 @@
 - [ ] Behavioral clustering for naming — Cluster functions by side effects/API sets (crypto, IO, parsing) to guide labels.
   > ML/통계 모델 필요 — 현재 인프라 없음
 - [ ] Graph grammar structuring — Apply grammar rules over CFG motifs to recover higher-level constructs reliably.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] SPQR decomposition for CFGs — Use graph decomposition to guide structured region extraction in complex graphs.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Region “repair” via duplication — Duplicate small blocks to eliminate irreducible joins when it reduces gotos.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Edge contract enforcement — Enforce “single-exit” contracts by introducing local flags to keep structured output.
-  > 도미네이터 트리 + CFG 구조화 알고리즘 구현 필요
+  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [~] Plugin-driven semantic intrinsics — Let users define IR intrinsics for domain ops (CRC, checksum, endian loads) for cleaner C.
 - [~] Pass provenance tagging — Attach “origin” metadata to AST nodes (pattern, proof, trace) for explainability/debugging.
 - [ ] Confidence-based fallback per construct — Emit structured C only above confidence threshold; otherwise keep labeled blocks/asm.
