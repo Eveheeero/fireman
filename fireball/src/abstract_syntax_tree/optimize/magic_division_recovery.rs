@@ -62,7 +62,7 @@ fn recover_in_statement(stmt: &mut WrappedAstStatement) {
                 recover_in_statement_list(branch_false);
             }
         }
-        AstStatement::While(cond, body) => {
+        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
             recover_in_expression(cond);
             recover_in_statement_list(body);
         }
@@ -99,6 +99,8 @@ fn recover_in_statement(stmt: &mut WrappedAstStatement) {
         | AstStatement::Exception(_)
         | AstStatement::Label(_)
         | AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }

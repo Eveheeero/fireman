@@ -222,7 +222,7 @@ fn count_reads_in_statement(stmt: &AstStatement, target: AstVariableId) -> usize
                     })
                     .unwrap_or(0)
         }
-        AstStatement::While(cond, body) => {
+        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
             count_reads_in_expr(&cond.item, target)
                 + body
                     .iter()
@@ -273,6 +273,8 @@ fn count_reads_in_statement(stmt: &AstStatement, target: AstVariableId) -> usize
         | AstStatement::Undefined
         | AstStatement::Exception(_)
         | AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => 0,
     }
 }

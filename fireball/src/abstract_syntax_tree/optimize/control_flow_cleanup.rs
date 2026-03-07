@@ -185,7 +185,9 @@ fn cleanup_statement(stmt: &mut WrappedAstStatement, noreturn_targets: &HashSet<
                 cleanup_statement_list(branch_false, noreturn_targets);
             }
         }
-        AstStatement::While(_, body) => cleanup_statement_list(body, noreturn_targets),
+        AstStatement::While(_, body) | AstStatement::DoWhile(_, body) => {
+            cleanup_statement_list(body, noreturn_targets)
+        }
         AstStatement::For(init, _, update, body) => {
             cleanup_statement(init, noreturn_targets);
             cleanup_statement(update, noreturn_targets);
@@ -213,6 +215,8 @@ fn cleanup_statement(stmt: &mut WrappedAstStatement, noreturn_targets: &HashSet<
         | AstStatement::Exception(_)
         | AstStatement::Comment(_)
         | AstStatement::Ir(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }
@@ -318,6 +322,7 @@ fn statement_outcome(
         | AstStatement::Assignment(_, _)
         | AstStatement::If(_, _, None)
         | AstStatement::While(_, _)
+        | AstStatement::DoWhile(_, _)
         | AstStatement::For(_, _, _, _)
         | AstStatement::Label(_)
         | AstStatement::Goto(_)
@@ -325,6 +330,10 @@ fn statement_outcome(
         | AstStatement::Comment(_)
         | AstStatement::Ir(_)
         | AstStatement::Empty => TerminationOutcome::NoTerminate,
+        // Break/Continue transfer control within a loop/switch but do not
+        // cause a function-level return or noreturn, so for this analysis
+        // (which tracks function-level termination) they are non-terminating.
+        AstStatement::Break | AstStatement::Continue => TerminationOutcome::NoTerminate,
     }
 }
 
@@ -685,6 +694,22 @@ fn classify_return_expr(expr: &Option<Wrapped<AstExpression>>) -> ReturnKind {
     }
 }
 
+/// Return a more specific annotation for sentinel error returns (-1 / 0xFFFFFFFF).
+fn specific_return_annotation(expr: &Option<Wrapped<AstExpression>>) -> Option<&'static str> {
+    let w = expr.as_ref()?;
+    match &w.item {
+        AstExpression::Literal(AstLiteral::Int(-1)) => Some("error: returns sentinel -1"),
+        AstExpression::Literal(AstLiteral::UInt(0xFFFFFFFF)) => Some("error: returns sentinel -1"),
+        AstExpression::Literal(AstLiteral::UInt(0xFFFFFFFFFFFFFFFF)) => {
+            Some("error: returns sentinel -1")
+        }
+        AstExpression::Literal(AstLiteral::Int(0) | AstLiteral::UInt(0)) => {
+            Some("success: returns 0")
+        }
+        _ => None,
+    }
+}
+
 fn collect_return_kinds(stmts: &[WrappedAstStatement], out: &mut Vec<(ReturnKind, usize)>) {
     for (i, stmt) in stmts.iter().enumerate() {
         match &stmt.statement {
@@ -719,12 +744,17 @@ fn apply_return_annotations(stmts: &mut Vec<WrappedAstStatement>) {
     for stmt in stmts.iter_mut() {
         match &mut stmt.statement {
             AstStatement::Return(expr) => {
-                let kind = classify_return_expr(expr);
                 if stmt.comment.is_none() {
-                    match kind {
-                        ReturnKind::Zero => stmt.comment = Some("success".to_string()),
-                        ReturnKind::NonZero => stmt.comment = Some("error".to_string()),
-                        ReturnKind::Other => {}
+                    // Prefer specific sentinel annotations, fall back to generic ones.
+                    if let Some(specific) = specific_return_annotation(expr) {
+                        stmt.comment = Some(specific.to_string());
+                    } else {
+                        let kind = classify_return_expr(expr);
+                        match kind {
+                            ReturnKind::Zero => stmt.comment = Some("success".to_string()),
+                            ReturnKind::NonZero => stmt.comment = Some("error".to_string()),
+                            ReturnKind::Other => {}
+                        }
                     }
                 }
             }

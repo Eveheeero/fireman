@@ -221,7 +221,7 @@ fn collect_all_variables_in_statement(stmt: &AstStatement, out: &mut HashSet<Ast
                 collect_all_variables_in_list(bf, out);
             }
         }
-        AstStatement::While(cond, body) => {
+        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
             super::opt_utils::collect_expr_variables(&cond.item, out);
             collect_all_variables_in_list(body, out);
         }
@@ -258,6 +258,8 @@ fn collect_all_variables_in_statement(stmt: &AstStatement, out: &mut HashSet<Ast
         | AstStatement::Undefined
         | AstStatement::Exception(_)
         | AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }
@@ -344,7 +346,7 @@ fn rename_in_statement(
                 rename_in_list(bf, rename_map);
             }
         }
-        AstStatement::While(cond, body) => {
+        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
             rename_in_expression(cond, rename_map);
             rename_in_list(body, rename_map);
         }
@@ -381,6 +383,8 @@ fn rename_in_statement(
         | AstStatement::Undefined
         | AstStatement::Exception(_)
         | AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }

@@ -232,12 +232,18 @@ fn external_symbol_identifier(name: &str) -> String {
     out
 }
 
-/// Try to demangle a C++ mangled symbol name.
+/// Try to demangle a C++ or Rust mangled symbol name.
 /// Returns `Some(demangled)` if the name was successfully demangled, `None` otherwise.
 fn demangle_symbol(name: &str) -> Option<String> {
     // Try C++ (Itanium ABI) demangling
     if let Ok(sym) = cpp_demangle::Symbol::new(name) {
         return sym.demangle().ok();
+    }
+    // Try Rust demangling as fallback
+    let demangled = rustc_demangle::demangle(name);
+    let demangled_str = demangled.to_string();
+    if demangled_str != name {
+        return Some(demangled_str);
     }
     None
 }
@@ -2625,6 +2631,7 @@ fn is_barrier(stmt: &AstStatement) -> bool {
 
         AstStatement::If(_, _, _)
         | AstStatement::While(_, _)
+        | AstStatement::DoWhile(_, _)
         | AstStatement::For(_, _, _, _)
         | AstStatement::Switch(_, _, _)
         | AstStatement::Block(_) => true,
@@ -2633,6 +2640,8 @@ fn is_barrier(stmt: &AstStatement) -> bool {
         | AstStatement::Assignment(_, _)
         | AstStatement::Label(_)
         | AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => false,
     }
 }

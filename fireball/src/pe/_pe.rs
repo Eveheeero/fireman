@@ -1,6 +1,6 @@
 //! Module containing the implementation of the PE struct
 
-use super::Pe;
+use super::{Pe, pdb_parser};
 use crate::{
     core::{Address, Blocks, PreDefinedOffset, PreDefinedOffsets, Relations, Sections},
     prelude::*,
@@ -80,7 +80,14 @@ impl Pe {
                     if let Ok(sym) = cpp_demangle::Symbol::new(name) {
                         sym.demangle().unwrap_or_else(|_| name.to_string())
                     } else {
-                        name.to_string()
+                        // Try Rust demangling as fallback
+                        let demangled = rustc_demangle::demangle(name);
+                        let demangled_str = demangled.to_string();
+                        if demangled_str != name {
+                            demangled_str
+                        } else {
+                            name.to_string()
+                        }
                     }
                 } else {
                     format!("0x{:x}", offset_raw)
@@ -91,6 +98,18 @@ impl Pe {
                     name,
                     address: Address::from_virtual_address(&sections, offset),
                 });
+            }
+
+            // Load PDB symbols if a PDB file is available next to the PE.
+            if let Some(ref pe_path) = path {
+                if let Some(pdb_info) = pdb_parser::try_load_pdb(pe_path, &binary) {
+                    let image_base = gl
+                        .header
+                        .optional_header
+                        .map(|opt| opt.windows_fields.image_base)
+                        .unwrap_or(0);
+                    pdb_parser::merge_pdb_symbols(&pdb_info, &defined, &sections, image_base);
+                }
             }
 
             defined

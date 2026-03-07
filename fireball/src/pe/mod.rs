@@ -1,10 +1,14 @@
 //! Module containing structures for PE files
 
 mod _pe;
+pub mod analysis;
+pub mod api_prototypes;
 mod asm;
 mod block;
 mod fire;
 mod fmt;
+pub mod linker_map;
+pub mod pdb_parser;
 
 use crate::core::{Address, Blocks, PreDefinedOffsets, Relations, Sections};
 use std::{

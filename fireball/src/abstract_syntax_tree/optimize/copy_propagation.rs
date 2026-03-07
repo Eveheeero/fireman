@@ -122,6 +122,16 @@ fn propagate_statement(
             // After loop, invalidate written vars again (loop may or may not execute)
             invalidate_written(env, &written);
         }
+        AstStatement::DoWhile(cond, body) => {
+            // do-while: body executes before condition.
+            let mut written = HashSet::new();
+            collect_written_vars_list(body, &mut written);
+            invalidate_written(env, &written);
+            let mut env_body = env.clone();
+            propagate_statement_list(body, &mut env_body);
+            substitute_expression(cond, &mut env_body);
+            invalidate_written(env, &written);
+        }
         AstStatement::For(init, cond, update, body) => {
             propagate_statement(init, env);
             // Pre-scan loop body + update for written variables; only invalidate those
@@ -185,7 +195,10 @@ fn propagate_statement(
             // Join point: cannot know which path reached here
             env.clear();
         }
-        AstStatement::Comment(_) | AstStatement::Empty => {}
+        AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
+        | AstStatement::Empty => {}
     }
 }
 
@@ -299,7 +312,7 @@ fn collect_written_vars_stmt(stmt: &AstStatement, out: &mut HashSet<AstVariableI
                 collect_written_vars_list(bf, out);
             }
         }
-        AstStatement::While(_, body) => {
+        AstStatement::While(_, body) | AstStatement::DoWhile(_, body) => {
             collect_written_vars_list(body, out);
         }
         AstStatement::For(init, _, update, body) => {

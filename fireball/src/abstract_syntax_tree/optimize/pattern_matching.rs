@@ -905,7 +905,7 @@ fn apply_file_pattern_rules_recursive(
                         );
                     }
                 }
-                AstStatement::While(_, body) => {
+                AstStatement::While(_, body) | AstStatement::DoWhile(_, body) => {
                     pass_changed |= apply_file_pattern_rules_recursive(
                         body,
                         rules,
@@ -987,6 +987,8 @@ fn apply_file_pattern_rules_recursive(
                 | AstStatement::Exception(_)
                 | AstStatement::Comment(_)
                 | AstStatement::Ir(_)
+                | AstStatement::Break
+                | AstStatement::Continue
                 | AstStatement::Empty => {}
             }
         }
@@ -1171,7 +1173,7 @@ fn prune_empty_else_statement_recursive(stmt: &mut WrappedAstStatement) {
                 *branch_false = None;
             }
         }
-        AstStatement::While(_, body) => {
+        AstStatement::While(_, body) | AstStatement::DoWhile(_, body) => {
             prune_empty_else_recursive(body);
         }
         AstStatement::For(init, _, update, body) => {
@@ -1201,6 +1203,8 @@ fn prune_empty_else_statement_recursive(stmt: &mut WrappedAstStatement) {
         | AstStatement::Exception(_)
         | AstStatement::Comment(_)
         | AstStatement::Ir(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }

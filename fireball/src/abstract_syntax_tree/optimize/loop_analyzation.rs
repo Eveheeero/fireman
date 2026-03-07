@@ -1,7 +1,8 @@
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget,
-        AstLiteral, AstStatement, AstVariableId, ProcessedOptimization, WrappedAstStatement,
+        Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
+        AstJumpTarget, AstLiteral, AstStatement, AstValueOrigin, AstVariableId,
+        ProcessedOptimization, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -26,6 +27,7 @@ pub(super) fn analyze_loops(
     normalize_rotated_loops(&mut body);
     try_convert_while_to_for(&mut body);
     annotate_loop_semantics(&mut body);
+    replace_loop_with_call(&mut body);
     annotate_state_machine_loops(&mut body);
     annotate_loop_exit_patterns(&mut body);
     annotate_continue_like_gotos(&mut body);
@@ -60,7 +62,7 @@ fn normalize_statement(stmt: &mut WrappedAstStatement) {
                 normalize_statement_list(branch_false);
             }
         }
-        AstStatement::While(_, body) => {
+        AstStatement::While(_, body) | AstStatement::DoWhile(_, body) => {
             normalize_statement_list(body);
         }
         AstStatement::For(init, cond, update, body) => {
@@ -93,6 +95,8 @@ fn normalize_statement(stmt: &mut WrappedAstStatement) {
         | AstStatement::Exception(_)
         | AstStatement::Comment(_)
         | AstStatement::Ir(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }
@@ -456,6 +460,106 @@ fn is_increment_expr(rhs: &AstExpression, lhs: &AstExpression) -> bool {
         }
     }
     false
+}
+
+// ---------------------------------------------------------------------------
+// Loop-to-call replacement (L474)
+// ---------------------------------------------------------------------------
+
+/// Replace annotated memset loops with an equivalent `AstStatement::Call` to `memset`.
+///
+/// Only handles the simplest case: a while/for loop whose body is a single assignment
+/// of a constant to a dereferenced/indexed destination, previously annotated as
+/// "likely memset loop" by `annotate_loop_semantics`.
+fn replace_loop_with_call(stmts: &mut Vec<WrappedAstStatement>) {
+    for stmt in stmts.iter_mut() {
+        // Recurse into nested structures first
+        match &mut stmt.statement {
+            AstStatement::If(_, bt, bf) => {
+                replace_loop_with_call(bt);
+                if let Some(bf) = bf {
+                    replace_loop_with_call(bf);
+                }
+            }
+            AstStatement::While(_, body)
+            | AstStatement::For(_, _, _, body)
+            | AstStatement::Block(body) => {
+                replace_loop_with_call(body);
+            }
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases.iter_mut() {
+                    replace_loop_with_call(case_body);
+                }
+                if let Some(default_body) = default {
+                    replace_loop_with_call(default_body);
+                }
+            }
+            _ => {}
+        }
+
+        // Only consider loops annotated as memset
+        if stmt.comment.as_deref() != Some("likely memset loop") {
+            continue;
+        }
+
+        let loop_body = match &stmt.statement {
+            AstStatement::While(_, body) | AstStatement::For(_, _, _, body) => body,
+            _ => continue,
+        };
+
+        // Extract the memset operands: dst[i] = const_val  or  *dst = const_val
+        let meaningful: Vec<&AstStatement> = loop_body
+            .iter()
+            .map(|s| &s.statement)
+            .filter(|s| !matches!(s, AstStatement::Empty | AstStatement::Comment(_)))
+            .collect();
+
+        if meaningful.len() != 1 {
+            continue;
+        }
+
+        let AstStatement::Assignment(lhs, rhs) = meaningful[0] else {
+            continue;
+        };
+
+        if !is_indexed_or_deref(&lhs.item) || !is_constant_or_variable(&rhs.item) {
+            continue;
+        }
+
+        // Build: memset(dst, value, count) — use Unknown-name zero for count since
+        // precise size recovery requires further analysis.
+        let dst_arg = extract_memset_dst(lhs);
+        let val_arg = Wrapped {
+            item: rhs.item.clone(),
+            origin: AstValueOrigin::Unknown,
+            comment: None,
+        };
+        let count_arg = Wrapped {
+            item: AstExpression::Unknown,
+            origin: AstValueOrigin::Unknown,
+            comment: Some("count: see loop bound".to_string()),
+        };
+
+        let call = AstCall::Unknown("memset".into(), vec![dst_arg, val_arg, count_arg]);
+        stmt.statement = AstStatement::Call(call);
+        stmt.comment = Some("replaced memset loop".to_string());
+    }
+}
+
+/// Extract the base pointer from an indexed/deref destination expression.
+fn extract_memset_dst(expr: &Wrapped<AstExpression>) -> Wrapped<AstExpression> {
+    match &expr.item {
+        AstExpression::ArrayAccess(base, _) | AstExpression::Deref(base) => Wrapped {
+            item: base.item.clone(),
+            origin: AstValueOrigin::Unknown,
+            comment: None,
+        },
+        _ => Wrapped {
+            item: expr.item.clone(),
+            origin: AstValueOrigin::Unknown,
+            comment: None,
+        },
+    }
 }
 
 // ---------------------------------------------------------------------------

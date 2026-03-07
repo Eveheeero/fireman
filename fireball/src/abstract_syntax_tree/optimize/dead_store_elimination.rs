@@ -124,7 +124,9 @@ fn eliminate_in_list(stmts: &mut Vec<WrappedAstStatement>) {
                     all_live = true;
                 }
             }
-            AstStatement::While(cond, body) | AstStatement::For(_, cond, _, body) => {
+            AstStatement::While(cond, body)
+            | AstStatement::DoWhile(cond, body)
+            | AstStatement::For(_, cond, _, body) => {
                 collect_reads_expr(&cond.item, &mut live);
                 collect_reads_list(body, &mut live);
                 if list_contains_call(body) {
@@ -161,7 +163,10 @@ fn eliminate_in_list(stmts: &mut Vec<WrappedAstStatement>) {
                 // Control flow disruption: conservatively treat all as live
                 all_live = true;
             }
-            AstStatement::Comment(_) | AstStatement::Empty => {}
+            AstStatement::Comment(_)
+            | AstStatement::Break
+            | AstStatement::Continue
+            | AstStatement::Empty => {}
         }
     }
 
@@ -180,7 +185,7 @@ fn eliminate_in_statement(stmt: &mut WrappedAstStatement) {
                 eliminate_in_list(bf);
             }
         }
-        AstStatement::While(_, body) => eliminate_in_list(body),
+        AstStatement::While(_, body) | AstStatement::DoWhile(_, body) => eliminate_in_list(body),
         AstStatement::For(_, _, _, body) => eliminate_in_list(body),
         AstStatement::Block(body) => eliminate_in_list(body),
         AstStatement::Switch(_, cases, default) => {
@@ -268,7 +273,7 @@ fn collect_reads_stmt(stmt: &AstStatement, out: &mut HashSet<AstVariableId>) {
                 collect_reads_list(bf, out);
             }
         }
-        AstStatement::While(cond, body) => {
+        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
             collect_reads_expr(&cond.item, out);
             collect_reads_list(body, out);
         }
@@ -295,6 +300,8 @@ fn collect_reads_stmt(stmt: &AstStatement, out: &mut HashSet<AstVariableId>) {
         | AstStatement::Undefined
         | AstStatement::Exception(_)
         | AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }
@@ -317,7 +324,7 @@ fn stmt_contains_call(stmt: &AstStatement) -> bool {
                 || list_contains_call(bt)
                 || bf.as_ref().is_some_and(|bf| list_contains_call(bf))
         }
-        AstStatement::While(cond, body) => {
+        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
             expr_contains_call(&cond.item) || list_contains_call(body)
         }
         AstStatement::For(init, cond, update, body) => {

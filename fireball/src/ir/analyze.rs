@@ -2,8 +2,12 @@ pub mod block_grouper;
 pub mod data_access;
 pub mod datatype;
 pub mod dominator;
+pub mod function_summary;
+pub mod global_recovery;
 pub mod ir_function;
 pub mod ir_to_ast;
+pub mod points_to;
+pub mod ssa;
 pub mod variables;
 
 pub use block_grouper::{BlockGroup, BlockGrouper};
