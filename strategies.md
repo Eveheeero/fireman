@@ -81,10 +81,10 @@
 - [~] Varargs detection — Identify vararg call sites and apply format-string/type heuristics.
   > auto_comment.rs: call_name_matches_vararg()로 printf/scanf/exec 계열 vararg 호출 탐지 및 주석 부착 구현. 포맷 문자열 파싱/타입 추론은 미구현.
 - [~] Calling convention inference — Infer ABI per function (cdecl/stdcall/thiscall/sysv/ms) from usage patterns.
-- [ ] “this” pointer inference — Detect implicit object pointer in C++ methods from member access and vtable usage.
-  > C++ 객체 모델링 필요 — 현재 인프라 없음
-- [ ] SRet/hidden parameter inference — Detect structure return via hidden pointer parameters.
-  > 호출 규약 분석 확장 필요
+- [~] “this” pointer inference — Detect implicit object pointer in C++ methods from member access and vtable usage.
+  > auto_comment.rs: annotate_this_or_sret_pointer()로 첫 번째 파라미터의 base+offset 멤버 접근 패턴 탐지 및 주석 부착 구현. vtable 분석 기반 클래스 복원은 미구현.
+- [~] SRet/hidden parameter inference — Detect structure return via hidden pointer parameters.
+  > auto_comment.rs: annotate_this_or_sret_pointer()로 첫 번째 파라미터가 주로 deref 대상으로 사용되는 sret 패턴 탐지 및 주석 부착 구현. ABI 기반 호출 규약 확장은 미구현.
 - [~] Interprocedural analysis — Propagate types/constants across call boundaries for better signatures.
 - [ ] Summary-based interprocedural analysis — Build per-function summaries (effects, returns, param usage) to scale.
   > 함수별 요약 프레임워크 필요
@@ -151,8 +151,8 @@
   > 심볼릭/동적 실행 엔진 필요
 - [ ] Dynamic tracing instrumentation — Record runtime targets for indirect calls/jumps to refine static results.
   > 동적 계측 프레임워크 필요
-- [ ] Obfuscation pattern detection — Identify opaque predicates, junk blocks, flattening dispatchers, and CFG noise.
-  > 난독화 탐지 프레임워크 필요
+- [~] Obfuscation pattern detection — Identify opaque predicates, junk blocks, flattening dispatchers, and CFG noise.
+  > auto_comment.rs: annotate_obfuscation_indicators()로 goto 밀도(>30%) 및 중첩 깊이(>10) 기반 난독화 휴리스틱 탐지 및 주석 부착 구현. opaque predicate/SMT 기반 분석은 미구현.
 - [ ] Opaque predicate pruning — Prove predicates constant (or near-constant) via abstract interpretation/value sets.
   > 추상 해석/SMT 프레임워크 필요
 - [ ] Control-flow flattening undo — Recover dispatcher-based state machines into structured control flow when possible.

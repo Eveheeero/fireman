@@ -15,6 +15,8 @@ pub(super) fn synthesize_comments(
     function_version: AstFunctionVersion,
 ) -> Result<(), DecompileError> {
     let mut body;
+    let first_param_var_id;
+    let param_count;
     {
         let mut functions = ast.functions.write().unwrap();
         let function = functions
@@ -22,6 +24,11 @@ pub(super) fn synthesize_comments(
             .and_then(|x| x.get_mut(&function_version))
             .unwrap();
         body = std::mem::take(&mut function.body);
+        param_count = function.parameters.len();
+        first_param_var_id = function
+            .parameters
+            .first()
+            .and_then(|p| p.id.as_ref().left().copied());
     }
 
     annotate_statement_list(&mut body);
@@ -30,6 +37,12 @@ pub(super) fn synthesize_comments(
     annotate_xor_decryption_loop(&mut body);
     annotate_integrity_check_loop(&mut body);
     annotate_loop_invariants(&mut body);
+    if let Some(var_id) = first_param_var_id {
+        if param_count >= 1 {
+            annotate_this_or_sret_pointer(&mut body, var_id);
+        }
+    }
+    annotate_obfuscation_indicators(&mut body);
 
     {
         let mut functions = ast.functions.write().unwrap();
@@ -1457,5 +1470,216 @@ fn annotate_loop_body_invariants(body: &mut Vec<WrappedAstStatement>) {
                 comment: None,
             },
         );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// "this" pointer / SRet hidden parameter inference (L84/L86)
+// ---------------------------------------------------------------------------
+
+/// Detect if the first parameter is used primarily as a deref target (sret)
+/// or as base+offset member access pattern ("this" pointer).
+fn annotate_this_or_sret_pointer(body: &mut [WrappedAstStatement], first_param: AstVariableId) {
+    let mut store_through_count = 0usize;
+    let mut member_access_count = 0usize;
+    let mut other_use_count = 0usize;
+    classify_first_param_usage(
+        body,
+        first_param,
+        &mut store_through_count,
+        &mut member_access_count,
+        &mut other_use_count,
+    );
+
+    let total = store_through_count + member_access_count + other_use_count;
+    if total < 2 {
+        return;
+    }
+
+    // SRet: primarily stored through (first param is a hidden return pointer)
+    if store_through_count > 0 && store_through_count >= member_access_count + other_use_count {
+        if let Some(first) = body.first_mut() {
+            if first.comment.is_none() {
+                first.comment =
+                    Some("first parameter likely sret (hidden return pointer)".to_string());
+            }
+        }
+        return;
+    }
+
+    // "this" pointer: primarily used as base+offset for member access
+    if member_access_count >= 2 && member_access_count > store_through_count {
+        if let Some(first) = body.first_mut() {
+            if first.comment.is_none() {
+                first.comment = Some(
+                    "first parameter likely 'this' pointer (member access pattern)".to_string(),
+                );
+            }
+        }
+    }
+}
+
+fn classify_first_param_usage(
+    stmts: &[WrappedAstStatement],
+    var_id: AstVariableId,
+    stores: &mut usize,
+    member_reads: &mut usize,
+    other: &mut usize,
+) {
+    for stmt in stmts {
+        match &stmt.statement {
+            AstStatement::Assignment(lhs, rhs) => {
+                // Store through first param: *(param + offset) = value
+                if is_deref_of_param(var_id, &lhs.item) {
+                    *stores += 1;
+                } else if expr_uses_var_as_base(var_id, &rhs.item) {
+                    *member_reads += 1;
+                } else if expr_mentions_var(var_id, &lhs.item)
+                    || expr_mentions_var(var_id, &rhs.item)
+                {
+                    *other += 1;
+                }
+            }
+            AstStatement::If(cond, bt, bf) => {
+                if expr_mentions_var(var_id, &cond.item) {
+                    *other += 1;
+                }
+                classify_first_param_usage(bt, var_id, stores, member_reads, other);
+                if let Some(bf) = bf {
+                    classify_first_param_usage(bf, var_id, stores, member_reads, other);
+                }
+            }
+            AstStatement::While(_, body)
+            | AstStatement::For(_, _, _, body)
+            | AstStatement::Block(body) => {
+                classify_first_param_usage(body, var_id, stores, member_reads, other);
+            }
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases {
+                    classify_first_param_usage(case_body, var_id, stores, member_reads, other);
+                }
+                if let Some(default_body) = default {
+                    classify_first_param_usage(default_body, var_id, stores, member_reads, other);
+                }
+            }
+            AstStatement::Return(Some(expr)) => {
+                if expr_mentions_var(var_id, &expr.item) {
+                    *other += 1;
+                }
+            }
+            AstStatement::Call(call) => {
+                if call_mentions_var(var_id, call) {
+                    *other += 1;
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Check if expression is *(var + ...) or var[...]
+fn is_deref_of_param(var_id: AstVariableId, expr: &AstExpression) -> bool {
+    match expr {
+        AstExpression::Deref(inner) => expr_mentions_var(var_id, &inner.item),
+        AstExpression::ArrayAccess(base, _) => {
+            matches!(&base.item, AstExpression::Variable(_, id) if *id == var_id)
+        }
+        _ => false,
+    }
+}
+
+/// Check if expression uses var as a base in deref/array context (member read)
+fn expr_uses_var_as_base(var_id: AstVariableId, expr: &AstExpression) -> bool {
+    match expr {
+        AstExpression::Deref(inner) => expr_mentions_var(var_id, &inner.item),
+        AstExpression::ArrayAccess(base, _) => {
+            matches!(&base.item, AstExpression::Variable(_, id) if *id == var_id)
+        }
+        AstExpression::BinaryOp(_, left, right) => {
+            expr_uses_var_as_base(var_id, &left.item) || expr_uses_var_as_base(var_id, &right.item)
+        }
+        _ => false,
+    }
+}
+
+fn expr_mentions_var(var_id: AstVariableId, expr: &AstExpression) -> bool {
+    let mut vars = HashSet::new();
+    super::opt_utils::collect_expr_variables(expr, &mut vars);
+    vars.contains(&var_id)
+}
+
+fn call_mentions_var(var_id: AstVariableId, call: &AstCall) -> bool {
+    match call {
+        AstCall::Unknown(_, args) => args.iter().any(|a| expr_mentions_var(var_id, &a.item)),
+        _ => false,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Obfuscation pattern detection (L154)
+// ---------------------------------------------------------------------------
+
+/// Detect signs of obfuscation: high goto density or excessive nesting.
+fn annotate_obfuscation_indicators(body: &mut Vec<WrappedAstStatement>) {
+    let mut goto_count = 0usize;
+    let mut stmt_count = 0usize;
+    let mut max_depth = 0usize;
+    measure_complexity(body, 0, &mut goto_count, &mut stmt_count, &mut max_depth);
+
+    if stmt_count < 10 {
+        return;
+    }
+
+    let goto_ratio = goto_count as f64 / stmt_count as f64;
+    // Heuristic: >30% goto density or nesting depth >10 suggests obfuscation/flattening
+    if goto_ratio > 0.3 || max_depth > 10 {
+        if let Some(first) = body.first_mut() {
+            if first.comment.is_none() {
+                first.comment = Some(format!(
+                    "possible obfuscation ({} gotos / {} stmts, max depth {})",
+                    goto_count, stmt_count, max_depth
+                ));
+            }
+        }
+    }
+}
+
+fn measure_complexity(
+    stmts: &[WrappedAstStatement],
+    depth: usize,
+    gotos: &mut usize,
+    total: &mut usize,
+    max_depth: &mut usize,
+) {
+    if depth > *max_depth {
+        *max_depth = depth;
+    }
+    for stmt in stmts {
+        *total += 1;
+        match &stmt.statement {
+            AstStatement::Goto(_) => {
+                *gotos += 1;
+            }
+            AstStatement::If(_, bt, bf) => {
+                measure_complexity(bt, depth + 1, gotos, total, max_depth);
+                if let Some(bf) = bf {
+                    measure_complexity(bf, depth + 1, gotos, total, max_depth);
+                }
+            }
+            AstStatement::While(_, body)
+            | AstStatement::For(_, _, _, body)
+            | AstStatement::Block(body) => {
+                measure_complexity(body, depth + 1, gotos, total, max_depth);
+            }
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases {
+                    measure_complexity(case_body, depth + 1, gotos, total, max_depth);
+                }
+                if let Some(default_body) = default {
+                    measure_complexity(default_body, depth + 1, gotos, total, max_depth);
+                }
+            }
+            _ => {}
+        }
     }
 }
