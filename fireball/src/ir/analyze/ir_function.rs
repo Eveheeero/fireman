@@ -10,7 +10,10 @@ use crate::{
     },
     prelude::*,
 };
-use iceball::{Statement, X64Statement};
+use iceball::{
+    Argument, Memory, Register, RelativeAddressingArgument, Statement, X64Statement,
+    x64::register::X64Register,
+};
 use std::sync::Arc;
 
 fn run_cfg_shape_analysis(blocks: &[Arc<Block>]) {
@@ -65,6 +68,27 @@ fn run_cfg_shape_analysis(blocks: &[Arc<Block>]) {
         }
     }
 
+    // L74: Stack realignment detection (and rsp, -N)
+    if let Some(entry_block) = blocks.iter().find(|b| b.get_id() == entry_block_id) {
+        if let Some(alignment) = detect_stack_realignment(entry_block) {
+            debug!("Stack realignment detected: aligned to {} bytes", alignment);
+        }
+    }
+
+    // L72: FPO local inference — count SP-relative accesses for frame layout
+    if let Some(entry_block) = blocks.iter().find(|b| b.get_id() == entry_block_id) {
+        let prologue = detect_prologue_pattern(entry_block);
+        if prologue.is_some_and(|p| p.contains("FPO")) {
+            let sp_access_count = count_sp_relative_accesses(blocks);
+            if sp_access_count > 0 {
+                debug!(
+                    "FPO function: {} SP-relative memory accesses (candidate locals)",
+                    sp_access_count
+                );
+            }
+        }
+    }
+
     // L194: Multi-entry detection
     let multi_entries = analysis.cfg().multi_entry_blocks(blocks);
     if !multi_entries.is_empty() {
@@ -73,6 +97,9 @@ fn run_cfg_shape_analysis(blocks: &[Arc<Block>]) {
             multi_entries
         );
     }
+
+    // L37/L39: SSA summary and rename analysis spike.
+    super::ssa::log_ssa_analysis(blocks, analysis.dominators());
 
     // L192: Hot-cold chunk detection (gap > 4KB suggests split)
     let chunks = analysis.cfg().detect_address_gap_chunks(blocks, 4096);
@@ -166,6 +193,68 @@ fn detect_compiler_hint(block: &Block) -> Option<&'static str> {
     }
 
     None
+}
+
+/// L74: Detect `and rsp, -N` stack realignment in the function prologue.
+/// Returns the alignment value (e.g. 16, 32, 64) if found.
+fn detect_stack_realignment(block: &Block) -> Option<u64> {
+    let instructions = block.get_instructions();
+    // Look for AND instruction in first 8 instructions
+    for inst in instructions.iter().take(8) {
+        let inner = inst.inner();
+        let Ok(Statement::X64(X64Statement::And)) = inner.statement else {
+            continue;
+        };
+        // Check that one operand is RSP/ESP and another is a constant mask
+        let has_sp = inner.arguments.iter().any(|arg| {
+            matches!(
+                arg,
+                Argument::Register(Register::X64(X64Register::Rsp | X64Register::Esp))
+            )
+        });
+        if !has_sp {
+            continue;
+        }
+        // Extract the immediate constant operand — it's a negative power of 2 mask
+        // e.g., 0xfffffffffffffff0 = -16, 0xffffffffffffffe0 = -32
+        for arg in inner.arguments.iter() {
+            if let Argument::Constant(val) = arg {
+                let alignment = (!val).wrapping_add(1);
+                if alignment.is_power_of_two() && alignment >= 16 {
+                    return Some(alignment);
+                }
+            }
+        }
+    }
+    None
+}
+
+/// L72: Count SP-relative memory accesses across all blocks (for FPO functions).
+/// Each unique [rsp+offset] pattern suggests a candidate local variable.
+fn count_sp_relative_accesses(blocks: &[Arc<Block>]) -> usize {
+    let mut count = 0usize;
+    for block in blocks {
+        for inst in block.get_instructions().iter() {
+            let has_sp_mem = inst.inner().arguments.iter().any(|arg| {
+                if let Argument::Memory(Memory::RelativeAddressing(parts)) = arg {
+                    parts.iter().any(|p| {
+                        matches!(
+                            p,
+                            RelativeAddressingArgument::Register(Register::X64(
+                                X64Register::Rsp | X64Register::Esp
+                            ))
+                        )
+                    })
+                } else {
+                    false
+                }
+            });
+            if has_sp_mem {
+                count += 1;
+            }
+        }
+    }
+    count
 }
 
 pub fn generate_ir_function(blocks: &[Arc<Block>]) -> IrFunction {

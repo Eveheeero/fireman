@@ -136,6 +136,12 @@ fn fold_statement(
             let mut env_loop = const_env.clone();
             fold_statement_list(body, &mut env_loop);
         }
+        AstStatement::DoWhile(cond, body) => {
+            // do-while evaluates body before condition, so fold body first.
+            let mut env_loop = const_env.clone();
+            fold_statement_list(body, &mut env_loop);
+            fold_expression(cond, &mut env_loop, true);
+        }
         AstStatement::For(init, cond, update, body) => {
             fold_statement(init, const_env);
             fold_expression(cond, const_env, true);
@@ -189,7 +195,11 @@ fn fold_statement(
         | AstStatement::Exception(_) => {
             const_env.clear();
         }
-        AstStatement::Label(_) | AstStatement::Comment(_) | AstStatement::Empty => {}
+        AstStatement::Label(_)
+        | AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
+        | AstStatement::Empty => {}
     }
 }
 

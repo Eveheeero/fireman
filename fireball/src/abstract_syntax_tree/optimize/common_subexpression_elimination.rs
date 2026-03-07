@@ -177,7 +177,7 @@ fn cse_statement(stmt: &mut WrappedAstStatement, env: &mut HashMap<u64, CachedEx
                 *env = intersect_envs(&env_before, &env_true);
             }
         }
-        AstStatement::While(cond, body) => {
+        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
             let _ = cond;
             // Invalidate any variables written inside the loop.
             let mut written = HashSet::new();
@@ -246,7 +246,10 @@ fn cse_statement(stmt: &mut WrappedAstStatement, env: &mut HashMap<u64, CachedEx
             // Join point: cannot know which path reached here.
             env.clear();
         }
-        AstStatement::Comment(_) | AstStatement::Empty => {}
+        AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
+        | AstStatement::Empty => {}
     }
 }
 
@@ -337,7 +340,7 @@ fn collect_written_vars_stmt(stmt: &AstStatement, out: &mut HashSet<AstVariableI
                 collect_written_vars_list(bf, out);
             }
         }
-        AstStatement::While(_, body) => {
+        AstStatement::While(_, body) | AstStatement::DoWhile(_, body) => {
             collect_written_vars_list(body, out);
         }
         AstStatement::For(init, _, update, body) => {

@@ -142,7 +142,7 @@ fn collect_evidence_from_statement(
                 collect_evidence_from_statement_list(branch_false, evidence);
             }
         }
-        AstStatement::While(cond, body) => {
+        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
             collect_evidence_from_expression(cond, evidence);
             collect_evidence_from_statement_list(body, evidence);
         }
@@ -179,6 +179,8 @@ fn collect_evidence_from_statement(
         | AstStatement::Exception(_)
         | AstStatement::Label(_)
         | AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }

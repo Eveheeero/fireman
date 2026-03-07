@@ -68,7 +68,9 @@ fn contain_gotos_in_statement(stmt: &mut WrappedAstStatement) {
                 contain_gotos_in_statement_list(branch_false);
             }
         }
-        AstStatement::While(_, body) => contain_gotos_in_statement_list(body),
+        AstStatement::While(_, body) | AstStatement::DoWhile(_, body) => {
+            contain_gotos_in_statement_list(body)
+        }
         AstStatement::For(init, _, update, body) => {
             contain_gotos_in_statement(init);
             contain_gotos_in_statement(update);
@@ -94,6 +96,8 @@ fn contain_gotos_in_statement(stmt: &mut WrappedAstStatement) {
         | AstStatement::Exception(_)
         | AstStatement::Comment(_)
         | AstStatement::Ir(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }
@@ -243,7 +247,9 @@ fn count_gotos_to_label_in_statement(stmt: &WrappedAstStatement, label: &str) ->
             }
             count
         }
-        AstStatement::While(_, body) => count_gotos_to_label(body, label),
+        AstStatement::While(_, body) | AstStatement::DoWhile(_, body) => {
+            count_gotos_to_label(body, label)
+        }
         AstStatement::For(init, _, update, body) => {
             count_gotos_to_label_in_statement(init, label)
                 + count_gotos_to_label_in_statement(update, label)
@@ -270,6 +276,8 @@ fn count_gotos_to_label_in_statement(stmt: &WrappedAstStatement, label: &str) ->
         | AstStatement::Exception(_)
         | AstStatement::Comment(_)
         | AstStatement::Ir(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => 0,
     }
 }

@@ -63,7 +63,7 @@ fn minimize_statement(stmt: &mut WrappedAstStatement) {
                 minimize_statement_list(branch_false);
             }
         }
-        AstStatement::While(cond, body) => {
+        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
             minimize_expression(cond);
             minimize_statement_list(body);
         }
@@ -100,6 +100,8 @@ fn minimize_statement(stmt: &mut WrappedAstStatement) {
         | AstStatement::Exception(_)
         | AstStatement::Label(_)
         | AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }

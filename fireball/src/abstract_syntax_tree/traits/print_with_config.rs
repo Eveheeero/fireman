@@ -434,6 +434,13 @@ impl PrintWithConfig for AstStatement {
             AstStatement::Assembly(code) => write!(f, "<ASSEMBLY: {code}>"),
             AstStatement::Comment(comment) => write!(f, "/* {} */", comment),
             AstStatement::Ir(ir) => write!(f, "<IR: {ir}>"),
+            AstStatement::Break => write!(f, "break;"),
+            AstStatement::Continue => write!(f, "continue;"),
+            AstStatement::DoWhile(cond, body) => {
+                write!(f, "do ")?;
+                write_inline_block(f, body, config)?;
+                write!(f, " while ({});", cond.to_string_with_config(Some(config)))
+            }
         }
     }
 }

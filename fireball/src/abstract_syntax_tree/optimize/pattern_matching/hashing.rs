@@ -94,7 +94,7 @@ fn hash_statement(state: &mut Blake3StdHasher, stmt: &AstStatement) {
                 None => false.hash(state),
             }
         }
-        AstStatement::While(condition, body) => {
+        AstStatement::While(condition, body) | AstStatement::DoWhile(condition, body) => {
             hash_wrapped_expression(state, condition);
             hash_statement_list(state, body);
         }
@@ -134,7 +134,10 @@ fn hash_statement(state: &mut Blake3StdHasher, stmt: &AstStatement) {
                 None => false.hash(state),
             }
         }
-        AstStatement::Undefined | AstStatement::Empty => {}
+        AstStatement::Undefined
+        | AstStatement::Break
+        | AstStatement::Continue
+        | AstStatement::Empty => {}
     }
 }
 

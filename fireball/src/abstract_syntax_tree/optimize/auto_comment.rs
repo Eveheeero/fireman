@@ -255,7 +255,9 @@ fn annotate_statement(stmt: &mut WrappedAstStatement) {
                 annotate_statement_list(branch_false);
             }
         }
-        AstStatement::While(_, body) => annotate_statement_list(body),
+        AstStatement::While(_, body) | AstStatement::DoWhile(_, body) => {
+            annotate_statement_list(body)
+        }
         AstStatement::For(init, _, update, body) => {
             annotate_statement(init);
             annotate_statement(update);
@@ -281,6 +283,8 @@ fn annotate_statement(stmt: &mut WrappedAstStatement) {
         | AstStatement::Exception(_)
         | AstStatement::Comment(_)
         | AstStatement::Ir(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }

@@ -123,7 +123,7 @@ pub(super) fn collapse_unused_variables(
 
                 continue;
             }
-            AstStatement::While(_cond, stmts) => {
+            AstStatement::While(_cond, stmts) | AstStatement::DoWhile(_cond, stmts) => {
                 let mut loop_overwritten_locations: HashSet<Aos<IrData>> = HashSet::new();
                 collapse(&variables, &mut loop_overwritten_locations, stmts);
                 // Loop iteration effects are hard to prove backwards safely.
@@ -174,7 +174,11 @@ pub(super) fn collapse_unused_variables(
             }
 
             /* etc */
-            AstStatement::Label(_) | AstStatement::Comment(_) | AstStatement::Empty => {
+            AstStatement::Label(_)
+            | AstStatement::Comment(_)
+            | AstStatement::Break
+            | AstStatement::Continue
+            | AstStatement::Empty => {
                 new_body.push(stmt);
                 continue;
             }
@@ -309,7 +313,7 @@ fn collapse(
                         collapse(&variables, overwritten_locations, branch_true);
                     }
                 }
-                AstStatement::While(_cond, stmts) => {
+                AstStatement::While(_cond, stmts) | AstStatement::DoWhile(_cond, stmts) => {
                     let mut loop_overwritten_locations: HashSet<Aos<IrData>> = HashSet::new();
                     collapse(variables, &mut loop_overwritten_locations, stmts);
                     overwritten_locations.clear();
@@ -353,7 +357,11 @@ fn collapse(
                 }
 
                 /* etc */
-                AstStatement::Label(_) | AstStatement::Comment(_) | AstStatement::Empty => {}
+                AstStatement::Label(_)
+                | AstStatement::Comment(_)
+                | AstStatement::Break
+                | AstStatement::Continue
+                | AstStatement::Empty => {}
                 AstStatement::Call(_) => {
                     // handled above
                 }

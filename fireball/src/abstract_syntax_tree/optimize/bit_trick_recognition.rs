@@ -62,7 +62,7 @@ fn recognize_in_statement(stmt: &mut WrappedAstStatement) {
                 recognize_in_statement_list(branch_false);
             }
         }
-        AstStatement::While(cond, body) => {
+        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
             recognize_in_expression(cond);
             recognize_in_statement_list(body);
         }
@@ -99,6 +99,8 @@ fn recognize_in_statement(stmt: &mut WrappedAstStatement) {
         | AstStatement::Exception(_)
         | AstStatement::Label(_)
         | AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }
@@ -661,7 +663,46 @@ fn try_recognize_overflow_check(expr: &Wrapped<AstExpression>) -> Option<String>
                 }
             }
         }
+        // (result / a) != b  →  checked multiply overflow
+        // When `result = a * b`, the pattern `result / a != b` detects mul overflow.
+        AstBinaryOperator::NotEqual => {
+            // (x / a) != b  →  checked multiply overflow
+            if let AstExpression::BinaryOp(AstBinaryOperator::Div, _numerator, _divisor) = &lhs.item
+            {
+                return Some("checked multiply overflow (result / a != b)".to_string());
+            }
+            // b != (x / a)  →  checked multiply overflow (reversed)
+            if let AstExpression::BinaryOp(AstBinaryOperator::Div, _numerator, _divisor) = &rhs.item
+            {
+                return Some("checked multiply overflow (result / a != b)".to_string());
+            }
+        }
         _ => {}
+    }
+
+    // high_bits != 0  →  checked multiply overflow (high bits)
+    // Detects patterns like `(result >> 32) != 0` or similar high-bit extractions after multiply.
+    if matches!(cmp_op, AstBinaryOperator::NotEqual) {
+        // (expr >> N) != 0  where N is 16, 32, or 63 — typical high-bits check
+        if let Some(0) = extract_literal_u64(&rhs.item) {
+            if let AstExpression::BinaryOp(AstBinaryOperator::RightShift, _, shift_amt) = &lhs.item
+            {
+                let shift_val = extract_literal_u64(&shift_amt.item);
+                if matches!(shift_val, Some(16) | Some(32) | Some(63)) {
+                    return Some("checked multiply overflow (high bits != 0)".to_string());
+                }
+            }
+        }
+        // 0 != (expr >> N)
+        if let Some(0) = extract_literal_u64(&lhs.item) {
+            if let AstExpression::BinaryOp(AstBinaryOperator::RightShift, _, shift_amt) = &rhs.item
+            {
+                let shift_val = extract_literal_u64(&shift_amt.item);
+                if matches!(shift_val, Some(16) | Some(32) | Some(63)) {
+                    return Some("checked multiply overflow (high bits != 0)".to_string());
+                }
+            }
+        }
     }
 
     None

@@ -41,6 +41,7 @@ goblin = "0.10"
 capstone = "0.14"
 pdb = "0.8"
 cpp_demangle = "0.5"
+rustc-demangle = "0.1"
 
 # Data structures
 bitvec = "1"

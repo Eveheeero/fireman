@@ -73,7 +73,7 @@ fn canonicalize_statement(stmt: &mut WrappedAstStatement) {
                 canonicalize_statement_list(branch_false);
             }
         }
-        AstStatement::While(cond, body) => {
+        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
             canonicalize_expression(cond);
             simplify_condition_zero_cmp(cond);
             canonicalize_statement_list(body);
@@ -112,6 +112,8 @@ fn canonicalize_statement(stmt: &mut WrappedAstStatement) {
         | AstStatement::Exception(_)
         | AstStatement::Label(_)
         | AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }

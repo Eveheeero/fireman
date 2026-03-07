@@ -140,7 +140,7 @@ fn collect_hints_from_statement(
                 collect_hints_from_statement_list(branch_false, hints, loop_counter_index, ast);
             }
         }
-        AstStatement::While(cond, body) => {
+        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
             check_zero_comparison_hint(cond, hints);
             collect_hints_from_expression(cond, hints, ast);
             collect_hints_from_statement_list(body, hints, loop_counter_index, ast);
@@ -172,6 +172,8 @@ fn collect_hints_from_statement(
         | AstStatement::Exception(_)
         | AstStatement::Label(_)
         | AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }
