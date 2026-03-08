@@ -14,8 +14,10 @@ use crate::{
     },
     prelude::*,
 };
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    sync::Arc,
+};
 
 /// An integer interval [lo, hi] inclusive.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -121,10 +123,7 @@ impl ValueSetResult {
 /// Run value-set analysis using worklist-based fixpoint iteration.
 pub fn analyze_value_set(blocks: &[Arc<Block>]) -> ValueSetResult {
     // Index blocks by ID for fast lookup
-    let block_map: HashMap<usize, &Arc<Block>> = blocks
-        .iter()
-        .map(|b| (b.get_id(), b))
-        .collect();
+    let block_map: HashMap<usize, &Arc<Block>> = blocks.iter().map(|b| (b.get_id(), b)).collect();
 
     let block_ids: Vec<usize> = blocks.iter().map(|b| b.get_id()).collect();
 
@@ -267,14 +266,8 @@ fn propagate_interval(stmt: &IrStatement, state: &mut BlockState) {
             all_regs.extend(false_state.keys());
 
             for reg in all_regs {
-                let t = true_state
-                    .get(&reg)
-                    .copied()
-                    .unwrap_or(Interval::full());
-                let f = false_state
-                    .get(&reg)
-                    .copied()
-                    .unwrap_or(Interval::full());
+                let t = true_state.get(&reg).copied().unwrap_or(Interval::full());
+                let f = false_state.get(&reg).copied().unwrap_or(Interval::full());
                 state.insert(reg, t.join(f));
             }
         }
@@ -292,11 +285,11 @@ fn eval_interval(data: &crate::utils::Aos<IrData>, state: &BlockState) -> Interv
             match op {
                 IrDataOperation::Binary {
                     operator,
-                    left,
-                    right,
+                    arg1,
+                    arg2,
                 } => {
-                    let l = eval_interval(left, state);
-                    let r = eval_interval(right, state);
+                    let l = eval_interval(arg1, state);
+                    let r = eval_interval(arg2, state);
                     match operator {
                         IrBinaryOperator::Add => l.add(r),
                         IrBinaryOperator::Sub => l.sub(r),
@@ -312,10 +305,10 @@ fn eval_interval(data: &crate::utils::Aos<IrData>, state: &BlockState) -> Interv
                         _ => Interval::full(),
                     }
                 }
-                IrDataOperation::Unary { operator, operand } => {
-                    let o = eval_interval(operand, state);
+                IrDataOperation::Unary { operator, arg } => {
+                    let o = eval_interval(arg, state);
                     match operator {
-                        IrUnaryOperator::Negate => o.negate(),
+                        IrUnaryOperator::Negation => o.negate(),
                         _ => Interval::full(),
                     }
                 }
@@ -333,13 +326,15 @@ fn narrow_from_condition(
 ) {
     use crate::ir::data::IrDataOperation;
     let IrData::Operation(IrDataOperation::Binary {
-        operator, left, right,
+        operator,
+        arg1,
+        arg2,
     }) = condition.as_ref()
     else {
         return;
     };
 
-    let (reg, bound) = match (left.as_ref(), right.as_ref()) {
+    let (reg, bound) = match (arg1.as_ref(), arg2.as_ref()) {
         (IrData::Register(r), IrData::Constant(c)) => (r, *c as i64),
         _ => return,
     };
@@ -347,20 +342,20 @@ fn narrow_from_condition(
     let current = state.get(reg).copied().unwrap_or(Interval::full());
 
     let narrowed = match (operator, is_true_branch) {
-        (IrBinaryOperator::SignedLess, true) | (IrBinaryOperator::Less, true) => {
+        (IrBinaryOperator::SignedLess(_), true) | (IrBinaryOperator::UnsignedLess(_), true) => {
             current.meet(Interval {
                 lo: i64::MIN,
                 hi: bound.saturating_sub(1),
             })
         }
-        (IrBinaryOperator::SignedLess, false) | (IrBinaryOperator::Less, false) => {
+        (IrBinaryOperator::SignedLess(_), false) | (IrBinaryOperator::UnsignedLess(_), false) => {
             current.meet(Interval {
                 lo: bound,
                 hi: i64::MAX,
             })
         }
-        (IrBinaryOperator::Equal, true) => current.meet(Interval::constant(bound)),
-        (IrBinaryOperator::Equal, false) => Some(current),
+        (IrBinaryOperator::Equal(_), true) => current.meet(Interval::constant(bound)),
+        (IrBinaryOperator::Equal(_), false) => Some(current),
         _ => Some(current),
     };
 
@@ -370,8 +365,7 @@ fn narrow_from_condition(
 }
 
 /// Log value-set analysis results.
-pub fn log_value_set_analysis(blocks: &[Arc<Block>]) {
-    let result = analyze_value_set(blocks);
+pub fn log_value_set_analysis(result: &ValueSetResult) {
     let constant_count = result
         .intervals
         .values()

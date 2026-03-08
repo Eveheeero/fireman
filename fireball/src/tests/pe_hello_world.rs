@@ -19,6 +19,38 @@ fn pe_hello_world() {
 }
 
 #[test]
+fn pe_hello_world_exposes_pe_analysis_diagnostics() {
+    let subscriber = test_log_subscriber_with_file("logs/fireball_pe_hello_world_diagnostics.log");
+
+    tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
+        let binary = hello_world_binary();
+        let pe = Pe::from_binary(binary.to_vec()).unwrap();
+
+        assert!(!pe.section_entropies().is_empty());
+        assert!(
+            pe.section_entropies()
+                .iter()
+                .all(|entry| { !entry.name.is_empty() && (0.0..=8.0).contains(&entry.entropy) })
+        );
+        assert!(
+            pe.wide_strings()
+                .iter()
+                .all(|entry| !entry.value.is_empty())
+        );
+        assert!(
+            pe.forwarded_exports()
+                .iter()
+                .all(|entry| !entry.name.is_empty() && !entry.forward_dll.is_empty())
+        );
+        assert!(
+            pe.code_relocations()
+                .iter()
+                .all(|entry| !entry.section_name.is_empty())
+        );
+    });
+}
+
+#[test]
 fn pe_hello_world_entry() {
     let subscriber = test_log_subscriber_with_file("logs/fireball_pe_hello_world_entry.log");
 

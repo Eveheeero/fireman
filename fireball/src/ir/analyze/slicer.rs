@@ -13,8 +13,7 @@ use crate::{
     prelude::*,
     utils::Aos,
 };
-use std::collections::HashSet;
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 /// The slicing criterion: which value to slice backwards from.
 #[derive(Debug, Clone)]
@@ -47,27 +46,8 @@ impl ProgramSlice {
 }
 
 /// Compute a backward slice from the given criterion.
-pub fn backward_slice(
-    blocks: &[Arc<Block>],
-    criterion: SliceCriterion,
-) -> ProgramSlice {
-    // Flatten all IR statements with globally unique IDs
-    let mut all_stmts: Vec<(usize, &IrStatement)> = Vec::new();
-    for block in blocks {
-        let ir_block = block.get_ir();
-        let Some(ir_block) = ir_block.as_ref() else {
-            continue;
-        };
-        for ir in ir_block.ir().iter() {
-            let Some(stmts) = ir.statements else {
-                continue;
-            };
-            for stmt in stmts {
-                let unique_id = all_stmts.len();
-                all_stmts.push((unique_id, stmt));
-            }
-        }
-    }
+pub fn backward_slice(blocks: &[Arc<Block>], criterion: SliceCriterion) -> ProgramSlice {
+    let all_stmts = flatten_statements(blocks);
 
     // Find initial seed registers
     let mut worklist: Vec<Register> = Vec::new();
@@ -163,6 +143,26 @@ pub fn backward_slice(
     }
 }
 
+fn flatten_statements(blocks: &[Arc<Block>]) -> Vec<(usize, &IrStatement)> {
+    let mut all_stmts: Vec<(usize, &IrStatement)> = Vec::new();
+    for block in blocks {
+        let ir_block = block.get_ir();
+        let Some(ir_block) = ir_block.as_ref() else {
+            continue;
+        };
+        for ir in ir_block.ir().iter() {
+            let Some(stmts) = ir.statements else {
+                continue;
+            };
+            for stmt in stmts {
+                let unique_id = all_stmts.len();
+                all_stmts.push((unique_id, stmt));
+            }
+        }
+    }
+    all_stmts
+}
+
 /// Extract all registers referenced in an IrData expression.
 fn collect_source_registers(data: &Aos<IrData>, worklist: &mut Vec<Register>) {
     match data.as_ref() {
@@ -186,23 +186,17 @@ fn collect_source_registers(data: &Aos<IrData>, worklist: &mut Vec<Register>) {
 }
 
 /// Log slicing analysis results.
-pub fn log_slice_analysis(blocks: &[Arc<Block>]) {
-    let total_ir: usize = blocks
-        .iter()
-        .filter_map(|b| b.get_ir().as_ref().map(|ir| ir.ir().len()))
-        .sum();
-
-    if total_ir == 0 {
+pub fn log_slice_analysis(slice: &ProgramSlice, total_statements: usize) {
+    if total_statements == 0 {
         return;
     }
 
-    let slice = backward_slice(blocks, SliceCriterion::ReturnValue);
     if !slice.included.is_empty() {
         debug!(
             "Program slice (return value): {}/{} statements ({:.1}%)",
             slice.included.len(),
-            total_ir,
-            slice.coverage(total_ir) * 100.0,
+            total_statements,
+            slice.coverage(total_statements) * 100.0,
         );
     }
 }

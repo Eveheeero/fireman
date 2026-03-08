@@ -13,6 +13,7 @@ use crate::{
         statements::IrStatement,
         x86_64::X64Range,
     },
+    pe::api_prototypes::lookup_api,
     prelude::{DecompileError, *},
     utils::version_map::VersionMap,
 };
@@ -2260,6 +2261,7 @@ fn infer_call_args(
     var_id_to_rsp_offset: &HashMap<AstVariableId, isize>,
     rsp_offset_to_var: &HashMap<isize, AstVariableId>,
 ) -> Vec<Wrapped<AstExpression>> {
+    let expected_external_arg_count = expected_external_arg_count(call_stmt);
     let callee_params = match &call_stmt.statement {
         AstStatement::Call(AstCall::Function { target, .. }) => {
             get_function_parameters(ast, *target)
@@ -2273,6 +2275,7 @@ fn infer_call_args(
         var_id_to_reg,
         var_id_to_rsp_offset,
     );
+    let fallback_args = cap_inferred_args(fallback_args, expected_external_arg_count);
 
     if let Some(params) = callee_params
         && !params.is_empty()
@@ -2300,6 +2303,28 @@ fn infer_call_args(
     }
 
     fallback_args
+}
+
+fn expected_external_arg_count(call_stmt: &WrappedAstStatement) -> Option<usize> {
+    let AstStatement::Call(AstCall::Unknown(name, _)) = &call_stmt.statement else {
+        return None;
+    };
+
+    lookup_api(normalize_external_call_name(name)).map(|api| api.param_count)
+}
+
+fn normalize_external_call_name(name: &str) -> &str {
+    name.strip_prefix("ext_").unwrap_or(name)
+}
+
+fn cap_inferred_args(
+    mut args: Vec<Wrapped<AstExpression>>,
+    expected_arg_count: Option<usize>,
+) -> Vec<Wrapped<AstExpression>> {
+    if let Some(expected_arg_count) = expected_arg_count {
+        args.truncate(expected_arg_count);
+    }
+    args
 }
 
 fn infer_args_from_callee_params(

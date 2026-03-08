@@ -13,8 +13,7 @@ use crate::{
     },
     prelude::*,
 };
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 /// A candidate field access at a specific offset from a base.
 #[derive(Debug, Clone)]
@@ -133,24 +132,20 @@ fn extract_base_offset(data: &crate::utils::Aos<IrData>) -> Option<(Register, i6
     };
     let IrData::Operation(IrDataOperation::Binary {
         operator: IrBinaryOperator::Add,
-        left,
-        right,
+        arg1,
+        arg2,
     }) = inner.as_ref()
     else {
         return None;
     };
 
     // Pattern 1: Register + Constant
-    if let (IrData::Register(reg), IrData::Constant(offset)) =
-        (left.as_ref(), right.as_ref())
-    {
-        return Some((*reg, *offset as i64));
+    if let (IrData::Register(reg), IrData::Constant(offset)) = (arg1.as_ref(), arg2.as_ref()) {
+        return Some((reg.clone(), *offset as i64));
     }
     // Pattern 2: Constant + Register
-    if let (IrData::Constant(offset), IrData::Register(reg)) =
-        (left.as_ref(), right.as_ref())
-    {
-        return Some((*reg, *offset as i64));
+    if let (IrData::Constant(offset), IrData::Register(reg)) = (arg1.as_ref(), arg2.as_ref()) {
+        return Some((reg.clone(), *offset as i64));
     }
 
     None
@@ -176,8 +171,7 @@ fn detect_stride(fields: &[FieldCandidate]) -> (bool, Option<i64>) {
 }
 
 /// Log struct/array recovery results.
-pub fn log_aggregate_recovery(blocks: &[Arc<Block>]) {
-    let candidates = recover_aggregates(blocks);
+pub fn log_aggregate_recovery(candidates: &[AggregateCandidate]) {
     if !candidates.is_empty() {
         debug!(
             "Aggregate recovery: {} candidates ({} arrays, {} structs)",

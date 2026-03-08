@@ -24,6 +24,7 @@ mod opt_utils;
 mod parameter_analyzation;
 pub mod pattern_matching;
 mod signedness_inference;
+mod structured_region_lowering;
 mod switch_reconstruction;
 mod temporary_elimination;
 mod ternary_recovery;
@@ -85,6 +86,11 @@ impl Ast {
                     continue;
                 }
                 ir_analyzation::analyze_ir_function(&mut ast, function_id, to_version)?;
+                structured_region_lowering::lower_structured_regions(
+                    &mut ast,
+                    function_id,
+                    to_version,
+                )?;
             }
             if config.pattern_matching_enabled {
                 for (function_id, to_version) in versions.iter().copied() {

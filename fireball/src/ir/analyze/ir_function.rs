@@ -3,7 +3,8 @@ use crate::{
     ir::{
         Ir, IrBlock,
         analyze::{
-            DataType, DominanceFrontier, analyze_function_control_flow, infer_entry_block_id,
+            DataType, DominanceFrontier, StructuredRegion, analyze_function_control_flow,
+            infer_entry_block_id, structure_function,
         },
         data::IrDataAccess,
         utils::IrStatementDescriptorMap,
@@ -16,10 +17,15 @@ use iceball::{
 };
 use std::sync::Arc;
 
-fn run_cfg_shape_analysis(blocks: &[Arc<Block>]) {
+struct CfgShapeArtifacts {
+    ssa: super::ssa::SsaFunction,
+    structured: StructuredRegion,
+}
+
+fn run_cfg_shape_analysis(blocks: &[Arc<Block>]) -> Option<CfgShapeArtifacts> {
     let Some(entry_block_id) = infer_entry_block_id(blocks) else {
         debug!("Skip CFG shape analysis: failed to infer entry block");
-        return;
+        return None;
     };
 
     let analysis = analyze_function_control_flow(blocks, entry_block_id);
@@ -99,7 +105,17 @@ fn run_cfg_shape_analysis(blocks: &[Arc<Block>]) {
     }
 
     // L37/L39: SSA summary and rename analysis spike.
-    super::ssa::log_ssa_analysis(blocks, analysis.dominators());
+    let ssa_function = super::ssa::construct_ssa(blocks, analysis.dominators());
+    super::ssa::log_ssa_analysis(&ssa_function);
+
+    // L60: CFG structuring using the existing region builder.
+    let structured = structure_function(blocks, &analysis);
+    debug!(
+        "CFG structuring: {} blocks, {} constructs, {} gotos",
+        structured.block_count(),
+        structured.construct_count(),
+        structured.goto_count(),
+    );
 
     // L192: Hot-cold chunk detection (gap > 4KB suggests split)
     let chunks = analysis.cfg().detect_address_gap_chunks(blocks, 4096);
@@ -109,6 +125,11 @@ fn run_cfg_shape_analysis(blocks: &[Arc<Block>]) {
             chunks.len()
         );
     }
+
+    Some(CfgShapeArtifacts {
+        ssa: ssa_function,
+        structured,
+    })
 }
 
 /// L11: Detect function prologue patterns from the first few instructions.
@@ -259,10 +280,19 @@ fn count_sp_relative_accesses(blocks: &[Arc<Block>]) -> usize {
 
 pub fn generate_ir_function(blocks: &[Arc<Block>]) -> IrFunction {
     info!("Generate IR function from {} blocks", blocks.len());
-    run_cfg_shape_analysis(blocks);
+    let cfg_artifacts = run_cfg_shape_analysis(blocks);
+    let points_to = super::points_to::analyze_points_to(blocks);
+    super::points_to::log_points_to_analysis(&points_to);
+    let aggregates = super::struct_recovery::recover_aggregates(blocks);
+    super::struct_recovery::log_aggregate_recovery(&aggregates);
+    let value_set = super::value_set::analyze_value_set(blocks);
+    super::value_set::log_value_set_analysis(&value_set);
+    let return_slice =
+        super::slicer::backward_slice(blocks, super::slicer::SliceCriterion::ReturnValue);
 
     // Merge IR from all blocks in execution order
     let mut combined_ir = Vec::new();
+    let mut ir_block_ids = Vec::new();
     let mut instructions = Vec::new();
     for block in blocks {
         let ir_block = block.get_ir();
@@ -271,10 +301,17 @@ pub fn generate_ir_function(blocks: &[Arc<Block>]) -> IrFunction {
         };
         // TODO should we return err when ir not analyzed?
         // If block not analyzed, skip
+        ir_block_ids.extend(std::iter::repeat(block.get_id()).take(ir_block.ir().len()));
         combined_ir.extend(ir_block.ir().iter().cloned());
         // if ir not sent, instruction must not be sent, it causes invalid ir analysis
         instructions.extend(block.get_instructions().iter().cloned());
     }
+
+    let total_slice_statements: usize = combined_ir
+        .iter()
+        .filter_map(|ir| ir.statements.as_ref().map(|statements| statements.len()))
+        .sum();
+    super::slicer::log_slice_analysis(&return_slice, total_slice_statements);
 
     debug!("IR Function size: {}", combined_ir.len());
     // Analyze IR function
@@ -300,7 +337,16 @@ pub fn generate_ir_function(blocks: &[Arc<Block>]) -> IrFunction {
     IrFunction {
         instructions,
         ir: combined_ir,
+        ir_block_ids: ir_block_ids.into(),
         variables: merged_vars,
+        points_to: Some(points_to),
+        aggregates: Some(aggregates),
+        value_set: Some(value_set),
+        return_slice: Some(return_slice),
+        ssa: cfg_artifacts
+            .as_ref()
+            .map(|artifacts| artifacts.ssa.clone()),
+        structured: cfg_artifacts.map(|artifacts| artifacts.structured),
     }
 }
 
@@ -308,7 +354,14 @@ pub fn generate_ir_function(blocks: &[Arc<Block>]) -> IrFunction {
 pub struct IrFunction {
     instructions: Arc<[Instruction]>,
     ir: Vec<Ir>,
+    ir_block_ids: Arc<[usize]>,
     variables: Vec<IrFunctionVariable>,
+    points_to: Option<super::points_to::PointsToSet>,
+    aggregates: Option<Vec<super::struct_recovery::AggregateCandidate>>,
+    value_set: Option<super::value_set::ValueSetResult>,
+    return_slice: Option<super::slicer::ProgramSlice>,
+    ssa: Option<super::ssa::SsaFunction>,
+    structured: Option<StructuredRegion>,
 }
 
 impl IrFunction {
@@ -319,18 +372,52 @@ impl IrFunction {
     ) -> Self {
         Self {
             instructions,
+            ir_block_ids: vec![0; ir.len()].into(),
             ir,
             variables,
+            points_to: None,
+            aggregates: None,
+            value_set: None,
+            return_slice: None,
+            ssa: None,
+            structured: None,
         }
     }
     pub fn get_ir(&self) -> &Vec<Ir> {
         &self.ir
+    }
+    pub fn get_ir_block_ids(&self) -> &Arc<[usize]> {
+        &self.ir_block_ids
     }
     pub fn get_instructions(&self) -> &Arc<[Instruction]> {
         &self.instructions
     }
     pub fn get_variables(&self) -> &Vec<IrFunctionVariable> {
         &self.variables
+    }
+
+    pub fn get_points_to(&self) -> Option<&super::points_to::PointsToSet> {
+        self.points_to.as_ref()
+    }
+
+    pub fn get_aggregates(&self) -> Option<&[super::struct_recovery::AggregateCandidate]> {
+        self.aggregates.as_deref()
+    }
+
+    pub fn get_value_set(&self) -> Option<&super::value_set::ValueSetResult> {
+        self.value_set.as_ref()
+    }
+
+    pub fn get_return_slice(&self) -> Option<&super::slicer::ProgramSlice> {
+        self.return_slice.as_ref()
+    }
+
+    pub fn get_ssa(&self) -> Option<&super::ssa::SsaFunction> {
+        self.ssa.as_ref()
+    }
+
+    pub fn get_structured(&self) -> Option<&StructuredRegion> {
+        self.structured.as_ref()
     }
 }
 

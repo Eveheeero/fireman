@@ -7,12 +7,15 @@
 use crate::{
     core::Block,
     ir::analyze::{
-        DominatorTree, FunctionControlFlowAnalysis, LoopInfo, NaturalLoop, PostDominatorTree,
+        DominatorTree, FunctionControlFlowAnalysis, LoopInfo, NaturalLoop,
         analyze_function_control_flow, infer_entry_block_id,
     },
     prelude::*,
 };
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::{HashSet, VecDeque},
+    sync::Arc,
+};
 
 /// A structured region of code recovered from the CFG.
 #[derive(Debug, Clone)]
@@ -24,6 +27,12 @@ pub enum StructuredRegion {
         head_block: usize,
         then_region: Box<StructuredRegion>,
         else_region: Option<Box<StructuredRegion>>,
+    },
+    /// switch (head) { case values: body; ... default: body; }
+    Switch {
+        head_block: usize,
+        cases: Vec<(Vec<i64>, StructuredRegion)>,
+        default: Option<Box<StructuredRegion>>,
     },
     /// while (header) { body }
     While {
@@ -60,6 +69,13 @@ impl StructuredRegion {
             } => {
                 1 + then_region.block_count() + else_region.as_ref().map_or(0, |r| r.block_count())
             }
+            StructuredRegion::Switch { cases, default, .. } => {
+                1 + cases
+                    .iter()
+                    .map(|(_, region)| region.block_count())
+                    .sum::<usize>()
+                    + default.as_ref().map_or(0, |region| region.block_count())
+            }
             StructuredRegion::While { body, .. } => 1 + body.block_count(),
             StructuredRegion::DoWhile { body, .. } => body.block_count() + 1,
             StructuredRegion::Goto(_)
@@ -88,6 +104,15 @@ impl StructuredRegion {
                 1 + then_region.construct_count()
                     + else_region.as_ref().map_or(0, |r| r.construct_count())
             }
+            StructuredRegion::Switch { cases, default, .. } => {
+                1 + cases
+                    .iter()
+                    .map(|(_, region)| region.construct_count())
+                    .sum::<usize>()
+                    + default
+                        .as_ref()
+                        .map_or(0, |region| region.construct_count())
+            }
             StructuredRegion::While { body, .. } => 1 + body.construct_count(),
             StructuredRegion::DoWhile { body, .. } => 1 + body.construct_count(),
         }
@@ -104,6 +129,13 @@ impl StructuredRegion {
                 else_region,
                 ..
             } => then_region.goto_count() + else_region.as_ref().map_or(0, |r| r.goto_count()),
+            StructuredRegion::Switch { cases, default, .. } => {
+                cases
+                    .iter()
+                    .map(|(_, region)| region.goto_count())
+                    .sum::<usize>()
+                    + default.as_ref().map_or(0, |region| region.goto_count())
+            }
             StructuredRegion::While { body, .. } => body.goto_count(),
             StructuredRegion::DoWhile { body, .. } => body.goto_count(),
         }
@@ -112,18 +144,18 @@ impl StructuredRegion {
 
 /// Structure a function's CFG into nested regions.
 pub fn structure_function(
-    blocks: &[Arc<Block>],
+    _blocks: &[Arc<Block>],
     analysis: &FunctionControlFlowAnalysis,
 ) -> StructuredRegion {
     let cfg = analysis.cfg();
     let dom_tree = analysis.dominators();
     let loops = analysis.loops();
 
-    // Get blocks in reverse postorder (dominator tree preorder)
-    let rpo = cfg.reverse_postorder();
+    // Get blocks in reverse postorder from the current CFG shape.
+    let rpo = reverse_postorder(cfg);
 
     // Identify loop headers
-    let loop_headers: HashSet<usize> = loops.loops().iter().map(|l| l.header()).collect();
+    let loop_headers: HashSet<usize> = loops.loops().iter().map(|l| l.header_id).collect();
 
     // Processed blocks tracker
     let mut processed: HashSet<usize> = HashSet::new();
@@ -147,8 +179,8 @@ fn structure_region(
         }
 
         if loop_headers.contains(&block_id) {
-            if let Some(natural_loop) = loops.loop_containing(block_id) {
-                if natural_loop.header() == block_id {
+            if let Some(natural_loop) = loops.loop_for_header(block_id) {
+                if natural_loop.header_id == block_id {
                     let region = structure_loop(
                         block_id,
                         natural_loop,
@@ -165,7 +197,7 @@ fn structure_region(
         }
 
         // Check if this is an if-then-else head
-        let successors = cfg.successors(block_id);
+        let successors = cfg.successors_of(block_id);
         if successors.len() == 2 && !processed.contains(&block_id) {
             processed.insert(block_id);
             let then_id = successors[0];
@@ -246,7 +278,7 @@ fn build_branch_region(
             // But don't include the merge point (blocks with predecessors
             // from both branches). Check if all predecessors are in our set
             // or are the head itself.
-            let preds = cfg.predecessors(bid);
+            let preds = cfg.predecessors_of(bid);
             let belongs = bid == entry
                 || preds
                     .iter()
@@ -274,12 +306,18 @@ fn structure_loop(
     loop_headers: &HashSet<usize>,
     processed: &mut HashSet<usize>,
 ) -> StructuredRegion {
-    let loop_blocks = natural_loop.blocks();
-    let latch = natural_loop.latch();
+    let loop_blocks = &natural_loop.body_ids;
+    let latch = natural_loop
+        .latch_ids
+        .iter()
+        .copied()
+        .find(|&latch_id| latch_id != header && cfg.successors_of(latch_id).contains(&header))
+        .or_else(|| natural_loop.latch_ids.first().copied())
+        .unwrap_or(header);
 
     // Classify: if the latch has a conditional back-edge to header,
     // it's a do-while; otherwise it's a while loop
-    let latch_succs = cfg.successors(latch);
+    let latch_succs = cfg.successors_of(latch);
     let is_do_while = latch != header && latch_succs.contains(&header);
 
     // The control block is excluded from the body:
@@ -288,7 +326,7 @@ fn structure_loop(
     let excluded = if is_do_while { latch } else { header };
 
     // Build body RPO: all loop blocks except the excluded control block
-    let rpo = cfg.reverse_postorder();
+    let rpo = reverse_postorder(cfg);
     let body_rpo: Vec<usize> = rpo
         .iter()
         .copied()
@@ -346,4 +384,40 @@ pub fn log_structuring(blocks: &[Arc<Block>]) {
         structured.construct_count(),
         structured.goto_count(),
     );
+}
+
+fn reverse_postorder(cfg: &crate::ir::analyze::ControlFlowGraph) -> Vec<usize> {
+    fn dfs(
+        block_id: usize,
+        cfg: &crate::ir::analyze::ControlFlowGraph,
+        visited: &mut HashSet<usize>,
+        postorder: &mut Vec<usize>,
+    ) {
+        if !visited.insert(block_id) {
+            return;
+        }
+
+        for &successor_id in cfg.successors_of(block_id) {
+            dfs(successor_id, cfg, visited, postorder);
+        }
+
+        postorder.push(block_id);
+    }
+
+    let mut visited = HashSet::new();
+    let mut postorder = Vec::new();
+    dfs(cfg.entry_block_id(), cfg, &mut visited, &mut postorder);
+
+    let mut remaining = cfg
+        .block_ids()
+        .iter()
+        .copied()
+        .filter(|block_id| !visited.contains(block_id))
+        .collect::<VecDeque<_>>();
+    while let Some(block_id) = remaining.pop_front() {
+        dfs(block_id, cfg, &mut visited, &mut postorder);
+    }
+
+    postorder.reverse();
+    postorder
 }
