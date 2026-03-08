@@ -1,9 +1,9 @@
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstBinaryOperator, AstBuiltinFunction, AstBuiltinFunctionArgument, AstCall,
-        AstDescriptor, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget, AstLiteral,
-        AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue, AstValueOrigin, AstValueType,
-        AstVariableId, PrintWithConfig, Wrapped, WrappedAstStatement,
+        ArcAstVariableMap, Ast, AstBinaryOperator, AstBuiltinFunction, AstBuiltinFunctionArgument,
+        AstCall, AstDescriptor, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget,
+        AstLiteral, AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue, AstValueOrigin,
+        AstValueType, AstVariableId, PrintWithConfig, Wrapped, WrappedAstStatement,
     },
     core::Address,
     ir::{
@@ -39,6 +39,47 @@ pub(super) fn wdn<T>(item: T) -> Wrapped<T> {
         item,
         origin: AstValueOrigin::Unknown,
         comment: None,
+    }
+}
+
+fn expr_constant_address(expr: &AstExpression) -> Option<u64> {
+    match expr {
+        AstExpression::Literal(AstLiteral::Int(value)) if *value >= 0 => Some(*value as u64),
+        AstExpression::Literal(AstLiteral::UInt(value)) => Some(*value),
+        AstExpression::Cast(_, inner) => expr_constant_address(inner.as_ref()),
+        AstExpression::Variable(var_map, var_id) => variable_constant_address(var_map, *var_id),
+        _ => None,
+    }
+}
+
+fn variable_constant_address(var_map: &ArcAstVariableMap, var_id: AstVariableId) -> Option<u64> {
+    let vars = var_map.read().ok()?;
+    let var = vars.get(&var_id)?;
+    let const_value = var.const_value.as_ref()?;
+    ast_value_constant_address(&const_value.item)
+}
+
+fn ast_value_constant_address(value: &AstValue) -> Option<u64> {
+    match value {
+        AstValue::Pointer(inner) => ast_value_constant_address(inner.as_ref()),
+        AstValue::Num(num) => {
+            let (sign, digits) = num.to_u64_digits();
+            if sign == num_bigint::Sign::Minus {
+                None
+            } else {
+                Some(*digits.first().unwrap_or(&0))
+            }
+        }
+        _ => None,
+    }
+}
+
+fn resolve_function_id_by_address(ast: &Ast, addr: u64) -> Option<AstFunctionId> {
+    let exact = AstFunctionId { address: addr };
+    if ast.functions.read().ok()?.contains_key(&exact) {
+        Some(exact)
+    } else {
+        None
     }
 }
 
@@ -351,14 +392,22 @@ pub(super) fn convert_stmt(
                 target,
                 var_map,
             )?;
-            match e.as_ref() {
-                AstExpression::Variable(vars, id) => AstStatement::Call(AstCall::Variable {
-                    scope: function_id,
-                    var_map: vars.clone(),
-                    var_id: *id,
+            let exact_target = expr_constant_address(e.as_ref())
+                .and_then(|addr| resolve_function_id_by_address(ast, addr));
+            match (e.as_ref(), exact_target) {
+                (_, Some(target)) => AstStatement::Call(AstCall::Function {
+                    target,
                     args: Vec::new(),
                 }),
-                _ => {
+                (AstExpression::Variable(vars, id), None) => {
+                    AstStatement::Call(AstCall::Variable {
+                        scope: function_id,
+                        var_map: vars.clone(),
+                        var_id: *id,
+                        args: Vec::new(),
+                    })
+                }
+                (_, None) => {
                     warn!("Uncovered call target");
                     let name = e.to_string_with_config(None);
                     AstStatement::Call(AstCall::Unknown(name, Vec::new()))
@@ -375,13 +424,18 @@ pub(super) fn convert_stmt(
                 target,
                 var_map,
             )?;
-            match e.as_ref() {
-                AstExpression::Variable(vars, id) => AstStatement::Goto(AstJumpTarget::Variable {
-                    scope: function_id,
-                    var_map: vars.clone(),
-                    var_id: *id,
-                }),
-                _ => {
+            let exact_target = expr_constant_address(e.as_ref())
+                .and_then(|addr| resolve_function_id_by_address(ast, addr));
+            match (e.as_ref(), exact_target) {
+                (_, Some(target)) => AstStatement::Goto(AstJumpTarget::Function { target }),
+                (AstExpression::Variable(vars, id), None) => {
+                    AstStatement::Goto(AstJumpTarget::Variable {
+                        scope: function_id,
+                        var_map: vars.clone(),
+                        var_id: *id,
+                    })
+                }
+                (_, None) => {
                     warn!("Uncovered jump target");
                     let label = e.to_string_with_config(None);
                     AstStatement::Goto(AstJumpTarget::Unknown(label))
