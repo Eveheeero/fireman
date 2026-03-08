@@ -140,6 +140,9 @@ fn annotate_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
                 if let Some(comment) = call_name_matches_alloc(call) {
                     insertions.push((i, comment.to_string()));
                 }
+                if let Some(comment) = call_name_matches_container(call) {
+                    insertions.push((i, comment.to_string()));
+                }
                 if call_name_matches_timing(call) {
                     insertions.push((i, "// timing / performance measurement".to_string()));
                 }
@@ -826,6 +829,56 @@ fn call_name_matches_alloca(call: &AstCall) -> bool {
         || name == "__alloca_probe"
         || name == "___chkstk_ms"
         || name == "__probestackspace"
+}
+
+/// Detect common C++/Rust managed-container APIs from preserved symbol names.
+fn call_name_matches_container(call: &AstCall) -> Option<&'static str> {
+    let name = match call {
+        AstCall::Unknown(name, _) => name.as_str(),
+        _ => return None,
+    };
+    let lower = name.to_ascii_lowercase();
+
+    let vector_like = (lower.contains("vector") || lower.contains("deque"))
+        && (lower.contains("push_back")
+            || lower.contains("emplace_back")
+            || lower.contains("reserve")
+            || lower.contains("resize")
+            || lower.contains("capacity")
+            || lower.contains("operator[]")
+            || lower.contains("at(")
+            || lower.ends_with("::at")
+            || lower.ends_with("::data"));
+    if vector_like {
+        return Some("// vector-like container operation");
+    }
+
+    let list_like = (lower.contains("list") || lower.contains("forward_list"))
+        && (lower.contains("push_front")
+            || lower.contains("push_back")
+            || lower.contains("pop_front")
+            || lower.contains("pop_back")
+            || lower.contains("splice")
+            || lower.contains("erase")
+            || lower.contains("insert"));
+    if list_like {
+        return Some("// list-like container operation");
+    }
+
+    let map_like =
+        (lower.contains("map") || lower.contains("unordered_map") || lower.contains("hash_map"))
+            && (lower.contains("find")
+                || lower.contains("insert")
+                || lower.contains("erase")
+                || lower.contains("emplace")
+                || lower.contains("operator[]")
+                || lower.contains("rehash")
+                || lower.contains("bucket"));
+    if map_like {
+        return Some("// map-like container operation");
+    }
+
+    None
 }
 
 /// Detect Objective-C runtime dispatch calls.

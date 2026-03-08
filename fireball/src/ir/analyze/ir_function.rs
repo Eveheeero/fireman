@@ -3,7 +3,7 @@ use crate::{
     ir::{
         Ir, IrBlock,
         analyze::{
-            CfgInterval, DataType, DominanceFrontier, StructuredRegion,
+            ArrayShapeCandidate, CfgInterval, DataType, DominanceFrontier, StructuredRegion,
             analyze_function_control_flow, discover_intervals, infer_entry_block_id,
             structure_function,
         },
@@ -16,7 +16,7 @@ use iceball::{
     Argument, Memory, Register, RelativeAddressingArgument, Statement, X64Statement,
     x64::register::X64Register,
 };
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 struct CfgShapeArtifacts {
     ssa: super::ssa::SsaFunction,
@@ -302,10 +302,19 @@ pub fn generate_ir_function(blocks: &[Arc<Block>]) -> IrFunction {
     let cfg_artifacts = run_cfg_shape_analysis(blocks);
     let points_to = super::points_to::analyze_points_to(blocks);
     super::points_to::log_points_to_analysis(&points_to);
+    let escape = super::escape::analyze_pointer_escape(blocks, &points_to);
+    super::escape::log_escape_analysis(&escape);
+    let mut function_summary = super::function_summary::summarize_function(blocks);
+    super::function_summary::augment_with_escape(&mut function_summary, &escape);
+    super::function_summary::log_function_summary(&function_summary);
     let data_dependence = super::data_dependence::analyze_data_dependence(blocks);
     super::data_dependence::log_data_dependence_analysis(&data_dependence);
     let aggregates = super::struct_recovery::recover_aggregates(blocks);
     super::struct_recovery::log_aggregate_recovery(&aggregates);
+    let array_shapes = super::array_shape::analyze_array_shapes(&aggregates);
+    super::array_shape::log_array_shape_analysis(&array_shapes);
+    let field_alias = super::field_alias::analyze_field_alias(&points_to, &aggregates);
+    super::field_alias::log_field_alias_analysis(&field_alias);
     let value_set = super::value_set::analyze_value_set(blocks);
     super::value_set::log_value_set_analysis(&value_set);
     let taint = super::taint::analyze_taint(blocks);
@@ -373,9 +382,13 @@ pub fn generate_ir_function(blocks: &[Arc<Block>]) -> IrFunction {
         ir: combined_ir,
         ir_block_ids: ir_block_ids.into(),
         variables: merged_vars,
+        function_summary: Some(function_summary),
         points_to: Some(points_to),
+        escape: Some(escape),
         data_dependence: Some(data_dependence),
         aggregates: Some(aggregates),
+        array_shapes: Some(array_shapes),
+        field_alias: Some(field_alias),
         value_set: Some(value_set),
         taint: Some(taint),
         return_slice: Some(return_slice),
@@ -392,9 +405,13 @@ pub struct IrFunction {
     ir: Vec<Ir>,
     ir_block_ids: Arc<[usize]>,
     variables: Vec<IrFunctionVariable>,
+    function_summary: Option<super::function_summary::FunctionSummary>,
     points_to: Option<super::points_to::PointsToSet>,
+    escape: Option<super::escape::EscapeAnalysis>,
     data_dependence: Option<super::data_dependence::DataDependenceGraph>,
     aggregates: Option<Vec<super::struct_recovery::AggregateCandidate>>,
+    array_shapes: Option<Vec<ArrayShapeCandidate>>,
+    field_alias: Option<super::field_alias::FieldAliasAnalysis>,
     value_set: Option<super::value_set::ValueSetResult>,
     taint: Option<super::taint::TaintAnalysis>,
     return_slice: Option<super::slicer::ProgramSlice>,
@@ -415,9 +432,13 @@ impl IrFunction {
             ir_block_ids: vec![0; ir.len()].into(),
             ir,
             variables,
+            function_summary: None,
             points_to: None,
+            escape: None,
             data_dependence: None,
             aggregates: None,
+            array_shapes: None,
+            field_alias: None,
             value_set: None,
             taint: None,
             return_slice: None,
@@ -440,8 +461,16 @@ impl IrFunction {
         &self.variables
     }
 
+    pub fn get_function_summary(&self) -> Option<&super::function_summary::FunctionSummary> {
+        self.function_summary.as_ref()
+    }
+
     pub fn get_points_to(&self) -> Option<&super::points_to::PointsToSet> {
         self.points_to.as_ref()
+    }
+
+    pub fn get_escape(&self) -> Option<&super::escape::EscapeAnalysis> {
+        self.escape.as_ref()
     }
 
     pub fn get_data_dependence(&self) -> Option<&super::data_dependence::DataDependenceGraph> {
@@ -450,6 +479,14 @@ impl IrFunction {
 
     pub fn get_aggregates(&self) -> Option<&[super::struct_recovery::AggregateCandidate]> {
         self.aggregates.as_deref()
+    }
+
+    pub fn get_array_shapes(&self) -> Option<&[ArrayShapeCandidate]> {
+        self.array_shapes.as_deref()
+    }
+
+    pub fn get_field_alias(&self) -> Option<&super::field_alias::FieldAliasAnalysis> {
+        self.field_alias.as_ref()
     }
 
     pub fn get_value_set(&self) -> Option<&super::value_set::ValueSetResult> {
@@ -478,6 +515,54 @@ impl IrFunction {
 
     pub fn get_cfg_intervals(&self) -> Option<&[super::structuring::CfgInterval]> {
         self.cfg_intervals.as_deref()
+    }
+
+    pub fn get_entry_address(&self) -> Option<u64> {
+        self.ir.first().map(|ir| ir.address.get_virtual_address())
+    }
+
+    pub(crate) fn apply_interprocedural_escape_propagation(
+        &mut self,
+        callee_summaries: &HashMap<u64, super::function_summary::FunctionSummary>,
+    ) -> bool {
+        let Some(function_summary) = self.function_summary.as_mut() else {
+            return false;
+        };
+        let Some(points_to) = self.points_to.as_ref() else {
+            return false;
+        };
+        let Some(escape) = self.escape.as_mut() else {
+            return false;
+        };
+
+        let mut examined_callees = 0usize;
+        let mut matched_callees = 0usize;
+        let mut changed = false;
+        let callees = function_summary.callees.clone();
+        for callee in callees {
+            examined_callees += 1;
+            let Some(callee_summary) = callee_summaries.get(&callee) else {
+                continue;
+            };
+            matched_callees += 1;
+            for &register in &callee_summary.escaped_registers {
+                changed |= super::escape::mark_interprocedural_register_escape(
+                    escape, register, points_to,
+                );
+            }
+        }
+
+        if changed {
+            super::function_summary::augment_with_escape(function_summary, escape);
+            debug!(
+                "Interprocedural escape propagation: examined {} callees, matched {}, escaped_registers={}",
+                examined_callees,
+                matched_callees,
+                function_summary.escaped_registers.len(),
+            );
+        }
+
+        changed
     }
 }
 

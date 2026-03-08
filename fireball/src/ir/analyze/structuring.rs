@@ -8,12 +8,12 @@ use crate::{
     core::Block,
     ir::analyze::{
         ControlFlowGraph, DominatorTree, FunctionControlFlowAnalysis, LoopInfo, NaturalLoop,
-        analyze_function_control_flow, infer_entry_block_id,
+        PostDominatorTree, analyze_function_control_flow, infer_entry_block_id,
     },
     prelude::*,
 };
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     sync::Arc,
 };
 
@@ -29,6 +29,8 @@ pub struct CfgInterval {
     pub block_ids: Vec<usize>,
     pub exit_blocks: Vec<usize>,
 }
+
+type ChunkBiasMap = HashMap<usize, usize>;
 
 impl CfgInterval {
     pub fn block_count(&self) -> usize {
@@ -286,6 +288,69 @@ impl StructuredRegion {
         self.insert_labels_for_targets(&goto_targets)
     }
 
+    /// Reorder simple sibling sequences into a more source-like order when
+    /// dominator/postdominator relations clearly indicate the current order is
+    /// backwards. This stays fail-closed on irreducible fallback regions.
+    pub fn with_source_like_order(
+        self,
+        dominator_tree: &DominatorTree,
+        post_dominator_tree: &PostDominatorTree,
+    ) -> Self {
+        match self {
+            StructuredRegion::Sequence(regions) => {
+                let mut reordered = regions
+                    .into_iter()
+                    .map(|region| {
+                        region.with_source_like_order(dominator_tree, post_dominator_tree)
+                    })
+                    .collect::<Vec<_>>();
+                reorder_sequence_regions(&mut reordered, dominator_tree, post_dominator_tree);
+                StructuredRegion::Sequence(reordered)
+            }
+            StructuredRegion::IfThenElse {
+                head_block,
+                then_region,
+                else_region,
+            } => StructuredRegion::IfThenElse {
+                head_block,
+                then_region: Box::new(
+                    then_region.with_source_like_order(dominator_tree, post_dominator_tree),
+                ),
+                else_region: else_region.map(|region| {
+                    Box::new(region.with_source_like_order(dominator_tree, post_dominator_tree))
+                }),
+            },
+            StructuredRegion::Switch {
+                head_block,
+                cases,
+                default,
+            } => StructuredRegion::Switch {
+                head_block,
+                cases: cases
+                    .into_iter()
+                    .map(|(labels, region)| {
+                        (
+                            labels,
+                            region.with_source_like_order(dominator_tree, post_dominator_tree),
+                        )
+                    })
+                    .collect(),
+                default: default.map(|region| {
+                    Box::new(region.with_source_like_order(dominator_tree, post_dominator_tree))
+                }),
+            },
+            StructuredRegion::While { header_block, body } => StructuredRegion::While {
+                header_block,
+                body: Box::new(body.with_source_like_order(dominator_tree, post_dominator_tree)),
+            },
+            StructuredRegion::DoWhile { body, latch_block } => StructuredRegion::DoWhile {
+                body: Box::new(body.with_source_like_order(dominator_tree, post_dominator_tree)),
+                latch_block,
+            },
+            region => region,
+        }
+    }
+
     fn collect_goto_targets(&self, targets: &mut HashSet<usize>) {
         match self {
             StructuredRegion::Goto(block_id) => {
@@ -418,17 +483,94 @@ impl StructuredRegion {
     }
 }
 
+fn reorder_sequence_regions(
+    regions: &mut [StructuredRegion],
+    dominator_tree: &DominatorTree,
+    post_dominator_tree: &PostDominatorTree,
+) {
+    if regions.len() < 2 {
+        return;
+    }
+
+    for _ in 0..regions.len() {
+        let mut changed = false;
+        for idx in 0..regions.len() - 1 {
+            if should_swap_source_like_regions(
+                &regions[idx],
+                &regions[idx + 1],
+                dominator_tree,
+                post_dominator_tree,
+            ) {
+                regions.swap(idx, idx + 1);
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+}
+
+fn should_swap_source_like_regions(
+    left: &StructuredRegion,
+    right: &StructuredRegion,
+    dominator_tree: &DominatorTree,
+    post_dominator_tree: &PostDominatorTree,
+) -> bool {
+    if !left.is_sese_region()
+        || !right.is_sese_region()
+        || left.goto_count() > 0
+        || left.label_count() > 0
+        || right.goto_count() > 0
+        || right.label_count() > 0
+    {
+        return false;
+    }
+
+    let Some(left_anchor) = region_anchor_block(left) else {
+        return false;
+    };
+    let Some(right_anchor) = region_anchor_block(right) else {
+        return false;
+    };
+    if left_anchor == right_anchor {
+        return false;
+    }
+
+    dominator_tree.dominates(right_anchor, left_anchor)
+        || post_dominator_tree.post_dominates(left_anchor, right_anchor)
+}
+
+fn region_anchor_block(region: &StructuredRegion) -> Option<usize> {
+    match region {
+        StructuredRegion::Block(block_id)
+        | StructuredRegion::Label(block_id)
+        | StructuredRegion::Goto(block_id) => Some(*block_id),
+        StructuredRegion::IfThenElse { head_block, .. }
+        | StructuredRegion::Switch { head_block, .. }
+        | StructuredRegion::While {
+            header_block: head_block,
+            ..
+        } => Some(*head_block),
+        StructuredRegion::DoWhile { latch_block, .. } => Some(*latch_block),
+        StructuredRegion::Sequence(regions) => regions.first().and_then(region_anchor_block),
+        StructuredRegion::Break | StructuredRegion::Continue => None,
+    }
+}
+
 /// Structure a function's CFG into nested regions.
 pub fn structure_function(
-    _blocks: &[Arc<Block>],
+    blocks: &[Arc<Block>],
     analysis: &FunctionControlFlowAnalysis,
 ) -> StructuredRegion {
     let cfg = analysis.cfg();
     let dom_tree = analysis.dominators();
+    let postdom_tree = analysis.postdominators();
     let loops = analysis.loops();
+    let chunk_bias = detect_address_gap_chunk_bias(cfg, blocks, 4096);
 
     // Get blocks in reverse postorder from the current CFG shape.
-    let rpo = reverse_postorder(cfg);
+    let rpo = reverse_postorder(cfg, chunk_bias.as_ref());
 
     // Identify loop headers
     let loop_headers: HashSet<usize> = loops.loops().iter().map(|l| l.header_id).collect();
@@ -436,8 +578,18 @@ pub fn structure_function(
     // Processed blocks tracker
     let mut processed: HashSet<usize> = HashSet::new();
 
-    structure_region(&rpo, cfg, dom_tree, loops, &loop_headers, &mut processed)
-        .with_relooper_labels()
+    structure_region(
+        &rpo,
+        cfg,
+        dom_tree,
+        postdom_tree,
+        loops,
+        &loop_headers,
+        chunk_bias.as_ref(),
+        &mut processed,
+    )
+    .with_source_like_order(dom_tree, postdom_tree)
+    .with_relooper_labels()
 }
 
 /// Discover a conservative first-pass interval partition for the current CFG.
@@ -483,8 +635,10 @@ fn structure_region(
     rpo: &[usize],
     cfg: &crate::ir::analyze::ControlFlowGraph,
     dom_tree: &DominatorTree,
+    postdom_tree: &PostDominatorTree,
     loops: &LoopInfo,
     loop_headers: &HashSet<usize>,
+    chunk_bias: Option<&ChunkBiasMap>,
     processed: &mut HashSet<usize>,
 ) -> StructuredRegion {
     let mut sequence: Vec<StructuredRegion> = Vec::new();
@@ -502,8 +656,10 @@ fn structure_region(
                         natural_loop,
                         cfg,
                         dom_tree,
+                        postdom_tree,
                         loops,
                         loop_headers,
+                        chunk_bias,
                         processed,
                     );
                     sequence.push(region);
@@ -527,8 +683,10 @@ fn structure_region(
                 rpo,
                 cfg,
                 dom_tree,
+                postdom_tree,
                 loops,
                 loop_headers,
+                chunk_bias,
                 processed,
             );
             let else_region = if else_id != then_id {
@@ -538,8 +696,10 @@ fn structure_region(
                     rpo,
                     cfg,
                     dom_tree,
+                    postdom_tree,
                     loops,
                     loop_headers,
+                    chunk_bias,
                     processed,
                 )))
             } else {
@@ -573,8 +733,10 @@ fn build_branch_region(
     rpo: &[usize],
     cfg: &crate::ir::analyze::ControlFlowGraph,
     dom_tree: &DominatorTree,
+    postdom_tree: &PostDominatorTree,
     loops: &LoopInfo,
     loop_headers: &HashSet<usize>,
+    chunk_bias: Option<&ChunkBiasMap>,
     processed: &mut HashSet<usize>,
 ) -> StructuredRegion {
     if processed.contains(&entry) {
@@ -610,7 +772,16 @@ fn build_branch_region(
     }
 
     // Recursively structure this sub-region
-    structure_region(&branch_rpo, cfg, dom_tree, loops, loop_headers, processed)
+    structure_region(
+        &branch_rpo,
+        cfg,
+        dom_tree,
+        postdom_tree,
+        loops,
+        loop_headers,
+        chunk_bias,
+        processed,
+    )
 }
 
 fn structure_loop(
@@ -618,8 +789,10 @@ fn structure_loop(
     natural_loop: &NaturalLoop,
     cfg: &crate::ir::analyze::ControlFlowGraph,
     dom_tree: &DominatorTree,
+    postdom_tree: &PostDominatorTree,
     loops: &LoopInfo,
     loop_headers: &HashSet<usize>,
+    chunk_bias: Option<&ChunkBiasMap>,
     processed: &mut HashSet<usize>,
 ) -> StructuredRegion {
     let loop_blocks = &natural_loop.body_ids;
@@ -642,7 +815,7 @@ fn structure_loop(
     let excluded = if is_do_while { latch } else { header };
 
     // Build body RPO: all loop blocks except the excluded control block
-    let rpo = reverse_postorder(cfg);
+    let rpo = reverse_postorder(cfg, chunk_bias);
     let body_rpo: Vec<usize> = rpo
         .iter()
         .copied()
@@ -661,8 +834,10 @@ fn structure_loop(
             &body_rpo,
             cfg,
             dom_tree,
+            postdom_tree,
             loops,
             loop_headers,
+            chunk_bias,
             &mut body_processed,
         )
     };
@@ -785,10 +960,33 @@ fn build_interval(
     }
 }
 
-fn reverse_postorder(cfg: &crate::ir::analyze::ControlFlowGraph) -> Vec<usize> {
+fn detect_address_gap_chunk_bias(
+    cfg: &ControlFlowGraph,
+    blocks: &[Arc<Block>],
+    gap_threshold: u64,
+) -> Option<ChunkBiasMap> {
+    let chunks = cfg.detect_address_gap_chunks(blocks, gap_threshold);
+    if chunks.len() <= 1 {
+        return None;
+    }
+
+    let mut chunk_bias = HashMap::new();
+    for (chunk_index, chunk) in chunks.into_iter().enumerate() {
+        for block_id in chunk {
+            chunk_bias.insert(block_id, chunk_index);
+        }
+    }
+    Some(chunk_bias)
+}
+
+fn reverse_postorder(
+    cfg: &crate::ir::analyze::ControlFlowGraph,
+    chunk_bias: Option<&ChunkBiasMap>,
+) -> Vec<usize> {
     fn dfs(
         block_id: usize,
         cfg: &crate::ir::analyze::ControlFlowGraph,
+        chunk_bias: Option<&ChunkBiasMap>,
         visited: &mut HashSet<usize>,
         postorder: &mut Vec<usize>,
     ) {
@@ -796,8 +994,9 @@ fn reverse_postorder(cfg: &crate::ir::analyze::ControlFlowGraph) -> Vec<usize> {
             return;
         }
 
-        for &successor_id in cfg.successors_of(block_id) {
-            dfs(successor_id, cfg, visited, postorder);
+        let successors = ordered_successors(block_id, cfg, chunk_bias);
+        for successor_id in successors {
+            dfs(successor_id, cfg, chunk_bias, visited, postorder);
         }
 
         postorder.push(block_id);
@@ -805,7 +1004,13 @@ fn reverse_postorder(cfg: &crate::ir::analyze::ControlFlowGraph) -> Vec<usize> {
 
     let mut visited = HashSet::new();
     let mut postorder = Vec::new();
-    dfs(cfg.entry_block_id(), cfg, &mut visited, &mut postorder);
+    dfs(
+        cfg.entry_block_id(),
+        cfg,
+        chunk_bias,
+        &mut visited,
+        &mut postorder,
+    );
 
     let mut remaining = cfg
         .block_ids()
@@ -814,9 +1019,35 @@ fn reverse_postorder(cfg: &crate::ir::analyze::ControlFlowGraph) -> Vec<usize> {
         .filter(|block_id| !visited.contains(block_id))
         .collect::<VecDeque<_>>();
     while let Some(block_id) = remaining.pop_front() {
-        dfs(block_id, cfg, &mut visited, &mut postorder);
+        dfs(block_id, cfg, chunk_bias, &mut visited, &mut postorder);
     }
 
     postorder.reverse();
     postorder
+}
+
+fn ordered_successors(
+    block_id: usize,
+    cfg: &crate::ir::analyze::ControlFlowGraph,
+    chunk_bias: Option<&ChunkBiasMap>,
+) -> Vec<usize> {
+    let mut successors = cfg.successors_of(block_id).to_vec();
+    let Some(chunk_bias) = chunk_bias else {
+        return successors;
+    };
+    let source_chunk = chunk_bias.get(&block_id).copied();
+    successors.sort_by_key(|successor_id| {
+        let successor_chunk = chunk_bias.get(successor_id).copied();
+        let cross_chunk_penalty = match (source_chunk, successor_chunk) {
+            (Some(source_chunk), Some(successor_chunk)) if source_chunk == successor_chunk => 0,
+            (Some(_), Some(_)) => 1,
+            _ => 2,
+        };
+        (
+            cross_chunk_penalty,
+            successor_chunk.unwrap_or(usize::MAX),
+            *successor_id,
+        )
+    });
+    successors
 }
