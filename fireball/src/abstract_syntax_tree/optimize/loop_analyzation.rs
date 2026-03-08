@@ -1,7 +1,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstJumpTarget, AstLiteral, AstStatement, AstValueOrigin, AstVariableId,
+        AstJumpTarget, AstLiteral, AstStatement, AstUnaryOperator, AstValueOrigin, AstVariableId,
         ProcessedOptimization, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
@@ -31,6 +31,8 @@ pub(super) fn analyze_loops(
     annotate_state_machine_loops(&mut body);
     annotate_loop_exit_patterns(&mut body);
     annotate_continue_like_gotos(&mut body);
+    convert_loop_gotos_to_break_continue(&mut body);
+    try_convert_while_to_dowhile(&mut body);
     annotate_iterator_traversals(&mut body);
 
     {
@@ -296,6 +298,121 @@ fn try_convert_while_to_for(stmts: &mut Vec<WrappedAstStatement>) {
             i += 1;
         }
     }
+}
+
+/// Convert `while(true) { ... if (!cond) break; }` into `do { ... } while(cond);`.
+fn try_convert_while_to_dowhile(stmts: &mut Vec<WrappedAstStatement>) {
+    for stmt in stmts.iter_mut() {
+        match &mut stmt.statement {
+            AstStatement::If(_, branch_true, branch_false) => {
+                try_convert_while_to_dowhile(branch_true);
+                if let Some(branch_false) = branch_false {
+                    try_convert_while_to_dowhile(branch_false);
+                }
+            }
+            AstStatement::While(_, body)
+            | AstStatement::DoWhile(_, body)
+            | AstStatement::For(_, _, _, body)
+            | AstStatement::Block(body) => {
+                try_convert_while_to_dowhile(body);
+            }
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases.iter_mut() {
+                    try_convert_while_to_dowhile(case_body);
+                }
+                if let Some(default_body) = default {
+                    try_convert_while_to_dowhile(default_body);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    for stmt in stmts.iter_mut() {
+        if stmt.comment.is_some() {
+            continue;
+        }
+
+        let Some((loop_cond, break_index)) = extract_dowhile_rewrite(stmt) else {
+            continue;
+        };
+
+        let AstStatement::While(_, body) = &mut stmt.statement else {
+            continue;
+        };
+        body.remove(break_index);
+        let new_body = std::mem::take(body);
+        stmt.statement = AstStatement::DoWhile(loop_cond, new_body);
+    }
+}
+
+fn extract_dowhile_rewrite(stmt: &WrappedAstStatement) -> Option<(Wrapped<AstExpression>, usize)> {
+    let AstStatement::While(cond, body) = &stmt.statement else {
+        return None;
+    };
+
+    if !matches!(&cond.item, AstExpression::Literal(AstLiteral::Bool(true))) {
+        return None;
+    }
+
+    let break_index = last_meaningful_statement_index(body)?;
+    let break_guard = body.get(break_index)?;
+    if break_guard.comment.is_some() {
+        return None;
+    }
+
+    extract_dowhile_condition_from_break_guard(&break_guard.statement)
+        .map(|loop_cond| (loop_cond, break_index))
+}
+
+fn last_meaningful_statement_index(stmts: &[WrappedAstStatement]) -> Option<usize> {
+    stmts.iter().rposition(|stmt| !is_noop_statement(stmt))
+}
+
+fn extract_dowhile_condition_from_break_guard(
+    stmt: &AstStatement,
+) -> Option<Wrapped<AstExpression>> {
+    let AstStatement::If(cond, branch_true, branch_false) = stmt else {
+        return None;
+    };
+
+    if branch_false.is_some() || branch_true.len() != 1 {
+        return None;
+    }
+
+    let break_stmt = branch_true.first()?;
+    if break_stmt.comment.is_some() || !matches!(&break_stmt.statement, AstStatement::Break) {
+        return None;
+    }
+
+    match &cond.item {
+        AstExpression::UnaryOp(AstUnaryOperator::Not, inner) => Some((**inner).clone()),
+        AstExpression::BinaryOp(AstBinaryOperator::Equal, left, right) => {
+            if !is_false_literal(&left.item) && !is_false_literal(&right.item) {
+                return None;
+            }
+
+            Some(Wrapped {
+                item: AstExpression::BinaryOp(
+                    AstBinaryOperator::NotEqual,
+                    left.clone(),
+                    right.clone(),
+                ),
+                origin: cond.origin.clone(),
+                comment: cond.comment.clone(),
+            })
+        }
+        _ => None,
+    }
+}
+
+fn is_false_literal(expr: &AstExpression) -> bool {
+    matches!(
+        expr,
+        AstExpression::Literal(AstLiteral::Int(0))
+            | AstExpression::Literal(AstLiteral::UInt(0))
+            | AstExpression::Literal(AstLiteral::Bool(false))
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -788,6 +905,7 @@ fn annotate_iterator_traversals(stmts: &mut Vec<WrappedAstStatement>) {
                 }
             }
             AstStatement::While(_, body)
+            | AstStatement::DoWhile(_, body)
             | AstStatement::For(_, _, _, body)
             | AstStatement::Block(body) => {
                 annotate_iterator_traversals(body);
@@ -809,6 +927,7 @@ fn annotate_iterator_traversals(stmts: &mut Vec<WrappedAstStatement>) {
 
         let (cond, loop_body) = match &stmt.statement {
             AstStatement::While(cond, body) => (cond, body),
+            AstStatement::DoWhile(cond, body) => (cond, body),
             AstStatement::For(_, cond, _, body) => (cond, body),
             _ => continue,
         };
@@ -923,6 +1042,151 @@ fn annotate_continue_like_gotos(stmts: &mut Vec<WrappedAstStatement>) {
         for s in loop_body.iter_mut() {
             mark_gotos_as_continue(s, &first_label);
         }
+    }
+}
+
+fn convert_loop_gotos_to_break_continue(stmts: &mut Vec<WrappedAstStatement>) {
+    for stmt in stmts.iter_mut() {
+        convert_loop_gotos_in_statement(stmt);
+    }
+
+    for index in 0..stmts.len() {
+        let continue_label = loop_continue_label(&stmts[index].statement);
+        let break_label = next_loop_break_label(stmts, index + 1);
+
+        let Some(loop_body) = loop_body_mut(&mut stmts[index].statement) else {
+            continue;
+        };
+
+        if continue_label.is_none() && break_label.is_none() {
+            continue;
+        }
+
+        for stmt in loop_body.iter_mut() {
+            rewrite_loop_gotos(stmt, continue_label.as_deref(), break_label.as_deref());
+        }
+    }
+}
+
+fn convert_loop_gotos_in_statement(stmt: &mut WrappedAstStatement) {
+    match &mut stmt.statement {
+        AstStatement::If(_, branch_true, branch_false) => {
+            convert_loop_gotos_to_break_continue(branch_true);
+            if let Some(branch_false) = branch_false {
+                convert_loop_gotos_to_break_continue(branch_false);
+            }
+        }
+        AstStatement::While(_, body)
+        | AstStatement::DoWhile(_, body)
+        | AstStatement::Block(body) => {
+            convert_loop_gotos_to_break_continue(body);
+        }
+        AstStatement::For(init, _, update, body) => {
+            convert_loop_gotos_in_statement(init);
+            convert_loop_gotos_in_statement(update);
+            convert_loop_gotos_to_break_continue(body);
+        }
+        AstStatement::Switch(_, cases, default) => {
+            for (_, case_body) in cases.iter_mut() {
+                convert_loop_gotos_to_break_continue(case_body);
+            }
+            if let Some(default_body) = default {
+                convert_loop_gotos_to_break_continue(default_body);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn loop_continue_label(stmt: &AstStatement) -> Option<String> {
+    let loop_body = match stmt {
+        AstStatement::While(_, body)
+        | AstStatement::DoWhile(_, body)
+        | AstStatement::For(_, _, _, body) => body,
+        _ => return None,
+    };
+
+    loop_body.iter().find_map(|stmt| {
+        if let AstStatement::Label(name) = &stmt.statement {
+            Some(name.clone())
+        } else {
+            None
+        }
+    })
+}
+
+fn next_loop_break_label(stmts: &[WrappedAstStatement], start_index: usize) -> Option<String> {
+    for stmt in stmts.iter().skip(start_index) {
+        match &stmt.statement {
+            AstStatement::Empty | AstStatement::Comment(_) => continue,
+            AstStatement::Label(name) => return Some(name.clone()),
+            _ => return None,
+        }
+    }
+
+    None
+}
+
+fn loop_body_mut(stmt: &mut AstStatement) -> Option<&mut Vec<WrappedAstStatement>> {
+    match stmt {
+        AstStatement::While(_, body)
+        | AstStatement::DoWhile(_, body)
+        | AstStatement::For(_, _, _, body) => Some(body),
+        _ => None,
+    }
+}
+
+fn rewrite_loop_gotos(
+    stmt: &mut WrappedAstStatement,
+    continue_label: Option<&str>,
+    break_label: Option<&str>,
+) {
+    if let AstStatement::Goto(AstJumpTarget::Unknown(name)) = &stmt.statement {
+        if continue_label == Some(name.as_str())
+            && stmt.comment.as_deref() == Some("continue-like back-edge")
+        {
+            stmt.statement = AstStatement::Continue;
+            stmt.comment = None;
+            return;
+        }
+
+        if break_label == Some(name.as_str()) {
+            stmt.statement = AstStatement::Break;
+            return;
+        }
+    }
+
+    match &mut stmt.statement {
+        AstStatement::If(_, branch_true, branch_false) => {
+            for stmt in branch_true.iter_mut() {
+                rewrite_loop_gotos(stmt, continue_label, break_label);
+            }
+            if let Some(branch_false) = branch_false {
+                for stmt in branch_false.iter_mut() {
+                    rewrite_loop_gotos(stmt, continue_label, break_label);
+                }
+            }
+        }
+        AstStatement::Block(body) => {
+            for stmt in body.iter_mut() {
+                rewrite_loop_gotos(stmt, continue_label, break_label);
+            }
+        }
+        AstStatement::Switch(_, cases, default) => {
+            for (_, case_body) in cases.iter_mut() {
+                for stmt in case_body.iter_mut() {
+                    rewrite_loop_gotos(stmt, continue_label, break_label);
+                }
+            }
+            if let Some(default_body) = default {
+                for stmt in default_body.iter_mut() {
+                    rewrite_loop_gotos(stmt, continue_label, break_label);
+                }
+            }
+        }
+        AstStatement::While(_, _) | AstStatement::DoWhile(_, _) | AstStatement::For(_, _, _, _) => {
+        }
+        _ => {}
     }
 }
 

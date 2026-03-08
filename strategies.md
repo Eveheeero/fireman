@@ -35,7 +35,7 @@
 - [~] Setjmp/longjmp modeling — Special-case non-local control flow to avoid misleading structured output.
   > setjmp/longjmp/sigsetjmp 호출 감지 및 주석 추가 (제어흐름 모델링 미구현)
 - [~] SSA conversion — Translate IR to SSA form to simplify analysis and reconstruction.
-  > ssa.rs: Phase 1(phi 배치) + Phase 2(리네이밍 요약) 구현 완료. compute_phi_sites()로 Cytron 알고리즘 기반 iterated dominance frontier 계산, build_ssa_rename_summary()/log_ssa_analysis()로 레지스터 및 SP/BP-relative 슬롯에 SSA 버전 부여와 블록별 def/use 추적 수행. IR 자체를 정식 SSA 형태로 재작성하는 단계는 미구현
+  > ssa.rs: Phase 1(phi 배치) + additive Phase 2(리네이밍/소유권) 구현 완료. compute_phi_sites()와 SsaFunction::from_ir_blocks()/construct_ssa()로 Cytron 알고리즘 기반 phi 위치 계산, SSA 버전 부여, 블록별 def/use 및 phi input/output 요약을 생성하며, ir_function.rs가 이를 IrFunction::get_ssa()로 노출한다. 다만 IR 자체를 versioned SSA statement로 재작성하는 정식 스위치오버는 아직 미구현
 - [~] Phi-node placement — Insert merges at CFG joins to represent value merging cleanly.
   > ssa.rs: compute_phi_sites()로 DominanceFrontier 기반 phi 위치 계산, build_ssa_rename_summary()로 PhiNode output/input 요약 생성 구현. 실제 IrStatement에 phi를 삽입하는 정식 SSA 재작성 단계는 미구현
 - [x] Def-use / use-def chains — Track where values come from and where they flow for variable/type recovery.
@@ -57,8 +57,8 @@
   > cmovcc/setcc 개별 조건 코드 IR 핸들러 구현 완료; 전체 플래그 전파/소거는 미구현
 - [x] Short-circuit boolean reconstruction — Convert branch patterns into &&/|| when semantics match.
 - [x] Ternary operator recovery — Recognize select/phi patterns to emit cond ? a : b.
-- [ ] Region/structural analysis — Convert CFG into structured if/else, while, for, do-while regions.
-  > simplified Phoenix 기반 설계와 structuring.rs 스캐폴드는 존재하지만 현재 CFG/loop API와 불일치하여 빌드에 연결되지 않음. 도미네이터/포스트도미네이터/제어 의존성/SSA phi 배치 및 리네이밍 요약까지는 구현 완료, 실제 region 형성은 미구현
+- [~] Region/structural analysis — Convert CFG into structured if/else, while, for, do-while regions.
+  > simplified Phoenix 기반 structuring.rs가 현재 CFG/loop API에 맞게 정리되어 run_cfg_shape_analysis() 및 IrFunction::structured에 연결됨. 또한 ir_analyzation 직후 guarded structured_region_lowering.rs가 pure If head block과 branch/body polarity를 증명할 수 있는 단순 While/DoWhile control block을 StructuredRegion 기반으로 AST에 반영하며, explicit `StructuredRegion::Switch`도 fail-closed lowering 경로를 갖춤. 다만 CFG structuring 단계가 아직 `Switch` region을 실제로 생성하지 않아서 switch 소비는 scaffold 수준이며, 더 복잡한 loop 형태, 정밀 region 복원, full AST emission 전환, irreducible CFG 변환은 아직 미구현
 - [~] Reducibility transformation — Apply node splitting/edge rewriting to structure irreducible CFGs when possible.
   > dominator.rs: CFG::is_reducible() 환원성 검사 구현 완료. 비환원 CFG 처리는 StructuredRegion::Goto/Label 폴백으로 설계 (docs/plans/ssa-cfg-structuring-design.md). 노드 분할 변환은 Phase 4에서 구현 예정
 - [x] Loop detection via back-edges — Identify natural loops using dominators and back-edge discovery.
@@ -91,24 +91,24 @@
   > 함수별 요약 프레임워크 필요
 - [ ] Context-sensitive analysis — Distinguish behaviors per call site for more precise type/target recovery.
   > 호출 컨텍스트 프레임워크 필요. call_graph.rs에서 함수간 호출 관계는 추적하나 call-site별 동작 구분은 미구현
-- [ ] Points-to analysis — Approximate what pointers can reference to improve indirect load/store understanding.
-  > 포인터 분석 프레임워크 필요. Andersen/Steensgaard 스타일 분석을 위해 IR에 allocation site 추적 + 포인터 제약 수집 인프라 선행
-- [ ] Alias analysis — Determine when two memory references may overlap to drive simplification safely.
-  > points-to 분석 선행 필요. 현재 dead_store_elimination/copy_propagation에서 보수적 별칭 가정 사용
+- [~] Points-to analysis — Approximate what pointers can reference to improve indirect load/store understanding.
+  > `ir/analyze/points_to.rs`의 Steensgaard 스타일 분석이 `IrFunction` 생성 경로에 연결되어 결과를 보관하고 location/edge 요약을 로그로 남김. 아직 AST/최적화 패스 소비, stack slot 정밀화, heap allocation site 정교화는 미구현
+- [~] Alias analysis — Determine when two memory references may overlap to drive simplification safely.
+  > points-to 결과가 파이프라인에 올라왔지만 아직 dead_store_elimination/copy_propagation 등에서 소비하지 않음. 따라서 alias 정보는 여전히 보수적이며 파생 활용만 부분 진척
 - [ ] Memory SSA — Bring loads/stores into SSA-like form to reason about memory dependencies.
   > SSA 변환(L37) + alias 분석(L95) 선행 필요. dominance frontier 구현 완료로 MemorySSA phi 삽입 위치는 결정 가능
-- [ ] Value-set analysis — Track possible integer/address ranges to resolve indirect jumps and bounds checks.
-  > 추상 해석 프레임워크 필요
-- [ ] Range analysis — Infer variable ranges to simplify conditions and reconstruct comparisons.
-  > 추상 해석/값 범위 프레임워크 필요
+- [~] Value-set analysis — Track possible integer/address ranges to resolve indirect jumps and bounds checks.
+  > `ir/analyze/value_set.rs`의 interval 기반 값 범위 분석이 현재 IR enum에 맞게 정리되어 `IrFunction` 생성 경로에 연결되었고 결과를 보관/로그한다. 아직 indirect jump 해석, AST/최적화 소비, CFG edge 정밀화는 미구현
+- [~] Range analysis — Infer variable ranges to simplify conditions and reconstruct comparisons.
+  > 기본 interval 추적과 분기 조건 협착은 구현되어 파이프라인에 올라왔지만, 비교식 재구성 전반과 unsigned/signed/loop-carried 정밀화는 아직 부분 구현
 - [x] Signedness inference — Infer signed vs unsigned from compares, extensions, shifts, and API usage.
 - [x] Extension modeling — Track sign/zero-extend operations to recover correct C casts and types.
   > movsx/movsxd/movzx IR 핸들러 + 할당 크기 기반 (int32_t)/(uint8_t) 등 명시적 C 캐스트 출력 구현 완료
 - [~] Pointer arithmetic lifting — Convert address math into ptr + i / &arr[i] forms where safe.
-- [ ] Array vs struct discrimination — Decide whether offset patterns represent arrays, structs, or unions.
-  > 메모리 접근 패턴 분석기 필요
-- [ ] Field offset clustering — Group recurring offsets into candidate struct fields with consistent access sizes.
-  > 구조체 복구 프레임워크 필요
+- [~] Array vs struct discrimination — Decide whether offset patterns represent arrays, structs, or unions.
+  > `ir/analyze/struct_recovery.rs`의 offset-pattern 스캐너가 `IrFunction` 생성 경로에 연결되어 aggregate 후보와 array/struct 판정을 보관하고 요약 로그를 남김. 아직 union 구분, AST 타입 반영, 포인터 기반 base 추적 정밀화는 미구현
+- [~] Field offset clustering — Group recurring offsets into candidate struct fields with consistent access sizes.
+  > base register별 offset 묶음과 read/write 빈도 집계는 구현되어 파이프라인에 보관되지만, access size 반영과 실제 struct field/type 승격은 아직 미구현
 - [~] Bitfield recovery — Detect mask/shift patterns and emit packed fields (or clearer helper expressions).
   > (x>>N)&M, (x&M)>>N, x&M 패턴 감지하여 bits[lo..hi] comment 주석 (bit_trick_recognition.rs). 구조체 필드 재구성은 미구현
 - [~] Enum inference — Identify constant sets used in compares/switches and label them as enums.
@@ -116,30 +116,30 @@
 - [x] String literal propagation — Track string references to improve variable/function naming and format inference.
 - [~] Format-string driven typing — Infer argument types from printf/scanf-like format strings.
   > auto_comment.rs: annotate_format_string_types()로 printf/scanf 계열 포맷 문자열에서 %d/%s/%p 등 지정자 파싱하여 예상 인자 타입 주석 생성. 타입 시스템 반영은 미구현
-- [ ] API prototype seeding — Use known library prototypes to seed parameter/return types at call sites.
-  > 외부 프로토타입 DB 필요 — 현재 인프라 없음
-- [ ] Global variable recovery — Identify globals/TLS, their references, and assign stable names/types.
-  > 전역 변수 분석기 필요
+- [~] API prototype seeding — Use known library prototypes to seed parameter/return types at call sites.
+  > `pe/api_prototypes.rs`의 외부 프로토타입 DB는 구현되어 있으며, `call_argument_analyzation.rs`에서 `ext_*` 외부 호출 이름을 조회해 알려진 API의 인자 개수로 추론 인자를 보수적으로 제한함. 반환 타입/파라미터 타입을 AST 타입 시스템에 반영하는 작업은 아직 미구현
+- [~] Global variable recovery — Identify globals/TLS, their references, and assign stable names/types.
+  > `ir/analyze/global_recovery.rs`가 data section 내 `Dereference(Constant(addr))` 패턴을 스캔해 후보를 복구하며, `pe/fire.rs`에서 decompile 직전 `PreDefinedOffsets`에 `global_<ADDR>` 이름으로 시드함. AST 타입 반영, 전역 식 자체를 named global로 치환하는 표현 복구, TLS와의 구분은 아직 미구현
 - [~] TLS recovery — Recognize thread-local storage access sequences (GS/FS, TLV) and model them as TLS vars.
   > auto_comment.rs에서 TlsAlloc/TlsGetValue/pthread_getspecific 등 TLS API 호출 감지 및 주석 추가
 - [~] Relocation-aware pointer typing — Use relocations/symbol refs to distinguish pointers from integers.
   > PE 기반 재배치 테이블 파싱 구현 완료 (_pe.rs) — HIGHLOW/DIR64 엔트리에서 포인터 주소 수집. 타입 추론 파이프라인에 relocation_addresses 전달 및 포인터/정수 구분 로직은 미구현
 - [ ] PIC/GOT/PLT modeling — Correctly lift position-independent addressing and external linkage scaffolding.
   > 위치 독립 코드 모델링 필요
-- [ ] Vtable detection — Identify vtables via RTTI patterns and indirect call sites.
-  > RTTI/vtable 분석기 필요 — 현재 인프라 없음
-- [ ] RTTI parsing — Use RTTI metadata (where present) to recover class names and inheritance links.
-  > RTTI 메타데이터 파서 필요
+- [~] Vtable detection — Identify vtables via RTTI patterns and indirect call sites.
+  > `fireball/src/pe/rtti.rs`에서 Win64 MSVC RTTI-backed vtable 탐지를 구현. `.rdata`/`.data`의 Type Descriptor 문자열과 Complete Object Locator(`pSelf` self-check 포함)를 보수적으로 검증한 뒤, metadata slot이 COL을 가리키고 연속 함수 포인터가 실행 섹션으로 향하는 경우만 vtable 후보로 인정한다. RTTI-less vtable 탐지와 indirect call site 사용처 연결은 아직 미구현
+- [~] RTTI parsing — Use RTTI metadata (where present) to recover class names and inheritance links.
+  > `rtti.rs`가 MSVC x64 Type Descriptor / Complete Object Locator / Class Hierarchy Descriptor 참조를 스캔해 class name, type descriptor RVA, COL RVA, CHD RVA, method count를 `Pe::rtti_entries()`로 노출하고 누락된 주소에 `vtable_for_*`, `typeinfo_for_*` 이름을 시드한다. 상속 그래프 해석, Win32 RTTI, 비-MSVC 포맷은 아직 미구현
 - [ ] Devirtualization — Resolve virtual calls to concrete targets using type/points-to constraints.
-  > vtable 분석 및 points-to 분석 선행 필요 — vtable 탐지(L129), RTTI 파싱(L131) 모두 미구현 상태
+  > vtable 분석 및 points-to 분석 선행 필요 — RTTI-backed vtable/RTTI 메타데이터 노출은 추가되었지만 virtual call site와의 연결 및 points-to 기반 타깃 축소는 아직 미구현
 - [~] Constructor/destructor identification — Detect ctor/dtor patterns (vptr writes, base calls) for better class output.
   > auto_comment.rs: annotate_this_or_sret_pointer()로 첫 번째 파라미터의 deref store(ctor) / free/delete 호출(dtor) 패턴 주석 생성. 완전한 C++ 객체 모델링은 vtable 분석 선행 필요
 - [ ] Inlining detection/undo — Identify inlined library/user functions and optionally “outline” them as calls.
   > 인라인 탐지 프레임워크 필요
 - [~] Idiom-to-intrinsic lifting — Map SIMD/bit ops to intrinsics or clean C equivalents.
   > bit_trick_recognition.rs: try_recognize_intrinsic_idiom()로 branchless abs ((x^(x>>31))-(x>>31)), branchless min/max (x^((x^y)&mask)), de Bruijn ctz/clz (0x077CB531 등) 패턴 감지 및 주석 추가. SIMD intrinsic 매핑은 IR 수준 SIMD 모델링 선행 필요
-- [ ] Floating-point semantic modeling — Properly handle x87 stack vs SSE registers and rounding modes.
-  > x87 스택/SSE 레지스터 구분 및 라운딩 모드 추적이 IR 수준에서 필요 — Ir enum에 FP 관련 variant 추가, x87 스택 시뮬레이션, MXCSR 모델링 등 대규모 IR 변경 필요
+- [~] Floating-point semantic modeling — Properly handle x87 stack vs SSE registers and rounding modes.
+  > datatype.rs에서 Float32/Float64/Float80 구분과 보수적 XMM/YMM/ZMM·stN 스칼라 추론을 추가함. 다만 SSE/x87 명령 리프팅, x87 스택 시뮬레이션, MXCSR/예외/라운딩 모드 모델링은 아직 없음
 - [~] Atomic/volatile recognition — Detect atomic sequences and volatile accesses to preserve ordering/side effects.
   > __atomic_*/__sync_*/InterlockedCompareExchange 등 원자 연산 호출 감지 및 주석 추가
 - [ ] Self-modifying code detection — Detect writes to code pages; fall back to dynamic techniques when needed.
@@ -172,8 +172,8 @@
   > 바이너리 비교 프레임워크 필요
 - [ ] User-guided annotations — Accept manual types/structs/symbols to steer inference and re-run analyses.
   > UI/인터페이스 레이어 필요
-- [ ] DWARF debug-info parsing — Use DWARF to recover types, variables, scopes, and source file/line mappings.
-  > 디버그 정보 파서 필요
+- [~] DWARF debug-info parsing — Embedded DWARF subprogram names are merged into predefined offsets when `.debug_*` sections are present.
+  > 타입/변수/스코프/라인 매핑은 아직 미구현
 - [~] PDB/CodeView parsing — Use Windows PDB/CodeView records to recover symbols, types, and function boundaries.
   > pdb_parser.rs: pdb crate로 글로벌 심볼(Public) + 모듈별 심볼(Procedure/Data) 파싱 및 PreDefinedOffsets 통합 구현. C++/Rust 디맹글링 적용. 타입 스트림/섹션 기여 매핑은 미구현
 - [~] Symbol table ingestion — Import ELF symbols/export tables to seed names, sizes, and addresses.
@@ -183,8 +183,8 @@
   > linker_map.rs: MSVC (.map) + GNU ld 맵 파일 파싱 구현. 심볼을 PreDefinedOffsets에 직접 통합. section-to-symbol 소유권 매핑은 미구현
 - [ ] Build-ID / UUID correlation — Match binaries to symbol servers/artifacts using build identifiers.
   > 심볼 서버 통합 필요
-- [ ] .eh_frame / CFI exploitation — Use unwind CFI to infer stack layout, saved regs, and call frame structure.
-  > CFI 파서 필요
+- [~] .eh_frame / CFI exploitation — Use unwind CFI to infer stack layout, saved regs, and call frame structure.
+  > fireball/src/pe/cfi_parser.rs에서 Win64 `.pdata` / `.xdata` unwind metadata 파싱 구현. RUNTIME_FUNCTION 범위, prolog 크기, frame register/offset, 저장된 GPR/XMM 레지스터, 고정 stack allocation, handler/chained 여부를 요약하고 `Pe::unwind_functions()`로 노출한다. Win32 SEH scope/try-catch 재구성, ELF/Mach-O/ARM unwind 포맷은 미구현
 - [x] Stack cookie / canary suppression — Detect compiler-inserted canary checks and omit them from high-level output.
 - [x] Stack probing suppression — Identify_chkstk/stack-touch loops and render as allocation semantics.
 - [x] CET/CFG pattern recognition — Detect indirect-branch hardening (CET IBT/SHSTK, CFG) and de-noise it.
@@ -383,10 +383,10 @@
   > SMT 풀이기 통합 필요
 - [ ] Test-input synthesis — Generate inputs (where feasible) to compare lifted behavior vs emulation for validation.
   > 테스트 입력 생성 프레임워크 필요
-- [ ] Program slicing — Extract only statements that influence a chosen value (e.g., return or parameter) to reduce noise.
-  > 프로그램 슬라이싱 프레임워크 필요
-- [ ] Backward slicing (from sinks) — Trace dependencies backward from API calls/returns to recover intent and types.
-  > 역방향 슬라이싱 프레임워크 필요
+- [~] Program slicing — Extract only statements that influence a chosen value (e.g., return or parameter) to reduce noise.
+  > `ir/analyze/slicer.rs`의 기본 backward slice가 `IrFunction` 생성 경로에 연결되어 return-value slice를 계산, 보관, 로그한다. 아직 parameter/API sink 기준, interprocedural slice, AST/최적화 소비는 미구현
+- [~] Backward slicing (from sinks) — Trace dependencies backward from API calls/returns to recover intent and types.
+  > 현재는 return-value 기준 register dependency 추적만 구현되어 있으며 statement-level coverage 로깅까지 연결됨. API call sink, memory dependency, SSA def-use 기반 정밀화는 아직 미구현
 - [ ] Forward slicing (from sources) — Track how inputs (args/globals) propagate to outputs to identify roles.
   > 인터프로시저럴 분석 프레임워크 필요
 - [ ] Taint analysis — Mark data from sources and follow it through transforms to classify inputs/outputs and checks.
@@ -424,9 +424,9 @@
 - [x] Case clustering — Group cases with identical bodies into case A: case B: patterns.
   > Structural Blake3 hashing merges adjacent identical bodies, including comment/empty-only placeholder labels (`switch_reconstruction.rs`).
 - [x] If-ladder to switch promotion — Upgrade compare/jump ladders into switch even without explicit tables.
-  > if-else 체인에서 x==c 패턴 감지 → switch문 변환 구현 완료 (switch_reconstruction.rs)
+  > if-else 체인에서 x==c 패턴 감지 → switch문 변환 구현 완료 (switch_reconstruction.rs). 최근 DoWhile 재귀도 추가되어 loop 정규화 이후 숨겨진 switch 후보도 계속 탐색함.
 - [~] Loop exit classification — Distinguish break, continue, return, and goto-like exits from edge shapes.
-  > loop_analyzation.rs: annotate_loop_exit_patterns()로 루프 내 goto-as-break 및 return 탈출 패턴 탐지 및 주석 부착 구현. Break/Continue AST 문 타입 확장은 미구현.
+  > loop_analyzation.rs: annotate_loop_exit_patterns()로 루프 내 goto-as-break 및 return 탈출 패턴 탐지 구현, 이어서 convert_loop_gotos_to_break_continue()로 루프 바로 다음 레이블로 향하는 goto를 `Break`로, 주석이 달린 continue-like back-edge를 `Continue`로 안전하게 치환. 중첩 루프를 관통하는 탈출과 break-flag 기반 재작성은 아직 미구현.
 - [~] Multi-exit loop rewriting — Rewrite nested gotos into structured loops with break flags where safe.
   > loop_analyzation.rs: annotate_loop_exit_patterns()로 다중 탈출 루프(2+ exits) 탐지 및 주석 부착 구현. break 플래그 기반 구조 변환은 미구현.
 - [x] Infinite-loop recognition — Detect for(;;) loops (watchdog, event loop) and suppress misleading conditions.
@@ -756,7 +756,7 @@
   > ML/통계 모델 필요 — 현재 인프라 없음
 - [x] AST-level refactoring passes — After structuring, run C-centric rewrites (merge declarations, simplify loops, hoist temps).
 - [~] Loop rotation normalization — Convert “rotated” loops into canonical while/for forms for readability.
-  > if(cond){while(cond){body}} → while(cond){body} 부분 구현; 순수(side-effect-free) 조건만 지원, 비순수 조건/do-while 회전은 미구현 (loop_analyzation.rs)
+  > if(cond){while(cond){body}} → while(cond){body} 부분 구현; 순수(side-effect-free) 조건만 지원. 추가로 while(true) { ... if(!cond) break; } → do { ... } while(cond) 안전 변환을 구현했지만, 비순수 조건과 body-duplication 기반의 완전한 do-while 회전은 아직 미구현 (loop_analyzation.rs)
 - [x] If/else inversion heuristics — Prefer positive conditions and reduce negations based on readability cost models.
   > if(!cond){A}else{B} → if(cond){B}else{A} 변환 구현 완료 (operator_canonicalization.rs)
 - [x] Switch fallthrough annotation synthesis — Emit explicit fallthrough comments/markers when semantics require it.
@@ -777,8 +777,8 @@
 - [~] Selective inlining for readability — Inline tiny wrappers only when it reduces noise (configurable via cost model).
 - [ ] Outlining repeated AST fragments — Detect repeated code regions and outline into helper functions to mimic source factoring.
   > 고급 휴리스틱 프레임워크 필요 — 현재 인프라 부족
-- [ ] Unwind-table function discovery (Win64 .pdata/.xdata) — Use unwind metadata to locate function ranges and prolog saves.
-  > 바이너리 포맷 파서 확장 필요
+- [~] Unwind-table function discovery (Win64 .pdata/.xdata) — Use unwind metadata to locate function ranges and prolog saves.
+  > `cfi_parser.rs`가 Win64 RUNTIME_FUNCTION 엔트리에서 함수 시작/끝 범위를 복구하고 누락된 심볼만 `func_<rva>` 형태로 PreDefinedOffsets에 시드한다. unwind 기반 prolog/저장 레지스터 요약은 가능하지만 EH region reconstruction과 비-Win64 포맷 지원은 미구현
 - [ ] SEH scope reconstruction (Win32) — Parse structured exception handler frames to recover try/except-like regions.
   > 바이너리 포맷 파서 확장 필요
 - [ ] ARM .ARM.exidx/.ARM.extab driven recovery — Use ARM unwind tables to infer function boundaries and stack layout.
@@ -819,13 +819,13 @@
 - [ ] Function-pointer table role inference — Distinguish jump tables vs callback arrays via usage context and calling form.
   > 고급 휴리스틱 프레임워크 필요 — 현재 인프라 부족
 - [x] Binary-search switch detection — Recognize compare-and-branch trees implementing switch via ordered thresholds.
-  > 중첩 if-else 트리에서 </<=/>/>=로 범위 분할 + == 리프 패턴 감지하여 switch 변환 (switch_reconstruction.rs)
+  > 중첩 if-else 트리에서 </<=/>/>=로 범위 분할 + == 리프 패턴 감지하여 switch 변환 (switch_reconstruction.rs). 한편 structuring.rs/structured_region_lowering.rs에는 explicit `StructuredRegion::Switch` scaffold가 추가되었지만, CFG structuring 단계가 아직 해당 region을 생성하지 않아서 end-to-end structured switch lowering은 미완성.
 - [ ] Range-check + bias switch recovery — Detect cmp/sub; ja; jmp [table+idx] with biased indices.
   > IR 리프팅/디코딩 레이어 확장 필요
 - [ ] Computed-goto pattern lifting — Recognize state dispatch using labels-as-values idioms and emit switch/dispatch.
   > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [~] Loop “continue” edge normalization — Rewire back-edges to canonical continue targets to improve for/while output.
-  > loop_analyzation.rs: annotate_continue_like_gotos()로 루프 본문 첫 레이블로의 goto를 continue-like 백엣지로 탐지 및 주석 부착 구현. Break/Continue AST 문 타입 확장은 미구현.
+  > loop_analyzation.rs: annotate_continue_like_gotos()로 루프 본문 첫 레이블로의 goto를 continue-like 백엣지로 탐지하고, convert_loop_gotos_to_break_continue()가 그중 안전한 경우를 `Continue`로 치환. 더 복잡한 비정형 back-edge와 중첩 루프 관통 케이스는 여전히 부분 지원.
 - [ ] Irreducible loop splitting with heuristics — Split nodes to create reducible regions when it reduces gotos.
   > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
 - [ ] Structured exception edge integration — Merge EH edges into region structuring instead of leaving as raw gotos.

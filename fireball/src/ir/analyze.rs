@@ -7,7 +7,11 @@ pub mod global_recovery;
 pub mod ir_function;
 pub mod ir_to_ast;
 pub mod points_to;
+pub mod slicer;
 pub mod ssa;
+pub mod struct_recovery;
+pub mod structuring;
+pub mod value_set;
 pub mod variables;
 
 pub use block_grouper::{BlockGroup, BlockGrouper};
@@ -21,4 +25,9 @@ pub use dominator::{
 };
 pub use ir_function::IrFunction;
 pub use ir_to_ast::{generate_ast, generate_ast_with_pre_defined_symbols};
+pub use points_to::{AbstractLocation, PointsToSet, analyze_points_to};
+pub use slicer::{ProgramSlice, SliceCriterion, backward_slice};
+pub use struct_recovery::{AggregateCandidate, FieldCandidate, recover_aggregates};
+pub use structuring::{StructuredRegion, structure_function};
+pub use value_set::{Interval, ValueSetResult, analyze_value_set};
 pub use variables::{IrVariable, analyze_variables};

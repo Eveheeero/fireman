@@ -1,6 +1,6 @@
 //! Module containing the implementation of the PE struct
 
-use super::{Pe, pdb_parser};
+use super::{Pe, analysis, cfi_parser, dwarf_parser, pdb_parser, rtti};
 use crate::{
     core::{Address, Blocks, PreDefinedOffset, PreDefinedOffsets, Relations, Sections},
     prelude::*,
@@ -27,6 +27,8 @@ impl Pe {
         // Common objects used throughout
         let gl = goblin::pe::PE::parse(&binary)?;
 
+        let forwarded_exports = analysis::resolve_forwarded_exports(&gl);
+
         // Build section information for the entire binary
         let sections = Sections::new();
         sections.build_all(&binary);
@@ -48,6 +50,14 @@ impl Pe {
 
             Box::pin(capstone)
         };
+
+        let image_base = gl
+            .header
+            .optional_header
+            .map(|opt| opt.windows_fields.image_base)
+            .unwrap_or(0);
+        let cfi_info = cfi_parser::try_load_cfi(&gl);
+        let rtti_info = rtti::try_load_rtti(&binary, &sections, image_base, gl.is_64);
 
         // Generate predefined binary offset information
         let defined = {
@@ -100,16 +110,23 @@ impl Pe {
                 });
             }
 
+            if let Some(dwarf_info) = dwarf_parser::try_load_dwarf(&binary) {
+                dwarf_parser::merge_dwarf_symbols(&dwarf_info, &defined, &sections, image_base);
+            }
+
             // Load PDB symbols if a PDB file is available next to the PE.
             if let Some(ref pe_path) = path {
                 if let Some(pdb_info) = pdb_parser::try_load_pdb(pe_path, &binary) {
-                    let image_base = gl
-                        .header
-                        .optional_header
-                        .map(|opt| opt.windows_fields.image_base)
-                        .unwrap_or(0);
                     pdb_parser::merge_pdb_symbols(&pdb_info, &defined, &sections, image_base);
                 }
+            }
+
+            if let Some(cfi_info) = cfi_info.as_ref() {
+                cfi_parser::merge_cfi_symbols(&cfi_info, &defined, &sections);
+            }
+
+            if let Some(rtti_info) = rtti_info.as_ref() {
+                rtti::merge_rtti_symbols(&rtti_info, &defined, &sections);
             }
 
             defined
@@ -186,6 +203,19 @@ impl Pe {
             relocs
         };
 
+        let section_snapshots = sections.all();
+        let section_entropies = analysis::section_entropies(&binary, &section_snapshots);
+        let rwx_anomalies = analysis::detect_rwx_sections(&section_snapshots);
+        let wide_strings = analysis::scan_wide_strings(&binary);
+        let code_relocations =
+            analysis::find_code_relocations(&relocation_addresses, &section_snapshots);
+        let unwind_functions = cfi_info
+            .map(|cfi_info| cfi_info.functions)
+            .unwrap_or_default();
+        let rtti_entries = rtti_info
+            .map(|rtti_info| rtti_info.entries)
+            .unwrap_or_default();
+
         let relations = Relations::new();
         Ok(Pe {
             entry: Address::from_virtual_address(&sections, gl.entry as u64),
@@ -198,6 +228,13 @@ impl Pe {
             blocks: Blocks::new(relations),
             cancel_token: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             relocation_addresses: std::sync::Arc::new(relocation_addresses),
+            section_entropies,
+            rwx_anomalies,
+            wide_strings,
+            forwarded_exports,
+            code_relocations,
+            unwind_functions,
+            rtti_entries,
         })
     }
 
@@ -211,5 +248,33 @@ impl Pe {
 
     pub fn reset_analysis_cancellation(&self) {
         self.cancel_token.store(false, Ordering::Relaxed);
+    }
+
+    pub fn section_entropies(&self) -> &[analysis::SectionEntropy] {
+        &self.section_entropies
+    }
+
+    pub fn rwx_anomalies(&self) -> &[analysis::RwxAnomaly] {
+        &self.rwx_anomalies
+    }
+
+    pub fn wide_strings(&self) -> &[analysis::WideString] {
+        &self.wide_strings
+    }
+
+    pub fn forwarded_exports(&self) -> &[analysis::ForwardedExport] {
+        &self.forwarded_exports
+    }
+
+    pub fn code_relocations(&self) -> &[analysis::CodeRelocation] {
+        &self.code_relocations
+    }
+
+    pub fn unwind_functions(&self) -> &[cfi_parser::UnwindFunctionInfo] {
+        &self.unwind_functions
+    }
+
+    pub fn rtti_entries(&self) -> &[rtti::RttiEntry] {
+        &self.rtti_entries
     }
 }

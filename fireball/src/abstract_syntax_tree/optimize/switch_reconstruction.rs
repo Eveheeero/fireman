@@ -55,7 +55,9 @@ fn reconstruct_in_list(stmts: &mut Vec<WrappedAstStatement>) {
                     reconstruct_in_list(bf);
                 }
             }
-            AstStatement::While(_, body) => reconstruct_in_list(body),
+            AstStatement::While(_, body) | AstStatement::DoWhile(_, body) => {
+                reconstruct_in_list(body)
+            }
             AstStatement::For(_, _, _, body) => reconstruct_in_list(body),
             AstStatement::Block(body) => reconstruct_in_list(body),
             AstStatement::Switch(_, cases, default) => {

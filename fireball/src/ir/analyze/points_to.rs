@@ -232,8 +232,7 @@ fn ir_data_to_location(data: &crate::utils::Aos<IrData>) -> Option<AbstractLocat
 }
 
 /// Log points-to analysis results.
-pub fn log_points_to_analysis(blocks: &[Arc<Block>]) {
-    let pts = analyze_points_to(blocks);
+pub fn log_points_to_analysis(pts: &PointsToSet) {
     if pts.edge_count() > 0 {
         debug!(
             "Points-to analysis: {} locations, {} edges",

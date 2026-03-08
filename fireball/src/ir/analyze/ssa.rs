@@ -111,16 +111,20 @@ impl PhiNode {
     }
 }
 
-/// Additive SSA analysis result without mutating the IR.
+/// Additive SSA function representation without mutating the IR.
 #[derive(Debug, Clone)]
-pub struct SsaRenameSummary {
+pub struct SsaFunction {
     phi_sites: PhiSites,
     phi_nodes: Vec<PhiNode>,
     block_states: HashMap<usize, BlockSsaState>,
     version_counts: HashMap<SsaBase, usize>,
 }
 
-impl SsaRenameSummary {
+impl SsaFunction {
+    pub fn from_ir_blocks(blocks: &[Arc<Block>], dominator_tree: &DominatorTree) -> Self {
+        build_ssa_function(blocks, dominator_tree)
+    }
+
     pub fn phi_sites(&self) -> &PhiSites {
         &self.phi_sites
     }
@@ -140,7 +144,13 @@ impl SsaRenameSummary {
     pub fn total_version_count(&self) -> usize {
         self.version_counts.values().sum()
     }
+
+    pub fn version_counts(&self) -> &HashMap<SsaBase, usize> {
+        &self.version_counts
+    }
 }
+
+pub type SsaRenameSummary = SsaFunction;
 
 /// Compute phi-node placement sites using the iterated dominance frontier.
 pub fn compute_phi_sites(
@@ -166,10 +176,7 @@ pub fn compute_phi_sites(
 }
 
 /// Build a lightweight SSA rename summary on top of phi-site placement.
-pub fn build_ssa_rename_summary(
-    blocks: &[Arc<Block>],
-    dominator_tree: &DominatorTree,
-) -> SsaRenameSummary {
+pub fn build_ssa_function(blocks: &[Arc<Block>], dominator_tree: &DominatorTree) -> SsaFunction {
     let dominance_frontier = DominanceFrontier::compute(dominator_tree);
     let phi_sites = compute_phi_sites(blocks, dominator_tree, &dominance_frontier);
     let mut phi_bases_per_block: HashMap<usize, Vec<SsaBase>> = HashMap::new();
@@ -240,7 +247,7 @@ pub fn build_ssa_rename_summary(
         )
     });
 
-    SsaRenameSummary {
+    SsaFunction {
         phi_sites,
         phi_nodes,
         block_states: context.block_states,
@@ -249,8 +256,11 @@ pub fn build_ssa_rename_summary(
 }
 
 /// Run both SSA phases and log a concise summary.
-pub fn log_ssa_analysis(blocks: &[Arc<Block>], dominator_tree: &DominatorTree) {
-    let summary = build_ssa_rename_summary(blocks, dominator_tree);
+pub fn construct_ssa(blocks: &[Arc<Block>], dominator_tree: &DominatorTree) -> SsaFunction {
+    SsaFunction::from_ir_blocks(blocks, dominator_tree)
+}
+
+pub fn log_ssa_analysis(summary: &SsaFunction) {
     let phi_count = summary.phi_nodes().len();
     let tracked_count = summary.tracked_variable_count();
     let version_count = summary.total_version_count();

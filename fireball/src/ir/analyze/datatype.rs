@@ -21,7 +21,9 @@ pub enum DataType {
     Unknown,
     Bool,
     Int,
-    Float,
+    Float32,
+    Float64,
+    Float80,
     StringPointer,
     Char,
     Address,
@@ -52,7 +54,7 @@ pub fn analyze_datatype(
 pub fn analyze_datatype_raw(insert: &mut impl FnMut(KnownDataType), statement: &IrStatement) {
     match statement {
         IrStatement::Assignment { from, to, size } => {
-            let inferred = infer_type_from_data(from);
+            let inferred = infer_assignment_type(from, size);
             insert(KnownDataType {
                 location: from.clone(),
                 data_type: inferred,
@@ -63,7 +65,7 @@ pub fn analyze_datatype_raw(insert: &mut impl FnMut(KnownDataType), statement: &
                 data_type: inferred,
                 data_size: size.clone(),
             });
-            infer_operand_types(insert, from);
+            infer_operand_types(insert, from, size);
         }
         IrStatement::Jump { target } => {
             insert(KnownDataType {
@@ -113,6 +115,14 @@ use crate::ir::{
     operator::{IrBinaryOperator, IrUnaryOperator},
 };
 
+fn infer_assignment_type(data: &Aos<IrData>, size: &IrAccessSize) -> DataType {
+    let inferred = infer_type_from_data(data);
+    if inferred != DataType::Unknown {
+        return inferred;
+    }
+    infer_float_type_from_data_and_size(data, size).unwrap_or(DataType::Unknown)
+}
+
 fn infer_type_from_data(data: &Aos<IrData>) -> DataType {
     match data.as_ref() {
         IrData::Operation(IrDataOperation::Binary { operator, .. }) => match operator {
@@ -138,22 +148,27 @@ fn infer_type_from_data(data: &Aos<IrData>) -> DataType {
     }
 }
 
-fn infer_operand_types(insert: &mut impl FnMut(KnownDataType), data: &Aos<IrData>) {
+fn infer_operand_types(
+    insert: &mut impl FnMut(KnownDataType),
+    data: &Aos<IrData>,
+    statement_size: &IrAccessSize,
+) {
     match data.as_ref() {
         IrData::Operation(IrDataOperation::Binary {
             operator,
             arg1,
             arg2,
         }) => {
-            let operand_type = match operator {
-                IrBinaryOperator::SignedDiv
-                | IrBinaryOperator::SignedRem
-                | IrBinaryOperator::Sar => DataType::Int,
-                IrBinaryOperator::Equal(_)
-                | IrBinaryOperator::SignedLess(_)
-                | IrBinaryOperator::SignedLessOrEqual(_) => DataType::Int,
-                _ => DataType::Unknown,
-            };
+            let operand_type = infer_float_operand_type(operator, arg1, arg2, statement_size)
+                .unwrap_or(match operator {
+                    IrBinaryOperator::SignedDiv
+                    | IrBinaryOperator::SignedRem
+                    | IrBinaryOperator::Sar => DataType::Int,
+                    IrBinaryOperator::Equal(_)
+                    | IrBinaryOperator::SignedLess(_)
+                    | IrBinaryOperator::SignedLessOrEqual(_) => DataType::Int,
+                    _ => DataType::Unknown,
+                });
             if operand_type != DataType::Unknown {
                 insert(KnownDataType {
                     location: arg1.clone(),
@@ -184,10 +199,11 @@ fn infer_operand_types(insert: &mut impl FnMut(KnownDataType), data: &Aos<IrData
             }
         }
         IrData::Operation(IrDataOperation::Unary { operator, arg }) => {
-            let operand_type = match operator {
-                IrUnaryOperator::SignExtend => DataType::Int,
-                _ => DataType::Unknown,
-            };
+            let operand_type = infer_float_operand_type_from_unary(operator, arg, statement_size)
+                .unwrap_or(match operator {
+                    IrUnaryOperator::SignExtend => DataType::Int,
+                    _ => DataType::Unknown,
+                });
             if operand_type != DataType::Unknown {
                 insert(KnownDataType {
                     location: arg.clone(),
@@ -204,6 +220,114 @@ fn infer_operand_types(insert: &mut impl FnMut(KnownDataType), data: &Aos<IrData
             });
         }
         _ => {}
+    }
+}
+
+fn infer_float_operand_type(
+    operator: &IrBinaryOperator,
+    arg1: &Aos<IrData>,
+    arg2: &Aos<IrData>,
+    statement_size: &IrAccessSize,
+) -> Option<DataType> {
+    if !matches!(
+        operator,
+        IrBinaryOperator::Add
+            | IrBinaryOperator::Sub
+            | IrBinaryOperator::Mul
+            | IrBinaryOperator::SignedDiv
+            | IrBinaryOperator::Equal(_)
+            | IrBinaryOperator::SignedLess(_)
+            | IrBinaryOperator::SignedLessOrEqual(_)
+            | IrBinaryOperator::UnsignedLess(_)
+            | IrBinaryOperator::UnsignedLessOrEqual(_)
+    ) {
+        return None;
+    }
+
+    infer_float_type_from_data_and_size(arg1, statement_size)
+        .or_else(|| infer_float_type_from_data_and_size(arg2, statement_size))
+}
+
+fn infer_float_operand_type_from_unary(
+    operator: &IrUnaryOperator,
+    arg: &Aos<IrData>,
+    statement_size: &IrAccessSize,
+) -> Option<DataType> {
+    match operator {
+        IrUnaryOperator::Negation => infer_float_type_from_data_and_size(arg, statement_size),
+        _ => None,
+    }
+}
+
+fn infer_float_type_from_data_and_size(
+    data: &Aos<IrData>,
+    size: &IrAccessSize,
+) -> Option<DataType> {
+    match data.as_ref() {
+        IrData::Register(register) => infer_float_type_from_register_and_size(register, size),
+        IrData::Operation(IrDataOperation::Unary { arg, .. }) => {
+            infer_float_type_from_data_and_size(arg, size)
+        }
+        IrData::Operation(IrDataOperation::Binary { arg1, arg2, .. }) => {
+            infer_float_type_from_data_and_size(arg1, size)
+                .or_else(|| infer_float_type_from_data_and_size(arg2, size))
+        }
+        IrData::Constant(_)
+        | IrData::Intrinsic(_)
+        | IrData::Dereference(_)
+        | IrData::Operand(_) => None,
+    }
+}
+
+fn infer_float_type_from_register_and_size(
+    register: &crate::ir::Register,
+    size: &IrAccessSize,
+) -> Option<DataType> {
+    let name = register.name();
+    if name
+        .strip_prefix("st")
+        .is_some_and(|suffix| !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_digit()))
+    {
+        return Some(DataType::Float80);
+    }
+    if name.starts_with("xmm") || name.starts_with("ymm") || name.starts_with("zmm") {
+        return scalar_float_type_from_access_size(size);
+    }
+    None
+}
+
+fn scalar_float_type_from_access_size(size: &IrAccessSize) -> Option<DataType> {
+    match access_size_in_bytes(size) {
+        Some(4) => Some(DataType::Float32),
+        Some(8) => Some(DataType::Float64),
+        Some(10) => Some(DataType::Float80),
+        _ => None,
+    }
+}
+
+fn access_size_in_bytes(size: &IrAccessSize) -> Option<usize> {
+    match size {
+        IrAccessSize::ResultOfBit(data) => match data.as_ref() {
+            IrData::Constant(bits) if bits % 8 == 0 => Some(bits / 8),
+            IrData::Register(register) if register.bit_len() % 8 == 0 => {
+                Some(register.bit_len() / 8)
+            }
+            _ => None,
+        },
+        IrAccessSize::ResultOfByte(data) => match data.as_ref() {
+            IrData::Constant(bytes) => Some(*bytes),
+            IrData::Register(register) if register.bit_len() % 8 == 0 => {
+                Some(register.bit_len() / 8)
+            }
+            _ => None,
+        },
+        IrAccessSize::RelativeWith(data) => match data.as_ref() {
+            IrData::Register(register) if register.bit_len() % 8 == 0 => {
+                Some(register.bit_len() / 8)
+            }
+            _ => None,
+        },
+        IrAccessSize::ArchitectureSize | IrAccessSize::Unlimited => None,
     }
 }
 
@@ -227,7 +351,9 @@ impl std::fmt::Display for DataType {
             DataType::Unknown => write!(f, "u"),
             DataType::Bool => write!(f, "b"),
             DataType::Int => write!(f, "i"),
-            DataType::Float => write!(f, "f"),
+            DataType::Float32 => write!(f, "f32"),
+            DataType::Float64 => write!(f, "f64"),
+            DataType::Float80 => write!(f, "f80"),
             DataType::StringPointer => write!(f, "*c"),
             DataType::Char => write!(f, "c"),
             DataType::Address => write!(f, "*"),

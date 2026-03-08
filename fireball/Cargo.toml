@@ -18,6 +18,7 @@ cpp_demangle.workspace = true
 rustc-demangle.workspace = true
 capstone.workspace = true
 pdb.workspace = true
+gimli.workspace = true
 tracing = { workspace = true, features = [
   "log",
   "max_level_trace",

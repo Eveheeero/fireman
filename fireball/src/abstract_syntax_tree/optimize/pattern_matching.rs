@@ -1920,7 +1920,10 @@ fn parse_ir_type_special(text: &str) -> Option<AstPatternParsedTypeSpecial> {
         ("u", DataType::Unknown),
         ("b", DataType::Bool),
         ("i", DataType::Int),
-        ("f", DataType::Float),
+        ("f32", DataType::Float32),
+        ("f64", DataType::Float64),
+        ("f80", DataType::Float80),
+        ("f", DataType::Float64),
         ("c", DataType::Char),
         ("*", DataType::Address),
     ];
