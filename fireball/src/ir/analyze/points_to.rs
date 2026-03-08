@@ -5,7 +5,7 @@
 
 use crate::{
     core::Block,
-    ir::{Register, data::IrData, statements::IrStatement},
+    ir::{Register, VirtualMachine, data::IrData, statements::IrStatement, x86_64::X64Range},
     prelude::*,
 };
 use std::{
@@ -155,9 +155,22 @@ impl PointsToSet {
         self.loc_to_id.len()
     }
 
+    /// Return all currently tracked abstract locations.
+    pub fn tracked_locations(&self) -> Vec<AbstractLocation> {
+        self.loc_to_id.keys().copied().collect()
+    }
+
     /// Total number of points-to edges.
     pub fn edge_count(&self) -> usize {
         self.edges.iter().map(|s| s.len()).sum()
+    }
+
+    /// Total number of tracked heap allocation sites.
+    pub fn heap_site_count(&self) -> usize {
+        self.loc_to_id
+            .keys()
+            .filter(|loc| matches!(loc, AbstractLocation::Heap(_)))
+            .count()
     }
 }
 
@@ -204,6 +217,7 @@ fn process_pts_statement(stmt: &IrStatement, pts: &mut PointsToSet, call_site_id
             }
         }
         IrStatement::JumpByCall { .. } => {
+            seed_call_return_allocation_site(pts, *call_site_id);
             *call_site_id += 1;
         }
         IrStatement::Condition {
@@ -222,6 +236,20 @@ fn process_pts_statement(stmt: &IrStatement, pts: &mut PointsToSet, call_site_id
     }
 }
 
+fn seed_call_return_allocation_site(pts: &mut PointsToSet, call_site_id: u32) {
+    let heap_site = AbstractLocation::Heap(call_site_id);
+
+    // Model a conservative allocation-site object for call returns.
+    pts.add_edge(
+        AbstractLocation::Register(<VirtualMachine as X64Range>::rax()),
+        heap_site,
+    );
+    pts.add_edge(
+        AbstractLocation::Register(<VirtualMachine as X64Range>::eax()),
+        heap_site,
+    );
+}
+
 /// Map IrData to an AbstractLocation if it represents a trackable location.
 fn ir_data_to_location(data: &crate::utils::Aos<IrData>) -> Option<AbstractLocation> {
     match data.as_ref() {
@@ -235,9 +263,10 @@ fn ir_data_to_location(data: &crate::utils::Aos<IrData>) -> Option<AbstractLocat
 pub fn log_points_to_analysis(pts: &PointsToSet) {
     if pts.edge_count() > 0 {
         debug!(
-            "Points-to analysis: {} locations, {} edges",
+            "Points-to analysis: {} locations, {} edges, {} heap sites",
             pts.location_count(),
             pts.edge_count(),
+            pts.heap_site_count(),
         );
     }
 }

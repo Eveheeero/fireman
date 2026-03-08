@@ -717,11 +717,8 @@ fn annotate_state_machine_loops(stmts: &mut Vec<WrappedAstStatement>) {
         let Some((_cond, body)) = get_infinite_loop_parts(&stmt.statement) else {
             continue;
         };
-        let has_switch = body
-            .iter()
-            .any(|s| matches!(&s.statement, AstStatement::Switch(_, _, _)));
-        if has_switch {
-            stmt.comment = Some("likely state machine dispatch loop".to_string());
+        if let Some((discriminant, cases, default)) = get_first_top_level_switch(body) {
+            stmt.comment = Some(build_state_machine_comment(discriminant, cases, default));
         }
     }
 }
@@ -791,6 +788,213 @@ fn get_infinite_loop_parts(
             Some((cond, body))
         }
         _ => None,
+    }
+}
+
+fn get_first_top_level_switch(
+    body: &[WrappedAstStatement],
+) -> Option<(
+    &Wrapped<AstExpression>,
+    &[(AstLiteral, Vec<WrappedAstStatement>)],
+    Option<&[WrappedAstStatement]>,
+)> {
+    let first_meaningful = body.iter().find(|stmt| is_meaningful_statement(stmt))?;
+    match &first_meaningful.statement {
+        AstStatement::Switch(discriminant, cases, default) => {
+            Some((discriminant, cases.as_slice(), default.as_deref()))
+        }
+        _ => None,
+    }
+}
+
+fn build_state_machine_comment(
+    discriminant: &Wrapped<AstExpression>,
+    cases: &[(AstLiteral, Vec<WrappedAstStatement>)],
+    default: Option<&[WrappedAstStatement]>,
+) -> String {
+    let case_count = cases.len();
+    let mut case_preview = cases
+        .iter()
+        .take(6)
+        .map(|(literal, _)| format_state_literal(literal))
+        .collect::<Vec<_>>();
+    if case_count > case_preview.len() {
+        case_preview.push("...".to_string());
+    }
+    let case_summary = if case_preview.is_empty() {
+        None
+    } else {
+        Some(case_preview.join(", "))
+    };
+
+    let mut comment = match (describe_state_variable(discriminant), case_summary) {
+        (Some(state_var), Some(case_summary)) => format!(
+            "likely state machine dispatch loop on state {} with {} cases ({})",
+            state_var, case_count, case_summary
+        ),
+        (Some(state_var), None) => {
+            format!("likely state machine dispatch loop on state {}", state_var)
+        }
+        (None, Some(case_summary)) => format!(
+            "likely state machine dispatch loop with {} cases ({})",
+            case_count, case_summary
+        ),
+        (None, None) => "likely state machine dispatch loop".to_string(),
+    };
+    if let Some(dispatcher_summary) = describe_dispatcher_variable(discriminant, cases, default) {
+        comment.push_str("; ");
+        comment.push_str(&dispatcher_summary);
+    }
+    comment
+}
+
+fn describe_state_variable(discriminant: &Wrapped<AstExpression>) -> Option<String> {
+    let AstExpression::Variable(var_map, var_id) = &discriminant.item else {
+        return None;
+    };
+    var_map.read().ok()?.get(var_id).map(|var| var.name())
+}
+
+fn describe_dispatcher_variable(
+    discriminant: &Wrapped<AstExpression>,
+    cases: &[(AstLiteral, Vec<WrappedAstStatement>)],
+    default: Option<&[WrappedAstStatement]>,
+) -> Option<String> {
+    let AstExpression::Variable(var_map, var_id) = &discriminant.item else {
+        return None;
+    };
+    let variable_name = var_map.read().ok()?.get(var_id).map(|var| var.name())?;
+    let branch_count = cases.len() + usize::from(default.is_some());
+    if branch_count == 0 {
+        return None;
+    }
+
+    let mut rewrite_count = 0usize;
+    let mut literal_targets = Vec::new();
+    for (_, case_body) in cases {
+        if branch_writes_dispatcher(*var_id, case_body) {
+            rewrite_count += 1;
+        }
+        if let Some(target) = find_dispatcher_literal_target(*var_id, case_body) {
+            literal_targets.push(target);
+        }
+    }
+    if let Some(default_body) = default {
+        if branch_writes_dispatcher(*var_id, default_body) {
+            rewrite_count += 1;
+        }
+        if let Some(target) = find_dispatcher_literal_target(*var_id, default_body) {
+            literal_targets.push(target);
+        }
+    }
+    if rewrite_count == 0 {
+        return None;
+    }
+
+    let mut summary = format!(
+        "dispatcher variable {} rewritten in {}/{} branches",
+        variable_name, rewrite_count, branch_count
+    );
+    if !literal_targets.is_empty() {
+        let mut preview = literal_targets.into_iter().take(4).collect::<Vec<_>>();
+        if rewrite_count > preview.len() {
+            preview.push("...".to_string());
+        }
+        summary.push_str(&format!(" toward {}", preview.join(", ")));
+    }
+    Some(summary)
+}
+
+fn branch_writes_dispatcher(var_id: AstVariableId, body: &[WrappedAstStatement]) -> bool {
+    body.iter()
+        .any(|stmt| statement_writes_dispatcher(var_id, stmt))
+}
+
+fn statement_writes_dispatcher(var_id: AstVariableId, stmt: &WrappedAstStatement) -> bool {
+    if get_assigned_var(&stmt.statement) == Some(var_id) {
+        return true;
+    }
+
+    match &stmt.statement {
+        AstStatement::If(_, bt, bf) => {
+            branch_writes_dispatcher(var_id, bt)
+                || bf
+                    .as_ref()
+                    .is_some_and(|body| branch_writes_dispatcher(var_id, body))
+        }
+        AstStatement::While(_, body)
+        | AstStatement::DoWhile(_, body)
+        | AstStatement::For(_, _, _, body)
+        | AstStatement::Block(body) => branch_writes_dispatcher(var_id, body),
+        AstStatement::Switch(_, cases, default) => {
+            cases
+                .iter()
+                .any(|(_, case_body)| branch_writes_dispatcher(var_id, case_body))
+                || default
+                    .as_ref()
+                    .is_some_and(|body| branch_writes_dispatcher(var_id, body))
+        }
+        _ => false,
+    }
+}
+
+fn find_dispatcher_literal_target(
+    var_id: AstVariableId,
+    body: &[WrappedAstStatement],
+) -> Option<String> {
+    body.iter()
+        .find_map(|stmt| statement_dispatcher_literal_target(var_id, stmt))
+}
+
+fn statement_dispatcher_literal_target(
+    var_id: AstVariableId,
+    stmt: &WrappedAstStatement,
+) -> Option<String> {
+    match &stmt.statement {
+        AstStatement::Assignment(lhs, rhs) => {
+            let AstExpression::Variable(_, assigned_var) = &lhs.item else {
+                return None;
+            };
+            if *assigned_var != var_id {
+                return None;
+            }
+            match &rhs.item {
+                AstExpression::Literal(literal) => Some(format_state_literal(literal)),
+                _ => None,
+            }
+        }
+        AstStatement::Declaration(var, Some(rhs)) if var.id == var_id => match &rhs.item {
+            AstExpression::Literal(literal) => Some(format_state_literal(literal)),
+            _ => None,
+        },
+        AstStatement::If(_, bt, bf) => find_dispatcher_literal_target(var_id, bt).or_else(|| {
+            bf.as_ref()
+                .and_then(|body| find_dispatcher_literal_target(var_id, body))
+        }),
+        AstStatement::While(_, body)
+        | AstStatement::DoWhile(_, body)
+        | AstStatement::For(_, _, _, body)
+        | AstStatement::Block(body) => find_dispatcher_literal_target(var_id, body),
+        AstStatement::Switch(_, cases, default) => cases
+            .iter()
+            .find_map(|(_, case_body)| find_dispatcher_literal_target(var_id, case_body))
+            .or_else(|| {
+                default
+                    .as_ref()
+                    .and_then(|body| find_dispatcher_literal_target(var_id, body))
+            }),
+        _ => None,
+    }
+}
+
+fn format_state_literal(literal: &AstLiteral) -> String {
+    match literal {
+        AstLiteral::Int(value) => value.to_string(),
+        AstLiteral::UInt(value) => format!("{}u", value),
+        AstLiteral::Float(value) => value.to_string(),
+        AstLiteral::String(value) => format!("{:?}", value),
+        AstLiteral::Char(value) => format!("{:?}", value),
+        AstLiteral::Bool(value) => value.to_string(),
     }
 }
 

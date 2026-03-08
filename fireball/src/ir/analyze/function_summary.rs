@@ -28,6 +28,9 @@ pub struct FunctionSummary {
     pub has_side_effects: bool,
     /// Direct call targets (addresses).
     pub callees: Vec<u64>,
+    /// Registers whose pointer-like contents are observed to escape this
+    /// function body under the current conservative analysis.
+    pub escaped_registers: HashSet<Register>,
     /// Whether the function has no side effects and makes no calls.
     /// Note: this is a conservative approximation — it does NOT guarantee
     /// referential transparency (e.g., reads from globals are not tracked).
@@ -68,6 +71,20 @@ pub fn summarize_function(blocks: &[Arc<Block>]) -> FunctionSummary {
     summary.is_side_effect_free = !summary.has_side_effects && summary.callees.is_empty();
 
     summary
+}
+
+/// Enrich a function summary with the current pointer-escape result so later
+/// interprocedural consumers can project callee escape facts back onto caller
+/// argument registers.
+pub fn augment_with_escape(summary: &mut FunctionSummary, escape: &super::escape::EscapeAnalysis) {
+    summary.escaped_registers = escape
+        .escaped_locations()
+        .iter()
+        .filter_map(|location| match location {
+            super::points_to::AbstractLocation::Register(register) => Some(*register),
+            _ => None,
+        })
+        .collect();
 }
 
 fn process_statement(
@@ -164,8 +181,7 @@ fn collect_reads(
 }
 
 /// Log function summary analysis results.
-pub fn log_function_summary(blocks: &[Arc<Block>]) {
-    let summary = summarize_function(blocks);
+pub fn log_function_summary(summary: &FunctionSummary) {
     debug!(
         "Function summary: reads={}, writes={}, returns={}, side_effects={}, callees={}, side_effect_free={}",
         summary.reads.len(),
@@ -175,4 +191,10 @@ pub fn log_function_summary(blocks: &[Arc<Block>]) {
         summary.callees.len(),
         summary.is_side_effect_free,
     );
+    if !summary.escaped_registers.is_empty() {
+        debug!(
+            "Function summary escape surface: {} escaped registers",
+            summary.escaped_registers.len(),
+        );
+    }
 }

@@ -87,12 +87,12 @@
 - [~] SRet/hidden parameter inference — Detect structure return via hidden pointer parameters.
   > auto_comment.rs: annotate_this_or_sret_pointer()로 첫 번째 파라미터가 주로 deref 대상으로 사용되는 sret 패턴 탐지 및 주석 부착 구현. ABI 기반 호출 규약 확장은 미구현.
 - [~] Interprocedural analysis — Propagate types/constants across call boundaries for better signatures.
-- [ ] Summary-based interprocedural analysis — Build per-function summaries (effects, returns, param usage) to scale.
-  > 함수별 요약 프레임워크 필요
+- [~] Summary-based interprocedural analysis — Build per-function summaries (effects, returns, param usage) to scale.
+  > `ir/analyze/function_summary.rs`의 register read/write, returns, side effects, direct callee, escaped_registers 요약이 `IrFunction` 생성 경로에 연결되어 보관/로그된다. `ir_to_ast.rs`가 direct internal callee에 한해 한 번의 caller→callee escape projection을 수행하므로 첫 summary 소비자가 생겼지만, param usage 정밀화, type/resource propagation, call-graph 고정점 전파는 아직 미구현
 - [ ] Context-sensitive analysis — Distinguish behaviors per call site for more precise type/target recovery.
   > 호출 컨텍스트 프레임워크 필요. call_graph.rs에서 함수간 호출 관계는 추적하나 call-site별 동작 구분은 미구현
 - [~] Points-to analysis — Approximate what pointers can reference to improve indirect load/store understanding.
-  > `ir/analyze/points_to.rs`의 Steensgaard 스타일 분석이 `IrFunction` 생성 경로에 연결되어 결과를 보관하고 location/edge 요약을 로그로 남김. 아직 AST/최적화 패스 소비, stack slot 정밀화, heap allocation site 정교화는 미구현
+  > `ir/analyze/points_to.rs`의 Steensgaard 스타일 분석이 `IrFunction` 생성 경로에 연결되어 결과를 보관하고 location/edge 요약을 로그로 남긴다. 이제 `JumpByCall`마다 synthetic `Heap(call_site_id)` allocation site도 보수적으로 시드하지만, AST/최적화 패스 소비, stack slot 정밀화, allocator 식별 기반 heap site 정교화는 미구현
 - [~] Alias analysis — Determine when two memory references may overlap to drive simplification safely.
   > points-to 결과가 파이프라인에 올라왔지만 아직 dead_store_elimination/copy_propagation 등에서 소비하지 않음. 따라서 alias 정보는 여전히 보수적이며 파생 활용만 부분 진척
 - [ ] Memory SSA — Bring loads/stores into SSA-like form to reason about memory dependencies.
@@ -157,7 +157,7 @@
 - [ ] Opaque predicate pruning — Prove predicates constant (or near-constant) via abstract interpretation/value sets.
   > 추상 해석/SMT 프레임워크 필요
 - [ ] Control-flow flattening undo — Recover dispatcher-based state machines into structured control flow when possible.
-  > dispatcher 변수 식별, state→block 매핑 복원, 상태 전이 분석 필요. 추상 해석 또는 symbolic execution으로 switch 변수 값 추적 필요 — 현재 인프라 없음
+  > loop_analyzation.rs에 while(true)+switch dispatch loop 탐지, switch 판별 변수/상수 case 나열, branch별 dispatcher 변수 재할당 탐지까지는 구현. state→block 매핑 복원, 상태 전이 그래프, CFG 재구성은 미구현.
 - [ ] String/constant decryption patterning — Detect decode loops and represent results as recovered literals/arrays.
   > 에뮬레이션/심볼릭 실행 필요
 - [ ] VM/protector detection — Identify virtualization/protection stubs and isolate them from normal decompilation flow.
@@ -190,7 +190,7 @@
 - [x] CET/CFG pattern recognition — Detect indirect-branch hardening (CET IBT/SHSTK, CFG) and de-noise it.
 - [x] NOP/padding classification — Treat alignment padding and multi-byte NOPs as non-semantic fillers.
 - [~] Hot–cold function chunk stitching — Reconnect split function fragments produced by PGO or linker optimizations.
-  > ir_function.rs에 detect_address_gap_chunks() 구현 — 4KB 이상 주소 갭으로 hot-cold 분리 감지 및 로깅. 실제 청크 재조합(블록 재배치/함수 병합)은 미구현
+  > ir_function.rs에 detect_address_gap_chunks() 구현 — 4KB 이상 주소 갭으로 hot-cold 분리 감지 및 로깅. structuring.rs는 이 청크 정보를 사용해 CFG 순회 시 같은 청크 successor를 우선 방문하는 보수적 재정렬을 수행하지만, 실제 청크 재조합(블록 재배치/함수 병합)은 미구현
 - [~] Multi-entry “function” handling — Represent shared code tails/entries safely without inventing invalid C.
   > dominator.rs에 multi_entry_blocks() 구현 — 외부 진입점 감지 및 로깅. 공유 꼬리 블록의 안전한 C 표현(goto/label 또는 함수 분리)은 미구현
 - [ ] Trampoline/hook stub detection — Identify detours/patch stubs and recover the intended target flow.
@@ -246,8 +246,8 @@
   > 범위 분석 프레임워크 필요
 - [ ] Heap allocation site typing — Infer heap object “types” from allocation size + subsequent field accesses.
   > 힙 할당 추적 프레임워크 필요
-- [ ] Ownership/escape heuristics — Infer whether pointers escape scope to decide stack vs heap representation.
-  > 이스케이프 분석 프레임워크 필요
+- [~] Ownership/escape heuristics — Infer whether pointers escape scope to decide stack vs heap representation.
+  > `ir/analyze/escape.rs`가 points-to 결과를 바탕으로 포인터형 레지스터가 공통 호출 인자 레지스터로 살아남거나 non-stack memory store로 저장될 때 intraprocedural escape로 표기한다. heap/stack ownership 결정, stack-slot escape, interprocedural propagation은 미구현
 - [x] Lifetime-based scoping — Emit tighter C scopes based on live ranges to reduce variable clutter.
 - [x] Variable coalescing by interference — Merge non-overlapping temporaries into a single C local when safe/readable.
 - [~] Register spill pattern recovery — Identify spill/reload sequences and treat them as variable preservation, not logic.
@@ -432,27 +432,28 @@
 - [x] Infinite-loop recognition — Detect for(;;) loops (watchdog, event loop) and suppress misleading conditions.
   > while(1)/while(nonzero) → while(true) 정규화 구현 완료 (loop_analyzation.rs)
 - [~] Finite-state variable detection — Identify the “state” variable driving dispatch to reconstruct state machines.
-  > loop_analyzation.rs: annotate_state_machine_loops()로 while(true)+switch 패턴 탐지 및 상태 머신 주석 부착 구현. 상태 변수 추출 및 enum 복원은 미구현.
-- [ ] Dispatcher-variable recovery — Reconstruct flattened CFG dispatch variables used by obfuscators or coroutines.
-  > 난독화 해제 프레임워크 필요 — 현재 인프라 없음
-- [ ] Region reordering heuristics — Choose source-like block order based on dominator/postdominator relationships.
-  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
-- [ ] Code layout de-biasing — Ignore physical layout heuristics when PGO/hot-cold splitting skews adjacency.
-  > 고급 휴리스틱 프레임워크 필요 — 현재 인프라 부족
-- [ ] Pointer escape analysis — Infer whether a pointer escapes a scope to decide stack vs heap semantics.
-  > 포인터/앨리어싱 분석 프레임워크 필요
-- [ ] Interprocedural escape propagation — Propagate escape facts through calls to refine lifetimes and aliasing.
-  > 인터프로시저럴 분석 프레임워크 필요
-- [ ] Object sensitivity (points-to) — Distinguish heap objects by allocation site to improve field/type recovery.
-  > 포인터/앨리어싱 분석 프레임워크 필요
-- [ ] Field-sensitive alias analysis — Track aliasing per field/offset rather than per base pointer.
-  > 포인터/앨리어싱 분석 프레임워크 필요
-- [ ] Array shape inference — Infer 1D/2D array dimensions from nested index math and stride constants.
+  > loop_analyzation.rs: annotate_state_machine_loops()로 while(true)+switch 패턴 탐지, switch 판별 변수 이름 및 case 상수 나열 주석 부착 구현. enum 복원 및 실제 상태 머신 AST 리프팅은 미구현.
+- [~] Dispatcher-variable recovery — Reconstruct flattened CFG dispatch variables used by obfuscators or coroutines.
+  > loop_analyzation.rs: annotate_state_machine_loops()가 switch 판별 변수와 branch별 동일 변수 재할당 여부를 주석으로 복구. 값 추적 기반 dispatcher-state 매핑, coroutine frame/state 복원은 미구현.
+- [~] Region reordering heuristics — Choose source-like block order based on dominator/postdominator relationships.
+  > `structuring.rs`가 이제 SESE이면서 `goto/label` 폴백이 없는 `Sequence` 형제 region에 한해 dominator/postdominator 관계가 역순임을 명확히 가리킬 때 보수적으로 재배열한다. 전역 block reordering, hot/cold split 복원, flattening dispatcher 재조립은 미구현.
+- [~] Code layout de-biasing — Ignore physical layout heuristics when PGO/hot-cold splitting skews adjacency.
+  > `structuring.rs`가 address-gap chunk를 감지한 뒤 reverse-postorder DFS에서 같은 청크 successor를 우선 방문해 block-id/주소 정렬 편향을 줄인다. 전역 CFG 재배치, hot/cold chunk 재조합, chunk 간 논리 순서 복원은 미구현.
+- [~] Pointer escape analysis — Infer whether a pointer escapes a scope to decide stack vs heap semantics.
+  > `ir/analyze/escape.rs`가 points-to 기반 register-level escape 요약을 생성하고 `IrFunction`에 보관한다. 현재는 call-argument escape와 non-stack memory-store escape만 보수적으로 추적하며, stack-slot/base-pointer 정밀 추적과 heap vs stack semantics 결정은 미구현
+- [~] Interprocedural escape propagation — Propagate escape facts through calls to refine lifetimes and aliasing.
+  > `ir_to_ast.rs`가 이제 생성된 `IrFunction`들을 한 번 모은 뒤 `entry address -> FunctionSummary` 맵을 만들고, direct internal callee의 `escaped_registers`를 caller의 동일 argument register escape로 한 번 투영한다. 따라서 caller-side escape fact 갱신이 시작됐지만, 재귀/순환 call-graph 고정점, indirect call target 해석, context-sensitive propagation은 아직 미구현
+- [~] Object sensitivity (points-to) — Distinguish heap objects by allocation site to improve field/type recovery.
+  > `points_to.rs`가 이제 `JumpByCall`마다 synthetic `Heap(call_site_id)` 객체를 만들고 `rax/eax` 반환 경로에 연결해 call-site 기준 heap object 구분을 시작했다. 하지만 allocator 식별, 실제 pointer-return 판별, field-sensitive 후속 소비, heap type recovery는 아직 미구현
+- [~] Field-sensitive alias analysis — Track aliasing per field/offset rather than per base pointer.
+  > `ir/analyze/field_alias.rs`가 aggregate recovery의 base+offset field 후보를 object-sensitive points-to 타깃과 결합해 `(abstract_base, offset)` 단위 field projection을 생성하고 `IrFunction`에 보관한다. 따라서 동일 base라도 offset별로 분리된 alias surface가 생겼지만, load/store-level must-alias 판단, nested field chain, memory SSA 소비자는 아직 미구현
+- [~] Array shape inference — Infer 1D/2D array dimensions from nested index math and stride constants.
+- Only conservative 1D constant-stride shape hints are exposed today via `ir/analyze/array_shape.rs`, built from existing aggregate recovery (`base`, `stride`, observed offset range, contiguous coverage). Nested index math, 2D dimensions, and dynamic bound inference remain unimplemented.
   > 타입 제약 풀이 프레임워크 필요
 - [~] Stride detection — Detect constant strides in address arithmetic to recover arr[i] and struct arrays.
   > bit_trick_recognition.rs에서 var + index*STRIDE 패턴 감지 (알려진 타입 크기만 주석 추가)
-- [ ] Container recognition — Detect vector/list/map-like access idioms to label data structures.
-  > 자료구조 복구 프레임워크 필요 — AST 패턴만으로 불충분
+- [~] Container recognition — Detect vector/list/map-like access idioms to label data structures.
+  > `auto_comment.rs`가 preserved symbol name이 남은 `AstCall::Unknown` 호출에서 `vector/deque`, `list/forward_list`, `map/unordered_map/hash_map` 계열 메서드명(`push_back`, `insert`, `find`, `rehash` 등)을 보수적으로 감지해 container-like operation 주석을 추가한다. 그러나 이는 이름 기반 힌트일 뿐이며, 실제 구조체 레이아웃 복구, iterator/state tracking, field/type propagation은 아직 미구현
 - [ ] Linked-list shape recognition — Identify next/prev pointers and traversal loops to annotate list structures.
   > 자료구조 복구 프레임워크 필요 — AST 패턴만으로 불충분
 - [ ] Tree shape recognition — Detect left/right traversal patterns and recursive calls to label tree nodes.
