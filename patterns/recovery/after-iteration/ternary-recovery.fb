@@ -1,0 +1,11 @@
+# Ternary recovery: if (cond) { x = a; } else { x = b; }  =>  x = cond ? a : b
+#
+# Matches an If statement where both branches contain a single assignment
+# to the same variable (by variable id), and rewrites it as a ternary.
+
+if:
+  at afterIteration
+  stmt If($cond, [Assignment(Variable($_, $v1), $a)], Some([Assignment(Variable($_, $v2), $b)]))
+  where eq($v1, $v2)
+do:
+  emit Assignment(Variable($_, $v1), Ternary($cond, $a, $b))

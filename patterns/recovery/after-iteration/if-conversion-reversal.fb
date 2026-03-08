@@ -1,0 +1,20 @@
+# If-conversion reversal: expand nested ternary assignments to if-else.
+#
+# x = c1 ? (c2 ? a : b) : d  =>  if(c1) { x = c2 ? a : b } else { x = d }
+# x = c1 ? a : (c2 ? b : d)  =>  if(c1) { x = a } else { x = c2 ? b : d }
+#
+# Applied iteratively: inner ternaries are expanded on subsequent passes.
+
+# Case 1: true branch is a nested ternary
+if:
+  at afterIteration
+  stmt Assignment($lhs, Ternary($cond, Ternary($c2, $t2, $f2), $b))
+do:
+  emit If($cond, [Assignment($lhs, Ternary($c2, $t2, $f2))], Some([Assignment($lhs, $b)]))
+
+# Case 2: false branch is a nested ternary (true branch is not)
+if:
+  at afterIteration
+  stmt Assignment($lhs, Ternary($cond, $a, Ternary($c2, $t2, $f2)))
+do:
+  emit If($cond, [Assignment($lhs, $a)], Some([Assignment($lhs, Ternary($c2, $t2, $f2))]))

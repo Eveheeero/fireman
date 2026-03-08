@@ -30,6 +30,7 @@ use std::{
 use tracing::{debug, error, info, trace, warn};
 
 mod hashing;
+pub(crate) mod stmt_pattern;
 pub(super) use hashing::{Blake3StdHasher, hash_statement_list, structural_statement_hash};
 
 const PREDEFINED_REMOVE_EMPTY_STATEMENTS_FB: &str = include_str!(concat!(
@@ -60,8 +61,16 @@ const PREDEFINED_EXAMPLE_05_ALL_SYNTAX_FB: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../patterns/examples/all_syntax.fb"
 ));
+const PREDEFINED_TERNARY_RECOVERY_FB: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../patterns/recovery/after-iteration/ternary-recovery.fb"
+));
+const PREDEFINED_IF_CONVERSION_REVERSAL_FB: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../patterns/recovery/after-iteration/if-conversion-reversal.fb"
+));
 
-const PREDEFINED_PATTERN_SOURCES: [(&str, &str); 7] = [
+const PREDEFINED_PATTERN_SOURCES: [(&str, &str); 9] = [
     (
         "patterns/cleanup/after-iteration/flatten-blocks.fb",
         PREDEFINED_FLATTEN_BLOCKS_FB,
@@ -89,6 +98,14 @@ const PREDEFINED_PATTERN_SOURCES: [(&str, &str); 7] = [
     (
         "patterns/examples/all_syntax.fb",
         PREDEFINED_EXAMPLE_05_ALL_SYNTAX_FB,
+    ),
+    (
+        "patterns/recovery/after-iteration/ternary-recovery.fb",
+        PREDEFINED_TERNARY_RECOVERY_FB,
+    ),
+    (
+        "patterns/recovery/after-iteration/if-conversion-reversal.fb",
+        PREDEFINED_IF_CONVERSION_REVERSAL_FB,
     ),
 ];
 
@@ -303,6 +320,7 @@ pub enum AstPatternInBlock {
     Ast(AstPatternAstData),
     AstSequence(Vec<AstPatternAstData>),
     Ir(AstPatternIrData),
+    Stmt(stmt_pattern::PatTree, Vec<stmt_pattern::WherePredicate>),
     Script(AstPatternScript),
     SkipRange(AstPatternRange),
     SkipAsmRange(AstPatternRange),
@@ -316,6 +334,7 @@ enum AstPatternInBlockKind {
     Asm,
     AsmContains,
     Ast,
+    Stmt,
     Ir,
     Script,
     SkipRange,
@@ -332,6 +351,7 @@ impl AstPatternInBlock {
             Self::AsmContains(_) => AstPatternInBlockKind::AsmContains,
             Self::Ast(_) => AstPatternInBlockKind::Ast,
             Self::AstSequence(_) => AstPatternInBlockKind::Ast,
+            Self::Stmt(_, _) => AstPatternInBlockKind::Stmt,
             Self::Ir(_) => AstPatternInBlockKind::Ir,
             Self::Script(_) => AstPatternInBlockKind::Script,
             Self::SkipRange(_) => AstPatternInBlockKind::SkipRange,
@@ -371,7 +391,7 @@ fn infer_input_type_from_in_blocks(in_blocks: &[Vec<AstPatternInBlock>]) -> AstP
         match clause {
             AstPatternInBlock::At(_) => {}
             AstPatternInBlock::Asm(_) | AstPatternInBlock::AsmContains(_) => has_asm = true,
-            AstPatternInBlock::Ast(_) | AstPatternInBlock::AstSequence(_) => has_ast = true,
+            AstPatternInBlock::Ast(_) | AstPatternInBlock::AstSequence(_) | AstPatternInBlock::Stmt(_, _) => has_ast = true,
             AstPatternInBlock::Ir(_) => has_ir = true,
             AstPatternInBlock::Script(_) => has_script = true,
             AstPatternInBlock::SkipRange(_)
@@ -468,6 +488,15 @@ fn block_script(clauses: &[AstPatternInBlock]) -> Option<&AstPatternScript> {
     })
 }
 
+fn block_stmt(
+    clauses: &[AstPatternInBlock],
+) -> Option<(&stmt_pattern::PatTree, &[stmt_pattern::WherePredicate])> {
+    clauses.iter().find_map(|clause| match clause {
+        AstPatternInBlock::Stmt(pat, preds) => Some((pat, preds.as_slice())),
+        _ => None,
+    })
+}
+
 fn block_skip_range(clauses: &[AstPatternInBlock]) -> Option<AstPatternRange> {
     clauses.iter().find_map(|clause| match clause {
         AstPatternInBlock::SkipRange(value) => Some(*value),
@@ -504,6 +533,7 @@ pub enum AstPatternOutAction {
     Delete(AstPatternDeleteTarget),
     SpliceBlock,
     Script(AstPatternScript),
+    Emit(stmt_pattern::PatTree),
     Log(AstPatternLogLevel, String),
     PruneEmptyElse,
 }
@@ -1219,7 +1249,7 @@ fn apply_single_file_rule(
                 .enumerate()
                 .find_map(|(clause_group_index, group)| {
                     group.in_blocks.iter().find_map(|block| {
-                        let matched = match_if_block(
+                        let (matched, captures) = match_if_block(
                             block,
                             &script_context,
                             &asm_lines,
@@ -1234,11 +1264,11 @@ fn apply_single_file_rule(
                         if skipped_matches.contains(&skipped) {
                             None
                         } else {
-                            Some((clause_group_index, matched))
+                            Some((clause_group_index, matched, captures))
                         }
                     })
                 });
-        let Some((clause_group_index, matched)) = matched else {
+        let Some((clause_group_index, matched, stmt_captures)) = matched else {
             break;
         };
         let clause_group = &rule.clause_groups[clause_group_index];
@@ -1260,8 +1290,23 @@ fn apply_single_file_rule(
                 AstPatternOutAction::SpliceBlock => {
                     apply_splice_block(stmts, &matched);
                 }
+                AstPatternOutAction::Emit(emit_pat) => {
+                    if let Some((idx, _)) = matched.ast_statement_range {
+                        if let Some(caps) = &stmt_captures {
+                            if let Some(replacement) =
+                                stmt_pattern::construct_statement(emit_pat, caps)
+                            {
+                                stmts[idx].statement = replacement;
+                            }
+                        }
+                    }
+                }
                 AstPatternOutAction::Script(script) => {
-                    if !execute_do_script(script, &script_context) {
+                    if !execute_do_script_with_captures(
+                        script,
+                        &script_context,
+                        stmt_captures.as_ref(),
+                    ) {
                         break;
                     }
                 }
@@ -1447,9 +1492,10 @@ fn match_if_block(
     ast_statements: &[AstStatement],
     ir_statements: &[IrStatement],
     phase: AstPatternApplyPhase,
-) -> Option<AstPatternMatch> {
+) -> Option<(AstPatternMatch, Option<stmt_pattern::Captures>)> {
     let mut has_condition = false;
     let mut matched = AstPatternMatch::default();
+    let mut stmt_captures: Option<stmt_pattern::Captures> = None;
 
     let (has_at, at_matched) = block_at_matches_phase(block, phase);
     if has_at {
@@ -1489,6 +1535,32 @@ fn match_if_block(
             block_skip_ast_range(block),
         )?);
     }
+    // stmt structural pattern matching with captures
+    if let Some((pat, predicates)) = block_stmt(block) {
+        has_condition = true;
+        let skip_range = block_skip_range(block).or(block_skip_ast_range(block));
+        let start = skip_range.map_or(0usize, |r| r.start.min(ast_statements.len()));
+        let end = skip_range.map_or(ast_statements.len(), |r| {
+            r.end_exclusive.min(ast_statements.len())
+        });
+        let mut found = false;
+        for i in start..end {
+            if let Some(caps) = stmt_pattern::match_statement(pat, &ast_statements[i]) {
+                let preds_ok = predicates
+                    .iter()
+                    .all(|pred| stmt_pattern::eval_where(pred, &caps));
+                if preds_ok {
+                    matched.ast_statement_range = Some((i, i + 1));
+                    stmt_captures = Some(caps);
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if !found {
+            return None;
+        }
+    }
     if let Some(ir) = block_ir(block) {
         has_condition = true;
         if !sequence_matches_ir(ir_statements, ir, block_skip_ir_range(block)) {
@@ -1506,7 +1578,11 @@ fn match_if_block(
         }
     }
 
-    if has_condition { Some(matched) } else { None }
+    if has_condition {
+        Some((matched, stmt_captures))
+    } else {
+        None
+    }
 }
 
 fn collect_ast_debug(stmts: &[WrappedAstStatement]) -> String {
@@ -1603,6 +1679,49 @@ fn evaluate_if_script(script: &AstPatternScript, context: &AstPatternScriptConte
             false
         }
     }
+}
+
+fn execute_do_script_with_captures(
+    script: &AstPatternScript,
+    context: &AstPatternScriptContext<'_>,
+    captures: Option<&stmt_pattern::Captures>,
+) -> bool {
+    let source = script.source();
+    let compiled = match script.compiled_or_parse() {
+        Ok(compiled) => compiled,
+        Err(err) => {
+            error!(
+                "Pattern `{}` do script has no compiled AST: {} ({})",
+                context.source, source, err
+            );
+            return false;
+        }
+    };
+    let mut scope = build_rhai_scope(context);
+    if let Some(caps) = captures {
+        stmt_pattern::inject_captures_into_rhai_scope(caps, &mut scope);
+    }
+    match with_rhai_engine(|engine| engine.eval_ast_with_scope::<Dynamic>(&mut scope, &compiled)) {
+        Ok(value) => {
+            if let Some(continue_actions) = value.try_cast::<bool>() {
+                trace!(
+                    "Pattern `{}` do-script returned bool={}",
+                    context.source, continue_actions
+                );
+                if !continue_actions {
+                    return false;
+                }
+            }
+        }
+        Err(err) => {
+            error!(
+                "Pattern `{}` do script failed: {} ({})",
+                context.source, source, err
+            );
+            return false;
+        }
+    }
+    true
 }
 
 fn execute_do_script(script: &AstPatternScript, context: &AstPatternScriptContext<'_>) -> bool {
@@ -2843,6 +2962,34 @@ fn parse_pattern_file(path: &str, content: &str) -> Result<AstPatternRule, Strin
                         })
                         .collect::<Result<Vec<_>, _>>()?;
                     expand_in_blocks_for_asm(&mut current_in_blocks, &sequence);
+                } else if line.trim_start().starts_with("stmt ") {
+                    let value =
+                        parse_multiline_value(line.trim_start(), "stmt ", &lines, &mut idx)?;
+                    let pat_tree = stmt_pattern::parse_pattern(&value).map_err(|err| {
+                        format!("invalid stmt pattern in `{path}`: {err}")
+                    })?;
+                    // Collect any subsequent `where` lines
+                    let mut predicates = Vec::new();
+                    while idx < lines.len() {
+                        let next_line = strip_inline_comment(lines[idx]);
+                        let next_trimmed = next_line.trim();
+                        if next_trimmed.starts_with("where ") {
+                            idx += 1;
+                            let where_value = next_trimmed.strip_prefix("where ").unwrap();
+                            let pred = stmt_pattern::parse_where(where_value).map_err(|err| {
+                                format!("invalid where predicate in `{path}`: {err}")
+                            })?;
+                            predicates.push(pred);
+                        } else {
+                            break;
+                        }
+                    }
+                    update_all_in_blocks(&mut current_in_blocks, |block| {
+                        set_clause(
+                            block,
+                            AstPatternInBlock::Stmt(pat_tree.clone(), predicates.clone()),
+                        );
+                    });
                 } else if line.trim_start().starts_with("ast ") {
                     let value = parse_multiline_value(line.trim_start(), "ast ", &lines, &mut idx)?;
                     let sequence = split_pattern_sequence_raw(&value, false);
@@ -3000,6 +3147,14 @@ fn parse_pattern_file(path: &str, content: &str) -> Result<AstPatternRule, Strin
                     current_clause_group
                         .out_actions
                         .push(AstPatternOutAction::Log(AstPatternLogLevel::Trace, msg));
+                } else if trimmed.starts_with("emit ") {
+                    let value = parse_multiline_value(trimmed, "emit ", &lines, &mut idx)?;
+                    let emit_pat = stmt_pattern::parse_pattern(&value).map_err(|err| {
+                        format!("invalid emit pattern in `{path}`: {err}")
+                    })?;
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::Emit(emit_pat));
                 } else if trimmed == "prune-empty-else" {
                     current_clause_group
                         .out_actions

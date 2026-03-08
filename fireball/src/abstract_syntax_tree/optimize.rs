@@ -13,7 +13,6 @@ mod dead_store_elimination;
 mod early_return_normalization;
 mod expression_inlining;
 mod goto_containment;
-mod if_conversion_reversal;
 mod induction_variable_analysis;
 mod ir_analyzation;
 mod lifetime_scoping;
@@ -28,7 +27,6 @@ mod signedness_inference;
 mod structured_region_lowering;
 mod switch_reconstruction;
 mod temporary_elimination;
-mod ternary_recovery;
 mod variable_coalescing;
 
 use super::*;
@@ -361,23 +359,45 @@ impl Ast {
                 }
 
                 if config.ternary_recovery {
+                    let ternary_pat = pattern_matching::AstPattern::predefined_pattern(
+                        "patterns/recovery/after-iteration/ternary-recovery.fb",
+                    )
+                    .ok_or_else(|| DecompileError::from(
+                        "ternary_recovery enabled but predefined pattern 'ternary-recovery.fb' is missing",
+                    ))?;
                     for (function_id, to_version) in versions.iter().copied() {
                         if !has_function_version(&ast, function_id, to_version) {
                             continue;
                         }
-                        ternary_recovery::recover_ternary(&mut ast, function_id, to_version)?;
+                        pattern_matching::apply_patterns(
+                            &mut ast,
+                            function_id,
+                            to_version,
+                            std::slice::from_ref(&ternary_pat),
+                            pattern_matching::AstPatternApplyPhase::AfterIteration,
+                        )?;
                     }
                 }
 
-                for (function_id, to_version) in versions.iter().copied() {
-                    if !has_function_version(&ast, function_id, to_version) {
-                        continue;
+                {
+                    let if_conv_pat = pattern_matching::AstPattern::predefined_pattern(
+                        "patterns/recovery/after-iteration/if-conversion-reversal.fb",
+                    )
+                    .ok_or_else(|| DecompileError::from(
+                        "predefined pattern 'if-conversion-reversal.fb' is missing",
+                    ))?;
+                    for (function_id, to_version) in versions.iter().copied() {
+                        if !has_function_version(&ast, function_id, to_version) {
+                            continue;
+                        }
+                        pattern_matching::apply_patterns(
+                            &mut ast,
+                            function_id,
+                            to_version,
+                            std::slice::from_ref(&if_conv_pat),
+                            pattern_matching::AstPatternApplyPhase::AfterIteration,
+                        )?;
                     }
-                    if_conversion_reversal::reverse_if_conversion(
-                        &mut ast,
-                        function_id,
-                        to_version,
-                    )?;
                 }
 
                 // Bit trick recognition runs unconditionally (no config toggle yet).

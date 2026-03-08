@@ -1,8 +1,8 @@
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstExpression, AstFunction, AstFunctionId, AstFunctionVersion, AstLiteral,
-        AstOptimizationConfig, AstStatement, AstStatementOrigin, AstValueOrigin, AstValueType,
-        AstVariable, AstVariableId, Wrapped, WrappedAstStatement,
+        ArcAstVariableMap, Ast, AstExpression, AstFunction, AstFunctionId, AstFunctionVersion,
+        AstLiteral, AstOptimizationConfig, AstStatement, AstStatementOrigin, AstValueOrigin,
+        AstValueType, AstVariable, AstVariableId, Wrapped, WrappedAstStatement,
         pattern_matching::{AstPattern, AstPatternInputType},
     },
     core::Instruction,
@@ -1156,5 +1156,439 @@ do:
         comment_count(&body, "at-or-hit"),
         1,
         "multiple at clauses should be OR'ed so a match can run when either phase is active"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// stmt / where / emit  golden-output tests
+// ---------------------------------------------------------------------------
+
+/// Build a test AST that contains `if (cond) { x = a; } else { x = b; }`
+/// to validate ternary recovery via the .fb pattern.
+fn build_ternary_recovery_test_ast() -> (Ast, AstFunctionId) {
+    let function_id = AstFunctionId { address: 0xBB00 };
+    let version = AstFunctionVersion(1);
+    let variable_map: ArcAstVariableMap = Arc::new(RwLock::new(HashMap::new()));
+    let var_id = AstVariableId {
+        index: 42,
+        parent: Some(function_id),
+    };
+
+    let cond = wrap_expression(AstExpression::Variable(variable_map.clone(), AstVariableId {
+        index: 1,
+        parent: Some(function_id),
+    }));
+    let val_a = wrap_expression(AstExpression::Literal(AstLiteral::Int(10)));
+    let val_b = wrap_expression(AstExpression::Literal(AstLiteral::Int(20)));
+    let lhs_true = wrap_expression(AstExpression::Variable(variable_map.clone(), var_id));
+    let lhs_false = wrap_expression(AstExpression::Variable(variable_map.clone(), var_id));
+
+    let if_stmt = AstStatement::If(
+        cond,
+        vec![wrap_statement(AstStatement::Assignment(lhs_true, val_a))],
+        Some(vec![wrap_statement(AstStatement::Assignment(
+            lhs_false, val_b,
+        ))]),
+    );
+
+    let body = vec![
+        wrap_statement(AstStatement::Comment("before-ternary".to_string())),
+        wrap_statement(if_stmt),
+        wrap_statement(AstStatement::Return(None)),
+    ];
+
+    let function = build_test_function(function_id, "ternary_test", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+    (ast, function_id)
+}
+
+#[test]
+fn stmt_pattern_ternary_recovery_fb_produces_correct_output() {
+    let pattern = AstPattern::new(
+        "ternary-recovery",
+        r#"
+if:
+  at afterIteration
+  stmt If($cond, [Assignment(Variable($_, $v1), $a)], Some([Assignment(Variable($_, $v2), $b)]))
+  where eq($v1, $v2)
+do:
+  emit Assignment(Variable($_, $v1), Ternary($cond, $a, $b))
+"#,
+    );
+
+    let (ast, function_id) = build_ternary_recovery_test_ast();
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(1),
+            ),
+        )
+        .expect("ternary recovery pattern must parse and execute");
+    let body = optimized_function_body(&optimized, function_id);
+
+    // The If statement should be replaced with an Assignment containing a Ternary
+    let has_ternary = body.iter().any(|stmt| match &stmt.statement {
+        AstStatement::Assignment(_, rhs) => matches!(rhs.item, AstExpression::Ternary(_, _, _)),
+        _ => false,
+    });
+    assert!(
+        has_ternary,
+        "ternary recovery .fb pattern must convert if(c){{x=a}}else{{x=b}} to x=c?a:b"
+    );
+
+    // The If statement should be gone
+    let has_if = body
+        .iter()
+        .any(|stmt| matches!(&stmt.statement, AstStatement::If(_, _, _)));
+    assert!(
+        !has_if,
+        "ternary recovery .fb pattern must remove the original If statement"
+    );
+
+    // Other statements (comment + return) must be preserved
+    assert_eq!(body.len(), 3, "surrounding statements must be preserved");
+    assert!(
+        matches!(&body[0].statement, AstStatement::Comment(s) if s == "before-ternary"),
+        "comment before must survive"
+    );
+    assert!(
+        matches!(&body[2].statement, AstStatement::Return(None)),
+        "return after must survive"
+    );
+}
+
+#[test]
+fn stmt_pattern_ternary_recovery_rejects_different_variables() {
+    let pattern = AstPattern::new(
+        "ternary-recovery",
+        r#"
+if:
+  at afterIteration
+  stmt If($cond, [Assignment(Variable($_, $v1), $a)], Some([Assignment(Variable($_, $v2), $b)]))
+  where eq($v1, $v2)
+do:
+  emit Assignment(Variable($_, $v1), Ternary($cond, $a, $b))
+"#,
+    );
+
+    let function_id = AstFunctionId { address: 0xBC00 };
+    let version = AstFunctionVersion(1);
+    let variable_map: ArcAstVariableMap = Arc::new(RwLock::new(HashMap::new()));
+    let var_id_x = AstVariableId {
+        index: 42,
+        parent: Some(function_id),
+    };
+    let var_id_y = AstVariableId {
+        index: 99,
+        parent: Some(function_id),
+    };
+
+    let cond = wrap_expression(AstExpression::Variable(
+        variable_map.clone(),
+        AstVariableId {
+            index: 1,
+            parent: Some(function_id),
+        },
+    ));
+    let lhs_true = wrap_expression(AstExpression::Variable(variable_map.clone(), var_id_x));
+    let lhs_false = wrap_expression(AstExpression::Variable(variable_map.clone(), var_id_y));
+    let val_a = wrap_expression(AstExpression::Literal(AstLiteral::Int(10)));
+    let val_b = wrap_expression(AstExpression::Literal(AstLiteral::Int(20)));
+
+    let if_stmt = AstStatement::If(
+        cond,
+        vec![wrap_statement(AstStatement::Assignment(lhs_true, val_a))],
+        Some(vec![wrap_statement(AstStatement::Assignment(
+            lhs_false, val_b,
+        ))]),
+    );
+
+    let body = vec![wrap_statement(if_stmt)];
+    let function = build_test_function(function_id, "ternary_reject", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(1),
+            ),
+        )
+        .expect("pattern must execute without error");
+    let body = optimized_function_body(&optimized, function_id);
+
+    // The If should NOT be converted because v1 != v2
+    let has_if = body
+        .iter()
+        .any(|stmt| matches!(&stmt.statement, AstStatement::If(_, _, _)));
+    assert!(
+        has_if,
+        "where eq($v1, $v2) must reject when variables differ"
+    );
+}
+
+#[test]
+fn stmt_pattern_ternary_recovery_handles_nested_if() {
+    let pattern = AstPattern::new(
+        "ternary-recovery",
+        r#"
+if:
+  at afterIteration
+  stmt If($cond, [Assignment(Variable($_, $v1), $a)], Some([Assignment(Variable($_, $v2), $b)]))
+  where eq($v1, $v2)
+do:
+  emit Assignment(Variable($_, $v1), Ternary($cond, $a, $b))
+"#,
+    );
+
+    let function_id = AstFunctionId { address: 0xBD00 };
+    let version = AstFunctionVersion(1);
+    let variable_map: ArcAstVariableMap = Arc::new(RwLock::new(HashMap::new()));
+    let var_id = AstVariableId {
+        index: 5,
+        parent: Some(function_id),
+    };
+    let cond_var = AstVariableId {
+        index: 1,
+        parent: Some(function_id),
+    };
+
+    // Build: while(true) { if(c) { x = 1 } else { x = 2 } }
+    let inner_cond = wrap_expression(AstExpression::Variable(variable_map.clone(), cond_var));
+    let inner_if = AstStatement::If(
+        inner_cond,
+        vec![wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(variable_map.clone(), var_id)),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+        ))],
+        Some(vec![wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(variable_map.clone(), var_id)),
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+        ))]),
+    );
+    let while_stmt = AstStatement::While(
+        wrap_expression(AstExpression::Literal(AstLiteral::Bool(true))),
+        vec![wrap_statement(inner_if)],
+    );
+
+    let body = vec![wrap_statement(while_stmt)];
+    let function = build_test_function(function_id, "ternary_nested", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(1),
+            ),
+        )
+        .expect("nested ternary recovery must work");
+    let body = optimized_function_body(&optimized, function_id);
+
+    // The while loop should contain an Assignment with Ternary, not an If
+    let while_body = match &body[0].statement {
+        AstStatement::While(_, body) => body,
+        other => panic!("expected While, got {other:?}"),
+    };
+    let has_ternary = while_body.iter().any(|stmt| match &stmt.statement {
+        AstStatement::Assignment(_, rhs) => matches!(rhs.item, AstExpression::Ternary(_, _, _)),
+        _ => false,
+    });
+    assert!(
+        has_ternary,
+        "ternary recovery must work inside nested while loops"
+    );
+}
+
+#[test]
+fn stmt_pattern_if_conversion_reversal_expands_nested_ternary() {
+    let pattern = AstPattern::new(
+        "if-conversion-reversal",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../patterns/recovery/after-iteration/if-conversion-reversal.fb"
+        )),
+    );
+
+    let function_id = AstFunctionId { address: 0xBE00 };
+    let version = AstFunctionVersion(1);
+    let variable_map: ArcAstVariableMap = Arc::new(RwLock::new(HashMap::new()));
+    let var_id = AstVariableId {
+        index: 7,
+        parent: Some(function_id),
+    };
+    let cond1_id = AstVariableId {
+        index: 1,
+        parent: Some(function_id),
+    };
+    let cond2_id = AstVariableId {
+        index: 2,
+        parent: Some(function_id),
+    };
+
+    // x = c1 ? (c2 ? 10 : 20) : 30
+    let inner_ternary = AstExpression::Ternary(
+        Box::new(wrap_expression(AstExpression::Variable(
+            variable_map.clone(),
+            cond2_id,
+        ))),
+        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(10)))),
+        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(20)))),
+    );
+    let outer_ternary = AstExpression::Ternary(
+        Box::new(wrap_expression(AstExpression::Variable(
+            variable_map.clone(),
+            cond1_id,
+        ))),
+        Box::new(wrap_expression(inner_ternary)),
+        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(30)))),
+    );
+    let assign = AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(variable_map.clone(), var_id)),
+        wrap_expression(outer_ternary),
+    );
+
+    let body = vec![wrap_statement(assign)];
+    let function =
+        build_test_function(function_id, "if_conv_reversal_test", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(3),
+            ),
+        )
+        .expect("if-conversion-reversal pattern must work");
+    let body = optimized_function_body(&optimized, function_id);
+
+    // The outer ternary should become an If statement
+    let has_if = body
+        .iter()
+        .any(|stmt| matches!(&stmt.statement, AstStatement::If(_, _, _)));
+    assert!(
+        has_if,
+        "if-conversion-reversal must expand nested ternary assignment to if-else"
+    );
+    // No top-level ternary assignment should remain
+    let has_ternary_assign = body.iter().any(|stmt| match &stmt.statement {
+        AstStatement::Assignment(_, rhs) => matches!(rhs.item, AstExpression::Ternary(_, _, _)),
+        _ => false,
+    });
+    assert!(
+        !has_ternary_assign,
+        "nested ternary assignment should be fully expanded"
+    );
+}
+
+#[test]
+fn stmt_pattern_if_conversion_reversal_preserves_simple_ternary() {
+    let pattern = AstPattern::new(
+        "if-conversion-reversal",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../patterns/recovery/after-iteration/if-conversion-reversal.fb"
+        )),
+    );
+
+    let function_id = AstFunctionId { address: 0xBF00 };
+    let version = AstFunctionVersion(1);
+    let variable_map: ArcAstVariableMap = Arc::new(RwLock::new(HashMap::new()));
+    let var_id = AstVariableId {
+        index: 7,
+        parent: Some(function_id),
+    };
+
+    // x = c ? 10 : 20  (no nesting — should NOT be expanded)
+    let simple_ternary = AstExpression::Ternary(
+        Box::new(wrap_expression(AstExpression::Variable(
+            variable_map.clone(),
+            AstVariableId {
+                index: 1,
+                parent: Some(function_id),
+            },
+        ))),
+        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(10)))),
+        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(20)))),
+    );
+    let assign = AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(variable_map.clone(), var_id)),
+        wrap_expression(simple_ternary),
+    );
+
+    let body = vec![wrap_statement(assign)];
+    let function = build_test_function(function_id, "if_conv_preserve", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(1),
+            ),
+        )
+        .expect("simple ternary should be preserved");
+    let body = optimized_function_body(&optimized, function_id);
+
+    // Simple ternary should NOT be expanded
+    let has_ternary_assign = body.iter().any(|stmt| match &stmt.statement {
+        AstStatement::Assignment(_, rhs) => matches!(rhs.item, AstExpression::Ternary(_, _, _)),
+        _ => false,
+    });
+    assert!(
+        has_ternary_assign,
+        "simple (non-nested) ternary must be preserved — only nested ternaries get expanded"
     );
 }
