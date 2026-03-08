@@ -5,15 +5,13 @@
 
 use crate::{
     core::Block,
-    ir::{
-        Register,
-        data::IrData,
-        statements::IrStatement,
-    },
+    ir::{Register, VirtualMachine, data::IrData, statements::IrStatement, x86_64::X64Range},
     prelude::*,
 };
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 /// A taint label identifying the source of tainted data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -38,9 +36,7 @@ pub struct TaintAnalysis {
 impl TaintAnalysis {
     /// Check if a register is tainted.
     pub fn is_tainted(&self, reg: &Register) -> bool {
-        self.register_taints
-            .get(reg)
-            .is_some_and(|s| !s.is_empty())
+        self.register_taints.get(reg).is_some_and(|s| !s.is_empty())
     }
 
     /// Get taint labels for a register.
@@ -50,34 +46,26 @@ impl TaintAnalysis {
 
     fn taint_register(&mut self, reg: Register, labels: HashSet<TaintLabel>) {
         if !labels.is_empty() {
-            self.register_taints
-                .entry(reg)
-                .or_default()
-                .extend(labels);
+            self.register_taints.entry(reg).or_default().extend(labels);
         }
     }
 
     fn get_taints(&self, reg: &Register) -> HashSet<TaintLabel> {
-        self.register_taints
-            .get(reg)
-            .cloned()
-            .unwrap_or_default()
+        self.register_taints.get(reg).cloned().unwrap_or_default()
     }
 }
 
 /// Run taint analysis over function blocks.
 ///
-/// Seeds: function parameters (first 4 registers in x86-64 calling convention)
-/// are tainted as Parameter(0..3). Call return values are tainted as ApiReturn.
+/// Seeds: common x86-64 parameter registers are conservatively marked as
+/// parameter-derived, carrying multiple `Parameter(n)` labels when SysV and
+/// Win64 disagree on the exact slot. Call return values are marked as
+/// `ApiReturn`.
 pub fn analyze_taint(blocks: &[Arc<Block>]) -> TaintAnalysis {
     let mut analysis = TaintAnalysis::default();
     let mut ir_index: u32 = 0;
 
-    // Seed: first block's initial register state represents parameters
-    // In x86-64 System V: rdi, rsi, rdx, rcx, r8, r9
-    // In Win64: rcx, rdx, r8, r9
-    // We don't know which ABI, so we seed all common param registers
-    // by checking if they're read before written (handled by forward propagation)
+    seed_parameter_taints(&mut analysis);
 
     for block in blocks {
         let ir_block = block.get_ir();
@@ -100,11 +88,66 @@ pub fn analyze_taint(blocks: &[Arc<Block>]) -> TaintAnalysis {
     analysis
 }
 
-fn propagate_taint(
-    stmt: &IrStatement,
-    analysis: &mut TaintAnalysis,
-    ir_index: &mut u32,
-) {
+fn seed_parameter_taints(analysis: &mut TaintAnalysis) {
+    for (register, labels) in conservative_parameter_registers() {
+        analysis.taint_register(register, labels);
+    }
+}
+
+fn conservative_parameter_registers() -> Vec<(Register, HashSet<TaintLabel>)> {
+    vec![
+        (
+            <VirtualMachine as X64Range>::rdi(),
+            HashSet::from([TaintLabel::Parameter(0)]),
+        ),
+        (
+            <VirtualMachine as X64Range>::edi(),
+            HashSet::from([TaintLabel::Parameter(0)]),
+        ),
+        (
+            <VirtualMachine as X64Range>::rsi(),
+            HashSet::from([TaintLabel::Parameter(1)]),
+        ),
+        (
+            <VirtualMachine as X64Range>::esi(),
+            HashSet::from([TaintLabel::Parameter(1)]),
+        ),
+        (
+            <VirtualMachine as X64Range>::rdx(),
+            HashSet::from([TaintLabel::Parameter(1), TaintLabel::Parameter(2)]),
+        ),
+        (
+            <VirtualMachine as X64Range>::edx(),
+            HashSet::from([TaintLabel::Parameter(1), TaintLabel::Parameter(2)]),
+        ),
+        (
+            <VirtualMachine as X64Range>::rcx(),
+            HashSet::from([TaintLabel::Parameter(0), TaintLabel::Parameter(3)]),
+        ),
+        (
+            <VirtualMachine as X64Range>::ecx(),
+            HashSet::from([TaintLabel::Parameter(0), TaintLabel::Parameter(3)]),
+        ),
+        (
+            <VirtualMachine as X64Range>::r8(),
+            HashSet::from([TaintLabel::Parameter(2), TaintLabel::Parameter(4)]),
+        ),
+        (
+            <VirtualMachine as X64Range>::r8d(),
+            HashSet::from([TaintLabel::Parameter(2), TaintLabel::Parameter(4)]),
+        ),
+        (
+            <VirtualMachine as X64Range>::r9(),
+            HashSet::from([TaintLabel::Parameter(3), TaintLabel::Parameter(5)]),
+        ),
+        (
+            <VirtualMachine as X64Range>::r9d(),
+            HashSet::from([TaintLabel::Parameter(3), TaintLabel::Parameter(5)]),
+        ),
+    ]
+}
+
+fn propagate_taint(stmt: &IrStatement, analysis: &mut TaintAnalysis, ir_index: &mut u32) {
     match stmt {
         IrStatement::Assignment { from, to, .. } => {
             // Collect taint from source expression
@@ -121,12 +164,9 @@ fn propagate_taint(
             }
         }
         IrStatement::JumpByCall { .. } => {
-            // After a call, the return register may carry taint from the API
-            // We mark this as ApiReturn taint — downstream assignments from
-            // the return register will propagate it
-            // Note: we'd need architecture info to know which register is the
-            // return register. For now, we just record the call site.
-            *ir_index += 1;
+            let labels = HashSet::from([TaintLabel::ApiReturn(*ir_index)]);
+            analysis.taint_register(<VirtualMachine as X64Range>::rax(), labels.clone());
+            analysis.taint_register(<VirtualMachine as X64Range>::eax(), labels);
         }
         IrStatement::Condition {
             true_branch,
@@ -173,8 +213,7 @@ fn collect_data_taints(
 }
 
 /// Log taint analysis results.
-pub fn log_taint_analysis(blocks: &[Arc<Block>]) {
-    let analysis = analyze_taint(blocks);
+pub fn log_taint_analysis(analysis: &TaintAnalysis) {
     let tainted_regs = analysis
         .register_taints
         .values()

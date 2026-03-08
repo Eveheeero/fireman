@@ -29,6 +29,7 @@ pub(super) fn analyze_loops(
     annotate_loop_semantics(&mut body);
     replace_loop_with_call(&mut body);
     annotate_state_machine_loops(&mut body);
+    annotate_duffs_device_loops(&mut body);
     annotate_loop_exit_patterns(&mut body);
     annotate_continue_like_gotos(&mut body);
     convert_loop_gotos_to_break_continue(&mut body);
@@ -694,6 +695,7 @@ fn annotate_state_machine_loops(stmts: &mut Vec<WrappedAstStatement>) {
                 }
             }
             AstStatement::While(_, body)
+            | AstStatement::DoWhile(_, body)
             | AstStatement::For(_, _, _, body)
             | AstStatement::Block(body) => {
                 annotate_state_machine_loops(body);
@@ -712,12 +714,9 @@ fn annotate_state_machine_loops(stmts: &mut Vec<WrappedAstStatement>) {
         if stmt.comment.is_some() {
             continue;
         }
-        let AstStatement::While(cond, body) = &stmt.statement else {
+        let Some((_cond, body)) = get_infinite_loop_parts(&stmt.statement) else {
             continue;
         };
-        if !matches!(&cond.item, AstExpression::Literal(AstLiteral::Bool(true))) {
-            continue;
-        }
         let has_switch = body
             .iter()
             .any(|s| matches!(&s.statement, AstStatement::Switch(_, _, _)));
@@ -725,6 +724,81 @@ fn annotate_state_machine_loops(stmts: &mut Vec<WrappedAstStatement>) {
             stmt.comment = Some("likely state machine dispatch loop".to_string());
         }
     }
+}
+
+/// Detect `while(true)/do { } while(true)` loops that combine a top-level switch
+/// with additional trailing loop-body work, a common normalized Duff's-device shape.
+fn annotate_duffs_device_loops(stmts: &mut Vec<WrappedAstStatement>) {
+    for stmt in stmts.iter_mut() {
+        match &mut stmt.statement {
+            AstStatement::If(_, bt, bf) => {
+                annotate_duffs_device_loops(bt);
+                if let Some(bf) = bf {
+                    annotate_duffs_device_loops(bf);
+                }
+            }
+            AstStatement::While(_, body)
+            | AstStatement::DoWhile(_, body)
+            | AstStatement::For(_, _, _, body)
+            | AstStatement::Block(body) => {
+                annotate_duffs_device_loops(body);
+            }
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases.iter_mut() {
+                    annotate_duffs_device_loops(case_body);
+                }
+                if let Some(default_body) = default {
+                    annotate_duffs_device_loops(default_body);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    for stmt in stmts.iter_mut() {
+        if stmt.comment.is_some() {
+            continue;
+        }
+        let Some((_, body)) = get_infinite_loop_parts(&stmt.statement) else {
+            continue;
+        };
+        let Some(first_meaningful_index) = body.iter().position(is_meaningful_statement) else {
+            continue;
+        };
+        if !matches!(
+            body[first_meaningful_index].statement,
+            AstStatement::Switch(_, _, _)
+        ) {
+            continue;
+        }
+        let has_trailing_loop_work = body
+            .iter()
+            .skip(first_meaningful_index + 1)
+            .any(is_meaningful_statement);
+        if has_trailing_loop_work {
+            stmt.comment = Some("likely Duff's device switch/loop hybrid".to_string());
+        }
+    }
+}
+
+fn get_infinite_loop_parts(
+    stmt: &AstStatement,
+) -> Option<(&Wrapped<AstExpression>, &Vec<WrappedAstStatement>)> {
+    match stmt {
+        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body)
+            if matches!(&cond.item, AstExpression::Literal(AstLiteral::Bool(true))) =>
+        {
+            Some((cond, body))
+        }
+        _ => None,
+    }
+}
+
+fn is_meaningful_statement(stmt: &WrappedAstStatement) -> bool {
+    !matches!(
+        stmt.statement,
+        AstStatement::Comment(_) | AstStatement::Empty
+    )
 }
 
 // ---------------------------------------------------------------------------

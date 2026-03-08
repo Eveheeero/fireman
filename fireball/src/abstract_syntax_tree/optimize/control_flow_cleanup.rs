@@ -533,8 +533,7 @@ fn merge_consecutive_same_condition_ifs(stmts: &mut Vec<WrappedAstStatement>) {
             let next_stmt = &rest[0].statement;
             match (first_stmt, next_stmt) {
                 (AstStatement::If(cond1, _, None), AstStatement::If(cond2, _, _)) => {
-                    super::opt_utils::is_pure_expression(&cond1.item)
-                        && super::opt_utils::expr_structurally_equal(&cond1.item, &cond2.item)
+                    conditions_are_equivalent(cond1, cond2)
                 }
                 _ => false,
             }
@@ -556,6 +555,27 @@ fn merge_consecutive_same_condition_ifs(stmts: &mut Vec<WrappedAstStatement>) {
             i += 1;
         }
     }
+}
+
+fn conditions_are_equivalent(
+    cond1: &Wrapped<AstExpression>,
+    cond2: &Wrapped<AstExpression>,
+) -> bool {
+    if !super::opt_utils::is_pure_expression(&cond1.item)
+        || !super::opt_utils::is_pure_expression(&cond2.item)
+    {
+        return false;
+    }
+
+    if super::opt_utils::expr_structurally_equal(&cond1.item, &cond2.item) {
+        return true;
+    }
+
+    let mut normalized_cond1 = cond1.clone();
+    let mut normalized_cond2 = cond2.clone();
+    super::operator_canonicalization::canonicalize_condition_expression(&mut normalized_cond1);
+    super::operator_canonicalization::canonicalize_condition_expression(&mut normalized_cond2);
+    super::opt_utils::expr_structurally_equal(&normalized_cond1.item, &normalized_cond2.item)
 }
 
 /// Invert `if(!cond) { A } else { B }` → `if(cond) { B } else { A }` when doing

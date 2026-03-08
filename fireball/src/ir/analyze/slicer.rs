@@ -1,4 +1,4 @@
-//! Program slicing — backward slice extraction.
+//! Program slicing — backward and forward slice extraction.
 //!
 //! Extracts the subset of IR statements that influence a chosen criterion
 //! (e.g., a return value or specific register at a specific point).
@@ -6,9 +6,10 @@
 use crate::{
     core::Block,
     ir::{
-        Register,
+        Register, VirtualMachine,
         data::{IrData, IrDataContainable},
         statements::IrStatement,
+        x86_64::X64Range,
     },
     prelude::*,
     utils::Aos,
@@ -20,6 +21,8 @@ use std::{collections::HashSet, sync::Arc};
 pub enum SliceCriterion {
     /// Slice from a specific register.
     Register(Register),
+    /// Slice forward from conservatively seeded parameter registers.
+    Parameters,
     /// Slice from return value (all Halt statements — seeds from
     /// the last assignment before each Halt).
     ReturnValue,
@@ -45,6 +48,16 @@ impl ProgramSlice {
     }
 }
 
+impl SliceCriterion {
+    fn label(&self) -> &'static str {
+        match self {
+            SliceCriterion::Register(_) => "register",
+            SliceCriterion::Parameters => "parameters",
+            SliceCriterion::ReturnValue => "return value",
+        }
+    }
+}
+
 /// Compute a backward slice from the given criterion.
 pub fn backward_slice(blocks: &[Arc<Block>], criterion: SliceCriterion) -> ProgramSlice {
     let all_stmts = flatten_statements(blocks);
@@ -57,6 +70,7 @@ pub fn backward_slice(blocks: &[Arc<Block>], criterion: SliceCriterion) -> Progr
         SliceCriterion::Register(reg) => {
             worklist.push(*reg);
         }
+        SliceCriterion::Parameters => {}
         SliceCriterion::ReturnValue => {
             // Find each Halt and trace backward to the preceding assignment
             // to seed with the registers that contribute to the return value
@@ -143,6 +157,39 @@ pub fn backward_slice(blocks: &[Arc<Block>], criterion: SliceCriterion) -> Progr
     }
 }
 
+/// Compute a forward slice from the given criterion.
+pub fn forward_slice(blocks: &[Arc<Block>], criterion: SliceCriterion) -> ProgramSlice {
+    let all_stmts = flatten_statements(blocks);
+    let mut tracked_registers = HashSet::new();
+    let mut included = HashSet::new();
+
+    match &criterion {
+        SliceCriterion::Register(reg) => {
+            tracked_registers.insert(*reg);
+        }
+        SliceCriterion::Parameters => {
+            tracked_registers.extend(conservative_parameter_registers());
+        }
+        SliceCriterion::ReturnValue => {
+            return ProgramSlice {
+                included,
+                criterion,
+            };
+        }
+    }
+
+    for (idx, stmt) in &all_stmts {
+        if propagate_forward_statement(stmt, &mut tracked_registers) {
+            included.insert(*idx);
+        }
+    }
+
+    ProgramSlice {
+        included,
+        criterion,
+    }
+}
+
 fn flatten_statements(blocks: &[Arc<Block>]) -> Vec<(usize, &IrStatement)> {
     let mut all_stmts: Vec<(usize, &IrStatement)> = Vec::new();
     for block in blocks {
@@ -161,6 +208,116 @@ fn flatten_statements(blocks: &[Arc<Block>]) -> Vec<(usize, &IrStatement)> {
         }
     }
     all_stmts
+}
+
+fn conservative_parameter_registers() -> [Register; 12] {
+    [
+        <VirtualMachine as X64Range>::rdi(),
+        <VirtualMachine as X64Range>::edi(),
+        <VirtualMachine as X64Range>::rsi(),
+        <VirtualMachine as X64Range>::esi(),
+        <VirtualMachine as X64Range>::rdx(),
+        <VirtualMachine as X64Range>::edx(),
+        <VirtualMachine as X64Range>::rcx(),
+        <VirtualMachine as X64Range>::ecx(),
+        <VirtualMachine as X64Range>::r8(),
+        <VirtualMachine as X64Range>::r8d(),
+        <VirtualMachine as X64Range>::r9(),
+        <VirtualMachine as X64Range>::r9d(),
+    ]
+}
+
+fn conservative_return_registers() -> [Register; 2] {
+    [
+        <VirtualMachine as X64Range>::rax(),
+        <VirtualMachine as X64Range>::eax(),
+    ]
+}
+
+fn propagate_forward_statement(
+    statement: &IrStatement,
+    tracked_registers: &mut HashSet<Register>,
+) -> bool {
+    match statement {
+        IrStatement::Assignment { from, to, .. } => {
+            if !data_uses_tracked_registers(from, tracked_registers) {
+                return false;
+            }
+
+            if let IrData::Register(dst) = to.as_ref() {
+                tracked_registers.insert(*dst);
+            }
+
+            true
+        }
+        IrStatement::Condition {
+            condition,
+            true_branch,
+            false_branch,
+        } => {
+            let mut branch_relevant = false;
+
+            for inner in true_branch.iter().chain(false_branch.iter()) {
+                branch_relevant |= propagate_forward_statement(inner, tracked_registers);
+            }
+
+            data_uses_tracked_registers(condition, tracked_registers) || branch_relevant
+        }
+        IrStatement::Jump { target } => data_uses_tracked_registers(target, tracked_registers),
+        IrStatement::JumpByCall { .. } => {
+            let consumes_tracked_argument = conservative_parameter_registers()
+                .iter()
+                .any(|reg| tracked_registers.contains(reg));
+
+            if consumes_tracked_argument {
+                tracked_registers.extend(conservative_return_registers());
+            }
+
+            consumes_tracked_argument
+        }
+        IrStatement::Special(special) => special_uses_tracked_registers(special, tracked_registers),
+        IrStatement::Undefined | IrStatement::Exception(_) | IrStatement::Halt => false,
+    }
+}
+
+fn data_uses_tracked_registers(data: &Aos<IrData>, tracked_registers: &HashSet<Register>) -> bool {
+    match data.as_ref() {
+        IrData::Register(reg) => tracked_registers.contains(reg),
+        IrData::Dereference(inner) => data_uses_tracked_registers(inner, tracked_registers),
+        IrData::Operation(_) => {
+            let mut related = Vec::new();
+            data.get_related_ir_data(&mut related);
+
+            related.into_iter().any(|related| {
+                matches!(related.as_ref(), IrData::Register(reg) if tracked_registers.contains(reg))
+            })
+        }
+        _ => false,
+    }
+}
+
+fn special_uses_tracked_registers(
+    statement: &crate::ir::statements::IrStatementSpecial,
+    tracked_registers: &HashSet<Register>,
+) -> bool {
+    match statement {
+        crate::ir::statements::IrStatementSpecial::TypeSpecified { location, .. } => {
+            data_uses_tracked_registers(location, tracked_registers)
+        }
+        crate::ir::statements::IrStatementSpecial::CalcFlagsAutomatically {
+            operation,
+            flags,
+            ..
+        } => {
+            data_uses_tracked_registers(operation, tracked_registers)
+                || flags
+                    .iter()
+                    .any(|flag| data_uses_tracked_registers(flag, tracked_registers))
+        }
+        crate::ir::statements::IrStatementSpecial::Assertion { condition } => {
+            data_uses_tracked_registers(condition, tracked_registers)
+        }
+    }
 }
 
 /// Extract all registers referenced in an IrData expression.
@@ -193,7 +350,8 @@ pub fn log_slice_analysis(slice: &ProgramSlice, total_statements: usize) {
 
     if !slice.included.is_empty() {
         debug!(
-            "Program slice (return value): {}/{} statements ({:.1}%)",
+            "Program slice ({}): {}/{} statements ({:.1}%)",
+            slice.criterion.label(),
             slice.included.len(),
             total_statements,
             slice.coverage(total_statements) * 100.0,
