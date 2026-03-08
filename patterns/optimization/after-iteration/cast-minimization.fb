@@ -1,0 +1,58 @@
+# Cast minimization rules.
+# Removes redundant casts from expressions.
+
+# Rule 1: Double Cast collapse
+#   Cast(T1, Cast(T2, x)) => Cast(T1, x)
+# The inner cast is redundant when the outer cast determines the final type.
+# Note: In theory, intermediate casts can affect truncation/sign behavior
+# (e.g., int64→int8→int32 vs int64→int32). However, in this decompiler context,
+# Cast nodes represent type annotations recovered from assembly, not C-level
+# cast semantics with defined truncation. The outer cast fully determines intent.
+
+if:
+  at afterIteration
+  expr Cast($t1, Cast($_, $x))
+do:
+  replace_expr Cast($t1, $x)
+
+# Rule 2: Double unary cast collapse
+# CastSigned(CastSigned(x))   => CastSigned(x)
+# CastSigned(CastUnsigned(x)) => CastSigned(x)
+# CastUnsigned(CastSigned(x)) => CastUnsigned(x)
+# CastUnsigned(CastUnsigned(x)) => CastUnsigned(x)
+
+if:
+  at afterIteration
+  expr UnaryOp(CastSigned, UnaryOp(CastSigned, $x))
+do:
+  replace_expr UnaryOp(CastSigned, $x)
+
+if:
+  at afterIteration
+  expr UnaryOp(CastSigned, UnaryOp(CastUnsigned, $x))
+do:
+  replace_expr UnaryOp(CastSigned, $x)
+
+if:
+  at afterIteration
+  expr UnaryOp(CastUnsigned, UnaryOp(CastSigned, $x))
+do:
+  replace_expr UnaryOp(CastUnsigned, $x)
+
+if:
+  at afterIteration
+  expr UnaryOp(CastUnsigned, UnaryOp(CastUnsigned, $x))
+do:
+  replace_expr UnaryOp(CastUnsigned, $x)
+
+# Rule 3: Identity literal cast
+# Cast(T, Literal(Int(n))) where n fits in T => Literal(Int(n))
+# Only applies when the literal already fits in the target type,
+# so removing the cast preserves semantics.
+
+if:
+  at afterIteration
+  expr Cast($ty, Literal(Int($n)))
+  where fits($n, $ty)
+do:
+  replace_expr Literal(Int($n))

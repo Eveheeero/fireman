@@ -1,3 +1,5 @@
+//! Auto-generate descriptive comments for variables and function calls.
+
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstBinaryOperator, AstBuiltinFunctionArgument, AstCall,

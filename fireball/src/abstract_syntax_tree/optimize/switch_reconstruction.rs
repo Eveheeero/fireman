@@ -1,3 +1,5 @@
+//! Reconstruct switch/case statements from cascading if-else chains.
+
 use super::{
     opt_utils::expr_structurally_equal,
     pattern_matching::{Blake3StdHasher, hash_statement_list},

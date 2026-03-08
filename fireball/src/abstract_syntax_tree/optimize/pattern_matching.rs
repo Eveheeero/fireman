@@ -29,15 +29,11 @@ use std::{
 };
 use tracing::{debug, error, info, trace, warn};
 
+pub(crate) mod embedded;
 mod hashing;
+mod predefined_pattern;
+pub(crate) mod stmt_pattern;
 pub(super) use hashing::{Blake3StdHasher, hash_statement_list, structural_statement_hash};
-
-const PREDEFINED_REMOVE_EMPTY_STATEMENTS_FB: &str =
-    include_str!("../../../../patterns/remove-empty-statements.fb");
-const PREDEFINED_PRUNE_EMPTY_ELSE_FB: &str =
-    include_str!("../../../../patterns/prune-empty-else.fb");
-const PREDEFINED_COLLAPSE_EMPTY_BLOCKS_FB: &str =
-    include_str!("../../../../patterns/collapse-empty-blocks.fb");
 
 #[derive(Debug, Clone)]
 pub struct AstPattern {
@@ -134,20 +130,14 @@ impl AstPattern {
     }
 
     pub fn predefined_patterns() -> Vec<Self> {
-        vec![
-            Self::from_predefined_include(
-                "collapse-empty-blocks.fb",
-                PREDEFINED_COLLAPSE_EMPTY_BLOCKS_FB,
-            ),
-            Self::from_predefined_include(
-                "remove-empty-statements.fb",
-                PREDEFINED_REMOVE_EMPTY_STATEMENTS_FB,
-            ),
-            Self::from_predefined_include("prune-empty-else.fb", PREDEFINED_PRUNE_EMPTY_ELSE_FB),
-        ]
+        predefined_pattern::predefined_patterns()
     }
 
-    fn from_predefined_include(name: &str, source: &str) -> Self {
+    pub fn predefined_pattern(name: &str) -> Option<Self> {
+        predefined_pattern::predefined_pattern(name)
+    }
+
+    pub(super) fn from_predefined_include(name: &str, source: &str) -> Self {
         let (parsed, input_type) = match parse_pattern_file(name, source) {
             Ok(rule) => {
                 let input_type = infer_input_type_from_in_blocks(&rule.in_blocks);
@@ -195,6 +185,12 @@ struct AstPatternMatch {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct AstPatternSkippedMatch {
+    clause_group_index: usize,
+    matched: AstPatternMatch,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AstPatternApplyPhase {
     BeforeIrAnalyzation,
     AfterIrAnalyzation,
@@ -214,15 +210,42 @@ pub enum AstPatternApplyAt {
 pub struct AstPatternRule {
     pub source: String,
     pub in_blocks: Vec<Vec<AstPatternInBlock>>,
-    pub out_actions: Vec<AstPatternOutAction>,
+    clause_groups: Vec<AstPatternClauseGroup>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct AstPatternClauseGroup {
+    in_blocks: Vec<Vec<AstPatternInBlock>>,
+    out_actions: Vec<AstPatternOutAction>,
+}
+
+impl AstPatternClauseGroup {
+    fn is_empty(&self) -> bool {
+        self.in_blocks.is_empty() && self.out_actions.is_empty()
+    }
+}
+
+impl AstPatternRule {
+    fn push_clause_group(&mut self, group: AstPatternClauseGroup) {
+        self.in_blocks.extend(group.in_blocks.iter().cloned());
+        self.clause_groups.push(group);
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum AstPatternInBlock {
     At(AstPatternApplyAt),
     Asm(AstPatternAsmData),
+    AsmContains(String),
     Ast(AstPatternAstData),
+    AstSequence(Vec<AstPatternAstData>),
     Ir(AstPatternIrData),
+    Stmt(stmt_pattern::PatTree, Vec<stmt_pattern::WherePredicate>),
+    StmtSeq(
+        Vec<stmt_pattern::PatTree>,
+        Vec<stmt_pattern::WherePredicate>,
+    ),
+    Expr(stmt_pattern::PatTree, Vec<stmt_pattern::WherePredicate>),
     Script(AstPatternScript),
     SkipRange(AstPatternRange),
     SkipAsmRange(AstPatternRange),
@@ -234,7 +257,11 @@ pub enum AstPatternInBlock {
 enum AstPatternInBlockKind {
     At,
     Asm,
+    AsmContains,
     Ast,
+    Stmt,
+    StmtSeq,
+    Expr,
     Ir,
     Script,
     SkipRange,
@@ -248,7 +275,12 @@ impl AstPatternInBlock {
         match self {
             Self::At(_) => AstPatternInBlockKind::At,
             Self::Asm(_) => AstPatternInBlockKind::Asm,
+            Self::AsmContains(_) => AstPatternInBlockKind::AsmContains,
             Self::Ast(_) => AstPatternInBlockKind::Ast,
+            Self::AstSequence(_) => AstPatternInBlockKind::Ast,
+            Self::Stmt(_, _) => AstPatternInBlockKind::Stmt,
+            Self::StmtSeq(_, _) => AstPatternInBlockKind::StmtSeq,
+            Self::Expr(_, _) => AstPatternInBlockKind::Expr,
             Self::Ir(_) => AstPatternInBlockKind::Ir,
             Self::Script(_) => AstPatternInBlockKind::Script,
             Self::SkipRange(_) => AstPatternInBlockKind::SkipRange,
@@ -287,8 +319,12 @@ fn infer_input_type_from_in_blocks(in_blocks: &[Vec<AstPatternInBlock>]) -> AstP
     for clause in in_blocks.iter().flatten() {
         match clause {
             AstPatternInBlock::At(_) => {}
-            AstPatternInBlock::Asm(_) => has_asm = true,
-            AstPatternInBlock::Ast(_) => has_ast = true,
+            AstPatternInBlock::Asm(_) | AstPatternInBlock::AsmContains(_) => has_asm = true,
+            AstPatternInBlock::Ast(_)
+            | AstPatternInBlock::AstSequence(_)
+            | AstPatternInBlock::Stmt(_, _)
+            | AstPatternInBlock::StmtSeq(_, _)
+            | AstPatternInBlock::Expr(_, _) => has_ast = true,
             AstPatternInBlock::Ir(_) => has_ir = true,
             AstPatternInBlock::Script(_) => has_script = true,
             AstPatternInBlock::SkipRange(_)
@@ -325,6 +361,13 @@ fn block_asm(clauses: &[AstPatternInBlock]) -> Option<&AstPatternAsmData> {
     })
 }
 
+fn block_asm_contains(clauses: &[AstPatternInBlock]) -> Option<&str> {
+    clauses.iter().find_map(|clause| match clause {
+        AstPatternInBlock::AsmContains(value) => Some(value.as_str()),
+        _ => None,
+    })
+}
+
 fn block_at_matches_phase(
     clauses: &[AstPatternInBlock],
     phase: AstPatternApplyPhase,
@@ -357,6 +400,13 @@ fn block_ast(clauses: &[AstPatternInBlock]) -> Option<&AstPatternAstData> {
     })
 }
 
+fn block_ast_sequence(clauses: &[AstPatternInBlock]) -> Option<&[AstPatternAstData]> {
+    clauses.iter().find_map(|clause| match clause {
+        AstPatternInBlock::AstSequence(value) => Some(value.as_slice()),
+        _ => None,
+    })
+}
+
 fn block_ir(clauses: &[AstPatternInBlock]) -> Option<&AstPatternIrData> {
     clauses.iter().find_map(|clause| match clause {
         AstPatternInBlock::Ir(value) => Some(value),
@@ -367,6 +417,33 @@ fn block_ir(clauses: &[AstPatternInBlock]) -> Option<&AstPatternIrData> {
 fn block_script(clauses: &[AstPatternInBlock]) -> Option<&AstPatternScript> {
     clauses.iter().find_map(|clause| match clause {
         AstPatternInBlock::Script(value) => Some(value),
+        _ => None,
+    })
+}
+
+fn block_stmt(
+    clauses: &[AstPatternInBlock],
+) -> Option<(&stmt_pattern::PatTree, &[stmt_pattern::WherePredicate])> {
+    clauses.iter().find_map(|clause| match clause {
+        AstPatternInBlock::Stmt(pat, preds) => Some((pat, preds.as_slice())),
+        _ => None,
+    })
+}
+
+fn block_stmt_seq(
+    clauses: &[AstPatternInBlock],
+) -> Option<(&[stmt_pattern::PatTree], &[stmt_pattern::WherePredicate])> {
+    clauses.iter().find_map(|clause| match clause {
+        AstPatternInBlock::StmtSeq(pats, preds) => Some((pats.as_slice(), preds.as_slice())),
+        _ => None,
+    })
+}
+
+fn block_expr(
+    clauses: &[AstPatternInBlock],
+) -> Option<(&stmt_pattern::PatTree, &[stmt_pattern::WherePredicate])> {
+    clauses.iter().find_map(|clause| match clause {
+        AstPatternInBlock::Expr(pat, preds) => Some((pat, preds.as_slice())),
         _ => None,
     })
 }
@@ -405,8 +482,19 @@ pub enum AstPatternOutAction {
     ReplaceIr(AstPatternIrReplacement),
     ReplaceAst(AstStatement),
     Delete(AstPatternDeleteTarget),
+    SpliceBlock,
     Script(AstPatternScript),
+    Emit(stmt_pattern::PatTree),
+    EmitAfter(stmt_pattern::PatTree),
+    ReplaceExpr(stmt_pattern::PatTree),
+    /// Built-in function applied to captures for expression replacement.
+    /// Currently supports: `eval_binop($op, $a, $b)`, `eval_unary($op, $a)`.
+    ReplaceExprBuiltin {
+        func: String,
+        args: Vec<String>,
+    },
     Log(AstPatternLogLevel, String),
+    EmitComment(String),
     PruneEmptyElse,
 }
 
@@ -460,16 +548,16 @@ pub struct AstPatternAsmData {
     pub statement: AstStatement,
 }
 impl AstPatternAsmData {
-    pub fn from_text(text: &str) -> Option<Self> {
+    pub fn from_text(text: &str) -> Result<Self, String> {
         let value = text.trim();
         if value.is_empty() {
-            return None;
+            return Err("asm text cannot be empty".to_string());
         }
-        Some(Self {
+        let statement = parse_asm_statement(value)
+            .ok_or_else(|| format!("unsupported asm pattern `{value}`"))?;
+        Ok(Self {
             source: value.to_string(),
-            statement: parse_asm_statement(value)
-                .map(|statement| AstStatement::Ir(Box::new(statement)))
-                .unwrap_or_else(|| AstStatement::Comment(format!("asm {value}"))),
+            statement: AstStatement::Ir(Box::new(statement)),
         })
     }
 
@@ -502,6 +590,8 @@ enum AstPatternAstMatcher {
     Undefined,
     ReturnAny,
     CommentContains(Box<[u8]>),
+    Label(Option<Box<[u8]>>),
+    BlockAny,
     BlockEmpty,
     SomeEmpty,
     IfAny,
@@ -530,6 +620,18 @@ impl AstPatternAstData {
                 AstStatement::Comment(comment)
                     if normalized_comment_contains(comment, expected.as_ref())
             ),
+            AstPatternAstMatcher::Label(expected) => {
+                matches!(
+                    statement,
+                    AstStatement::Label(name)
+                    if match expected {
+                        None => true,
+                        Some(expected_normalized) =>
+                            normalize_for_match(name).as_bytes() == expected_normalized.as_ref(),
+                    }
+                )
+            }
+            AstPatternAstMatcher::BlockAny => matches!(statement, AstStatement::Block(_)),
             AstPatternAstMatcher::BlockEmpty => {
                 matches!(statement, AstStatement::Block(body) if body.is_empty())
             }
@@ -661,6 +763,9 @@ fn compile_ast_matcher(text: &str) -> AstPatternAstMatcher {
     if strict == "return" {
         return AstPatternAstMatcher::ReturnAny;
     }
+    if strict == "block(...)" {
+        return AstPatternAstMatcher::BlockAny;
+    }
     if strict == "block([])" {
         return AstPatternAstMatcher::BlockEmpty;
     }
@@ -680,7 +785,25 @@ fn compile_ast_matcher(text: &str) -> AstPatternAstMatcher {
             return AstPatternAstMatcher::IrExact(Box::new(statement));
         }
     }
+    if let Some(label) = parse_label_match(text) {
+        return AstPatternAstMatcher::Label(label);
+    }
     AstPatternAstMatcher::Unsupported
+}
+
+fn parse_label_match(text: &str) -> Option<Option<Box<[u8]>>> {
+    let strict = normalize_for_wildcard_match(text);
+    if let Some(inner) = strict
+        .strip_prefix("label(")
+        .and_then(|rest| rest.strip_suffix(")"))
+    {
+        if inner.is_empty() {
+            return Some(None);
+        }
+        let normalized = normalize_for_match(inner);
+        return Some(Some(normalized.into_bytes().into_boxed_slice()));
+    }
+    None
 }
 
 fn compile_ir_matcher(text: &str) -> AstPatternIrMatcher {
@@ -1019,7 +1142,10 @@ fn apply_single_file_rule(
         return false;
     }
 
-    let need_script = has_script_in_blocks(&rule.in_blocks);
+    let need_script = rule
+        .clause_groups
+        .iter()
+        .any(|group| has_script_in_blocks(&group.in_blocks));
     let (need_asm, need_ast, need_ir) = match input_type {
         AstPatternInputType::WithAssembly => (true, false, false),
         AstPatternInputType::WithAst => (false, true, false),
@@ -1027,8 +1153,46 @@ fn apply_single_file_rule(
         AstPatternInputType::Complex => (true, true, true),
     };
     let mut changed = false;
+
+    // Handle expr/replace_expr clause groups separately: they transform
+    // expressions in-place and don't participate in the statement-level
+    // match/skip convergence loop.
+    for group in &rule.clause_groups {
+        // Check if this group has an Expr in-block
+        let expr_match = group.in_blocks.iter().find_map(|block| block_expr(block));
+        let Some((match_pat, predicates)) = expr_match else {
+            continue;
+        };
+        // Check phase constraint
+        let at_ok = group.in_blocks.iter().all(|block| {
+            let (has_at, at_matched) = block_at_matches_phase(block, phase);
+            !has_at || at_matched
+        });
+        if !at_ok {
+            continue;
+        }
+        for action in &group.out_actions {
+            match action {
+                AstPatternOutAction::ReplaceExpr(replace_pat) => {
+                    changed |= stmt_pattern::transform_expressions_in_stmts(
+                        stmts,
+                        match_pat,
+                        predicates,
+                        replace_pat,
+                    );
+                }
+                AstPatternOutAction::ReplaceExprBuiltin { func, args } => {
+                    changed |= stmt_pattern::transform_expressions_in_stmts_builtin(
+                        stmts, match_pat, predicates, func, args,
+                    );
+                }
+                _ => {}
+            }
+        }
+    }
+
     let mut seen_states = HashSet::new();
-    let mut skipped_matches = HashSet::new();
+    let mut skipped_matches = HashSet::<AstPatternSkippedMatch>::new();
 
     loop {
         if stmts.is_empty() {
@@ -1077,26 +1241,44 @@ fn apply_single_file_rule(
             statement_count: stmts.len() as i64,
             asm_count: asm_lines.len() as i64,
         };
-        let matched = rule.in_blocks.iter().find_map(|block| {
-            let matched = match_if_block(
-                block,
-                &script_context,
-                &asm_lines,
-                &ast_statements,
-                &ir_statements,
-                phase,
-            )?;
-            if skipped_matches.contains(&matched) {
-                None
-            } else {
-                Some(matched)
-            }
-        });
-        let Some(matched) = matched else {
+        let matched = rule
+            .clause_groups
+            .iter()
+            .enumerate()
+            .filter(|(_, group)| {
+                // Skip expr/replace_expr groups -- handled above
+                !group
+                    .in_blocks
+                    .iter()
+                    .any(|block| has_kind(block, AstPatternInBlockKind::Expr))
+            })
+            .find_map(|(clause_group_index, group)| {
+                group.in_blocks.iter().find_map(|block| {
+                    let (matched, captures) = match_if_block(
+                        block,
+                        &script_context,
+                        &asm_lines,
+                        &ast_statements,
+                        &ir_statements,
+                        phase,
+                    )?;
+                    let skipped = AstPatternSkippedMatch {
+                        clause_group_index,
+                        matched,
+                    };
+                    if skipped_matches.contains(&skipped) {
+                        None
+                    } else {
+                        Some((clause_group_index, matched, captures))
+                    }
+                })
+            });
+        let Some((clause_group_index, matched, stmt_captures)) = matched else {
             break;
         };
+        let clause_group = &rule.clause_groups[clause_group_index];
 
-        for action in &rule.out_actions {
+        for action in &clause_group.out_actions {
             match action {
                 AstPatternOutAction::ReplaceAsm(replacement) => {
                     apply_replace_asm(stmts, &matched, replacement);
@@ -1110,8 +1292,32 @@ fn apply_single_file_rule(
                 AstPatternOutAction::Delete(target) => {
                     apply_delete_action(stmts, &matched, target);
                 }
+                AstPatternOutAction::SpliceBlock => {
+                    apply_splice_block(stmts, &matched);
+                }
+                AstPatternOutAction::Emit(emit_pat) => {
+                    if let Some((start, end)) = matched.ast_statement_range {
+                        if let Some(caps) = &stmt_captures {
+                            if let Some(replacement) =
+                                stmt_pattern::construct_statement(emit_pat, caps)
+                            {
+                                stmts[start].statement = replacement;
+                                // For multi-statement matches, remove the
+                                // trailing statements that were part of the
+                                // sequence.
+                                if end > start + 1 {
+                                    stmts.drain((start + 1)..end);
+                                }
+                            }
+                        }
+                    }
+                }
                 AstPatternOutAction::Script(script) => {
-                    if !execute_do_script(script, &script_context) {
+                    if !execute_do_script_with_captures(
+                        script,
+                        &script_context,
+                        stmt_captures.as_ref(),
+                    ) {
                         break;
                     }
                 }
@@ -1132,6 +1338,70 @@ fn apply_single_file_rule(
                         trace!("Pattern `{}` matched: {}", rule.source, msg)
                     }
                 },
+                AstPatternOutAction::EmitAfter(emit_pat) => {
+                    if let Some((_start, end)) = matched.ast_statement_range {
+                        if let Some(caps) = &stmt_captures {
+                            // EmitAfter expects a capture that holds a StmtList.
+                            // Construct the list and insert after the matched statement.
+                            if let Some(list) =
+                                stmt_pattern::construct_emit_after_list(emit_pat, caps)
+                            {
+                                let insert_pos = end + 1;
+                                for (j, after_stmt) in list.into_iter().enumerate() {
+                                    stmts.insert(insert_pos + j, after_stmt);
+                                }
+                            }
+                        }
+                    }
+                }
+                AstPatternOutAction::ReplaceExpr(replace_pat) => {
+                    // Find the expr pattern from the in-blocks of this clause group
+                    if let Some((match_pat, predicates)) = clause_group
+                        .in_blocks
+                        .iter()
+                        .flatten()
+                        .find_map(|b| match b {
+                            AstPatternInBlock::Expr(pat, preds) => Some((pat, preds.as_slice())),
+                            _ => None,
+                        })
+                    {
+                        stmt_pattern::transform_expressions_in_stmts(
+                            stmts,
+                            match_pat,
+                            predicates,
+                            replace_pat,
+                        );
+                    }
+                }
+                AstPatternOutAction::ReplaceExprBuiltin { func, args } => {
+                    // Find the expr pattern from the in-blocks of this clause group
+                    if let Some((match_pat, predicates)) = clause_group
+                        .in_blocks
+                        .iter()
+                        .flatten()
+                        .find_map(|b| match b {
+                            AstPatternInBlock::Expr(pat, preds) => Some((pat, preds.as_slice())),
+                            _ => None,
+                        })
+                    {
+                        stmt_pattern::transform_expressions_in_stmts_builtin(
+                            stmts, match_pat, predicates, func, args,
+                        );
+                    }
+                }
+                AstPatternOutAction::EmitComment(comment) => {
+                    if let Some((idx, _)) = matched.ast_statement_range {
+                        match &mut stmts[idx].comment {
+                            Some(existing) => {
+                                existing.push_str("; ");
+                                existing.push_str(comment);
+                            }
+                            None => {
+                                stmts[idx].comment = Some(comment.clone());
+                            }
+                        }
+                    }
+                }
                 AstPatternOutAction::PruneEmptyElse => {
                     prune_empty_else_recursive(stmts);
                 }
@@ -1144,11 +1414,17 @@ fn apply_single_file_rule(
             if matched.asm_statement_range.is_some() || matched.ast_statement_range.is_some() {
                 skipped_matches.clear();
             } else {
-                skipped_matches.insert(matched);
+                skipped_matches.insert(AstPatternSkippedMatch {
+                    clause_group_index,
+                    matched,
+                });
             }
             continue;
         } else {
-            skipped_matches.insert(matched);
+            skipped_matches.insert(AstPatternSkippedMatch {
+                clause_group_index,
+                matched,
+            });
         }
     }
 
@@ -1291,9 +1567,10 @@ fn match_if_block(
     ast_statements: &[AstStatement],
     ir_statements: &[IrStatement],
     phase: AstPatternApplyPhase,
-) -> Option<AstPatternMatch> {
+) -> Option<(AstPatternMatch, Option<stmt_pattern::Captures>)> {
     let mut has_condition = false;
     let mut matched = AstPatternMatch::default();
+    let mut stmt_captures: Option<stmt_pattern::Captures> = None;
 
     let (has_at, at_matched) = block_at_matches_phase(block, phase);
     if has_at {
@@ -1308,6 +1585,15 @@ fn match_if_block(
         let asm_skip_range = block_skip_range(block).or(block_skip_asm_range(block));
         matched.asm_statement_range = Some(find_asm_match(asm_lines, asm, asm_skip_range)?);
     }
+    if let Some(asm_contains) = block_asm_contains(block) {
+        has_condition = true;
+        let asm_skip_range = block_skip_range(block).or(block_skip_asm_range(block));
+        matched.asm_statement_range = Some(find_asm_contains_match(
+            asm_lines,
+            asm_contains,
+            asm_skip_range,
+        )?);
+    }
     if let Some(ast) = block_ast(block) {
         has_condition = true;
         matched.ast_statement_range = Some(find_ast_match(
@@ -1315,6 +1601,89 @@ fn match_if_block(
             ast,
             block_skip_ast_range(block),
         )?);
+    }
+    if let Some(ast_sequence) = block_ast_sequence(block) {
+        has_condition = true;
+        matched.ast_statement_range = Some(find_ast_sequence_match(
+            ast_statements,
+            ast_sequence,
+            block_skip_ast_range(block),
+        )?);
+    }
+    // stmt structural pattern matching with captures
+    if let Some((pat, predicates)) = block_stmt(block) {
+        has_condition = true;
+        let skip_range = block_skip_range(block).or(block_skip_ast_range(block));
+        let start = skip_range.map_or(0usize, |r| r.start.min(ast_statements.len()));
+        let end = skip_range.map_or(ast_statements.len(), |r| {
+            r.end_exclusive.min(ast_statements.len())
+        });
+        let mut found = false;
+        for i in start..end {
+            if let Some(caps) = stmt_pattern::match_statement(pat, &ast_statements[i]) {
+                let preds_ok = predicates
+                    .iter()
+                    .all(|pred| stmt_pattern::eval_where(pred, &caps));
+                if preds_ok {
+                    matched.ast_statement_range = Some((i, i + 1));
+                    stmt_captures = Some(caps);
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if !found {
+            return None;
+        }
+    }
+    // stmt_seq multi-statement sequence matching
+    if let Some((pats, predicates)) = block_stmt_seq(block) {
+        has_condition = true;
+        let skip_range = block_skip_range(block).or(block_skip_ast_range(block));
+        let start = skip_range.map_or(0usize, |r| r.start.min(ast_statements.len()));
+        let end = skip_range.map_or(ast_statements.len(), |r| {
+            r.end_exclusive.min(ast_statements.len())
+        });
+        let n = pats.len();
+        let mut found = false;
+        if n > 0 && end >= start + n {
+            for window_start in start..=(end - n) {
+                let mut all_matched = true;
+                let mut merged_caps = stmt_pattern::Captures::new();
+                for (j, pat) in pats.iter().enumerate() {
+                    if let Some(caps) =
+                        stmt_pattern::match_statement(pat, &ast_statements[window_start + j])
+                    {
+                        merged_caps.extend(caps);
+                    } else {
+                        all_matched = false;
+                        break;
+                    }
+                }
+                if all_matched {
+                    let preds_ok = predicates
+                        .iter()
+                        .all(|pred| stmt_pattern::eval_where(pred, &merged_caps));
+                    if preds_ok {
+                        matched.ast_statement_range = Some((window_start, window_start + n));
+                        stmt_captures = Some(merged_caps);
+                        found = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if !found {
+            return None;
+        }
+    }
+    // expr structural pattern matching (expression-level, matches anywhere)
+    if let Some((_pat, _predicates)) = block_expr(block) {
+        // The `expr` condition is always satisfied if present -- the actual
+        // matching and replacement is performed by `ReplaceExpr` in the do:
+        // section which walks all expressions in-place.  We just mark
+        // "has_condition = true" so the rule fires.
+        has_condition = true;
     }
     if let Some(ir) = block_ir(block) {
         has_condition = true;
@@ -1333,7 +1702,11 @@ fn match_if_block(
         }
     }
 
-    if has_condition { Some(matched) } else { None }
+    if has_condition {
+        Some((matched, stmt_captures))
+    } else {
+        None
+    }
 }
 
 fn collect_ast_debug(stmts: &[WrappedAstStatement]) -> String {
@@ -1432,6 +1805,49 @@ fn evaluate_if_script(script: &AstPatternScript, context: &AstPatternScriptConte
     }
 }
 
+fn execute_do_script_with_captures(
+    script: &AstPatternScript,
+    context: &AstPatternScriptContext<'_>,
+    captures: Option<&stmt_pattern::Captures>,
+) -> bool {
+    let source = script.source();
+    let compiled = match script.compiled_or_parse() {
+        Ok(compiled) => compiled,
+        Err(err) => {
+            error!(
+                "Pattern `{}` do script has no compiled AST: {} ({})",
+                context.source, source, err
+            );
+            return false;
+        }
+    };
+    let mut scope = build_rhai_scope(context);
+    if let Some(caps) = captures {
+        stmt_pattern::inject_captures_into_rhai_scope(caps, &mut scope);
+    }
+    match with_rhai_engine(|engine| engine.eval_ast_with_scope::<Dynamic>(&mut scope, &compiled)) {
+        Ok(value) => {
+            if let Some(continue_actions) = value.try_cast::<bool>() {
+                trace!(
+                    "Pattern `{}` do-script returned bool={}",
+                    context.source, continue_actions
+                );
+                if !continue_actions {
+                    return false;
+                }
+            }
+        }
+        Err(err) => {
+            error!(
+                "Pattern `{}` do script failed: {} ({})",
+                context.source, source, err
+            );
+            return false;
+        }
+    }
+    true
+}
+
 fn execute_do_script(script: &AstPatternScript, context: &AstPatternScriptContext<'_>) -> bool {
     let source = script.source();
     let compiled = match script.compiled_or_parse() {
@@ -1508,6 +1924,38 @@ fn find_asm_match(
     None
 }
 
+fn find_asm_contains_match(
+    asm_lines: &[AstPatternNormalizedAsmLine],
+    expected: &str,
+    skip_range: Option<AstPatternRange>,
+) -> Option<(usize, usize)> {
+    if asm_lines.is_empty() {
+        return None;
+    }
+
+    let expected = normalize_for_match(expected);
+    if expected.is_empty() {
+        return None;
+    }
+
+    let start = skip_range.map_or(0usize, |range| range.start.min(asm_lines.len()));
+    let end_exclusive = skip_range.map_or(asm_lines.len(), |range| {
+        range.end_exclusive.min(asm_lines.len())
+    });
+    if end_exclusive <= start {
+        return None;
+    }
+
+    for cursor in start..end_exclusive {
+        if asm_lines[cursor].line.contains(&expected) {
+            let stmt_index = asm_lines[cursor].stmt_index;
+            return Some((stmt_index, stmt_index));
+        }
+    }
+
+    None
+}
+
 fn find_ast_match(
     statements: &[AstStatement],
     data: &AstPatternAstData,
@@ -1528,6 +1976,41 @@ fn find_ast_match(
     for cursor in start..end_exclusive {
         if data.matches_statement(&statements[cursor]) {
             return Some((cursor, cursor));
+        }
+    }
+
+    None
+}
+
+fn find_ast_sequence_match(
+    statements: &[AstStatement],
+    data: &[AstPatternAstData],
+    skip_range: Option<AstPatternRange>,
+) -> Option<(usize, usize)> {
+    if statements.is_empty() || data.is_empty() {
+        return None;
+    }
+
+    let start = skip_range.map_or(0usize, |range| range.start.min(statements.len()));
+    let end_exclusive = skip_range.map_or(statements.len(), |range| {
+        range.end_exclusive.min(statements.len())
+    });
+    if end_exclusive <= start {
+        return None;
+    }
+
+    let sequence_len = data.len();
+    if end_exclusive - start < sequence_len {
+        return None;
+    }
+
+    for cursor in start..=(end_exclusive - sequence_len) {
+        if data
+            .iter()
+            .enumerate()
+            .all(|(offset, item)| item.matches_statement(&statements[cursor + offset]))
+        {
+            return Some((cursor, cursor + sequence_len - 1));
         }
     }
 
@@ -1713,6 +2196,22 @@ fn apply_delete_action(
     }
 }
 
+fn apply_splice_block(stmts: &mut Vec<WrappedAstStatement>, matched: &AstPatternMatch) {
+    let Some((start, end)) = matched.ast_statement_range else {
+        return;
+    };
+    if start != end || start >= stmts.len() {
+        return;
+    }
+
+    let removed = stmts.remove(start);
+    if let AstStatement::Block(inner) = removed.statement {
+        stmts.splice(start..start, inner);
+    } else {
+        stmts.insert(start, removed);
+    }
+}
+
 fn resolve_delete_anchor_index(
     matched: &AstPatternMatch,
     anchor: AstPatternDeleteAnchor,
@@ -1737,10 +2236,10 @@ fn resolve_delete_anchor_index(
     }
 }
 
-fn parse_asm_replacement(value: &str) -> Option<AstPatternAsmData> {
+fn parse_asm_replacement(value: &str) -> Result<AstPatternAsmData, String> {
     let text = value.trim();
     if text.is_empty() {
-        return None;
+        return Err("asm replacement cannot be empty".to_string());
     }
     let normalized = text.strip_prefix("asm ").unwrap_or(text).trim();
     AstPatternAsmData::from_text(normalized)
@@ -2389,26 +2888,26 @@ fn leak_static_str(text: &str) -> &'static str {
     Box::leak(text.to_string().into_boxed_str())
 }
 
-fn parse_ast_replacement(replacement: &str) -> AstStatement {
+fn parse_ast_replacement(replacement: &str) -> Result<AstStatement, String> {
     let text = replacement.trim();
     if text.eq_ignore_ascii_case("empty") {
-        AstStatement::Empty
+        Ok(AstStatement::Empty)
     } else if text.eq_ignore_ascii_case("undefined") {
-        AstStatement::Undefined
+        Ok(AstStatement::Undefined)
     } else if text.eq_ignore_ascii_case("return") {
-        AstStatement::Return(None)
+        Ok(AstStatement::Return(None))
     } else if let Some(content) = text.strip_prefix("comment ") {
-        AstStatement::Comment(content.trim().to_string())
+        Ok(AstStatement::Comment(content.trim().to_string()))
     } else if let Some(content) = text.strip_prefix("asm ") {
-        parse_asm_statement(content.trim())
-            .map(|stmt| AstStatement::Ir(Box::new(stmt)))
-            .unwrap_or_else(|| AstStatement::Comment(text.to_string()))
+        let statement = parse_asm_statement(content.trim())
+            .ok_or_else(|| format!("invalid ast asm replacement `{}`", content.trim()))?;
+        Ok(AstStatement::Ir(Box::new(statement)))
     } else if let Some(content) = text.strip_prefix("ir ") {
-        parse_ir_statement(content.trim())
+        Ok(parse_ir_statement(content.trim())
             .map(|stmt| AstStatement::Ir(Box::new(stmt)))
-            .unwrap_or_else(|| AstStatement::Comment(text.to_string()))
+            .unwrap_or_else(|| AstStatement::Comment(text.to_string())))
     } else {
-        AstStatement::Comment(text.to_string())
+        Ok(AstStatement::Comment(text.to_string()))
     }
 }
 
@@ -2449,6 +2948,47 @@ fn fingerprint(path: &str) -> Result<AstPatternFileFingerprint, String> {
     })
 }
 
+fn flush_current_in_blocks(
+    current_in_blocks: &mut Vec<Vec<AstPatternInBlock>>,
+    clause_group: &mut AstPatternClauseGroup,
+    has_current_in: &mut bool,
+) {
+    if !*has_current_in {
+        return;
+    }
+
+    let flushed = std::mem::take(current_in_blocks);
+    clause_group.in_blocks.extend(flushed);
+    *current_in_blocks = vec![Vec::new()];
+    *has_current_in = false;
+}
+
+fn finalize_clause_group(
+    rule: &mut AstPatternRule,
+    current_in_blocks: &mut Vec<Vec<AstPatternInBlock>>,
+    clause_group: &mut AstPatternClauseGroup,
+    has_current_in: &mut bool,
+    path: &str,
+) -> Result<(), String> {
+    flush_current_in_blocks(current_in_blocks, clause_group, has_current_in);
+    clause_group.in_blocks.retain(|block| !block.is_empty());
+    if clause_group.is_empty() {
+        return Ok(());
+    }
+    if clause_group.in_blocks.is_empty() {
+        return Err(format!(
+            "pattern `{path}` has `do:` actions without matching `if:` clauses"
+        ));
+    }
+    if clause_group.out_actions.is_empty() {
+        return Err(format!(
+            "pattern `{path}` has `if:` clauses without matching `do:` actions"
+        ));
+    }
+    rule.push_clause_group(std::mem::take(clause_group));
+    Ok(())
+}
+
 fn parse_pattern_file(path: &str, content: &str) -> Result<AstPatternRule, String> {
     let mut rule = AstPatternRule {
         source: path.to_string(),
@@ -2465,6 +3005,7 @@ fn parse_pattern_file(path: &str, content: &str) -> Result<AstPatternRule, Strin
     let mut idx = 0usize;
     let mut section = Section::None;
     let mut current_in_blocks: Vec<Vec<AstPatternInBlock>> = vec![Vec::new()];
+    let mut current_clause_group = AstPatternClauseGroup::default();
     let mut has_current_in = false;
 
     while idx < lines.len() {
@@ -2477,10 +3018,20 @@ fn parse_pattern_file(path: &str, content: &str) -> Result<AstPatternRule, Strin
         }
 
         if trimmed.starts_with("if:") {
-            if has_current_in {
-                let flushed = std::mem::take(&mut current_in_blocks);
-                rule.in_blocks.extend(flushed);
-                current_in_blocks = vec![Vec::new()];
+            if matches!(section, Section::Do) {
+                finalize_clause_group(
+                    &mut rule,
+                    &mut current_in_blocks,
+                    &mut current_clause_group,
+                    &mut has_current_in,
+                    path,
+                )?;
+            } else {
+                flush_current_in_blocks(
+                    &mut current_in_blocks,
+                    &mut current_clause_group,
+                    &mut has_current_in,
+                );
             }
             has_current_in = true;
             section = Section::If;
@@ -2488,26 +3039,145 @@ fn parse_pattern_file(path: &str, content: &str) -> Result<AstPatternRule, Strin
         }
 
         if trimmed.starts_with("do:") {
-            if has_current_in {
-                let flushed = std::mem::take(&mut current_in_blocks);
-                rule.in_blocks.extend(flushed);
-                current_in_blocks = vec![Vec::new()];
-                has_current_in = false;
+            if !has_current_in && current_clause_group.in_blocks.is_empty() {
+                return Err(format!(
+                    "pattern `{path}` has `do:` before any `if:` blocks"
+                ));
             }
+            flush_current_in_blocks(
+                &mut current_in_blocks,
+                &mut current_clause_group,
+                &mut has_current_in,
+            );
             section = Section::Do;
             continue;
         }
 
         match section {
             Section::If => {
-                if line.trim_start().starts_with("asm ") {
+                if line.trim_start().starts_with("asm_contains ") {
+                    let value = parse_multiline_value(
+                        line.trim_start(),
+                        "asm_contains ",
+                        &lines,
+                        &mut idx,
+                    )?;
+                    let expected = value.trim();
+                    if expected.is_empty() {
+                        return Err(format!(
+                            "invalid `asm_contains` matcher in pattern `{path}`: value must not be empty"
+                        ));
+                    }
+                    update_all_in_blocks(&mut current_in_blocks, |block| {
+                        set_clause(block, AstPatternInBlock::AsmContains(expected.to_string()));
+                    });
+                } else if line.trim_start().starts_with("asm ") {
                     let value = parse_multiline_value(line.trim_start(), "asm ", &lines, &mut idx)?;
                     let sequence = split_pattern_sequence_raw(&value, true);
                     let sequence = sequence
                         .iter()
-                        .filter_map(|item| AstPatternAsmData::from_text(item))
-                        .collect::<Vec<_>>();
+                        .map(|item| {
+                            AstPatternAsmData::from_text(item).map_err(|err| {
+                                format!(
+                                    "invalid asm matcher in pattern `{path}`: {} ({err})",
+                                    item.trim()
+                                )
+                            })
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
                     expand_in_blocks_for_asm(&mut current_in_blocks, &sequence);
+                } else if line.trim_start().starts_with("stmt ") {
+                    let value =
+                        parse_multiline_value(line.trim_start(), "stmt ", &lines, &mut idx)?;
+                    let pat_tree = stmt_pattern::parse_pattern(&value)
+                        .map_err(|err| format!("invalid stmt pattern in `{path}`: {err}"))?;
+                    // Collect any subsequent `where` lines
+                    let mut predicates = Vec::new();
+                    while idx < lines.len() {
+                        let next_line = strip_inline_comment(lines[idx]);
+                        let next_trimmed = next_line.trim();
+                        if next_trimmed.starts_with("where ") {
+                            idx += 1;
+                            let where_value = next_trimmed.strip_prefix("where ").unwrap();
+                            let pred = stmt_pattern::parse_where(where_value).map_err(|err| {
+                                format!("invalid where predicate in `{path}`: {err}")
+                            })?;
+                            predicates.push(pred);
+                        } else {
+                            break;
+                        }
+                    }
+                    update_all_in_blocks(&mut current_in_blocks, |block| {
+                        set_clause(
+                            block,
+                            AstPatternInBlock::Stmt(pat_tree.clone(), predicates.clone()),
+                        );
+                    });
+                } else if line.trim_start().starts_with("stmt_seq ") {
+                    let value =
+                        parse_multiline_value(line.trim_start(), "stmt_seq ", &lines, &mut idx)?;
+                    let pat_trees = split_stmt_seq_patterns(&value)
+                        .into_iter()
+                        .map(|s| {
+                            stmt_pattern::parse_pattern(&s).map_err(|err| {
+                                format!("invalid stmt_seq pattern in `{path}`: {err}")
+                            })
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+                    if pat_trees.is_empty() {
+                        return Err(format!(
+                            "stmt_seq requires at least one pattern in `{path}`"
+                        ));
+                    }
+                    // Collect any subsequent `where` lines
+                    let mut predicates = Vec::new();
+                    while idx < lines.len() {
+                        let next_line = strip_inline_comment(lines[idx]);
+                        let next_trimmed = next_line.trim();
+                        if next_trimmed.starts_with("where ") {
+                            idx += 1;
+                            let where_value = next_trimmed.strip_prefix("where ").unwrap();
+                            let pred = stmt_pattern::parse_where(where_value).map_err(|err| {
+                                format!("invalid where predicate in `{path}`: {err}")
+                            })?;
+                            predicates.push(pred);
+                        } else {
+                            break;
+                        }
+                    }
+                    update_all_in_blocks(&mut current_in_blocks, |block| {
+                        set_clause(
+                            block,
+                            AstPatternInBlock::StmtSeq(pat_trees.clone(), predicates.clone()),
+                        );
+                    });
+                } else if line.trim_start().starts_with("expr ") {
+                    let value =
+                        parse_multiline_value(line.trim_start(), "expr ", &lines, &mut idx)?;
+                    let pat_tree = stmt_pattern::parse_pattern(&value)
+                        .map_err(|err| format!("invalid expr pattern in `{path}`: {err}"))?;
+                    // Collect any subsequent `where` lines
+                    let mut predicates = Vec::new();
+                    while idx < lines.len() {
+                        let next_line = strip_inline_comment(lines[idx]);
+                        let next_trimmed = next_line.trim();
+                        if next_trimmed.starts_with("where ") {
+                            idx += 1;
+                            let where_value = next_trimmed.strip_prefix("where ").unwrap();
+                            let pred = stmt_pattern::parse_where(where_value).map_err(|err| {
+                                format!("invalid where predicate in `{path}`: {err}")
+                            })?;
+                            predicates.push(pred);
+                        } else {
+                            break;
+                        }
+                    }
+                    update_all_in_blocks(&mut current_in_blocks, |block| {
+                        set_clause(
+                            block,
+                            AstPatternInBlock::Expr(pat_tree.clone(), predicates.clone()),
+                        );
+                    });
                 } else if line.trim_start().starts_with("ast ") {
                     let value = parse_multiline_value(line.trim_start(), "ast ", &lines, &mut idx)?;
                     let sequence = split_pattern_sequence_raw(&value, false);
@@ -2609,49 +3279,110 @@ fn parse_pattern_file(path: &str, content: &str) -> Result<AstPatternRule, Strin
                 let trimmed = line.trim_start();
                 if trimmed.starts_with("asm ") {
                     let value = parse_multiline_value(trimmed, "asm ", &lines, &mut idx)?;
-                    let replacement = parse_asm_replacement(&value).ok_or_else(|| {
+                    let replacement = parse_asm_replacement(&value).map_err(|err| {
                         format!(
-                            "invalid asm replacement in pattern `{path}`: {}",
+                            "invalid asm replacement in pattern `{path}`: {} ({err})",
                             value.trim()
                         )
                     })?;
-                    rule.out_actions
+                    current_clause_group
+                        .out_actions
                         .push(AstPatternOutAction::ReplaceAsm(replacement));
                 } else if trimmed.starts_with("ir ") {
                     let value = parse_multiline_value(trimmed, "ir ", &lines, &mut idx)?;
-                    rule.out_actions
+                    current_clause_group
+                        .out_actions
                         .push(AstPatternOutAction::ReplaceIr(parse_ir_replacement(&value)));
                 } else if trimmed.starts_with("ast ") {
                     let value = parse_multiline_value(trimmed, "ast ", &lines, &mut idx)?;
-                    rule.out_actions
+                    current_clause_group
+                        .out_actions
                         .push(AstPatternOutAction::ReplaceAst(parse_ast_replacement(
                             &value,
-                        )));
+                        )?));
                 } else if trimmed.starts_with("del ") {
                     let value = parse_multiline_value(trimmed, "del ", &lines, &mut idx)?;
                     let target = parse_do_delete_target(&value)?;
-                    rule.out_actions.push(AstPatternOutAction::Delete(target));
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::Delete(target));
+                } else if trimmed == "splice-block" {
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::SpliceBlock);
                 } else if trimmed.starts_with("script ") {
                     let value = parse_multiline_value(trimmed, "script ", &lines, &mut idx)?;
-                    rule.out_actions
+                    current_clause_group
+                        .out_actions
                         .push(AstPatternOutAction::Script(parse_rhai_script(&value)?));
                 } else if let Some(msg) = parse_log_action(trimmed, "info") {
-                    rule.out_actions
+                    current_clause_group
+                        .out_actions
                         .push(AstPatternOutAction::Log(AstPatternLogLevel::Info, msg));
                 } else if let Some(msg) = parse_log_action(trimmed, "warn") {
-                    rule.out_actions
+                    current_clause_group
+                        .out_actions
                         .push(AstPatternOutAction::Log(AstPatternLogLevel::Warn, msg));
                 } else if let Some(msg) = parse_log_action(trimmed, "error") {
-                    rule.out_actions
+                    current_clause_group
+                        .out_actions
                         .push(AstPatternOutAction::Log(AstPatternLogLevel::Error, msg));
                 } else if let Some(msg) = parse_log_action(trimmed, "debug") {
-                    rule.out_actions
+                    current_clause_group
+                        .out_actions
                         .push(AstPatternOutAction::Log(AstPatternLogLevel::Debug, msg));
                 } else if let Some(msg) = parse_log_action(trimmed, "trace") {
-                    rule.out_actions
+                    current_clause_group
+                        .out_actions
                         .push(AstPatternOutAction::Log(AstPatternLogLevel::Trace, msg));
+                } else if trimmed.starts_with("emit_after ") {
+                    let value = parse_multiline_value(trimmed, "emit_after ", &lines, &mut idx)?;
+                    let emit_pat = stmt_pattern::parse_pattern(&value)
+                        .map_err(|err| format!("invalid emit_after pattern in `{path}`: {err}"))?;
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::EmitAfter(emit_pat));
+                } else if trimmed.starts_with("emit ") {
+                    let value = parse_multiline_value(trimmed, "emit ", &lines, &mut idx)?;
+                    let emit_pat = stmt_pattern::parse_pattern(&value)
+                        .map_err(|err| format!("invalid emit pattern in `{path}`: {err}"))?;
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::Emit(emit_pat));
+                } else if trimmed.starts_with("replace_expr_fn ") {
+                    let value =
+                        parse_multiline_value(trimmed, "replace_expr_fn ", &lines, &mut idx)?;
+                    let (func, args) = parse_builtin_call(&value)
+                        .map_err(|err| format!("invalid replace_expr_fn in `{path}`: {err}"))?;
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::ReplaceExprBuiltin { func, args });
+                } else if trimmed.starts_with("replace_expr ") {
+                    let value = parse_multiline_value(trimmed, "replace_expr ", &lines, &mut idx)?;
+                    let replace_pat = stmt_pattern::parse_pattern(&value).map_err(|err| {
+                        format!("invalid replace_expr pattern in `{path}`: {err}")
+                    })?;
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::ReplaceExpr(replace_pat));
+                } else if trimmed.starts_with("emit_comment ") {
+                    let raw = trimmed.strip_prefix("emit_comment ").unwrap().trim();
+                    let comment_text = if (raw.starts_with('"') && raw.ends_with('"'))
+                        || (raw.starts_with('\'') && raw.ends_with('\''))
+                    {
+                        raw[1..raw.len() - 1].to_string()
+                    } else {
+                        return Err(format!(
+                            "emit_comment requires a quoted string in pattern `{path}`: {raw}"
+                        ));
+                    };
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::EmitComment(comment_text));
                 } else if trimmed == "prune-empty-else" {
-                    rule.out_actions.push(AstPatternOutAction::PruneEmptyElse);
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::PruneEmptyElse);
                 } else {
                     return Err(format!(
                         "unknown `do` directive in pattern `{path}`: {}",
@@ -2667,16 +3398,18 @@ fn parse_pattern_file(path: &str, content: &str) -> Result<AstPatternRule, Strin
         }
     }
 
-    if has_current_in {
-        let flushed = std::mem::take(&mut current_in_blocks);
-        rule.in_blocks.extend(flushed);
-    }
+    finalize_clause_group(
+        &mut rule,
+        &mut current_in_blocks,
+        &mut current_clause_group,
+        &mut has_current_in,
+        path,
+    )?;
 
-    if rule.in_blocks.is_empty() {
-        return Err(format!("pattern `{path}` has no `if` blocks"));
-    }
-    if rule.out_actions.is_empty() {
-        return Err(format!("pattern `{path}` has no `do` actions"));
+    if rule.clause_groups.is_empty() {
+        return Err(format!(
+            "pattern `{path}` has no complete `if` / `do` clauses"
+        ));
     }
 
     Ok(rule)
@@ -2721,6 +3454,31 @@ fn strip_inline_comment(line: &str) -> String {
     }
 
     out
+}
+
+/// Parse a built-in function call like `eval_binop($op, $a, $b)`.
+/// Returns (function_name, [capture_name_without_dollar, ...]).
+fn parse_builtin_call(input: &str) -> Result<(String, Vec<String>), String> {
+    let input = input.trim();
+    let paren_idx = input
+        .find('(')
+        .ok_or_else(|| format!("expected '(' in builtin call: {input}"))?;
+    let func = input[..paren_idx].trim().to_string();
+    let rest = input[paren_idx + 1..]
+        .strip_suffix(')')
+        .ok_or_else(|| format!("missing closing ')' in builtin call: {input}"))?;
+    let args: Result<Vec<String>, String> = rest
+        .split(',')
+        .map(|arg| {
+            let arg = arg.trim();
+            arg.strip_prefix('$')
+                .ok_or_else(|| {
+                    format!("builtin call arguments must be captures ($name), got: {arg}")
+                })
+                .map(|s| s.to_string())
+        })
+        .collect();
+    Ok((func, args?))
 }
 
 fn parse_multiline_value(
@@ -2799,6 +3557,13 @@ fn expand_in_blocks_for_ast(
     sequence: &[AstPatternAstData],
 ) {
     if sequence.is_empty() {
+        return;
+    }
+
+    if sequence.len() > 1 {
+        for block in blocks.iter_mut() {
+            set_clause(block, AstPatternInBlock::AstSequence(sequence.to_vec()));
+        }
         return;
     }
 
@@ -2989,6 +3754,48 @@ fn parse_signed_offset(value: &str, name: &str) -> Result<isize, String> {
         .trim()
         .parse::<isize>()
         .map_err(|err| format!("invalid del {name} `{value}`: {err}"))
+}
+
+/// Split a `[Pat1, Pat2, ...]` list by top-level commas, respecting nested
+/// parentheses and brackets.
+fn split_stmt_seq_patterns(input: &str) -> Vec<String> {
+    let trimmed = input.trim();
+    // Strip the outer brackets
+    let inner = if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        &trimmed[1..trimmed.len() - 1]
+    } else {
+        trimmed
+    };
+    let mut results = Vec::new();
+    let mut depth = 0i32;
+    let mut current = String::new();
+    for ch in inner.chars() {
+        match ch {
+            '(' | '[' => {
+                depth += 1;
+                current.push(ch);
+            }
+            ')' | ']' => {
+                depth -= 1;
+                current.push(ch);
+            }
+            ',' if depth == 0 => {
+                let s = current.trim().to_string();
+                if !s.is_empty() {
+                    results.push(s);
+                }
+                current.clear();
+            }
+            _ => {
+                current.push(ch);
+            }
+        }
+    }
+    let s = current.trim().to_string();
+    if !s.is_empty() {
+        results.push(s);
+    }
+    results
 }
 
 fn parse_log_action(line: &str, name: &str) -> Option<String> {

@@ -1,3 +1,5 @@
+//! Build and query the inter-procedural call graph.
+
 use crate::abstract_syntax_tree::{
     Ast, AstCall, AstExpression, AstFunctionId, AstStatement, WrappedAstStatement,
 };

@@ -1,0 +1,11 @@
+# Suppress Windows stack probing calls (__chkstk, __alloca_probe).
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __chkstk
+if:
+  at beforeIrAnalyzation
+  asm_contains __alloca_probe
+do:
+  ast comment // stack probe
+  del start[0]

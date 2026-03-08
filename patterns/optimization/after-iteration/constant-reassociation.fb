@@ -1,0 +1,23 @@
+# Commutative constant reassociation:
+#   (x op c1) op c2  →  x op (c1 op c2)
+#   c2 op (c1 op x)  →  (c2 op c1) op x
+# Only for commutative+associative ops: Add, Mul, BitAnd, BitOr, BitXor.
+# Uses the eval_reassociate builtin to check associativity and fold the constants.
+
+# Rule 1: (x op c1) op c2 → x op (c1 op c2)
+if:
+  at afterIteration
+  expr BinaryOp($op, BinaryOp($op2, $x, Literal($c1)), Literal($c2))
+  where same_discriminant($op, $op2)
+  where not_literal($x)
+do:
+  replace_expr_fn eval_reassociate($op, $x, $c1, $c2)
+
+# Rule 2: c2 op (c1 op x) → (c2 op c1) op x
+if:
+  at afterIteration
+  expr BinaryOp($op, Literal($c2), BinaryOp($op2, Literal($c1), $x))
+  where same_discriminant($op, $op2)
+  where not_literal($x)
+do:
+  replace_expr_fn eval_reassociate_left($op, $x, $c2, $c1)

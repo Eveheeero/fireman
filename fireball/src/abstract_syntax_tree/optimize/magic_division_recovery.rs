@@ -1,3 +1,5 @@
+//! Recover division and modulo from magic-number multiplication patterns.
+
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
@@ -256,7 +258,7 @@ fn extract_uint_literal(expr: &AstExpression) -> Option<u64> {
 
 /// Extract the magic constant from an expression.
 /// Returns (value_as_u64, is_signed).
-fn extract_magic_constant(expr: &AstExpression) -> Option<(u64, bool)> {
+pub(crate) fn extract_magic_constant(expr: &AstExpression) -> Option<(u64, bool)> {
     match expr {
         AstExpression::Literal(AstLiteral::UInt(v)) => Some((*v, false)),
         AstExpression::Literal(AstLiteral::Int(v)) => {
@@ -277,7 +279,7 @@ fn extract_magic_constant(expr: &AstExpression) -> Option<(u64, bool)> {
 /// where magic is approximately 2^(64+shift) / d.
 ///
 /// Try small divisors 2..=1024 and verify the relationship holds exactly.
-fn try_recover_division(magic: u64, shift: u64) -> Option<u64> {
+pub(crate) fn try_recover_division(magic: u64, shift: u64) -> Option<u64> {
     let magic128 = magic as u128;
 
     for d in 2u64..=1024 {

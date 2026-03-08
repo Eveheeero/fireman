@@ -1,5 +1,0 @@
-if:
-  at afterOptimization
-  ast Empty
-do:
-  del start[0]

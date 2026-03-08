@@ -1,3 +1,5 @@
+//! Recover meaningful variable and function names from debug info and heuristics.
+
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId,

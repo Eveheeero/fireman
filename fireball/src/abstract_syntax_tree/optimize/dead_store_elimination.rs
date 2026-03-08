@@ -1,3 +1,5 @@
+//! Remove stores to variables that are overwritten before being read.
+
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,

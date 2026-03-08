@@ -1,3 +1,5 @@
+//! Propagate variable copies to eliminate intermediary assignments.
+
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,

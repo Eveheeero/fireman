@@ -1,3 +1,5 @@
+//! Contain goto jumps into structured if/else/loop control flow.
+
 use crate::{
     abstract_syntax_tree::{
         Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget, AstStatement,

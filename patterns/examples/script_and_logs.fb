@@ -1,0 +1,14 @@
+if:
+  at afterParameterAnalyzation
+  script `
+stmt_count >= 5 && asm_count >= 2
+`
+do:
+  script `
+error("error log from inner")
+`
+  info("info log")
+  warn("warn log")
+  error("error log")
+  debug("debug log")
+  trace("trace log")

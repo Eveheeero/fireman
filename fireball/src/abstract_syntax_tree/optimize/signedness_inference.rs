@@ -1,3 +1,5 @@
+//! Infer signed/unsigned integer types from operator usage context.
+
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,

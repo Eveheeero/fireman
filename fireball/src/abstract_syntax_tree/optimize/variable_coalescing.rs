@@ -1,3 +1,5 @@
+//! Merge variables with non-overlapping lifetimes into single variables.
+
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,

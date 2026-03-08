@@ -1,3 +1,5 @@
+//! Detect and recover loop structures (for, while, do-while).
+
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,

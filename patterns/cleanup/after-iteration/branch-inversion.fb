@@ -1,0 +1,9 @@
+# Invert if(!cond) { A } else { B } → if(cond) { B } else { A }
+# when the else branch is larger than the then branch.
+
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, $cond), $then, Some($else))
+  where greater_count($else, $then)
+do:
+  emit If($cond, $else, Some($then))

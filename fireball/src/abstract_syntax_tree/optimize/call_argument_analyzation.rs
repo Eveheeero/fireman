@@ -1,3 +1,5 @@
+//! Recover function call arguments from register and stack locations.
+
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunction,

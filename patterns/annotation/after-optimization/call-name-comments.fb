@@ -1,0 +1,338 @@
+# Call-name annotation: insert descriptive comments before recognized call patterns.
+#
+# Each rule matches a statement-level Call whose name (case-insensitive)
+# contains a characteristic substring and annotates it with a comment.
+
+# noreturn calls (exit, abort, panic, terminate)
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "exit")
+do:
+  emit_comment "// does not return"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "abort")
+do:
+  emit_comment "// does not return"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "panic")
+do:
+  emit_comment "// does not return"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "terminate")
+do:
+  emit_comment "// does not return"
+
+# SEH setup
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "_seh_")
+do:
+  emit_comment "// SEH setup"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "setunhandledexceptionfilter")
+do:
+  emit_comment "// SEH setup"
+
+# Static local initialization guard
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "_guard_")
+do:
+  emit_comment "// static local initialization guard"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "__cxa_guard")
+do:
+  emit_comment "// static local initialization guard"
+
+# Anti-debug / anti-analysis
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "isdebuggerpresent")
+do:
+  emit_comment "// anti-debug / anti-analysis check"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "ptrace")
+do:
+  emit_comment "// anti-debug / anti-analysis check"
+
+# Sanitizer/coverage instrumentation
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "__sanitizer")
+do:
+  emit_comment "// sanitizer/coverage instrumentation"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "__asan")
+do:
+  emit_comment "// sanitizer/coverage instrumentation"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "__msan")
+do:
+  emit_comment "// sanitizer/coverage instrumentation"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "__tsan")
+do:
+  emit_comment "// sanitizer/coverage instrumentation"
+
+# Retpoline
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "retpoline")
+do:
+  emit_comment "// retpoline indirect call thunk"
+
+# Logging / debug output
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "printf")
+do:
+  emit_comment "// logging / debug output"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "syslog")
+do:
+  emit_comment "// logging / debug output"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "nslog")
+do:
+  emit_comment "// logging / debug output"
+
+# Heap allocation / deallocation
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "malloc")
+do:
+  emit_comment "// heap allocation"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "calloc")
+do:
+  emit_comment "// heap allocation"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "realloc")
+do:
+  emit_comment "// heap reallocation"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "free")
+do:
+  emit_comment "// heap deallocation"
+
+# Dynamic stack allocation
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "alloca")
+do:
+  emit_comment "// dynamic stack allocation (alloca/VLA)"
+
+# Objective-C runtime dispatch
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "objc_msgsend")
+do:
+  emit_comment "// Objective-C runtime dispatch"
+
+# C++ exception handling
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "__cxa_throw")
+do:
+  emit_comment "// C++ exception handling runtime"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "__cxa_begin_catch")
+do:
+  emit_comment "// C++ exception handling runtime"
+
+# Thread-local storage
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "__tls_")
+do:
+  emit_comment "// thread-local storage access"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "emutls")
+do:
+  emit_comment "// thread-local storage access"
+
+# Rust panic / unwind
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "rust_begin_unwind")
+do:
+  emit_comment "// Rust panic / unwind runtime"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "rust_panic")
+do:
+  emit_comment "// Rust panic / unwind runtime"
+
+# Non-local jumps
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "setjmp")
+do:
+  emit_comment "// non-local jump (setjmp/longjmp)"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "longjmp")
+do:
+  emit_comment "// non-local jump (setjmp/longjmp)"
+
+# Atomic operations
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "__atomic")
+do:
+  emit_comment "// atomic operation"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "__sync_")
+do:
+  emit_comment "// atomic operation"
+
+# String operations
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "memcpy")
+do:
+  emit_comment "// string operation"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "memset")
+do:
+  emit_comment "// string operation"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "strlen")
+do:
+  emit_comment "// string operation"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "strcmp")
+do:
+  emit_comment "// string operation"
+
+# Math library
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "sqrt")
+do:
+  emit_comment "// math library call"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "sin")
+do:
+  emit_comment "// math library call"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "cos")
+do:
+  emit_comment "// math library call"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "pow")
+do:
+  emit_comment "// math library call"
+
+# Stack canary check
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "stack_chk")
+do:
+  emit_comment "// stack canary check"
+
+# Safe/split stack instrumentation
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "__safestack")
+do:
+  emit_comment "// safe/split stack instrumentation"
+
+if:
+  at afterOptimization
+  stmt Call($f)
+  where call_name_matches($f, "__splitstack")
+do:
+  emit_comment "// safe/split stack instrumentation"

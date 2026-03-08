@@ -1,3 +1,5 @@
+//! Convert IR statements into high-level AST representation.
+
 mod convert;
 
 use crate::{

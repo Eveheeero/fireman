@@ -1,0 +1,7 @@
+# Remove empty else branches (Some([])) from if statements.
+
+if:
+  at afterOptimization
+  ast Some([])
+do:
+  prune-empty-else

@@ -1,0 +1,130 @@
+if:
+  at beforeIrAnalyzation
+  asm `mov rsp, 8; push rbp`
+  ast comment seed-comment
+  ir undefined
+  script `
+stmt_count >= 5 && asm_count >= 2
+`
+  skip_range 0..8
+  skip_asm_range 0..8
+  skip_ast_range 0..8
+  skip_ir_range 0..8
+if:
+  at afterIteration
+  asm push rbp
+  script `
+asm_count >= 1
+`
+  skip asm 0..8
+  skip ast 0..8
+  skip ir 0..8
+do:
+  asm mov esp, 8
+  ir halt
+  ast asm push rbp
+  script `
+// Function syntax example: fn works in do-scripts for logic
+// that doesn't need scope variables (stmt_count, asm_count, etc.)
+// Note: scope variables are NOT visible inside fn definitions in Rhai.
+fn should_apply() {
+  true
+}
+should_apply()
+`
+  info("info log from all_syntax")
+  warn("warn log from all_syntax")
+  error("error log from all_syntax")
+  debug("debug log from all_syntax")
+  trace("trace log from all_syntax")
+if:
+  at afterOptimization
+  asm_contains __stack_chk_fail
+do:
+  ast comment multi-clause example
+
+# ── Statement-level pattern matching ──
+#
+# Match a single statement by its AST structure.
+# Capture sub-expressions with $name variables.
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, $cond), $then, Some($else))
+  where greater_count($else, $then)
+do:
+  emit If($cond, $else, Some($then))
+
+# ── Expression-level pattern matching ──
+#
+# Match an expression node (applies recursively to all expressions).
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, BinaryOp(RightShift, $x, Literal(Int($n))), BinaryOp(LeftShift, $x2, Literal(Int($m))))
+  where structurally_equal($x, $x2)
+  where is_nonzero($n)
+  where is_nonzero($m)
+  where sum_equals($n, $m, 32)
+do:
+  replace_expr_fn eval_rotate_right($x, $n)
+
+# ── Statement sequence matching (stmt_seq) ──
+#
+# Match a sequence of consecutive statements using a bracket list.
+# The pattern engine slides a window over the block to find matches.
+if:
+  at afterIteration
+  stmt_seq [Call($f), Return(None)]
+do:
+  emit Return(Some(Call($f)))
+
+# ── Where predicates ──
+#
+# structurally_equal($a, $b) — two captured expressions are identical ASTs
+# is_literal($x) — the capture is a literal value
+# is_variable($x) — the capture is a variable reference
+# is_zero($x) — the capture is a literal zero (Int(0) or UInt(0))
+# is_nonzero($x) — the capture is a non-zero literal
+# greater_count($a, $b) — capture $a has more statements than $b
+# sum_equals($a, $b, N) — integer captures $a + $b == N (N can be a literal or $capture)
+# call_name_matches($f, "pattern") — captured Call name contains "pattern" (case-insensitive)
+#   Works with AstCall::Unknown and AstCall::Variable (looks up variable name).
+#   Example: call_name_matches($f, "malloc") matches calls to malloc, __libc_malloc, etc.
+
+# ── Call matching and construction ──
+#
+# Call() matches both statement-level calls and expression-level calls.
+# In stmt patterns: Call($f) captures the entire AstCall.
+# In expr patterns: Call($f) captures the call expression.
+# In emit/replace: Call($f) reconstructs from the captured call.
+
+# ── Builtin evaluation functions (replace_expr_fn) ──
+#
+# replace_expr_fn invokes a built-in Rust function to compute the replacement.
+# Available builtins:
+#   eval_rotate_right($x, $n)  — builds __builtin_rotate_right(x, n)
+#   eval_rotate_left($x, $n)   — builds __builtin_rotate_left(x, n)
+#   eval_strength_reduce_add($x, $n) — (x<<n)+x → x*(2^n+1)
+#   eval_strength_reduce_sub($x, $n) — (x<<n)-x → x*(2^n-1)
+#   eval_strength_reduce_dual($x, $n, $m) — (x<<n)+(x<<m) → x*(2^n+2^m)
+#   eval_magic_division($x, $magic, $shift) — (x*magic)>>shift → x/divisor
+#     Tries small divisors 2..=1024 for the magic multiply-then-shift pattern.
+#     Handles both unsigned and signed (negative magic constant) variants.
+
+# ── Additional statement matching ──
+#
+# Goto($label) — matches AstStatement::Goto(AstJumpTarget::Unknown(label))
+# Comment($text) — matches AstStatement::Comment(text)
+# Label($text) — matches AstStatement::Label(text)
+# All three can be matched AND constructed in emit blocks.
+# String captures use $name and reconstruct via the captured string.
+
+# ── emit_comment ──
+#
+# Annotate a matched statement with a comment without replacing it.
+# The comment is appended to any existing comment with "; " separator.
+if:
+  at afterIteration
+  stmt If($cond, $then, None)
+  where is_literal($cond)
+do:
+  emit_comment "dead branch detected"

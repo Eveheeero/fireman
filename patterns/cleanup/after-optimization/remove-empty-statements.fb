@@ -1,0 +1,7 @@
+# Remove Empty statement nodes from the AST.
+
+if:
+  at afterOptimization
+  ast Empty
+do:
+  del start[0]

@@ -1,5 +1,0 @@
-if:
-  at afterOptimization
-  ast Label(cleanup)
-do:
-  ast comment // error cleanup handler

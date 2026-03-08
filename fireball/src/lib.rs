@@ -10,7 +10,7 @@ pub mod prelude;
 pub mod tests;
 pub mod utils;
 
-pub use crate::core::Fire;
+pub use crate::{abstract_syntax_tree::pattern_matching, core::Fire};
 use crate::{core::FireRaw, prelude::*};
 
 /// Enum storing parsers for all supported types

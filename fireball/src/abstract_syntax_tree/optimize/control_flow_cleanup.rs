@@ -1,3 +1,5 @@
+//! Simplify control flow: dead branches, tail-call merge, branch inversion.
+
 use crate::{
     abstract_syntax_tree::{
         Ast, AstCall, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral, AstStatement,
@@ -62,23 +64,6 @@ fn cleanup_statement_list(
 ) {
     for stmt in stmts.iter_mut() {
         cleanup_statement(stmt, noreturn_targets);
-    }
-
-    // Flatten Block([...]) nodes: splice their contents into the parent list.
-    let mut i = 0;
-    while i < stmts.len() {
-        if matches!(&stmts[i].statement, AstStatement::Block(_)) {
-            let removed = stmts.remove(i);
-            if let AstStatement::Block(inner) = removed.statement {
-                let count = inner.len();
-                for (j, s) in inner.into_iter().enumerate() {
-                    stmts.insert(i + j, s);
-                }
-                i += count;
-            }
-        } else {
-            i += 1;
-        }
     }
 
     if let Some((index, _outcome)) = first_terminal_index(stmts, noreturn_targets) {

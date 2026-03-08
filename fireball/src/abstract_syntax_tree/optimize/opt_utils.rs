@@ -1,3 +1,5 @@
+//! Shared utility functions for optimization passes (structural equality, purity, eval).
+
 use crate::abstract_syntax_tree::{AstExpression, AstVariableId};
 
 /// Recursive structural comparison of two expressions.
@@ -200,4 +202,187 @@ fn unary_op_equal(a: &AstUnaryOperator, b: &AstUnaryOperator) -> bool {
 
 fn binary_op_equal(a: &AstBinaryOperator, b: &AstBinaryOperator) -> bool {
     std::mem::discriminant(a) == std::mem::discriminant(b)
+}
+
+// ---------------------------------------------------------------------------
+// Literal evaluation (moved from constant_folding.rs for reuse by .fb patterns)
+// ---------------------------------------------------------------------------
+
+pub fn eval_unary(operator: &AstUnaryOperator, value: &AstLiteral) -> Option<AstLiteral> {
+    match (operator, value) {
+        (AstUnaryOperator::Negate, AstLiteral::Int(v)) => v.checked_neg().map(AstLiteral::Int),
+        (AstUnaryOperator::Not, AstLiteral::Bool(v)) => Some(AstLiteral::Bool(!v)),
+        (AstUnaryOperator::BitNot, AstLiteral::Int(v)) => Some(AstLiteral::Int(!v)),
+        (AstUnaryOperator::BitNot, AstLiteral::UInt(v)) => Some(AstLiteral::UInt(!v)),
+        (AstUnaryOperator::CastSigned, AstLiteral::Int(v)) => Some(AstLiteral::Int(*v)),
+        (AstUnaryOperator::CastSigned, AstLiteral::UInt(v)) => {
+            i64::try_from(*v).ok().map(AstLiteral::Int)
+        }
+        (AstUnaryOperator::CastSigned, AstLiteral::Bool(v)) => {
+            Some(AstLiteral::Int(if *v { 1 } else { 0 }))
+        }
+        (AstUnaryOperator::CastUnsigned, AstLiteral::UInt(v)) => Some(AstLiteral::UInt(*v)),
+        (AstUnaryOperator::CastUnsigned, AstLiteral::Int(v)) => {
+            u64::try_from(*v).ok().map(AstLiteral::UInt)
+        }
+        (AstUnaryOperator::CastUnsigned, AstLiteral::Bool(v)) => {
+            Some(AstLiteral::UInt(if *v { 1 } else { 0 }))
+        }
+        _ => None,
+    }
+}
+
+pub fn eval_binary(
+    operator: &AstBinaryOperator,
+    left: &AstLiteral,
+    right: &AstLiteral,
+) -> Option<AstLiteral> {
+    match (left, right) {
+        (AstLiteral::Int(a), AstLiteral::Int(b)) => eval_binary_i64(operator, *a, *b),
+        (AstLiteral::UInt(a), AstLiteral::UInt(b)) => eval_binary_u64(operator, *a, *b),
+        (AstLiteral::Float(a), AstLiteral::Float(b)) => eval_binary_f64(operator, *a, *b),
+        (AstLiteral::Bool(a), AstLiteral::Bool(b)) => eval_binary_bool(operator, *a, *b),
+        (AstLiteral::Char(a), AstLiteral::Char(b)) => eval_binary_char(operator, *a, *b),
+        (AstLiteral::String(a), AstLiteral::String(b)) => eval_binary_str(operator, a, b),
+        _ => None,
+    }
+}
+
+fn eval_binary_i64(operator: &AstBinaryOperator, a: i64, b: i64) -> Option<AstLiteral> {
+    match operator {
+        AstBinaryOperator::Add => a.checked_add(b).map(AstLiteral::Int),
+        AstBinaryOperator::Sub => a.checked_sub(b).map(AstLiteral::Int),
+        AstBinaryOperator::Mul => a.checked_mul(b).map(AstLiteral::Int),
+        AstBinaryOperator::Div => {
+            if b == 0 {
+                None
+            } else {
+                a.checked_div(b).map(AstLiteral::Int)
+            }
+        }
+        AstBinaryOperator::Mod => {
+            if b == 0 {
+                None
+            } else {
+                a.checked_rem(b).map(AstLiteral::Int)
+            }
+        }
+        AstBinaryOperator::BitAnd => Some(AstLiteral::Int(a & b)),
+        AstBinaryOperator::BitOr => Some(AstLiteral::Int(a | b)),
+        AstBinaryOperator::BitXor => Some(AstLiteral::Int(a ^ b)),
+        AstBinaryOperator::LeftShift => {
+            if b < 0 || b >= 64 {
+                None
+            } else {
+                Some(AstLiteral::Int(a.wrapping_shl(b as u32)))
+            }
+        }
+        AstBinaryOperator::RightShift => {
+            if b < 0 || b >= 64 {
+                None
+            } else {
+                Some(AstLiteral::Int(a.wrapping_shr(b as u32)))
+            }
+        }
+        AstBinaryOperator::Equal => Some(AstLiteral::Bool(a == b)),
+        AstBinaryOperator::NotEqual => Some(AstLiteral::Bool(a != b)),
+        AstBinaryOperator::Less => Some(AstLiteral::Bool(a < b)),
+        AstBinaryOperator::LessEqual => Some(AstLiteral::Bool(a <= b)),
+        AstBinaryOperator::Greater => Some(AstLiteral::Bool(a > b)),
+        AstBinaryOperator::GreaterEqual => Some(AstLiteral::Bool(a >= b)),
+        AstBinaryOperator::LogicAnd | AstBinaryOperator::LogicOr => None,
+    }
+}
+
+fn eval_binary_u64(operator: &AstBinaryOperator, a: u64, b: u64) -> Option<AstLiteral> {
+    match operator {
+        AstBinaryOperator::Add => a.checked_add(b).map(AstLiteral::UInt),
+        AstBinaryOperator::Sub => a.checked_sub(b).map(AstLiteral::UInt),
+        AstBinaryOperator::Mul => a.checked_mul(b).map(AstLiteral::UInt),
+        AstBinaryOperator::Div => {
+            if b == 0 {
+                None
+            } else {
+                a.checked_div(b).map(AstLiteral::UInt)
+            }
+        }
+        AstBinaryOperator::Mod => {
+            if b == 0 {
+                None
+            } else {
+                a.checked_rem(b).map(AstLiteral::UInt)
+            }
+        }
+        AstBinaryOperator::BitAnd => Some(AstLiteral::UInt(a & b)),
+        AstBinaryOperator::BitOr => Some(AstLiteral::UInt(a | b)),
+        AstBinaryOperator::BitXor => Some(AstLiteral::UInt(a ^ b)),
+        AstBinaryOperator::LeftShift => {
+            if b >= 64 {
+                None
+            } else {
+                Some(AstLiteral::UInt(a.wrapping_shl(b as u32)))
+            }
+        }
+        AstBinaryOperator::RightShift => {
+            if b >= 64 {
+                None
+            } else {
+                Some(AstLiteral::UInt(a.wrapping_shr(b as u32)))
+            }
+        }
+        AstBinaryOperator::Equal => Some(AstLiteral::Bool(a == b)),
+        AstBinaryOperator::NotEqual => Some(AstLiteral::Bool(a != b)),
+        AstBinaryOperator::Less => Some(AstLiteral::Bool(a < b)),
+        AstBinaryOperator::LessEqual => Some(AstLiteral::Bool(a <= b)),
+        AstBinaryOperator::Greater => Some(AstLiteral::Bool(a > b)),
+        AstBinaryOperator::GreaterEqual => Some(AstLiteral::Bool(a >= b)),
+        AstBinaryOperator::LogicAnd | AstBinaryOperator::LogicOr => None,
+    }
+}
+
+fn eval_binary_f64(operator: &AstBinaryOperator, a: f64, b: f64) -> Option<AstLiteral> {
+    match operator {
+        AstBinaryOperator::Add => Some(AstLiteral::Float(a + b)),
+        AstBinaryOperator::Sub => Some(AstLiteral::Float(a - b)),
+        AstBinaryOperator::Mul => Some(AstLiteral::Float(a * b)),
+        AstBinaryOperator::Div => Some(AstLiteral::Float(a / b)),
+        AstBinaryOperator::Equal => Some(AstLiteral::Bool(a == b)),
+        AstBinaryOperator::NotEqual => Some(AstLiteral::Bool(a != b)),
+        AstBinaryOperator::Less => Some(AstLiteral::Bool(a < b)),
+        AstBinaryOperator::LessEqual => Some(AstLiteral::Bool(a <= b)),
+        AstBinaryOperator::Greater => Some(AstLiteral::Bool(a > b)),
+        AstBinaryOperator::GreaterEqual => Some(AstLiteral::Bool(a >= b)),
+        _ => None,
+    }
+}
+
+fn eval_binary_bool(operator: &AstBinaryOperator, a: bool, b: bool) -> Option<AstLiteral> {
+    match operator {
+        AstBinaryOperator::LogicAnd => Some(AstLiteral::Bool(a && b)),
+        AstBinaryOperator::LogicOr => Some(AstLiteral::Bool(a || b)),
+        AstBinaryOperator::Equal => Some(AstLiteral::Bool(a == b)),
+        AstBinaryOperator::NotEqual => Some(AstLiteral::Bool(a != b)),
+        _ => None,
+    }
+}
+
+fn eval_binary_char(operator: &AstBinaryOperator, a: char, b: char) -> Option<AstLiteral> {
+    match operator {
+        AstBinaryOperator::Equal => Some(AstLiteral::Bool(a == b)),
+        AstBinaryOperator::NotEqual => Some(AstLiteral::Bool(a != b)),
+        AstBinaryOperator::Less => Some(AstLiteral::Bool(a < b)),
+        AstBinaryOperator::LessEqual => Some(AstLiteral::Bool(a <= b)),
+        AstBinaryOperator::Greater => Some(AstLiteral::Bool(a > b)),
+        AstBinaryOperator::GreaterEqual => Some(AstLiteral::Bool(a >= b)),
+        _ => None,
+    }
+}
+
+fn eval_binary_str(operator: &AstBinaryOperator, a: &str, b: &str) -> Option<AstLiteral> {
+    match operator {
+        AstBinaryOperator::Equal => Some(AstLiteral::Bool(a == b)),
+        AstBinaryOperator::NotEqual => Some(AstLiteral::Bool(a != b)),
+        AstBinaryOperator::Add => Some(AstLiteral::String(format!("{a}{b}"))),
+        _ => None,
+    }
 }

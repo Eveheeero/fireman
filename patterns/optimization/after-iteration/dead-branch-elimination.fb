@@ -1,0 +1,56 @@
+# Dead branch elimination: remove branches with constant boolean conditions.
+# Extracted from control_flow_cleanup::prune_constant_condition_branches
+# and constant_folding dead branch elimination.
+
+# Rule 1: if(true) { A } else { B } → Block(A)
+if:
+  at afterIteration
+  stmt If(Literal(Bool(true)), $bt, $_)
+do:
+  emit Block($bt)
+
+# Rule 2: if(false) { _ } else { B } → Block(B)
+if:
+  at afterIteration
+  stmt If(Literal(Bool(false)), $_, Some($bf))
+do:
+  emit Block($bf)
+
+# Rule 3: if(false) { _ } → Empty
+if:
+  at afterIteration
+  stmt If(Literal(Bool(false)), $_, None)
+do:
+  emit Empty
+
+# Rules 4-9: Integer zero/nonzero as falsy/truthy conditions.
+# In decompiled code, if(0) means dead code; if(nonzero_literal) means always-taken.
+# Note: only literal zero is handled; nonzero would need an is_nonzero predicate.
+
+# Rule 4: if(0) { _ } else { B } → Block(B)  (Int zero = falsy)
+if:
+  at afterIteration
+  stmt If(Literal(Int(0)), $_, Some($bf))
+do:
+  emit Block($bf)
+
+# Rule 5: if(0) { _ } → Empty  (UInt zero)
+if:
+  at afterIteration
+  stmt If(Literal(Int(0)), $_, None)
+do:
+  emit Empty
+
+# Rule 6: if(0u) { _ } else { B } → Block(B)
+if:
+  at afterIteration
+  stmt If(Literal(UInt(0)), $_, Some($bf))
+do:
+  emit Block($bf)
+
+# Rule 7: if(0u) { _ } → Empty
+if:
+  at afterIteration
+  stmt If(Literal(UInt(0)), $_, None)
+do:
+  emit Empty

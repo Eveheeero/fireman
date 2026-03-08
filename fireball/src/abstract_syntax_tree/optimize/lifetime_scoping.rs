@@ -1,3 +1,5 @@
+//! Infer variable lifetimes and insert scope boundaries.
+
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,

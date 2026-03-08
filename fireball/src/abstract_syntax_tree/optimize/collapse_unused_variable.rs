@@ -1,3 +1,5 @@
+//! Remove assignments to variables that are never subsequently read.
+
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement,

@@ -1,3 +1,5 @@
+//! Eliminate redundant repeated subexpressions via hash-based detection.
+
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,

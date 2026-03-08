@@ -822,10 +822,13 @@ fn structure_loop(
         .filter(|&b| loop_blocks.contains(&b) && b != excluded)
         .collect();
 
-    // Use a local processed set for the body, seeded with only the excluded
-    // control block to prevent re-entering the current loop's control flow
+    // Use a local processed set for the body, seeded with both the excluded
+    // control block and the header to prevent re-entering the current loop.
+    // Without inserting the header, do-while loops (where excluded == latch)
+    // would see the header in body_rpo and re-enter structure_loop infinitely.
     let mut body_processed: HashSet<usize> = HashSet::new();
     body_processed.insert(excluded);
+    body_processed.insert(header);
 
     let body = if body_rpo.is_empty() {
         StructuredRegion::Block(excluded)

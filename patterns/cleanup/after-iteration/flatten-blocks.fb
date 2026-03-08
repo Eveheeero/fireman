@@ -1,0 +1,7 @@
+# Splice nested Block(...) contents into parent scope.
+
+if:
+  at afterIteration
+  ast Block(...)
+do:
+  splice-block

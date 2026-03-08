@@ -1,3 +1,5 @@
+//! Lower structured regions (loops, conditionals) into nested AST nodes.
+
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstBinaryOperator, AstExpression, AstFunctionId,

@@ -1,3 +1,5 @@
+//! Analyze and simplify loop induction variables.
+
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
