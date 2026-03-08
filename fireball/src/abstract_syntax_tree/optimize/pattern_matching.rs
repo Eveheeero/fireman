@@ -495,6 +495,8 @@ pub enum AstPatternOutAction {
     },
     Log(AstPatternLogLevel, String),
     EmitComment(String),
+    /// Set the `.comment` field on matched expressions (expression-level annotation).
+    AnnotateExpr(String),
     PruneEmptyElse,
 }
 
@@ -1186,6 +1188,11 @@ fn apply_single_file_rule(
                         stmts, match_pat, predicates, func, args,
                     );
                 }
+                AstPatternOutAction::AnnotateExpr(comment) => {
+                    changed |= stmt_pattern::annotate_expressions_in_stmts(
+                        stmts, match_pat, predicates, comment,
+                    );
+                }
                 _ => {}
             }
         }
@@ -1386,6 +1393,21 @@ fn apply_single_file_rule(
                     {
                         stmt_pattern::transform_expressions_in_stmts_builtin(
                             stmts, match_pat, predicates, func, args,
+                        );
+                    }
+                }
+                AstPatternOutAction::AnnotateExpr(comment) => {
+                    if let Some((match_pat, predicates)) = clause_group
+                        .in_blocks
+                        .iter()
+                        .flatten()
+                        .find_map(|b| match b {
+                            AstPatternInBlock::Expr(pat, preds) => Some((pat, preds.as_slice())),
+                            _ => None,
+                        })
+                    {
+                        stmt_pattern::annotate_expressions_in_stmts(
+                            stmts, match_pat, predicates, comment,
                         );
                     }
                 }
@@ -3379,6 +3401,20 @@ fn parse_pattern_file(path: &str, content: &str) -> Result<AstPatternRule, Strin
                     current_clause_group
                         .out_actions
                         .push(AstPatternOutAction::EmitComment(comment_text));
+                } else if trimmed.starts_with("annotate_expr ") {
+                    let raw = trimmed.strip_prefix("annotate_expr ").unwrap().trim();
+                    let comment_text = if (raw.starts_with('"') && raw.ends_with('"'))
+                        || (raw.starts_with('\'') && raw.ends_with('\''))
+                    {
+                        raw[1..raw.len() - 1].to_string()
+                    } else {
+                        return Err(format!(
+                            "annotate_expr requires a quoted string in pattern `{path}`: {raw}"
+                        ));
+                    };
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::AnnotateExpr(comment_text));
                 } else if trimmed == "prune-empty-else" {
                     current_clause_group
                         .out_actions

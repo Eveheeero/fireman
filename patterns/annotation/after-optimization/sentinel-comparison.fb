@@ -1,0 +1,84 @@
+# Annotate sentinel-value comparisons with expression-level comments.
+#
+# x == -1     → "sentinel check (-1 / INVALID_HANDLE_VALUE)"
+# x != -1     → "sentinel check (-1 / INVALID_HANDLE_VALUE)"
+# x == 0xFFFFFFFF → "sentinel check (0xFFFFFFFF)"
+# x != 0xFFFFFFFF → "sentinel check (0xFFFFFFFF)"
+
+# Int(-1) on either side, Equal
+if:
+  at afterOptimization
+  expr BinaryOp(Equal, $x, Literal(Int(-1)))
+do:
+  annotate_expr "sentinel check (-1 / INVALID_HANDLE_VALUE)"
+
+if:
+  at afterOptimization
+  expr BinaryOp(Equal, Literal(Int(-1)), $x)
+do:
+  annotate_expr "sentinel check (-1 / INVALID_HANDLE_VALUE)"
+
+# Int(-1) on either side, NotEqual
+if:
+  at afterOptimization
+  expr BinaryOp(NotEqual, $x, Literal(Int(-1)))
+do:
+  annotate_expr "sentinel check (-1 / INVALID_HANDLE_VALUE)"
+
+if:
+  at afterOptimization
+  expr BinaryOp(NotEqual, Literal(Int(-1)), $x)
+do:
+  annotate_expr "sentinel check (-1 / INVALID_HANDLE_VALUE)"
+
+# UInt(0xFFFFFFFF) on either side, Equal
+if:
+  at afterOptimization
+  expr BinaryOp(Equal, $x, Literal(UInt(4294967295)))
+do:
+  annotate_expr "sentinel check (0xFFFFFFFF)"
+
+if:
+  at afterOptimization
+  expr BinaryOp(Equal, Literal(UInt(4294967295)), $x)
+do:
+  annotate_expr "sentinel check (0xFFFFFFFF)"
+
+# UInt(0xFFFFFFFF) on either side, NotEqual
+if:
+  at afterOptimization
+  expr BinaryOp(NotEqual, $x, Literal(UInt(4294967295)))
+do:
+  annotate_expr "sentinel check (0xFFFFFFFF)"
+
+if:
+  at afterOptimization
+  expr BinaryOp(NotEqual, Literal(UInt(4294967295)), $x)
+do:
+  annotate_expr "sentinel check (0xFFFFFFFF)"
+
+# UInt(0xFFFFFFFFFFFFFFFF) on either side, Equal
+if:
+  at afterOptimization
+  expr BinaryOp(Equal, $x, Literal(UInt(18446744073709551615)))
+do:
+  annotate_expr "sentinel check (-1 / INVALID_HANDLE_VALUE)"
+
+if:
+  at afterOptimization
+  expr BinaryOp(Equal, Literal(UInt(18446744073709551615)), $x)
+do:
+  annotate_expr "sentinel check (-1 / INVALID_HANDLE_VALUE)"
+
+# UInt(0xFFFFFFFFFFFFFFFF) on either side, NotEqual
+if:
+  at afterOptimization
+  expr BinaryOp(NotEqual, $x, Literal(UInt(18446744073709551615)))
+do:
+  annotate_expr "sentinel check (-1 / INVALID_HANDLE_VALUE)"
+
+if:
+  at afterOptimization
+  expr BinaryOp(NotEqual, Literal(UInt(18446744073709551615)), $x)
+do:
+  annotate_expr "sentinel check (-1 / INVALID_HANDLE_VALUE)"

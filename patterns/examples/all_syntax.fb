@@ -128,3 +128,29 @@ if:
   where is_literal($cond)
 do:
   emit_comment "dead branch detected"
+
+# ── annotate_expr ──
+#
+# Set the `.comment` field on matched expressions (expression-level annotation).
+# Unlike emit_comment (which adds a comment statement), annotate_expr sets
+# the inline comment on the expression node itself.
+# Only annotates if the expression has no existing comment.
+#
+# if:
+#   at afterOptimization
+#   expr BinaryOp(Equal, $x, Literal(Int(-1)))
+# do:
+#   annotate_expr "sentinel check (-1 / INVALID_HANDLE_VALUE)"
+
+# ── Ternary matching ──
+#
+# Ternary(cond, true_expr, false_expr) matches AstExpression::Ternary.
+# Combined with structurally_equal, this enables MIN/MAX detection:
+#
+# if:
+#   at afterOptimization
+#   stmt Assignment($lhs, Ternary(BinOp(Less, $a, $b), $a2, $b2))
+#   where structurally_equal($a, $a2)
+#   where structurally_equal($b, $b2)
+# do:
+#   emit_comment "MIN"

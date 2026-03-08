@@ -42,3 +42,23 @@ pub(crate) struct DecompileResultView {
     pub(crate) decompiled_line_ranges: Vec<(usize, usize)>,
     pub(crate) data: DecompileResult,
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum EditorLayer {
+    Assembly,
+    Ir,
+    Ast,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) struct EditorTarget {
+    pub(crate) layer: EditorLayer,
+    pub(crate) row: usize,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct PatchOperation {
+    pub(crate) layer: EditorLayer,
+    pub(crate) target: String,
+    pub(crate) text: String,
+}

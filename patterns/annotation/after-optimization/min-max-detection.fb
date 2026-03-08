@@ -1,0 +1,84 @@
+# Detect MIN/MAX ternary patterns and annotate with comments.
+#
+# (a < b) ? a : b  → MIN(a, b)
+# (a < b) ? b : a  → MAX(a, b)
+# (a > b) ? a : b  → MAX(a, b)
+# (a > b) ? b : a  → MIN(a, b)
+#
+# Also covers <= and >= variants.
+
+# --- MIN patterns ---
+
+# (a < b) ? a : b → MIN
+if:
+  at afterOptimization
+  stmt Assignment($lhs, Ternary(BinaryOp(Less, $a, $b), $a2, $b2))
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  emit_comment "MIN"
+
+# (a <= b) ? a : b → MIN
+if:
+  at afterOptimization
+  stmt Assignment($lhs, Ternary(BinaryOp(LessEqual, $a, $b), $a2, $b2))
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  emit_comment "MIN"
+
+# (a > b) ? b : a → MIN
+if:
+  at afterOptimization
+  stmt Assignment($lhs, Ternary(BinaryOp(Greater, $a, $b), $b2, $a2))
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  emit_comment "MIN"
+
+# (a >= b) ? b : a → MIN
+if:
+  at afterOptimization
+  stmt Assignment($lhs, Ternary(BinaryOp(GreaterEqual, $a, $b), $b2, $a2))
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  emit_comment "MIN"
+
+# --- MAX patterns ---
+
+# (a < b) ? b : a → MAX
+if:
+  at afterOptimization
+  stmt Assignment($lhs, Ternary(BinaryOp(Less, $a, $b), $b2, $a2))
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  emit_comment "MAX"
+
+# (a <= b) ? b : a → MAX
+if:
+  at afterOptimization
+  stmt Assignment($lhs, Ternary(BinaryOp(LessEqual, $a, $b), $b2, $a2))
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  emit_comment "MAX"
+
+# (a > b) ? a : b → MAX
+if:
+  at afterOptimization
+  stmt Assignment($lhs, Ternary(BinaryOp(Greater, $a, $b), $a2, $b2))
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  emit_comment "MAX"
+
+# (a >= b) ? a : b → MAX
+if:
+  at afterOptimization
+  stmt Assignment($lhs, Ternary(BinaryOp(GreaterEqual, $a, $b), $a2, $b2))
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  emit_comment "MAX"

@@ -51,6 +51,10 @@ const PREDEFINED_MAGIC_DIVISION_RECOVERY_FB: &str =
     include_str!("../../../../../patterns/recognition/after-iteration/magic-division-recovery.fb");
 const PREDEFINED_CALL_NAME_COMMENTS_FB: &str =
     include_str!("../../../../../patterns/annotation/after-optimization/call-name-comments.fb");
+const PREDEFINED_MIN_MAX_DETECTION_FB: &str =
+    include_str!("../../../../../patterns/annotation/after-optimization/min-max-detection.fb");
+const PREDEFINED_SENTINEL_COMPARISON_FB: &str =
+    include_str!("../../../../../patterns/annotation/after-optimization/sentinel-comparison.fb");
 
 pub(super) fn predefined_patterns() -> Vec<AstPattern> {
     vec![
@@ -120,6 +124,14 @@ pub(super) fn predefined_patterns() -> Vec<AstPattern> {
         AstPattern::from_predefined_include(
             "call-name-comments.fb",
             PREDEFINED_CALL_NAME_COMMENTS_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "min-max-detection.fb",
+            PREDEFINED_MIN_MAX_DETECTION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "sentinel-comparison.fb",
+            PREDEFINED_SENTINEL_COMPARISON_FB,
         ),
     ]
 }
@@ -223,6 +235,14 @@ pub(super) fn predefined_pattern(name: &str) -> Option<AstPattern> {
         "call-name-comments.fb" => Some(AstPattern::from_predefined_include(
             "call-name-comments.fb",
             PREDEFINED_CALL_NAME_COMMENTS_FB,
+        )),
+        "min-max-detection.fb" => Some(AstPattern::from_predefined_include(
+            "min-max-detection.fb",
+            PREDEFINED_MIN_MAX_DETECTION_FB,
+        )),
+        "sentinel-comparison.fb" => Some(AstPattern::from_predefined_include(
+            "sentinel-comparison.fb",
+            PREDEFINED_SENTINEL_COMPARISON_FB,
         )),
         _ => None,
     }

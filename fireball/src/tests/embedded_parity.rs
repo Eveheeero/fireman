@@ -753,6 +753,102 @@ fn parity_merge_same_condition_ifs() {
     );
 }
 
+// ── min_max_detection ──
+
+#[test]
+fn parity_min_max_detection_min() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["result", "a", "b"]);
+
+    // result = (a < b) ? a : b → should annotate as MIN
+    let body = vec![wrap_statement(AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(vm.clone(), ids[0])),
+        wrap_expression(AstExpression::Ternary(
+            Box::new(wrap_expression(AstExpression::BinaryOp(
+                AstBinaryOperator::Less,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), ids[1]))),
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), ids[2]))),
+            ))),
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), ids[1]))),
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), ids[2]))),
+        )),
+    ))];
+
+    let (fb, embed) = run_parity(body, vm, |c| c.auto_comment(true));
+    assert!(
+        embed.contains("MIN"),
+        "embed should annotate as MIN, got:\n{}",
+        embed
+    );
+    assert!(
+        fb.contains("MIN"),
+        "fb should annotate as MIN, got:\n{}",
+        fb
+    );
+}
+
+#[test]
+fn parity_min_max_detection_max() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["result", "a", "b"]);
+
+    // result = (a > b) ? a : b → should annotate as MAX
+    let body = vec![wrap_statement(AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(vm.clone(), ids[0])),
+        wrap_expression(AstExpression::Ternary(
+            Box::new(wrap_expression(AstExpression::BinaryOp(
+                AstBinaryOperator::Greater,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), ids[1]))),
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), ids[2]))),
+            ))),
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), ids[1]))),
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), ids[2]))),
+        )),
+    ))];
+
+    let (fb, embed) = run_parity(body, vm, |c| c.auto_comment(true));
+    assert!(
+        embed.contains("MAX"),
+        "embed should annotate as MAX, got:\n{}",
+        embed
+    );
+    assert!(
+        fb.contains("MAX"),
+        "fb should annotate as MAX, got:\n{}",
+        fb
+    );
+}
+
+// ── sentinel_comparison ──
+
+#[test]
+fn parity_sentinel_comparison_neg1() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x", "result"]);
+
+    // result = (x == -1)
+    let body = vec![wrap_statement(AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(vm.clone(), ids[1])),
+        wrap_expression(AstExpression::BinaryOp(
+            AstBinaryOperator::Equal,
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), ids[0]))),
+            Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(-1)))),
+        )),
+    ))];
+
+    let (fb, embed) = run_parity(body, vm, |c| c);
+    assert!(
+        embed.contains("sentinel"),
+        "embed should annotate sentinel check, got:\n{}",
+        embed
+    );
+    assert!(
+        fb.contains("sentinel"),
+        "fb should annotate sentinel check, got:\n{}",
+        fb
+    );
+}
+
 // ── call_name_annotation ──
 
 #[test]
