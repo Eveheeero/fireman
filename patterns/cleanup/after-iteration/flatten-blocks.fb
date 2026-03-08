@@ -1,0 +1,5 @@
+if:
+  at afterIteration
+  ast Block(...)
+do:
+  splice-block

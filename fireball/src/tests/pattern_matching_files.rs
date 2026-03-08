@@ -133,6 +133,37 @@ fn build_pattern_test_ast() -> (Ast, AstFunctionId) {
     )
 }
 
+fn build_asm_contains_pattern_test_ast() -> (Ast, AstFunctionId) {
+    let function_id = AstFunctionId { address: 0x4410 };
+    let version = AstFunctionVersion(1);
+    let variable_map = Arc::new(RwLock::new(HashMap::new()));
+
+    let body = vec![
+        wrap_statement(AstStatement::Assembly("call __stack_chk_fail".to_string())),
+        wrap_statement(AstStatement::Comment("replace-slot".to_string())),
+        wrap_statement(AstStatement::Return(None)),
+    ];
+
+    let function = build_test_function(
+        function_id,
+        "pattern_asm_contains_target",
+        body,
+        variable_map,
+    );
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+
+    (
+        Ast {
+            function_versions: HashMap::from([(function_id, version)]),
+            functions: Arc::new(RwLock::new(functions)),
+            last_variable_id: HashMap::new(),
+            pre_defined_symbols: HashMap::new(),
+        },
+        function_id,
+    )
+}
+
 fn build_ast_if_pattern_test_ast() -> (Ast, AstFunctionId) {
     let function_id = AstFunctionId { address: 0x4500 };
     let version = AstFunctionVersion(1);
@@ -203,6 +234,9 @@ fn build_predefined_pattern_test_ast() -> (Ast, AstFunctionId) {
     let variable_map = Arc::new(RwLock::new(HashMap::new()));
 
     let body = vec![
+        wrap_statement(AstStatement::Block(vec![wrap_statement(
+            AstStatement::Undefined,
+        )])),
         wrap_statement(AstStatement::Empty),
         wrap_statement(AstStatement::Block(Vec::new())),
         wrap_statement(AstStatement::If(
@@ -210,11 +244,74 @@ fn build_predefined_pattern_test_ast() -> (Ast, AstFunctionId) {
             Vec::new(),
             Some(Vec::new()),
         )),
+        wrap_statement(AstStatement::Label("cleanup".to_string())),
         wrap_statement(AstStatement::Return(None)),
     ];
 
     let function =
         build_test_function(function_id, "pattern_predefined_target", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+
+    (
+        Ast {
+            function_versions: HashMap::from([(function_id, version)]),
+            functions: Arc::new(RwLock::new(functions)),
+            last_variable_id: HashMap::new(),
+            pre_defined_symbols: HashMap::new(),
+        },
+        function_id,
+    )
+}
+
+fn build_block_splice_pattern_test_ast() -> (Ast, AstFunctionId) {
+    let function_id = AstFunctionId { address: 0x4710 };
+    let version = AstFunctionVersion(1);
+    let variable_map = Arc::new(RwLock::new(HashMap::new()));
+
+    let body = vec![
+        wrap_statement(AstStatement::Block(vec![wrap_statement(
+            AstStatement::Comment("flattened".to_string()),
+        )])),
+        wrap_statement(AstStatement::Return(None)),
+    ];
+
+    let function = build_test_function(
+        function_id,
+        "pattern_block_splice_target",
+        body,
+        variable_map,
+    );
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+
+    (
+        Ast {
+            function_versions: HashMap::from([(function_id, version)]),
+            functions: Arc::new(RwLock::new(functions)),
+            last_variable_id: HashMap::new(),
+            pre_defined_symbols: HashMap::new(),
+        },
+        function_id,
+    )
+}
+
+fn build_ast_sequence_pattern_test_ast() -> (Ast, AstFunctionId) {
+    let function_id = AstFunctionId { address: 0x4720 };
+    let version = AstFunctionVersion(1);
+    let variable_map = Arc::new(RwLock::new(HashMap::new()));
+
+    let body = vec![
+        wrap_statement(AstStatement::Undefined),
+        wrap_statement(AstStatement::Return(None)),
+    ];
+
+    let function = build_test_function(
+        function_id,
+        "pattern_ast_sequence_target",
+        body,
+        variable_map,
+    );
     let mut functions = HashMap::new();
     functions.insert(function_id, VersionMap::new(version, function));
 
@@ -263,7 +360,7 @@ fn build_multi_return_pattern_test_ast() -> (Ast, AstFunctionId) {
 
 fn pattern_examples_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../patterns/pattern_matching_examples")
+        .join("../patterns/examples")
         .to_path_buf()
 }
 
@@ -304,12 +401,12 @@ fn statement_debug_lines(body: &[WrappedAstStatement]) -> Vec<String> {
 #[test]
 fn pattern_matching_example_fb_files_parse_and_execute() {
     let files = [
-        "01_if_do_asm_ir_ast.fb",
-        "02_skip_ranges.fb",
-        "03_skip_aliases.fb",
-        "04_script_and_logs.fb",
-        "05_all_syntax.fb",
-        "06_do_del_syntax.fb",
+        "if_do_asm_ir_ast.fb",
+        "skip_ranges.fb",
+        "skip_aliases.fb",
+        "script_and_logs.fb",
+        "all_syntax.fb",
+        "do_del_syntax.fb",
     ];
 
     for file in files {
@@ -331,9 +428,102 @@ fn pattern_matching_example_fb_files_parse_and_execute() {
 }
 
 #[test]
+fn pattern_matching_multiple_if_do_clauses_pair_actions_with_their_group() {
+    let pattern = AstPattern::new(
+        "paired-if-do",
+        r#"
+if:
+  ast comment seed-comment
+do:
+  ast comment first-only
+if:
+  ast comment missing-comment
+do:
+  ast comment second-only
+"#,
+    );
+
+    let (ast, function_id) = build_pattern_test_ast();
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(2),
+            ),
+        )
+        .expect("paired if/do clauses must optimize successfully");
+    let body = optimized_function_body(&optimized, function_id);
+
+    assert_eq!(comment_count(&body, "first-only"), 1);
+    assert_eq!(comment_count(&body, "second-only"), 0);
+}
+
+#[test]
+fn pattern_matching_invalid_symbol_only_asm_is_rejected() {
+    let pattern = AstPattern::new(
+        "invalid-asm",
+        r#"
+if:
+  asm __stack_chk_fail
+do:
+  ast comment should-not-parse
+"#,
+    );
+
+    let (ast, function_id) = build_pattern_test_ast();
+    let result = ast.optimize_function(
+        function_id,
+        Some(
+            AstOptimizationConfig::NONE
+                .pattern_matching_enabled(true)
+                .pattern_matching(vec![pattern])
+                .max_pass_iterations(1),
+        ),
+    );
+
+    assert!(
+        result.is_err(),
+        "symbol-only asm must be rejected instead of being treated as valid asm"
+    );
+}
+
+#[test]
+fn pattern_matching_asm_contains_matches_symbol_text_without_invalid_asm() {
+    let pattern = AstPattern::new(
+        "asm-contains",
+        r#"
+if:
+  at beforeIrAnalyzation
+  asm_contains __stack_chk_fail
+do:
+  ast comment asm-contains-hit
+"#,
+    );
+
+    let (ast, function_id) = build_asm_contains_pattern_test_ast();
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(1),
+            ),
+        )
+        .expect("asm_contains pattern must optimize successfully");
+    let body = optimized_function_body(&optimized, function_id);
+
+    assert_eq!(comment_count(&body, "asm-contains-hit"), 1);
+}
+
+#[test]
 fn pattern_matching_actions_example_applies_key_actions() {
     let (ast, function_id) = build_pattern_test_ast();
-    let pattern = AstPattern::from_file(example_pattern_path("01_if_do_asm_ir_ast.fb"));
+    let pattern = AstPattern::from_file(example_pattern_path("if_do_asm_ir_ast.fb"));
     let optimized = ast
         .optimize_function(
             function_id,
@@ -375,9 +565,127 @@ fn pattern_matching_actions_example_applies_key_actions() {
 }
 
 #[test]
+fn pattern_matching_label_cleanup_matches_label_statements() {
+    let function_id = AstFunctionId { address: 0x4A00 };
+    let version = AstFunctionVersion(1);
+    let variable_map = Arc::new(RwLock::new(HashMap::new()));
+    let body = vec![
+        wrap_statement(AstStatement::Comment("seed-comment".to_string())),
+        wrap_statement(AstStatement::Label("cleanup".to_string())),
+        wrap_statement(AstStatement::Return(None)),
+    ];
+    let function = build_test_function(function_id, "pattern_label_target", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+    let pattern = AstPattern::new(
+        "label-cleanup",
+        r#"
+if:
+  at afterOptimization
+  ast Label(cleanup)
+do:
+  ast comment error cleanup handler
+"#,
+    );
+
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(1),
+            ),
+        )
+        .expect("label cleanup pattern must parse and execute");
+    let body = optimized_function_body(&optimized, function_id);
+
+    assert_eq!(comment_count(&body, "error cleanup handler"), 1);
+}
+
+#[test]
+fn pattern_matching_splice_block_flattens_nonempty_block() {
+    let (ast, function_id) = build_block_splice_pattern_test_ast();
+    let pattern = AstPattern::new(
+        "splice-block",
+        r#"
+if:
+  at afterIteration
+  ast Block(...)
+do:
+  splice-block
+"#,
+    );
+
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(1),
+            ),
+        )
+        .expect("splice-block pattern must parse and execute");
+    let body = optimized_function_body(&optimized, function_id);
+
+    assert_eq!(comment_count(&body, "flattened"), 1);
+    assert!(
+        !body
+            .iter()
+            .any(|stmt| matches!(&stmt.statement, AstStatement::Block(_))),
+        "splice-block should remove matched standalone blocks from the current statement list"
+    );
+}
+
+#[test]
+fn pattern_matching_ast_sequence_requires_contiguous_order() {
+    let (ast, function_id) = build_ast_sequence_pattern_test_ast();
+    let pattern = AstPattern::new(
+        "ast-sequence-order",
+        r#"
+if:
+  at afterIteration
+  ast undefined; return
+do:
+  ast comment ast-seq-hit
+if:
+  at afterIteration
+  ast return; undefined
+do:
+  ast comment ast-seq-wrong-order
+"#,
+    );
+
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(1),
+            ),
+        )
+        .expect("ast sequence pattern must parse and execute");
+    let body = optimized_function_body(&optimized, function_id);
+
+    assert_eq!(comment_count(&body, "ast-seq-hit"), 1);
+    assert_eq!(comment_count(&body, "ast-seq-wrong-order"), 0);
+}
+
+#[test]
 fn pattern_matching_do_del_syntax_deletes_statement_based_ranges() {
     let (ast, function_id) = build_pattern_test_ast();
-    let pattern = AstPattern::from_file(example_pattern_path("06_do_del_syntax.fb"));
+    let pattern = AstPattern::from_file(example_pattern_path("do_del_syntax.fb"));
     let optimized = ast
         .optimize_function(
             function_id,
@@ -536,6 +844,17 @@ fn pattern_matching_predefined_patterns_apply_without_explicit_pattern_list() {
         "predefined collapse-empty-blocks should remove empty blocks"
     );
     assert!(
+        body.iter()
+            .any(|stmt| matches!(&stmt.statement, AstStatement::Undefined)),
+        "predefined flatten-blocks should splice non-empty standalone blocks"
+    );
+    assert!(
+        !body
+            .iter()
+            .any(|stmt| matches!(&stmt.statement, AstStatement::Block(_))),
+        "predefined cleanup patterns should leave no standalone top-level block statements in this fixture"
+    );
+    assert!(
         body.iter().any(|stmt| {
             matches!(
                 &stmt.statement,
@@ -543,6 +862,41 @@ fn pattern_matching_predefined_patterns_apply_without_explicit_pattern_list() {
             )
         }),
         "predefined prune-empty-else should remove empty else branches"
+    );
+    assert_eq!(
+        comment_count(&body, "error cleanup handler"),
+        1,
+        "predefined error-cleanup should rewrite cleanup labels to comments"
+    );
+}
+
+#[test]
+fn pattern_matching_predefined_registry_includes_script_bearing_examples() {
+    let predefined = AstPattern::predefined_patterns();
+
+    assert!(
+        predefined
+            .iter()
+            .any(|pattern| { pattern.name() == "patterns/examples/script_and_logs.fb" }),
+        "predefined registry must include the script-bearing 04 example"
+    );
+    assert!(
+        predefined
+            .iter()
+            .any(|pattern| pattern.name() == "patterns/examples/all_syntax.fb"),
+        "predefined registry must include the script-bearing 05 example"
+    );
+    assert!(
+        predefined.iter().any(|pattern| {
+            pattern.name() == "patterns/cleanup/after-iteration/flatten-blocks.fb"
+        }),
+        "predefined registry must include the generic flatten-blocks rule"
+    );
+    assert!(
+        predefined.iter().any(|pattern| {
+            pattern.name() == "patterns/cleanup/after-optimization/error-cleanup.fb"
+        }),
+        "predefined registry must include the generic error-cleanup rule"
     );
 }
 

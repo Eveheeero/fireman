@@ -278,6 +278,63 @@ fn optimize_control_flow_cleanup_keeps_labeled_tail() {
 }
 
 #[test]
+fn optimize_control_flow_cleanup_flattens_standalone_block_without_global_pattern_matching() {
+    let function_id = AstFunctionId { address: 0x1001 };
+    let version = AstFunctionVersion(1);
+    let var_a = AstVariableId {
+        index: 1,
+        parent: Some(function_id),
+    };
+    let variable_map = Arc::new(RwLock::new(HashMap::from([(
+        var_a,
+        AstVariable {
+            name: Some("a".to_string()),
+            id: var_a,
+            var_type: AstValueType::Int,
+            const_value: None,
+            data_access_ir: None,
+        },
+    )])));
+
+    let body = vec![
+        wrap_statement(AstStatement::Block(vec![wrap_statement(
+            AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(variable_map.clone(), var_a)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            ),
+        )])),
+        wrap_statement(AstStatement::Return(None)),
+    ];
+
+    let function = build_test_function(function_id, "test_fn", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.control_flow_cleanup(true)))
+        .unwrap();
+    let body = optimized_function_body(&optimized, function_id);
+
+    assert!(
+        !body
+            .iter()
+            .any(|stmt| matches!(&stmt.statement, AstStatement::Block(_))),
+        "control-flow cleanup should still flatten standalone blocks when global pattern matching is disabled"
+    );
+    assert!(
+        body.iter()
+            .any(|stmt| matches!(&stmt.statement, AstStatement::Assignment(_, _))),
+        "the inner block statement should remain after flattening"
+    );
+}
+
+#[test]
 fn optimize_control_flow_cleanup_removes_tail_after_noreturn_function_call() {
     let caller_id = AstFunctionId { address: 0x1000 };
     let helper_id = AstFunctionId { address: 0x2000 };
@@ -1405,6 +1462,21 @@ fn build_simple_test_ast(
     }
 }
 
+fn optimized_function_body(ast: &Ast, function_id: AstFunctionId) -> Vec<WrappedAstStatement> {
+    let optimized_version = *ast
+        .function_versions
+        .get(&function_id)
+        .expect("optimized function version should exist");
+    let functions = ast.functions.read().unwrap();
+    let versions = functions
+        .get(&function_id)
+        .expect("optimized function should exist");
+    let function = versions
+        .get(&optimized_version)
+        .expect("optimized function version should exist");
+    function.body.clone()
+}
+
 fn make_var_map(
     function_id: AstFunctionId,
     names: &[&str],
@@ -1512,6 +1584,136 @@ fn optimize_same_operand_and_identity() {
         printed.contains("return x;"),
         "x & x should fold to x, got:\n{}",
         printed
+    );
+}
+
+#[test]
+fn optimize_cast_minimization_collapses_double_cast() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x"]);
+    let x = ids[0];
+
+    let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        AstExpression::Cast(
+            AstValueType::Int32,
+            Box::new(wrap_expression(AstExpression::Cast(
+                AstValueType::Int64,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+            ))),
+        ),
+    ))))];
+
+    let ast = build_simple_test_ast(1, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .unwrap();
+    let body = optimized_function_body(&optimized, fid);
+    let AstStatement::Return(Some(expr)) = &body[0].statement else {
+        panic!("expected optimized statement to remain a return");
+    };
+    let AstExpression::Cast(target_ty, inner) = &expr.item else {
+        panic!("expected optimized return expression to remain a cast");
+    };
+    assert_eq!(*target_ty, AstValueType::Int32);
+    assert!(
+        matches!(inner.item, AstExpression::Variable(_, _)),
+        "double cast should collapse to one cast over the original value, got {:?}",
+        expr.item
+    );
+}
+
+#[test]
+fn optimize_cast_minimization_removes_identity_literal_cast() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        AstExpression::Cast(
+            AstValueType::Int32,
+            Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(42)))),
+        ),
+    ))))];
+
+    let ast = build_simple_test_ast(0, body, Arc::new(RwLock::new(HashMap::new())));
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .unwrap();
+    let body = optimized_function_body(&optimized, fid);
+    let AstStatement::Return(Some(expr)) = &body[0].statement else {
+        panic!("expected optimized statement to remain a return");
+    };
+    assert!(
+        matches!(expr.item, AstExpression::Literal(AstLiteral::Int(42))),
+        "identity literal cast should be removed, got {:?}",
+        expr.item
+    );
+}
+
+#[test]
+fn optimize_cast_minimization_collapses_double_unary_cast() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x"]);
+    let x = ids[0];
+
+    let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        AstExpression::UnaryOp(
+            AstUnaryOperator::CastSigned,
+            Box::new(wrap_expression(AstExpression::UnaryOp(
+                AstUnaryOperator::CastSigned,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+            ))),
+        ),
+    ))))];
+
+    let ast = build_simple_test_ast(1, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .unwrap();
+    let body = optimized_function_body(&optimized, fid);
+    let AstStatement::Return(Some(expr)) = &body[0].statement else {
+        panic!("expected optimized statement to remain a return");
+    };
+    let AstExpression::UnaryOp(operator, inner) = &expr.item else {
+        panic!("expected optimized return expression to remain a unary cast");
+    };
+    assert!(matches!(operator, AstUnaryOperator::CastSigned));
+    assert!(
+        matches!(inner.item, AstExpression::Variable(_, _)),
+        "double unary cast should collapse to one cast, got {:?}",
+        expr.item
+    );
+}
+
+#[test]
+fn optimize_cast_minimization_drops_unsigned_before_signed_cast() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x"]);
+    let x = ids[0];
+
+    let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        AstExpression::UnaryOp(
+            AstUnaryOperator::CastSigned,
+            Box::new(wrap_expression(AstExpression::UnaryOp(
+                AstUnaryOperator::CastUnsigned,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+            ))),
+        ),
+    ))))];
+
+    let ast = build_simple_test_ast(1, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .unwrap();
+    let body = optimized_function_body(&optimized, fid);
+    let AstStatement::Return(Some(expr)) = &body[0].statement else {
+        panic!("expected optimized statement to remain a return");
+    };
+    let AstExpression::UnaryOp(operator, inner) = &expr.item else {
+        panic!("expected optimized return expression to remain a unary cast");
+    };
+    assert!(matches!(operator, AstUnaryOperator::CastSigned));
+    assert!(
+        matches!(inner.item, AstExpression::Variable(_, _)),
+        "signed-over-unsigned cast should keep only the outer signed cast, got {:?}",
+        expr.item
     );
 }
 
@@ -1768,6 +1970,37 @@ fn optimize_ternary_recovery_rejects_different_vars() {
     assert!(
         printed.contains("if"),
         "should NOT convert to ternary with different target vars, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_if_conversion_reversal_expands_nested_ternary_assignment() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["cond", "inner", "result"]);
+    let (cond, inner, result) = (ids[0], ids[1], ids[2]);
+
+    let body = vec![wrap_statement(AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(vm.clone(), result)),
+        wrap_expression(AstExpression::Ternary(
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), cond))),
+            Box::new(wrap_expression(AstExpression::Ternary(
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), inner))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(1)))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(2)))),
+            ))),
+            Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(3)))),
+        )),
+    ))];
+
+    let ast = build_simple_test_ast(3, body, vm.clone());
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+    assert!(
+        printed.contains("if") && !printed.contains("?"),
+        "nested ternary assignment should expand back to if statements, got:\n{}",
         printed
     );
 }

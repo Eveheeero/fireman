@@ -40,3 +40,8 @@ my_rhai_script()
   error("error log from 05")
   debug("debug log from 05")
   trace("trace log from 05")
+if:
+  at afterOptimization
+  asm_contains __stack_chk_fail
+do:
+  ast comment multi-clause example

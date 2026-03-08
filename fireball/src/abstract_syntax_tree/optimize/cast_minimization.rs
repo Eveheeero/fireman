@@ -182,16 +182,7 @@ fn minimize_expression(expr: &mut Wrapped<AstExpression>) {
 }
 
 fn minimize_current(expr: &mut Wrapped<AstExpression>) {
-    // Rule 1: Double cast -- Cast(T, Cast(_, x)) -> Cast(T, x)
-    // The outer cast subsumes the inner cast entirely.
-    if let AstExpression::Cast(outer_ty, inner) = &expr.item {
-        if let AstExpression::Cast(_, innermost) = &inner.item {
-            expr.item = AstExpression::Cast(outer_ty.clone(), innermost.clone());
-            // Re-run minimization on the simplified node in case further rules apply.
-            minimize_current(expr);
-            return;
-        }
-    }
+    while simplify_structural_cast(expr) {}
 
     // Rule 2: Identity cast on literal -- Cast(Int32, Literal(Int(n))) where n fits in i32.
     // The cast is redundant if the literal already fits in the target type.
@@ -210,40 +201,38 @@ fn minimize_current(expr: &mut Wrapped<AstExpression>) {
             }
         }
     }
+}
 
-    // Rule 3: Double unary cast -- CastSigned(CastSigned(x)) -> CastSigned(x),
-    // CastUnsigned(CastUnsigned(x)) -> CastUnsigned(x).
-    if let AstExpression::UnaryOp(outer_op, inner) = &expr.item {
-        if let AstExpression::UnaryOp(inner_op, innermost) = &inner.item {
-            let redundant = matches!(
-                (outer_op, inner_op),
-                (AstUnaryOperator::CastSigned, AstUnaryOperator::CastSigned)
-                    | (
-                        AstUnaryOperator::CastUnsigned,
-                        AstUnaryOperator::CastUnsigned
-                    )
-            );
-            if redundant {
-                expr.item = AstExpression::UnaryOp(outer_op.clone(), innermost.clone());
-                minimize_current(expr);
-                return;
-            }
-        }
-    }
+fn simplify_structural_cast(expr: &mut Wrapped<AstExpression>) -> bool {
+    match &expr.item {
+        AstExpression::Cast(target_ty, inner) => {
+            let AstExpression::Cast(_, source) = &inner.item else {
+                return false;
+            };
 
-    // Rule 4: Redundant cast-then-use -- CastSigned(CastUnsigned(x)) -> CastSigned(x).
-    // The inner unsigned cast is irrelevant when the outer re-signs the value.
-    if let AstExpression::UnaryOp(outer_op, inner) = &expr.item {
-        if let AstExpression::UnaryOp(inner_op, innermost) = &inner.item {
-            let subsumes = matches!(
-                (outer_op, inner_op),
-                (AstUnaryOperator::CastSigned, AstUnaryOperator::CastUnsigned)
-            );
-            if subsumes {
-                expr.item = AstExpression::UnaryOp(outer_op.clone(), innermost.clone());
-                minimize_current(expr);
-                return;
-            }
+            expr.item = AstExpression::Cast(target_ty.clone(), Box::new((**source).clone()));
+            true
         }
+        AstExpression::UnaryOp(operator, inner)
+            if matches!(
+                operator,
+                AstUnaryOperator::CastSigned | AstUnaryOperator::CastUnsigned
+            ) =>
+        {
+            let AstExpression::UnaryOp(inner_operator, source) = &inner.item else {
+                return false;
+            };
+
+            if !matches!(
+                inner_operator,
+                AstUnaryOperator::CastSigned | AstUnaryOperator::CastUnsigned
+            ) {
+                return false;
+            }
+
+            expr.item = AstExpression::UnaryOp(operator.clone(), Box::new((**source).clone()));
+            true
+        }
+        _ => false,
     }
 }

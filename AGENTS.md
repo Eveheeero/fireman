@@ -6,6 +6,13 @@
 - Formatting uses `cargo +nightly fmt`
 - To avoid context overflow from voluminous logs, use regular expressions to filter and retrieve only the necessary segments for analysis.
 
+## Pattern Policy
+
+- Centralize predefined `.fb` pattern and script registration in `fireball/src/abstract_syntax_tree/optimize/pattern_matching.rs`.
+- Do not add optimizer-specific pattern matcher names or `do:` action names.
+- Do not add one-off script helpers as a substitute for generic `.fb` features.
+- If a rewrite cannot be expressed with the existing general pattern engine, keep it in Rust until a general-purpose pattern feature exists.
+
 ## Structure Paths (fireball)
 
 ### Major Structs (quick reference)

@@ -330,6 +330,25 @@ impl Ast {
                             to_version,
                         )?;
                     }
+
+                    if !config.pattern_matching_enabled {
+                        let flatten_blocks = pattern_matching::AstPattern::predefined_pattern(
+                            "patterns/cleanup/after-iteration/flatten-blocks.fb",
+                        )
+                        .expect("flatten-blocks predefined pattern must exist");
+                        for (function_id, to_version) in versions.iter().copied() {
+                            if !has_function_version(&ast, function_id, to_version) {
+                                continue;
+                            }
+                            pattern_matching::apply_patterns(
+                                &mut ast,
+                                function_id,
+                                to_version,
+                                std::slice::from_ref(&flatten_blocks),
+                                pattern_matching::AstPatternApplyPhase::AfterIteration,
+                            )?;
+                        }
+                    }
                 }
 
                 if config.boolean_recovery {

@@ -39,13 +39,12 @@ pub(super) fn recover_ternary(
 }
 
 fn recover_ternary_in_list(stmts: &mut Vec<WrappedAstStatement>) {
-    // First recurse into nested structures
     for stmt in stmts.iter_mut() {
         match &mut stmt.statement {
-            AstStatement::If(_, bt, bf) => {
-                recover_ternary_in_list(bt);
-                if let Some(bf) = bf {
-                    recover_ternary_in_list(bf);
+            AstStatement::If(_, branch_true, branch_false) => {
+                recover_ternary_in_list(branch_true);
+                if let Some(branch_false) = branch_false {
+                    recover_ternary_in_list(branch_false);
                 }
             }
             AstStatement::While(_, body) => recover_ternary_in_list(body),
@@ -55,27 +54,20 @@ fn recover_ternary_in_list(stmts: &mut Vec<WrappedAstStatement>) {
         }
     }
 
-    // Now try to convert if/else assignments to ternary
     for stmt in stmts.iter_mut() {
         try_convert_to_ternary(stmt);
     }
 }
 
-/// Detect pattern:
-///   if (cond) { v = expr_a; } else { v = expr_b; }
-/// and rewrite to:
-///   v = cond ? expr_a : expr_b;
 fn try_convert_to_ternary(stmt: &mut WrappedAstStatement) {
     let AstStatement::If(cond, branch_true, Some(branch_false)) = &stmt.statement else {
         return;
     };
 
-    // Both branches must have exactly one statement
     if branch_true.len() != 1 || branch_false.len() != 1 {
         return;
     }
 
-    // Both must be assignments to the same plain variable
     let (true_var, true_rhs) = match &branch_true[0].statement {
         AstStatement::Assignment(lhs, rhs) => {
             if let AstExpression::Variable(_, var_id) = &lhs.item {
@@ -102,25 +94,19 @@ fn try_convert_to_ternary(stmt: &mut WrappedAstStatement) {
         return;
     }
 
-    // Build the ternary expression
-    let target_var_id = true_var;
-    let ternary_expr = AstExpression::Ternary(
-        Box::new(cond.clone()),
-        Box::new(true_rhs.clone()),
-        Box::new(false_rhs.clone()),
-    );
+    let ternary_wrapped = Wrapped {
+        item: AstExpression::Ternary(
+            Box::new(cond.clone()),
+            Box::new(true_rhs.clone()),
+            Box::new(false_rhs.clone()),
+        ),
+        origin: cond.origin.clone(),
+        comment: None,
+    };
 
-    // Get the LHS from the true branch (it has the variable map we need)
     let lhs = match &branch_true[0].statement {
         AstStatement::Assignment(lhs, _) => lhs.clone(),
         _ => unreachable!(),
-    };
-
-    let _ = target_var_id;
-    let ternary_wrapped = Wrapped {
-        item: ternary_expr,
-        origin: cond.origin.clone(),
-        comment: None,
     };
 
     stmt.statement = AstStatement::Assignment(lhs, ternary_wrapped);

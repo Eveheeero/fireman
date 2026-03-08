@@ -1,10 +1,8 @@
 if:
   at beforeIrAnalyzation
-  asm endbr64
-do:
-  del start[0]
+  asm nop
 if:
   at beforeIrAnalyzation
-  asm endbr32
+  asm `xchg eax, eax`
 do:
   del start[0]
