@@ -387,26 +387,26 @@
   > `ir/analyze/slicer.rs`의 기본 backward slice가 `IrFunction` 생성 경로에 연결되어 return-value slice를 계산, 보관, 로그한다. 아직 parameter/API sink 기준, interprocedural slice, AST/최적화 소비는 미구현
 - [~] Backward slicing (from sinks) — Trace dependencies backward from API calls/returns to recover intent and types.
   > 현재는 return-value 기준 register dependency 추적만 구현되어 있으며 statement-level coverage 로깅까지 연결됨. API call sink, memory dependency, SSA def-use 기반 정밀화는 아직 미구현
-- [ ] Forward slicing (from sources) — Track how inputs (args/globals) propagate to outputs to identify roles.
-  > 인터프로시저럴 분석 프레임워크 필요
-- [ ] Taint analysis — Mark data from sources and follow it through transforms to classify inputs/outputs and checks.
-  > 인터프로시저럴 분석 프레임워크 필요
-- [ ] Data-dependence graph construction — Build def-use dependencies as a graph to drive refactoring and naming.
-  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
+- [~] Forward slicing (from sources) — Track how inputs (args/globals) propagate to outputs to identify roles.
+  > `ir/analyze/slicer.rs`의 보수적 parameter-seeded forward slice가 `IrFunction` 생성 경로에 연결되어 보관/로그된다. 현재는 x86-64 공통 인자 레지스터 seed, register-level 전파, 조건식/일부 call edge만 다루며, global source, memory/alias propagation, API sink 기준 정밀화, interprocedural slice, AST/최적화 소비는 아직 미구현
+- [~] Taint analysis — Mark data from sources and follow it through transforms to classify inputs/outputs and checks.
+  > `ir/analyze/taint.rs`의 기본 register-level taint가 `IrFunction` 생성 경로에 연결되어 보관/로그되며, x86-64 공통 인자 레지스터와 call return register에 대한 보수적 seed까지 추가됨. 아직 memory/global source, sink classification, interprocedural propagation, AST/최적화 소비는 미구현
+- [~] Data-dependence graph construction — Build def-use dependencies as a graph to drive refactoring and naming.
+  > `ir/analyze/data_dependence.rs`의 기본 statement-level register def-use graph가 `IrFunction` 생성 경로에 연결되어 보관/로그된다. 현재는 평탄화된 statement 순서와 call return register(`rax/eax`)만 다루는 보수적 구현이며, memory dependency, SSA-level precision, control-sensitive merge, AST/이름짓기 소비는 미구현
 - [~] Control-equivalence detection — Find predicates that are logically the same to simplify repeated conditions.
-  > 구조적 동등성(expr_structurally_equal) + 연산자 정규화(operator_canonicalization) + 연속 조건 병합으로 부분 구현. SMT 기반 논리적 동치는 미구현
-- [ ] Predicate abstraction — Replace complex expressions with boolean symbols during structuring; refine later.
-  > SMT/형식 검증 프레임워크 필요
-- [ ] SESE region discovery — Identify single-entry/single-exit regions to map cleanly into structured C blocks.
-  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
-- [ ] Interval-based structuring — Use interval analysis to structure CFGs into loops/conditionals deterministically.
-  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
-- [ ] Relooper-style structuring — Convert irreducible CFGs into structured forms using labeled regions and dispatch.
-  > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)
-- [ ] If-conversion reversal — Detect predicated/select-based code and recover explicit if/else.
-  > 기존 ternary_recovery 패스와 상충 — 복잡한 ternary 역변환 휴리스틱 필요
-- [ ] Duff’s device detection — Recognize unrolled switch/loop hybrids and emit canonical loop + switch forms.
-  > AST에 do-while 문이 없고, switch+loop 하이브리드 패턴 매칭이 매우 특수함
+  > 구조적 동등성(expr_structurally_equal) + 조건 정규화(operator_canonicalization) + 정규화 후 연속 조건 병합으로 부분 구현. SMT 기반 논리적 동치는 미구현
+- [~] Predicate abstraction — Replace complex expressions with boolean symbols during structuring; refine later.
+  > structured_region_lowering.rs에서 `if`-only 보수적 predicate abstraction 추가. 순수한 control-prefix `Declaration/Assignment`를 허용하고, 조건식이 복잡하면 지역 `bool` temp로 추상화한다. loop header/latch, switch selector, SMT 기반 정제는 미구현.
+- [~] SESE region discovery — Identify single-entry/single-exit regions to map cleanly into structured C blocks.
+  > `structuring.rs`의 기존 StructuredRegion 빌더가 보수적인 goto-free SESE region metric을 노출/로그한다. 아직 irreducible region 정리, edge contract enforcement, full AST switchover는 미구현
+- [~] Interval-based structuring — Use interval analysis to structure CFGs into loops/conditionals deterministically.
+  > `structuring.rs`가 현재 CFG에 대한 보수적인 first-pass interval partition(`header/block_ids/exit_blocks`)을 계산하고 `IrFunction`/structuring log에 interval count, multi-block count, max interval size를 노출한다. 아직 interval collapse 반복, quotient graph 재작성, 실제 interval-driven region builder 전환은 미구현
+- [~] Relooper-style structuring — Convert irreducible CFGs into structured forms using labeled regions and dispatch.
+  > `structuring.rs`가 이제 fallback `Goto` target에 대해 보수적으로 `Label`을 자동 삽입하고, `labels` / `unresolved goto targets` metric을 노출한다. shared-tail/irreducible fallback이 최소한 일관된 goto+label 형태로 AST lowering 되지만, dispatcher region, state variable, block reordering, dispatch loop synthesis는 아직 미구현
+- [~] If-conversion reversal — Detect predicated/select-based code and recover explicit if/else.
+  > AST 최적화 파이프라인에 보수적인 `if_conversion_reversal` 패스가 추가되어, `lhs = cond ? (inner ? a : b) : c` 같은 중첩 ternary assignment를 중첩 `if/else` assignment 트리로 역변환한다. 기존 `ternary_recovery`가 다시 접어버리지 않도록 직접적인 중첩 ternary branch가 있는 경우에만 동작한다. 일반적인 단일 ternary, declaration initializer, non-variable LHS, cmov/select 기반 IR-level 판별은 아직 미구현
+- [~] Duff’s device detection — Recognize unrolled switch/loop hybrids and emit canonical loop + switch forms.
+  > `loop_analyzation.rs`가 이제 `while(true)`뿐 아니라 `DoWhile(true)`까지 재귀적으로 살피며, top-level `Switch` 뒤에 추가 loop-body work가 이어지는 무한 loop를 `likely Duff's device switch/loop hybrid` 주석으로 보수적으로 표기한다. 또한 기존 state-machine dispatch 주석도 `DoWhile(true)`를 인식한다. 아직 실제 case fallthrough 분석, canonical loop+switch 재구성, unrolled body 회수, dispatch/state 변수 복원은 미구현
   > 루프 구조/시맨틱 분석 프레임워크 구현 필요
 - [~] Loop unrolling reversal — Detect unrolled bodies and recover compact loops with correct bounds/strides.
   > control_flow_cleanup.rs에서 blake3 해시로 루프 본문 반복 패턴 감지 및 주석 추가 (실제 압축은 미구현)

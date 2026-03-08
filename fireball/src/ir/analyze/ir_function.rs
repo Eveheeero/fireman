@@ -3,8 +3,9 @@ use crate::{
     ir::{
         Ir, IrBlock,
         analyze::{
-            DataType, DominanceFrontier, StructuredRegion, analyze_function_control_flow,
-            infer_entry_block_id, structure_function,
+            CfgInterval, DataType, DominanceFrontier, StructuredRegion,
+            analyze_function_control_flow, discover_intervals, infer_entry_block_id,
+            structure_function,
         },
         data::IrDataAccess,
         utils::IrStatementDescriptorMap,
@@ -20,6 +21,7 @@ use std::sync::Arc;
 struct CfgShapeArtifacts {
     ssa: super::ssa::SsaFunction,
     structured: StructuredRegion,
+    intervals: Vec<CfgInterval>,
 }
 
 fn run_cfg_shape_analysis(blocks: &[Arc<Block>]) -> Option<CfgShapeArtifacts> {
@@ -110,11 +112,27 @@ fn run_cfg_shape_analysis(blocks: &[Arc<Block>]) -> Option<CfgShapeArtifacts> {
 
     // L60: CFG structuring using the existing region builder.
     let structured = structure_function(blocks, &analysis);
+    let intervals = discover_intervals(analysis.cfg());
+    let multi_block_intervals = intervals
+        .iter()
+        .filter(|interval| interval.block_count() > 1)
+        .count();
+    let largest_interval = intervals
+        .iter()
+        .map(CfgInterval::block_count)
+        .max()
+        .unwrap_or(0);
     debug!(
-        "CFG structuring: {} blocks, {} constructs, {} gotos",
+        "CFG structuring: {} blocks, {} constructs, {} SESE regions, {} intervals ({} multi-block, max {} blocks), {} gotos, {} labels, {} unresolved goto targets",
         structured.block_count(),
         structured.construct_count(),
+        structured.sese_region_count(),
+        intervals.len(),
+        multi_block_intervals,
+        largest_interval,
         structured.goto_count(),
+        structured.label_count(),
+        structured.unresolved_goto_target_count(),
     );
 
     // L192: Hot-cold chunk detection (gap > 4KB suggests split)
@@ -129,6 +147,7 @@ fn run_cfg_shape_analysis(blocks: &[Arc<Block>]) -> Option<CfgShapeArtifacts> {
     Some(CfgShapeArtifacts {
         ssa: ssa_function,
         structured,
+        intervals,
     })
 }
 
@@ -283,12 +302,18 @@ pub fn generate_ir_function(blocks: &[Arc<Block>]) -> IrFunction {
     let cfg_artifacts = run_cfg_shape_analysis(blocks);
     let points_to = super::points_to::analyze_points_to(blocks);
     super::points_to::log_points_to_analysis(&points_to);
+    let data_dependence = super::data_dependence::analyze_data_dependence(blocks);
+    super::data_dependence::log_data_dependence_analysis(&data_dependence);
     let aggregates = super::struct_recovery::recover_aggregates(blocks);
     super::struct_recovery::log_aggregate_recovery(&aggregates);
     let value_set = super::value_set::analyze_value_set(blocks);
     super::value_set::log_value_set_analysis(&value_set);
+    let taint = super::taint::analyze_taint(blocks);
+    super::taint::log_taint_analysis(&taint);
     let return_slice =
         super::slicer::backward_slice(blocks, super::slicer::SliceCriterion::ReturnValue);
+    let parameter_forward_slice =
+        super::slicer::forward_slice(blocks, super::slicer::SliceCriterion::Parameters);
 
     // Merge IR from all blocks in execution order
     let mut combined_ir = Vec::new();
@@ -312,6 +337,7 @@ pub fn generate_ir_function(blocks: &[Arc<Block>]) -> IrFunction {
         .filter_map(|ir| ir.statements.as_ref().map(|statements| statements.len()))
         .sum();
     super::slicer::log_slice_analysis(&return_slice, total_slice_statements);
+    super::slicer::log_slice_analysis(&parameter_forward_slice, total_slice_statements);
 
     debug!("IR Function size: {}", combined_ir.len());
     // Analyze IR function
@@ -334,19 +360,29 @@ pub fn generate_ir_function(blocks: &[Arc<Block>]) -> IrFunction {
         .collect();
 
     info!("IrFunction generation completed");
+    let (ssa, structured, cfg_intervals) = match cfg_artifacts {
+        Some(artifacts) => (
+            Some(artifacts.ssa),
+            Some(artifacts.structured),
+            Some(artifacts.intervals),
+        ),
+        None => (None, None, None),
+    };
     IrFunction {
         instructions,
         ir: combined_ir,
         ir_block_ids: ir_block_ids.into(),
         variables: merged_vars,
         points_to: Some(points_to),
+        data_dependence: Some(data_dependence),
         aggregates: Some(aggregates),
         value_set: Some(value_set),
+        taint: Some(taint),
         return_slice: Some(return_slice),
-        ssa: cfg_artifacts
-            .as_ref()
-            .map(|artifacts| artifacts.ssa.clone()),
-        structured: cfg_artifacts.map(|artifacts| artifacts.structured),
+        parameter_forward_slice: Some(parameter_forward_slice),
+        ssa,
+        structured,
+        cfg_intervals,
     }
 }
 
@@ -357,11 +393,15 @@ pub struct IrFunction {
     ir_block_ids: Arc<[usize]>,
     variables: Vec<IrFunctionVariable>,
     points_to: Option<super::points_to::PointsToSet>,
+    data_dependence: Option<super::data_dependence::DataDependenceGraph>,
     aggregates: Option<Vec<super::struct_recovery::AggregateCandidate>>,
     value_set: Option<super::value_set::ValueSetResult>,
+    taint: Option<super::taint::TaintAnalysis>,
     return_slice: Option<super::slicer::ProgramSlice>,
+    parameter_forward_slice: Option<super::slicer::ProgramSlice>,
     ssa: Option<super::ssa::SsaFunction>,
     structured: Option<StructuredRegion>,
+    cfg_intervals: Option<Vec<super::structuring::CfgInterval>>,
 }
 
 impl IrFunction {
@@ -376,11 +416,15 @@ impl IrFunction {
             ir,
             variables,
             points_to: None,
+            data_dependence: None,
             aggregates: None,
             value_set: None,
+            taint: None,
             return_slice: None,
+            parameter_forward_slice: None,
             ssa: None,
             structured: None,
+            cfg_intervals: None,
         }
     }
     pub fn get_ir(&self) -> &Vec<Ir> {
@@ -400,6 +444,10 @@ impl IrFunction {
         self.points_to.as_ref()
     }
 
+    pub fn get_data_dependence(&self) -> Option<&super::data_dependence::DataDependenceGraph> {
+        self.data_dependence.as_ref()
+    }
+
     pub fn get_aggregates(&self) -> Option<&[super::struct_recovery::AggregateCandidate]> {
         self.aggregates.as_deref()
     }
@@ -408,8 +456,16 @@ impl IrFunction {
         self.value_set.as_ref()
     }
 
+    pub fn get_taint(&self) -> Option<&super::taint::TaintAnalysis> {
+        self.taint.as_ref()
+    }
+
     pub fn get_return_slice(&self) -> Option<&super::slicer::ProgramSlice> {
         self.return_slice.as_ref()
+    }
+
+    pub fn get_parameter_forward_slice(&self) -> Option<&super::slicer::ProgramSlice> {
+        self.parameter_forward_slice.as_ref()
     }
 
     pub fn get_ssa(&self) -> Option<&super::ssa::SsaFunction> {
@@ -418,6 +474,10 @@ impl IrFunction {
 
     pub fn get_structured(&self) -> Option<&StructuredRegion> {
         self.structured.as_ref()
+    }
+
+    pub fn get_cfg_intervals(&self) -> Option<&[super::structuring::CfgInterval]> {
+        self.cfg_intervals.as_deref()
     }
 }
 

@@ -1,8 +1,8 @@
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget,
-        AstLiteral, AstStatement, AstStatementOrigin, AstUnaryOperator, AstValueOrigin, Wrapped,
-        WrappedAstStatement,
+        ArcAstVariableMap, Ast, AstBinaryOperator, AstExpression, AstFunctionId,
+        AstFunctionVersion, AstJumpTarget, AstLiteral, AstStatement, AstStatementOrigin,
+        AstUnaryOperator, AstValueOrigin, AstValueType, AstVariable, Wrapped, WrappedAstStatement,
     },
     ir::analyze::{IrFunction, StructuredRegion},
     prelude::DecompileError,
@@ -26,9 +26,10 @@ pub(super) fn lower_structured_regions(
         body = std::mem::take(&mut function.body);
     }
 
-    let lowered = ir
-        .get_structured()
-        .and_then(|structured| try_lower_body(&body, &ir, structured));
+    let variables = ast.get_variables(&function_id, &function_version)?;
+    let lowered = ir.get_structured().and_then(|structured| {
+        try_lower_body(ast, function_id, &variables, &body, &ir, structured)
+    });
     if let Some(lowered) = lowered {
         body = lowered;
     }
@@ -43,12 +44,22 @@ pub(super) fn lower_structured_regions(
 }
 
 fn try_lower_body(
+    ast: &mut Ast,
+    function_id: AstFunctionId,
+    variables: &ArcAstVariableMap,
     body: &[WrappedAstStatement],
     ir: &IrFunction,
     structured: &StructuredRegion,
 ) -> Option<Vec<WrappedAstStatement>> {
     let mut statements_by_block = statements_by_block(body, ir)?;
-    let lowered = lower_region(structured, &mut statements_by_block, ir)?;
+    let lowered = lower_region(
+        ast,
+        function_id,
+        variables,
+        structured,
+        &mut statements_by_block,
+        ir,
+    )?;
     if statements_by_block.values().any(|stmts| !stmts.is_empty()) {
         return None;
     }
@@ -73,6 +84,9 @@ fn statements_by_block(
 }
 
 fn lower_region(
+    ast: &mut Ast,
+    function_id: AstFunctionId,
+    variables: &ArcAstVariableMap,
     region: &StructuredRegion,
     statements_by_block: &mut HashMap<usize, Vec<WrappedAstStatement>>,
     ir: &IrFunction,
@@ -81,7 +95,14 @@ fn lower_region(
         StructuredRegion::Sequence(regions) => {
             let mut lowered = Vec::new();
             for region in regions {
-                lowered.extend(lower_region(region, statements_by_block, ir)?);
+                lowered.extend(lower_region(
+                    ast,
+                    function_id,
+                    variables,
+                    region,
+                    statements_by_block,
+                    ir,
+                )?);
             }
             Some(lowered)
         }
@@ -90,6 +111,9 @@ fn lower_region(
             then_region,
             else_region,
         } => lower_if_region(
+            ast,
+            function_id,
+            variables,
             *head_block,
             then_region,
             else_region.as_deref(),
@@ -101,6 +125,9 @@ fn lower_region(
             cases,
             default,
         } => lower_switch_region(
+            ast,
+            function_id,
+            variables,
             *head_block,
             cases,
             default.as_deref(),
@@ -118,16 +145,33 @@ fn lower_region(
         ))]),
         StructuredRegion::Break => Some(vec![synthetic_statement(AstStatement::Break)]),
         StructuredRegion::Continue => Some(vec![synthetic_statement(AstStatement::Continue)]),
-        StructuredRegion::While { header_block, body } => {
-            lower_loop_region(*header_block, body, statements_by_block, ir, false)
-        }
-        StructuredRegion::DoWhile { body, latch_block } => {
-            lower_loop_region(*latch_block, body, statements_by_block, ir, true)
-        }
+        StructuredRegion::While { header_block, body } => lower_loop_region(
+            ast,
+            function_id,
+            variables,
+            *header_block,
+            body,
+            statements_by_block,
+            ir,
+            false,
+        ),
+        StructuredRegion::DoWhile { body, latch_block } => lower_loop_region(
+            ast,
+            function_id,
+            variables,
+            *latch_block,
+            body,
+            statements_by_block,
+            ir,
+            true,
+        ),
     }
 }
 
 fn lower_if_region(
+    ast: &mut Ast,
+    function_id: AstFunctionId,
+    variables: &ArcAstVariableMap,
     head_block: usize,
     then_region: &StructuredRegion,
     else_region: Option<&StructuredRegion>,
@@ -135,10 +179,25 @@ fn lower_if_region(
     ir: &IrFunction,
 ) -> Option<Vec<WrappedAstStatement>> {
     let control_block = statements_by_block.remove(&head_block).unwrap_or_default();
-    let (mut prefix, if_statement, suffix) = extract_pure_if(control_block)?;
-    let then_body = lower_region(then_region, statements_by_block, ir)?;
+    let (mut prefix, mut if_statement, suffix) = extract_if_for_structuring(control_block)?;
+    abstract_condition_if_needed(ast, function_id, variables, &mut prefix, &mut if_statement)?;
+    let then_body = lower_region(
+        ast,
+        function_id,
+        variables,
+        then_region,
+        statements_by_block,
+        ir,
+    )?;
     let else_body = match else_region {
-        Some(region) => Some(lower_region(region, statements_by_block, ir)?),
+        Some(region) => Some(lower_region(
+            ast,
+            function_id,
+            variables,
+            region,
+            statements_by_block,
+            ir,
+        )?),
         None => None,
     };
 
@@ -167,6 +226,9 @@ enum LoopBranchRole {
 }
 
 fn lower_loop_region(
+    ast: &mut Ast,
+    function_id: AstFunctionId,
+    variables: &ArcAstVariableMap,
     control_block_id: usize,
     body_region: &StructuredRegion,
     statements_by_block: &mut HashMap<usize, Vec<WrappedAstStatement>>,
@@ -200,7 +262,14 @@ fn lower_loop_region(
     };
 
     if is_do_while {
-        let mut body = lower_region(body_region, statements_by_block, ir)?;
+        let mut body = lower_region(
+            ast,
+            function_id,
+            variables,
+            body_region,
+            statements_by_block,
+            ir,
+        )?;
         body.extend(prefix);
         let loop_statement = WrappedAstStatement {
             statement: AstStatement::DoWhile(condition, body),
@@ -211,7 +280,14 @@ fn lower_loop_region(
         lowered.extend(suffix);
         Some(lowered)
     } else {
-        let body = lower_region(body_region, statements_by_block, ir)?;
+        let body = lower_region(
+            ast,
+            function_id,
+            variables,
+            body_region,
+            statements_by_block,
+            ir,
+        )?;
         let loop_statement = WrappedAstStatement {
             statement: AstStatement::While(condition, body),
             origin,
@@ -224,6 +300,9 @@ fn lower_loop_region(
 }
 
 fn lower_switch_region(
+    ast: &mut Ast,
+    function_id: AstFunctionId,
+    variables: &ArcAstVariableMap,
     head_block: usize,
     case_regions: &[(Vec<i64>, StructuredRegion)],
     default_region: Option<&StructuredRegion>,
@@ -247,13 +326,20 @@ fn lower_switch_region(
         if labels.is_empty() {
             return None;
         }
-        let body = lower_region(region, statements_by_block, ir)?;
+        let body = lower_region(ast, function_id, variables, region, statements_by_block, ir)?;
         for label in labels {
             lowered_cases.push((AstLiteral::Int(*label), body.clone()));
         }
     }
     let default_body = match default_region {
-        Some(region) => Some(lower_region(region, statements_by_block, ir)?),
+        Some(region) => Some(lower_region(
+            ast,
+            function_id,
+            variables,
+            region,
+            statements_by_block,
+            ir,
+        )?),
         None => None,
     };
 
@@ -483,6 +569,143 @@ fn extract_pure_if(
     }
 
     Some((prefix, extracted_if?, suffix))
+}
+
+fn extract_if_for_structuring(
+    statements: Vec<WrappedAstStatement>,
+) -> Option<(
+    Vec<WrappedAstStatement>,
+    WrappedAstStatement,
+    Vec<WrappedAstStatement>,
+)> {
+    if let Some(extracted) = extract_pure_if(statements.clone()) {
+        return Some(extracted);
+    }
+
+    let mut if_index = None;
+    for (index, statement) in statements.iter().enumerate() {
+        if !is_meaningful(statement) {
+            continue;
+        }
+        if matches!(statement.statement, AstStatement::If(_, _, _)) {
+            if if_index.replace(index).is_some() {
+                return None;
+            }
+        }
+    }
+    let if_index = if_index?;
+    let candidate = &statements[if_index];
+    let AstStatement::If(_, then_body, else_body) = &candidate.statement else {
+        return None;
+    };
+    if !is_simple_control_stub_list(then_body)
+        || !else_body
+            .as_ref()
+            .is_none_or(|branch| is_simple_control_stub_list(branch))
+    {
+        return None;
+    }
+
+    if statements
+        .iter()
+        .enumerate()
+        .any(|(index, statement)| index > if_index && is_meaningful(statement))
+    {
+        return None;
+    }
+    if statements
+        .iter()
+        .enumerate()
+        .any(|(index, statement)| index < if_index && !is_predicate_setup_statement(statement))
+    {
+        return None;
+    }
+
+    let mut prefix = Vec::new();
+    let mut suffix = Vec::new();
+    let mut extracted_if = None;
+    for (index, statement) in statements.into_iter().enumerate() {
+        if index < if_index {
+            prefix.push(statement);
+        } else if index == if_index {
+            extracted_if = Some(statement);
+        } else {
+            suffix.push(statement);
+        }
+    }
+
+    Some((prefix, extracted_if?, suffix))
+}
+
+fn is_predicate_setup_statement(statement: &WrappedAstStatement) -> bool {
+    match &statement.statement {
+        AstStatement::Declaration(_, Some(init)) => {
+            super::opt_utils::is_pure_expression(&init.item)
+        }
+        AstStatement::Assignment(lhs, rhs) => {
+            matches!(lhs.item, AstExpression::Variable(_, _))
+                && super::opt_utils::is_pure_expression(&rhs.item)
+        }
+        AstStatement::Comment(_) | AstStatement::Empty => true,
+        _ => false,
+    }
+}
+
+fn abstract_condition_if_needed(
+    ast: &mut Ast,
+    function_id: AstFunctionId,
+    variables: &ArcAstVariableMap,
+    prefix: &mut Vec<WrappedAstStatement>,
+    if_statement: &mut WrappedAstStatement,
+) -> Option<()> {
+    let AstStatement::If(condition, _, _) = &mut if_statement.statement else {
+        return None;
+    };
+    if !needs_predicate_abstraction(&condition.item) {
+        return Some(());
+    }
+    if !super::opt_utils::is_pure_expression(&condition.item) {
+        return None;
+    }
+
+    let predicate_variable_id = ast.new_variable_id(&function_id);
+    let predicate_variable = AstVariable {
+        name: None,
+        id: predicate_variable_id,
+        var_type: AstValueType::Bool,
+        const_value: None,
+        data_access_ir: None,
+    };
+    variables
+        .write()
+        .unwrap()
+        .insert(predicate_variable_id, predicate_variable.clone());
+
+    let predicate_initializer = condition.clone();
+    prefix.push(WrappedAstStatement {
+        statement: AstStatement::Declaration(predicate_variable, Some(predicate_initializer)),
+        origin: AstStatementOrigin::Combination(vec![if_statement.origin.clone()]),
+        comment: None,
+    });
+    *condition = Wrapped {
+        item: AstExpression::Variable(variables.clone(), predicate_variable_id),
+        origin: AstValueOrigin::Combination(vec![condition.origin.clone()]),
+        comment: None,
+    };
+    Some(())
+}
+
+fn needs_predicate_abstraction(expr: &AstExpression) -> bool {
+    match expr {
+        AstExpression::Variable(_, _)
+        | AstExpression::Literal(AstLiteral::Bool(_))
+        | AstExpression::Literal(AstLiteral::Int(_))
+        | AstExpression::Literal(AstLiteral::UInt(_)) => false,
+        AstExpression::UnaryOp(AstUnaryOperator::Not, inner) => {
+            needs_predicate_abstraction(&inner.item)
+        }
+        _ => true,
+    }
 }
 
 fn is_simple_control_stub_list(statements: &[WrappedAstStatement]) -> bool {

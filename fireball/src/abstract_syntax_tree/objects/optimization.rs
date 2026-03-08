@@ -37,6 +37,7 @@ pub enum ProcessedOptimization {
     CopyPropagation,
     ExpressionInlining,
     TernaryRecovery,
+    IfConversionReversal,
     BooleanRecovery,
     SwitchReconstruction,
     OperatorCanonicalization,

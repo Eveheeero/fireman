@@ -13,6 +13,7 @@ mod dead_store_elimination;
 mod early_return_normalization;
 mod expression_inlining;
 mod goto_containment;
+mod if_conversion_reversal;
 mod induction_variable_analysis;
 mod ir_analyzation;
 mod lifetime_scoping;
@@ -347,6 +348,17 @@ impl Ast {
                         }
                         ternary_recovery::recover_ternary(&mut ast, function_id, to_version)?;
                     }
+                }
+
+                for (function_id, to_version) in versions.iter().copied() {
+                    if !has_function_version(&ast, function_id, to_version) {
+                        continue;
+                    }
+                    if_conversion_reversal::reverse_if_conversion(
+                        &mut ast,
+                        function_id,
+                        to_version,
+                    )?;
                 }
 
                 // Bit trick recognition runs unconditionally (no config toggle yet).

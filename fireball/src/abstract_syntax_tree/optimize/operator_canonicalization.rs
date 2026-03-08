@@ -39,6 +39,11 @@ pub(super) fn canonicalize_operators(
     Ok(())
 }
 
+pub(super) fn canonicalize_condition_expression(expr: &mut Wrapped<AstExpression>) {
+    canonicalize_expression(expr);
+    simplify_condition_zero_cmp(expr);
+}
+
 fn canonicalize_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
     for stmt in stmts.iter_mut() {
         canonicalize_statement(stmt);
