@@ -1,4 +1,3 @@
-mod auto_comment;
 mod bit_trick_recognition;
 mod call_argument_analyzation;
 pub(crate) mod call_graph;
@@ -449,49 +448,6 @@ impl Ast {
                             )?;
                         }
                     }
-
-                    if config.use_embedded_passes {
-                        for (function_id, to_version) in versions.iter().copied() {
-                            if !has_function_version(&ast, function_id, to_version) {
-                                continue;
-                            }
-                            pattern_matching::embedded::control_flow_cleanup::annotate_error_code_returns(
-                                &mut ast,
-                                function_id,
-                                to_version,
-                            )?;
-                        }
-                    } else {
-                        let error_code_returns_pat =
-                            pattern_matching::AstPattern::predefined_pattern(
-                                "error-code-returns.fb",
-                            )
-                            .unwrap();
-                        for (function_id, to_version) in versions.iter().copied() {
-                            if !has_function_version(&ast, function_id, to_version) {
-                                continue;
-                            }
-                            if !pattern_matching::embedded::control_flow_cleanup::should_annotate_error_code_returns(
-                                &ast,
-                                function_id,
-                                to_version,
-                            ) {
-                                continue;
-                            }
-                            pattern_matching::apply_patterns(
-                                &mut ast,
-                                function_id,
-                                to_version,
-                                std::slice::from_ref(&error_code_returns_pat),
-                                pattern_matching::AstPatternApplyPhase::AfterOptimization,
-                            )?;
-                            pattern_matching::embedded::control_flow_cleanup::refine_error_code_return_comments(
-                                &mut ast,
-                                function_id,
-                                to_version,
-                            )?;
-                        }
-                    }
                 }
 
                 if config.boolean_recovery {
@@ -834,72 +790,6 @@ impl Ast {
                     continue;
                 }
                 name_recovery::recover_names(&mut ast, function_id, to_version)?;
-            }
-        }
-
-        // Auto-comment synthesis: insert explanatory comments for common patterns.
-        // The full synthesize_comments includes call-name annotations and many
-        // other heuristics. The call-name subset is also available as an embedded
-        // module (call_name_annotation) and .fb pattern (call-name-comments.fb)
-        // for parity testing.
-        if config.auto_comment {
-            for (function_id, to_version) in versions.iter().copied() {
-                if !has_function_version(&ast, function_id, to_version) {
-                    continue;
-                }
-                auto_comment::synthesize_comments(&mut ast, function_id, to_version)?;
-            }
-        }
-
-        // Bit-trick annotations that now have `.fb` equivalents still run even
-        // when the generic end-of-pass pattern toggle is disabled.
-        if config.use_embedded_passes {
-            for (function_id, to_version) in versions.iter().copied() {
-                if !has_function_version(&ast, function_id, to_version) {
-                    continue;
-                }
-                pattern_matching::embedded::bit_trick_recognition::annotate_translated_patterns(
-                    &mut ast,
-                    function_id,
-                    to_version,
-                )?;
-                pattern_matching::embedded::sentinel_comparison::annotate_sentinel_comparisons(
-                    &mut ast,
-                    function_id,
-                    to_version,
-                )?;
-            }
-        } else {
-            let branchless_abs_pat =
-                pattern_matching::AstPattern::predefined_pattern("branchless-abs.fb").unwrap();
-            let overflow_check_pat =
-                pattern_matching::AstPattern::predefined_pattern("overflow-check.fb").unwrap();
-            let saturating_arithmetic_pat =
-                pattern_matching::AstPattern::predefined_pattern("saturating-arithmetic.fb")
-                    .unwrap();
-            let sentinel_comparison_pat =
-                pattern_matching::AstPattern::predefined_pattern("sentinel-comparison.fb").unwrap();
-            let translated_bit_trick_patterns = vec![
-                branchless_abs_pat,
-                overflow_check_pat,
-                saturating_arithmetic_pat,
-                sentinel_comparison_pat,
-                pattern_matching::AstPattern::predefined_pattern("intrinsic-idioms.fb").unwrap(),
-                pattern_matching::AstPattern::predefined_pattern("stride-access.fb").unwrap(),
-                pattern_matching::AstPattern::predefined_pattern("byte-swap.fb").unwrap(),
-                pattern_matching::AstPattern::predefined_pattern("magic-number-labels.fb").unwrap(),
-            ];
-            for (function_id, to_version) in versions.iter().copied() {
-                if !has_function_version(&ast, function_id, to_version) {
-                    continue;
-                }
-                pattern_matching::apply_patterns(
-                    &mut ast,
-                    function_id,
-                    to_version,
-                    &translated_bit_trick_patterns,
-                    pattern_matching::AstPatternApplyPhase::AfterOptimization,
-                )?;
             }
         }
 

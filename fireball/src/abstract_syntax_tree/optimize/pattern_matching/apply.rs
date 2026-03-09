@@ -362,11 +362,6 @@ fn apply_single_file_rule(
                         stmts, match_pat, predicates, func, args,
                     );
                 }
-                AstPatternOutAction::AnnotateExpr(comment) => {
-                    changed |= stmt_pattern::annotate_expressions_in_stmts(
-                        stmts, match_pat, predicates, comment,
-                    );
-                }
                 _ => {}
             }
         }
@@ -581,34 +576,6 @@ fn apply_single_file_rule(
                         stmt_pattern::transform_expressions_in_stmts_builtin(
                             stmts, match_pat, predicates, func, args,
                         );
-                    }
-                }
-                AstPatternOutAction::AnnotateExpr(comment) => {
-                    if let Some((match_pat, predicates)) = clause_group
-                        .in_blocks
-                        .iter()
-                        .flatten()
-                        .find_map(|b| match b {
-                            AstPatternInBlock::Expr(pat, preds) => Some((pat, preds.as_slice())),
-                            _ => None,
-                        })
-                    {
-                        stmt_pattern::annotate_expressions_in_stmts(
-                            stmts, match_pat, predicates, comment,
-                        );
-                    }
-                }
-                AstPatternOutAction::EmitComment(comment) => {
-                    if let Some((idx, _)) = matched.ast_statement_range {
-                        match &mut stmts[idx].comment {
-                            Some(existing) => {
-                                existing.push_str("; ");
-                                existing.push_str(comment);
-                            }
-                            None => {
-                                stmts[idx].comment = Some(comment.clone());
-                            }
-                        }
                     }
                 }
                 AstPatternOutAction::PruneEmptyElse => {

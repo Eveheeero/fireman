@@ -545,34 +545,6 @@ pub(super) fn parse_pattern_file(path: &str, content: &str) -> Result<AstPattern
                     current_clause_group
                         .out_actions
                         .push(AstPatternOutAction::ReplaceExpr(replace_pat));
-                } else if trimmed.starts_with("emit_comment ") {
-                    let raw = trimmed.strip_prefix("emit_comment ").unwrap().trim();
-                    let comment_text = if (raw.starts_with('"') && raw.ends_with('"'))
-                        || (raw.starts_with('\'') && raw.ends_with('\''))
-                    {
-                        raw[1..raw.len() - 1].to_string()
-                    } else {
-                        return Err(format!(
-                            "emit_comment requires a quoted string in pattern `{path}`: {raw}"
-                        ));
-                    };
-                    current_clause_group
-                        .out_actions
-                        .push(AstPatternOutAction::EmitComment(comment_text));
-                } else if trimmed.starts_with("annotate_expr ") {
-                    let raw = trimmed.strip_prefix("annotate_expr ").unwrap().trim();
-                    let comment_text = if (raw.starts_with('"') && raw.ends_with('"'))
-                        || (raw.starts_with('\'') && raw.ends_with('\''))
-                    {
-                        raw[1..raw.len() - 1].to_string()
-                    } else {
-                        return Err(format!(
-                            "annotate_expr requires a quoted string in pattern `{path}`: {raw}"
-                        ));
-                    };
-                    current_clause_group
-                        .out_actions
-                        .push(AstPatternOutAction::AnnotateExpr(comment_text));
                 } else if trimmed == "prune-empty-else" {
                     current_clause_group
                         .out_actions

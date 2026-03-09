@@ -3,8 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstCall, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral, AstStatement,
-        AstStatementOrigin, AstUnaryOperator, AstValueOrigin, ProcessedOptimization, Wrapped,
-        WrappedAstStatement,
+        AstUnaryOperator, AstValueOrigin, ProcessedOptimization, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -38,9 +37,6 @@ pub(super) fn cleanup_control_flow(
     factor_common_tails(&mut body);
     invert_negated_branches(&mut body);
     merge_consecutive_same_condition_ifs(&mut body);
-    annotate_goto_cleanup_patterns(&mut body);
-    annotate_register_spill_patterns(&mut body);
-    annotate_likely_unrolled_loops(&mut body);
 
     {
         let mut functions = ast.functions.write().unwrap();
@@ -71,18 +67,6 @@ fn cleanup_statement_list(
 
     // Tail-call detection: merge trailing Call + Return(None) into Return(Some(Call(...))).
     merge_trailing_call_return(stmts);
-
-    // Thunk/wrapper annotation: mark trivial forwarding bodies with a comment.
-    if detect_thunk_functions(stmts) {
-        stmts.insert(
-            0,
-            WrappedAstStatement {
-                statement: AstStatement::Comment("// thunk".to_string()),
-                origin: AstStatementOrigin::Unknown,
-                comment: None,
-            },
-        );
-    }
 }
 
 /// Merge a trailing `Call(c); Return(None)` pair into `Return(Some(Call(c)))`,
@@ -126,29 +110,6 @@ fn merge_trailing_call_return(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
-/// Detect whether the function body is a trivial thunk/wrapper that only forwards
-/// a call and returns. Returns `true` if the body (ignoring comments and empties) is:
-/// - A single `Return(Some(Call(...)))`, or
-/// - A single `Call(...)` followed by `Return(None)`.
-fn detect_thunk_functions(stmts: &[WrappedAstStatement]) -> bool {
-    let meaningful: Vec<&WrappedAstStatement> = stmts
-        .iter()
-        .filter(|s| !matches!(&s.statement, AstStatement::Comment(_) | AstStatement::Empty))
-        .collect();
-
-    match meaningful.as_slice() {
-        [single] => matches!(
-            &single.statement,
-            AstStatement::Return(Some(expr)) if matches!(&expr.item, AstExpression::Call(_))
-        ),
-        [first, second] => {
-            matches!(&first.statement, AstStatement::Call(_))
-                && matches!(&second.statement, AstStatement::Return(None))
-        }
-        _ => false,
-    }
-}
-
 fn meaningful_statement_count(stmts: &[WrappedAstStatement]) -> usize {
     stmts
         .iter()
@@ -184,8 +145,6 @@ fn cleanup_statement(stmt: &mut WrappedAstStatement, noreturn_targets: &HashSet<
             if let Some(default_body) = default {
                 cleanup_statement_list(default_body, noreturn_targets);
             }
-            // Annotate non-terminal switch cases with "fallthrough".
-            annotate_switch_fallthrough(cases, noreturn_targets);
         }
         AstStatement::Block(body) => cleanup_statement_list(body, noreturn_targets),
         AstStatement::Declaration(_, _)
@@ -202,38 +161,6 @@ fn cleanup_statement(stmt: &mut WrappedAstStatement, noreturn_targets: &HashSet<
         | AstStatement::Break
         | AstStatement::Continue
         | AstStatement::Empty => {}
-    }
-}
-
-/// Annotate switch cases that don't end with a terminal statement (return, break, etc.)
-/// with a "fallthrough" comment on the last meaningful statement.
-fn annotate_switch_fallthrough(
-    cases: &mut [(AstLiteral, Vec<WrappedAstStatement>)],
-    noreturn_targets: &HashSet<AstFunctionId>,
-) {
-    // Skip the last case — fallthrough from the last case is irrelevant.
-    if cases.len() <= 1 {
-        return;
-    }
-    for i in 0..cases.len() - 1 {
-        let case_body = &mut cases[i].1;
-        if case_body.is_empty() {
-            continue;
-        }
-        let outcome = statement_list_outcome(case_body, noreturn_targets);
-        if outcome != TerminationOutcome::NoTerminate {
-            continue;
-        }
-        // Find the last meaningful (non-comment, non-empty) statement and annotate it.
-        if let Some(last) = case_body
-            .iter_mut()
-            .rev()
-            .find(|s| !matches!(&s.statement, AstStatement::Comment(_) | AstStatement::Empty))
-        {
-            if last.comment.is_none() {
-                last.comment = Some("fallthrough".to_string());
-            }
-        }
     }
 }
 
@@ -657,209 +584,6 @@ fn factor_common_tails(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
-/// Detect likely unrolled loops: loops whose body contains N consecutive structurally
-/// identical statement groups (N >= 2). Annotates with "// likely unrolled x{N}".
-fn annotate_likely_unrolled_loops(stmts: &mut Vec<WrappedAstStatement>) {
-    use super::pattern_matching::{Blake3StdHasher, hash_statement_list};
-
-    for stmt in stmts.iter_mut() {
-        // Recurse into nested structures
-        match &mut stmt.statement {
-            AstStatement::If(_, bt, bf) => {
-                annotate_likely_unrolled_loops(bt);
-                if let Some(bf) = bf {
-                    annotate_likely_unrolled_loops(bf);
-                }
-            }
-            AstStatement::While(_, body) | AstStatement::Block(body) => {
-                annotate_likely_unrolled_loops(body);
-            }
-            AstStatement::For(_, _, _, body) => {
-                annotate_likely_unrolled_loops(body);
-            }
-            AstStatement::Switch(_, cases, default) => {
-                for (_, case_body) in cases.iter_mut() {
-                    annotate_likely_unrolled_loops(case_body);
-                }
-                if let Some(default_body) = default {
-                    annotate_likely_unrolled_loops(default_body);
-                }
-            }
-            _ => {}
-        }
-
-        // Check loop bodies for repeated statement patterns
-        let body = match &mut stmt.statement {
-            AstStatement::While(_, body) | AstStatement::For(_, _, _, body) => body,
-            _ => continue,
-        };
-
-        if body.len() < 4 {
-            continue;
-        }
-
-        // Try group sizes from 1 up to half the body length.
-        // For each group size, hash consecutive non-overlapping groups and
-        // count the longest run of identical hashes.
-        let mut best_repeat = 1usize;
-        let max_group = body.len() / 2;
-        for group_size in 1..=max_group {
-            let n_groups = body.len() / group_size;
-            if n_groups < 2 {
-                continue;
-            }
-
-            // Hash each group of `group_size` consecutive statements
-            let group_hashes: Vec<[u8; 32]> = (0..n_groups)
-                .map(|g| {
-                    let start = g * group_size;
-                    let mut h = Blake3StdHasher::new();
-                    hash_statement_list(&mut h, &body[start..start + group_size]);
-                    h.finish_bytes()
-                })
-                .collect();
-
-            let mut run = 1;
-            for i in 1..group_hashes.len() {
-                if group_hashes[i] == group_hashes[i - 1] {
-                    run += 1;
-                } else {
-                    run = 1;
-                }
-                if run > best_repeat {
-                    best_repeat = run;
-                }
-            }
-        }
-
-        if best_repeat >= 2 && stmt.comment.is_none() {
-            stmt.comment = Some(format!("likely unrolled x{best_repeat}"));
-        }
-    }
-}
-
-/// Annotate goto-cleanup patterns: detect `if (error) { goto cleanup; }` sequences
-/// where multiple error checks jump to the same label, followed by resource-release
-/// statements before a return. This is the classic C "goto fail" error-handling idiom.
-fn annotate_goto_cleanup_patterns(stmts: &mut Vec<WrappedAstStatement>) {
-    // Recurse into nested structures first.
-    for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
-            AstStatement::If(_, bt, bf) => {
-                annotate_goto_cleanup_patterns(bt);
-                if let Some(bf) = bf {
-                    annotate_goto_cleanup_patterns(bf);
-                }
-            }
-            AstStatement::While(_, body)
-            | AstStatement::For(_, _, _, body)
-            | AstStatement::Block(body) => {
-                annotate_goto_cleanup_patterns(body);
-            }
-            AstStatement::Switch(_, cases, default) => {
-                for (_, case_body) in cases.iter_mut() {
-                    annotate_goto_cleanup_patterns(case_body);
-                }
-                if let Some(default_body) = default {
-                    annotate_goto_cleanup_patterns(default_body);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    // Count how many gotos target each label in this scope.
-    let mut goto_counts: hashbrown::HashMap<String, usize> = hashbrown::HashMap::new();
-    for stmt in stmts.iter() {
-        count_gotos_recursive(&stmt.statement, &mut goto_counts);
-    }
-
-    // A cleanup label is one targeted by 2+ gotos from error checks.
-    let cleanup_labels: HashSet<String> = goto_counts
-        .into_iter()
-        .filter(|(_, count)| *count >= 2)
-        .map(|(label, _)| label)
-        .collect();
-
-    if cleanup_labels.is_empty() {
-        return;
-    }
-
-    // Annotate: label definitions that are cleanup targets, and gotos that jump to them.
-    for stmt in stmts.iter_mut() {
-        match &stmt.statement {
-            AstStatement::Label(label) if cleanup_labels.contains(label) => {
-                if stmt.comment.is_none() {
-                    stmt.comment = Some("error cleanup".to_string());
-                }
-            }
-            _ => {}
-        }
-    }
-
-    // Annotate if-goto patterns: if (cond) { goto cleanup; }
-    for stmt in stmts.iter_mut() {
-        if let AstStatement::If(_, bt, None) = &stmt.statement {
-            if bt.len() == 1 {
-                if let AstStatement::Goto(target) = &bt[0].statement {
-                    if let Some(label) = jump_target_label_name(target) {
-                        if cleanup_labels.contains(&label) && stmt.comment.is_none() {
-                            stmt.comment = Some("error check → cleanup".to_string());
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn jump_target_label_name(target: &crate::abstract_syntax_tree::AstJumpTarget) -> Option<String> {
-    match target {
-        crate::abstract_syntax_tree::AstJumpTarget::Unknown(name) => Some(name.clone()),
-        _ => None,
-    }
-}
-
-fn count_gotos_recursive(stmt: &AstStatement, counts: &mut hashbrown::HashMap<String, usize>) {
-    match stmt {
-        AstStatement::Goto(target) => {
-            if let Some(label) = jump_target_label_name(target) {
-                *counts.entry(label).or_insert(0) += 1;
-            }
-        }
-        AstStatement::If(_, bt, bf) => {
-            for s in bt {
-                count_gotos_recursive(&s.statement, counts);
-            }
-            if let Some(bf) = bf {
-                for s in bf {
-                    count_gotos_recursive(&s.statement, counts);
-                }
-            }
-        }
-        AstStatement::While(_, body)
-        | AstStatement::For(_, _, _, body)
-        | AstStatement::Block(body) => {
-            for s in body {
-                count_gotos_recursive(&s.statement, counts);
-            }
-        }
-        AstStatement::Switch(_, cases, default) => {
-            for (_, case_body) in cases {
-                for s in case_body {
-                    count_gotos_recursive(&s.statement, counts);
-                }
-            }
-            if let Some(default_body) = default {
-                for s in default_body {
-                    count_gotos_recursive(&s.statement, counts);
-                }
-            }
-        }
-        _ => {}
-    }
-}
-
 /// Count how many trailing statements are structurally identical between two lists.
 /// Uses full 256-bit blake3 structural hashing for comparison.
 fn count_common_tail(a: &[WrappedAstStatement], b: &[WrappedAstStatement]) -> usize {
@@ -895,75 +619,3 @@ fn count_common_tail(a: &[WrappedAstStatement], b: &[WrappedAstStatement]) -> us
 // ---------------------------------------------------------------------------
 // Register spill/reload detection (L252)
 // ---------------------------------------------------------------------------
-
-/// Detect save/call/restore sequences: `temp = var; call(); var = temp;`
-fn annotate_register_spill_patterns(stmts: &mut Vec<WrappedAstStatement>) {
-    // Recurse into nested structures first.
-    for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
-            AstStatement::If(_, bt, bf) => {
-                annotate_register_spill_patterns(bt);
-                if let Some(bf) = bf {
-                    annotate_register_spill_patterns(bf);
-                }
-            }
-            AstStatement::While(_, body)
-            | AstStatement::For(_, _, _, body)
-            | AstStatement::Block(body) => {
-                annotate_register_spill_patterns(body);
-            }
-            AstStatement::Switch(_, cases, default) => {
-                for (_, case_body) in cases.iter_mut() {
-                    annotate_register_spill_patterns(case_body);
-                }
-                if let Some(default_body) = default {
-                    annotate_register_spill_patterns(default_body);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    // Look for: temp = var; call(...); var = temp; at this level.
-    let len = stmts.len();
-    if len < 3 {
-        return;
-    }
-    for i in 0..len - 2 {
-        // Statement i: temp = var (save)
-        let (save_target, save_source) = match &stmts[i].statement {
-            AstStatement::Assignment(lhs, rhs) => match (&lhs.item, &rhs.item) {
-                (AstExpression::Variable(_, t), AstExpression::Variable(_, s)) if t != s => {
-                    (*t, *s)
-                }
-                _ => continue,
-            },
-            _ => continue,
-        };
-
-        // Statement i+1: call(...)
-        if !matches!(&stmts[i + 1].statement, AstStatement::Call(_)) {
-            continue;
-        }
-
-        // Statement i+2: var = temp (restore)
-        let (restore_target, restore_source) = match &stmts[i + 2].statement {
-            AstStatement::Assignment(lhs, rhs) => match (&lhs.item, &rhs.item) {
-                (AstExpression::Variable(_, t), AstExpression::Variable(_, s)) => (*t, *s),
-                _ => continue,
-            },
-            _ => continue,
-        };
-
-        // Check: save_source == restore_target (original var) and save_target == restore_source (temp)
-        if save_source == restore_target && save_target == restore_source {
-            if stmts[i].comment.is_none() {
-                stmts[i].comment = Some("likely register spill (save before call)".to_string());
-            }
-            if stmts[i + 2].comment.is_none() {
-                stmts[i + 2].comment =
-                    Some("likely register reload (restore after call)".to_string());
-            }
-        }
-    }
-}

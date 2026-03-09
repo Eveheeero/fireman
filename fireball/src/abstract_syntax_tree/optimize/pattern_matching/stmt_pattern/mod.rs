@@ -21,8 +21,5 @@ pub use construct::{
 pub use matcher::match_statement;
 pub use parser::parse_pattern;
 pub use predicate::{eval_where, parse_where};
-pub use transform::{
-    annotate_expressions_in_stmts, transform_expressions_in_stmts,
-    transform_expressions_in_stmts_builtin,
-};
+pub use transform::{transform_expressions_in_stmts, transform_expressions_in_stmts_builtin};
 pub use types::{Captures, PatTree, WherePredicate};

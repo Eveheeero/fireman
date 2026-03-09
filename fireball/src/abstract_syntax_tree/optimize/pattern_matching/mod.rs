@@ -480,9 +480,6 @@ pub enum AstPatternOutAction {
         args: Vec<String>,
     },
     Log(AstPatternLogLevel, String),
-    EmitComment(String),
-    /// Set the `.comment` field on matched expressions (expression-level annotation).
-    AnnotateExpr(String),
     PruneEmptyElse,
 }
 

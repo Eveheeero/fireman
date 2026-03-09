@@ -7,7 +7,6 @@
 
 pub(crate) mod bit_trick_recognition;
 pub(crate) mod boolean_recovery;
-pub(crate) mod call_name_annotation;
 pub(crate) mod cast_minimization;
 pub(crate) mod constant_folding;
 pub(crate) mod control_flow_cleanup;
@@ -15,7 +14,5 @@ pub(crate) mod early_return_normalization;
 pub(crate) mod identity_simplification;
 pub(crate) mod if_conversion_reversal;
 pub(crate) mod magic_division_recovery;
-pub(crate) mod min_max_detection;
 pub(crate) mod operator_canonicalization;
-pub(crate) mod sentinel_comparison;
 pub(crate) mod ternary_recovery;
