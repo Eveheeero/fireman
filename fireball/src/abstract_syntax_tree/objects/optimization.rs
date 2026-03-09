@@ -57,6 +57,8 @@ pub enum ProcessedOptimization {
     NameRecovery,
     AutoComment,
     EarlyReturnNormalization,
+    AssertionRecovery,
+    DoWhileRecovery,
 }
 impl AstOptimizationConfig {
     pub const DEFAULT: Self = Self {

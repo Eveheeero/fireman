@@ -106,6 +106,12 @@ const PREDEFINED_TERNARY_TO_MINMAX_FB: &str =
 // ── New recognition patterns (afterIteration) ──
 const PREDEFINED_DEREF_ADDRESSOF_CLEANUP_FB: &str =
     include_str!("../../../../../patterns/recognition/after-iteration/deref-addressof-cleanup.fb");
+const PREDEFINED_DO_WHILE_RECOVERY_FB: &str =
+    include_str!("../../../../../patterns/recovery/after-iteration/do-while-recovery.fb");
+const PREDEFINED_CLAMP_RECOVERY_FB: &str =
+    include_str!("../../../../../patterns/optimization/after-iteration/clamp-recovery.fb");
+const PREDEFINED_LOOP_CLEANUP_FB: &str =
+    include_str!("../../../../../patterns/cleanup/after-iteration/loop-cleanup.fb");
 
 pub(super) fn predefined_patterns() -> Vec<AstPattern> {
     vec![
@@ -248,6 +254,8 @@ pub(super) fn predefined_patterns() -> Vec<AstPattern> {
             "deref-addressof-cleanup.fb",
             PREDEFINED_DEREF_ADDRESSOF_CLEANUP_FB,
         ),
+        AstPattern::from_predefined_include("clamp-recovery.fb", PREDEFINED_CLAMP_RECOVERY_FB),
+        AstPattern::from_predefined_include("loop-cleanup.fb", PREDEFINED_LOOP_CLEANUP_FB),
     ]
 }
 
@@ -422,6 +430,18 @@ pub(super) fn predefined_pattern(name: &str) -> Option<AstPattern> {
         "deref-addressof-cleanup.fb" => Some(AstPattern::from_predefined_include(
             "deref-addressof-cleanup.fb",
             PREDEFINED_DEREF_ADDRESSOF_CLEANUP_FB,
+        )),
+        "do-while-recovery.fb" => Some(AstPattern::from_predefined_include(
+            "do-while-recovery.fb",
+            PREDEFINED_DO_WHILE_RECOVERY_FB,
+        )),
+        "clamp-recovery.fb" => Some(AstPattern::from_predefined_include(
+            "clamp-recovery.fb",
+            PREDEFINED_CLAMP_RECOVERY_FB,
+        )),
+        "loop-cleanup.fb" => Some(AstPattern::from_predefined_include(
+            "loop-cleanup.fb",
+            PREDEFINED_LOOP_CLEANUP_FB,
         )),
         _ => None,
     }

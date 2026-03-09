@@ -1,0 +1,29 @@
+# Suppress exception unwinding scaffolding calls.
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__cxa_begin_catch")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__cxa_end_catch")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "_Unwind_Resume")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__cxa_allocate_exception")
+do:
+  del start[0]

@@ -1,0 +1,22 @@
+# Suppress sanitizer report calls at AST level.
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__asan_report")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__ubsan_handle")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__msan_warning")
+do:
+  del start[0]

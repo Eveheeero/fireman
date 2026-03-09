@@ -639,7 +639,7 @@
 - [ ] Protocol/parser feature inference — Infer token classes/states from branch patterns and table-driven transitions.
   > 고급 휴리스틱 프레임워크 필요 — 현재 인프라 부족
 - [ ] Error-code convention inference — Detect 0/-1/errno-style conventions and label return types/paths accordingly. [comment-only removed]
-- [x] Assertion pattern recovery — Recognize if(!cond) abort() or trap patterns and emit assert(cond)-like constructs. [implemented as .fb pattern]
+- [x] Assertion pattern recovery — Recognize if(!cond) abort() or trap patterns and emit assert(cond)-like constructs. [implemented as .fb pattern and embedded Rust pass]
 - [ ] Logging/telemetry scaffolding de-noising — Collapse repeated logging macros/wrappers into concise calls with inferred formats. [comment-only removed]
 - [ ] Resource cleanup normalization — Detect multi-resource release patterns and synthesize a single cleanup block. [comment-only removed]
 - [ ] Interrupt/vector table recognition — For firmware, parse vector tables to discover handlers and true entrypoints.
@@ -684,7 +684,8 @@
 - [x] If/else inversion heuristics — Prefer positive conditions and reduce negations based on readability cost models.
   > if(!cond){A}else{B} → if(cond){B}else{A} 변환 구현 완료 (operator_canonicalization.rs)
 - [ ] Switch fallthrough annotation synthesis — Emit explicit fallthrough comments/markers when semantics require it. [comment-only removed]
-- [ ] Macro-like pattern lifting — Recognize MIN/MAX/CLAMP, ARRAY_SIZE, ROUND_UP, etc., and emit as helpers/macros. [comment-only removed]
+- [x] Macro-like pattern lifting — Recognize MIN/MAX/CLAMP, ARRAY_SIZE, ROUND_UP, etc., and emit as helpers/macros. [implemented as .fb pattern and embedded Rust pass]
+
 - [ ] Canonical error-handling templates — Rewrite common goto fail shapes into consistent, compact patterns. [comment-only removed]
 - [ ] Scope recovery via dominance frontiers — Use dominance + liveness to introduce minimal scopes and reduce variable lifetime.
   > CFG 구조화 알고리즘(phoenix/dream 등) 구현 필요 — 도미네이터 트리/포스트도미네이터/제어 의존성은 구현 완료 (dominator.rs)

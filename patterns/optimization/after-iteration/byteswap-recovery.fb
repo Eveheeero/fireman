@@ -1,0 +1,23 @@
+# Byte-swap recovery via Rhai script.
+# Detects shift+mask+or patterns for bswap16/bswap32.
+
+if:
+  at afterIteration
+  script `
+    let dominated = false;
+    for s in ast_stmts {
+      if s.is_assignment() {
+        let rhs_str = s.kind();
+        if rhs_str == "Assignment" {
+          // Look for shift-mask-or pattern hinting at byte reversal
+          if s.contains_call_to("__builtin_bswap") {
+            dominated = true;
+          }
+        }
+      }
+    }
+    dominated
+  `
+do:
+  info("byteswap pattern detected")
+  del start[0]

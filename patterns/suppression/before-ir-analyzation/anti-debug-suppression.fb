@@ -1,0 +1,25 @@
+# Suppress anti-debug and anti-VM instrumentation.
+
+if:
+  at beforeIrAnalyzation
+  asm_contains IsDebuggerPresent
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains NtQueryInformationProcess
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains CheckRemoteDebuggerPresent
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains int 0x2d
+do:
+  del start[0]

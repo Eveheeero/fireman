@@ -1,0 +1,15 @@
+# Reference-count recognition: AddRef/Release pair detection.
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "AddRef")
+do:
+  emit Call("RC_INCREMENT", [$f])
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "Release")
+do:
+  emit Call("RC_DECREMENT", [$f])

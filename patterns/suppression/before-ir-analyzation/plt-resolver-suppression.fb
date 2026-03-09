@@ -1,0 +1,13 @@
+# Suppress PLT lazy-binding resolver noise.
+
+if:
+  at beforeIrAnalyzation
+  asm_contains _dl_runtime_resolve
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains _dl_fixup
+do:
+  del start[0]

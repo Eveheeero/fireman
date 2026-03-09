@@ -1,0 +1,7 @@
+# POSIX error-check recovery: call(); if(ret < 0) ... → error handling.
+
+if:
+  at afterIteration
+  stmt_seq [Call($f), If(BinaryOp(Less, $ret, Literal(Int(0))), $then, $else)]
+do:
+  emit Call("POSIX_CHECK", [$f])

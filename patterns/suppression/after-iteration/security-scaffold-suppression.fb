@@ -1,0 +1,22 @@
+# Suppress security mitigation scaffolding calls.
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__stack_chk_fail")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__cfi_check")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__cfi_slowpath")
+do:
+  del start[0]

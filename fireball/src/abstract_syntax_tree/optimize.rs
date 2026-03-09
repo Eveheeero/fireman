@@ -492,11 +492,44 @@ impl Ast {
                                 function_id,
                                 to_version,
                             )?;
+                            pattern_matching::embedded::assertion_recovery::recover_assertions(
+                                &mut ast,
+                                function_id,
+                                to_version,
+                            )?;
+                            pattern_matching::embedded::do_while_recovery::recover_do_while(
+                                &mut ast,
+                                function_id,
+                                to_version,
+                            )?;
+                            pattern_matching::embedded::clamp_recovery::recover_clamp(
+                                &mut ast,
+                                function_id,
+                                to_version,
+                            )?;
+                            pattern_matching::embedded::loop_cleanup::cleanup_loops(
+                                &mut ast,
+                                function_id,
+                                to_version,
+                            )?;
                         }
                     } else {
                         let ternary_pat =
                             pattern_matching::AstPattern::predefined_pattern("ternary-recovery.fb")
                                 .unwrap();
+                        let assertion_pat =
+                            pattern_matching::AstPattern::predefined_pattern("assertion-recovery.fb")
+                                .unwrap();
+                        let do_while_pat =
+                            pattern_matching::AstPattern::predefined_pattern("do-while-recovery.fb")
+                                .unwrap();
+                        let clamp_pat =
+                            pattern_matching::AstPattern::predefined_pattern("clamp-recovery.fb")
+                                .unwrap();
+                        let loop_cleanup_pat =
+                            pattern_matching::AstPattern::predefined_pattern("loop-cleanup.fb")
+                                .unwrap();
+                        let pats = vec![ternary_pat, assertion_pat, do_while_pat, clamp_pat, loop_cleanup_pat];
                         for (function_id, to_version) in versions.iter().copied() {
                             if !has_function_version(&ast, function_id, to_version) {
                                 continue;
@@ -505,7 +538,7 @@ impl Ast {
                                 &mut ast,
                                 function_id,
                                 to_version,
-                                std::slice::from_ref(&ternary_pat),
+                                &pats,
                                 pattern_matching::AstPatternApplyPhase::AfterIteration,
                             )?;
                         }

@@ -1,6 +1,7 @@
 # Assertion pattern recovery: if(!cond) { abort(); } → assert(cond).
 # Matches common assertion abort functions.
 
+# if(!cond) abort(); => assert(cond);
 if:
   at afterIteration
   stmt If(UnaryOp(Not, $cond), [Call($f)], None)
@@ -21,3 +22,25 @@ if:
   where call_name_matches($f, "__builtin_trap")
 do:
   emit Call("assert", [$cond])
+
+# if(cond) abort(); => assert(!cond);
+if:
+  at afterIteration
+  stmt If($cond, [Call($f)], None)
+  where call_name_matches($f, "abort")
+do:
+  emit Call("assert", [UnaryOp(Not, $cond)])
+
+if:
+  at afterIteration
+  stmt If($cond, [Call($f)], None)
+  where call_name_matches($f, "__assert_fail")
+do:
+  emit Call("assert", [UnaryOp(Not, $cond)])
+
+if:
+  at afterIteration
+  stmt If($cond, [Call($f)], None)
+  where call_name_matches($f, "__builtin_trap")
+do:
+  emit Call("assert", [UnaryOp(Not, $cond)])

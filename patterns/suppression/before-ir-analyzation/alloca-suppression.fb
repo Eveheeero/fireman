@@ -1,0 +1,13 @@
+# Suppress alloca/VLA stack-probing beyond __chkstk.
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __alloca
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains _alloca
+do:
+  del start[0]

@@ -1,0 +1,22 @@
+# Suppress compiler instrumentation calls (gcov, llvm profile, sanitizer coverage).
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__gcov_")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__llvm_profile_")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__sanitizer_cov_")
+do:
+  del start[0]

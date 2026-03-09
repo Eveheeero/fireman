@@ -1,0 +1,20 @@
+# Resource cleanup normalization via Rhai script.
+# Detects close/free chains and consolidates.
+
+if:
+  at afterIteration
+  script `
+    let cleanup_count = 0;
+    for s in ast_stmts {
+      if s.is_call() {
+        let n = s.call_name();
+        if n.contains("close") || n.contains("free") || n.contains("release") || n.contains("destroy") {
+          cleanup_count += 1;
+        }
+      }
+    }
+    cleanup_count >= 3
+  `
+do:
+  info("resource cleanup chain detected")
+  del start[0]

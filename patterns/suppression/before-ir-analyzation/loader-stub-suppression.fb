@@ -1,0 +1,25 @@
+# Suppress runtime init and loader stub noise.
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __security_init_cookie
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains _initterm
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __scrt_common_main
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains _CRT_INIT
+do:
+  del start[0]

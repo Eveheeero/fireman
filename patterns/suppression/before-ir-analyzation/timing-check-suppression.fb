@@ -1,0 +1,19 @@
+# Suppress timing-check instrumentation (rdtsc, QueryPerformanceCounter).
+
+if:
+  at beforeIrAnalyzation
+  asm_contains rdtsc
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains rdtscp
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains QueryPerformanceCounter
+do:
+  del start[0]

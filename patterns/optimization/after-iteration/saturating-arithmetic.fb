@@ -1,0 +1,11 @@
+# Saturating arithmetic: clamp-to-max pattern → saturating_add.
+# Pattern: (a + b) >= a ? (a + b) : MAX → saturating_add(a, b)
+
+if:
+  at afterIteration
+  expr Ternary(BinaryOp(GreaterEqual, BinaryOp(Add, $a, $b), $a2), BinaryOp(Add, $a3, $b2), $max)
+  where structurally_equal($a, $a2)
+  where structurally_equal($a, $a3)
+  where structurally_equal($b, $b2)
+do:
+  replace_expr Call("saturating_add", [$a, $b])

@@ -16,3 +16,8 @@ pub(crate) mod if_conversion_reversal;
 pub(crate) mod magic_division_recovery;
 pub(crate) mod operator_canonicalization;
 pub(crate) mod ternary_recovery;
+pub(crate) mod assertion_recovery;
+pub(crate) mod do_while_recovery;
+pub(crate) mod clamp_recovery;
+pub(crate) mod loop_cleanup;
+pub(crate) mod test_utils;

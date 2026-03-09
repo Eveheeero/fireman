@@ -1,0 +1,22 @@
+# Suppress C++ static local guard acquire/release calls.
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__cxa_guard_acquire")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__cxa_guard_release")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__cxa_guard_abort")
+do:
+  del start[0]

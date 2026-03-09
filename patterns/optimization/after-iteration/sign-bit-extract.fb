@@ -1,0 +1,13 @@
+# Sign-bit extraction: x >> 31 → SIGN_BIT(x) (for 32-bit).
+
+if:
+  at afterIteration
+  expr BinaryOp(RightShift, $x, Literal(Int(31)))
+do:
+  replace_expr Call("SIGN_BIT", [$x])
+
+if:
+  at afterIteration
+  expr BinaryOp(RightShift, $x, Literal(Int(63)))
+do:
+  replace_expr Call("SIGN_BIT", [$x])

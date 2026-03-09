@@ -1,0 +1,19 @@
+# Suppress atomic fence and barrier instructions.
+
+if:
+  at beforeIrAnalyzation
+  asm_contains mfence
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains lfence
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains sfence
+do:
+  del start[0]
