@@ -4,55 +4,55 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Clone)]
-pub(crate) struct KnownSectionData {
-    pub(crate) start_address: u64,
-    pub(crate) end_address: Option<u64>,
-    pub(crate) analyzed: bool,
+pub struct KnownSectionData {
+    pub start_address: u64,
+    pub end_address: Option<u64>,
+    pub analyzed: bool,
 }
 
 #[derive(Clone)]
-pub(crate) struct KnownSection {
-    pub(crate) selected: bool,
-    pub(crate) data: KnownSectionData,
+pub struct KnownSection {
+    pub selected: bool,
+    pub data: KnownSectionData,
 }
 
 #[derive(Clone)]
-pub(crate) struct Assembly {
-    pub(crate) index: usize,
-    pub(crate) parents_start_address: u64,
-    pub(crate) data: String,
+pub struct Assembly {
+    pub index: usize,
+    pub parents_start_address: u64,
+    pub data: String,
 }
 
 #[derive(Clone)]
-pub(crate) struct Ir {
-    pub(crate) parents_assembly_index: usize,
-    pub(crate) data: String,
+pub struct Ir {
+    pub parents_assembly_index: usize,
+    pub data: String,
 }
 
 #[derive(Clone)]
-pub(crate) struct AstLine {
-    pub(crate) row: usize,
-    pub(crate) data: String,
+pub struct AstLine {
+    pub row: usize,
+    pub data: String,
 }
 
 #[derive(Clone)]
-pub(crate) struct DecompileResult {
-    pub(crate) assembly: Vec<Assembly>,
-    pub(crate) ir: Vec<Ir>,
-    pub(crate) ast: Vec<AstLine>,
-    pub(crate) ast_sync_message: Option<String>,
+pub struct DecompileResult {
+    pub assembly: Vec<Assembly>,
+    pub ir: Vec<Ir>,
+    pub ast: Vec<AstLine>,
+    pub ast_sync_message: Option<String>,
 }
 
 #[derive(Clone)]
-pub(crate) struct DecompileResultView {
-    pub(crate) colors: HashMap<usize, Color32>,
-    pub(crate) assembly_parent_by_index: HashMap<usize, u64>,
-    pub(crate) data: DecompileResult,
+pub struct DecompileResultView {
+    pub colors: HashMap<usize, Color32>,
+    pub assembly_parent_by_index: HashMap<usize, u64>,
+    pub data: DecompileResult,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum EditorLayer {
+pub enum EditorLayer {
     Assembly,
     Ir,
     Ast,
@@ -60,120 +60,120 @@ pub(crate) enum EditorLayer {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum EditPosition {
+pub enum EditPosition {
     Replace,
     Before,
     After,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) struct EditorTarget {
-    pub(crate) layer: EditorLayer,
-    pub(crate) row: usize,
+pub struct EditorTarget {
+    pub layer: EditorLayer,
+    pub row: usize,
 }
 
 #[derive(Clone, Debug, Serialize)]
-pub(crate) struct PatchOperation {
-    pub(crate) layer: EditorLayer,
-    pub(crate) position: EditPosition,
-    pub(crate) target: String,
-    pub(crate) text: String,
+pub struct PatchOperation {
+    pub layer: EditorLayer,
+    pub position: EditPosition,
+    pub target: String,
+    pub text: String,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct AssemblyEditorDraft {
-    pub(crate) raw_text: String,
-    pub(crate) mnemonic: String,
-    pub(crate) operands: String,
-    pub(crate) status_message: Option<String>,
+pub struct AssemblyEditorDraft {
+    pub raw_text: String,
+    pub mnemonic: String,
+    pub operands: String,
+    pub status_message: Option<String>,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct IrEditorDraft {
-    pub(crate) raw_text: String,
-    pub(crate) opcode: String,
-    pub(crate) detail: String,
-    pub(crate) position: EditPosition,
-    pub(crate) status_message: Option<String>,
+pub struct IrEditorDraft {
+    pub raw_text: String,
+    pub opcode: String,
+    pub detail: String,
+    pub position: EditPosition,
+    pub status_message: Option<String>,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct AstEditorDraft {
-    pub(crate) raw_text: String,
-    pub(crate) position: EditPosition,
-    pub(crate) status_message: Option<String>,
+pub struct AstEditorDraft {
+    pub raw_text: String,
+    pub position: EditPosition,
+    pub status_message: Option<String>,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum EditorDraft {
+pub enum EditorDraft {
     Assembly(AssemblyEditorDraft),
     Ir(IrEditorDraft),
     Ast(AstEditorDraft),
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct EditRequest {
-    pub(crate) layer: EditorLayer,
-    pub(crate) row: usize,
-    pub(crate) position: EditPosition,
-    pub(crate) text: String,
+pub struct EditRequest {
+    pub layer: EditorLayer,
+    pub row: usize,
+    pub position: EditPosition,
+    pub text: String,
 }
 
 #[derive(Clone)]
-pub(crate) struct AppliedEditResult {
-    pub(crate) result: DecompileResult,
-    pub(crate) selected_target: EditorTarget,
+pub struct AppliedEditResult {
+    pub result: DecompileResult,
+    pub selected_target: EditorTarget,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct DecompileRequest {
-    pub(crate) start_addresses: Vec<u64>,
-    pub(crate) settings: OptimizationSettings,
-    pub(crate) script_paths: Vec<String>,
-    pub(crate) buffer_script: Option<String>,
+pub struct DecompileRequest {
+    pub start_addresses: Vec<u64>,
+    pub settings: OptimizationSettings,
+    pub script_paths: Vec<String>,
+    pub buffer_script: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct OptimizationSettings {
-    pub(crate) ir_analyzation: bool,
-    pub(crate) parameter_analyzation: bool,
-    pub(crate) call_argument_analyzation: bool,
-    pub(crate) constant_folding: bool,
-    pub(crate) control_flow_cleanup: bool,
-    pub(crate) collapse_unused_varaible: bool,
-    pub(crate) dead_store_elimination: bool,
-    pub(crate) pattern_matching_enabled: bool,
-    pub(crate) loop_analyzation: bool,
-    pub(crate) copy_propagation: bool,
-    pub(crate) expression_inlining: bool,
-    pub(crate) ternary_recovery: bool,
-    pub(crate) boolean_recovery: bool,
-    pub(crate) switch_reconstruction: bool,
-    pub(crate) lifetime_scoping: bool,
-    pub(crate) signedness_inference: bool,
-    pub(crate) name_recovery: bool,
-    pub(crate) auto_comment: bool,
-    pub(crate) early_return_normalization: bool,
-    pub(crate) max_pass_iterations: usize,
-    pub(crate) use_embedded_passes: bool,
+pub struct OptimizationSettings {
+    pub ir_analyzation: bool,
+    pub parameter_analyzation: bool,
+    pub call_argument_analyzation: bool,
+    pub constant_folding: bool,
+    pub control_flow_cleanup: bool,
+    pub collapse_unused_varaible: bool,
+    pub dead_store_elimination: bool,
+    pub pattern_matching_enabled: bool,
+    pub loop_analyzation: bool,
+    pub copy_propagation: bool,
+    pub expression_inlining: bool,
+    pub ternary_recovery: bool,
+    pub boolean_recovery: bool,
+    pub switch_reconstruction: bool,
+    pub lifetime_scoping: bool,
+    pub signedness_inference: bool,
+    pub name_recovery: bool,
+    pub auto_comment: bool,
+    pub early_return_normalization: bool,
+    pub max_pass_iterations: usize,
+    pub use_embedded_passes: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct OptimizationScriptPreset {
-    pub(crate) name: String,
-    pub(crate) path: String,
-    pub(crate) enabled: bool,
-    pub(crate) applied_enabled: bool,
+pub struct OptimizationScriptPreset {
+    pub name: String,
+    pub path: String,
+    pub enabled: bool,
+    pub applied_enabled: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
-pub(crate) struct OptimizationStore {
-    pub(crate) draft_settings: OptimizationSettings,
-    pub(crate) applied_settings: OptimizationSettings,
-    pub(crate) script_presets: Vec<OptimizationScriptPreset>,
-    pub(crate) editor_buffer: String,
-    pub(crate) editor_path: Option<String>,
-    pub(crate) applied_buffer_script: Option<String>,
+pub struct OptimizationStore {
+    pub draft_settings: OptimizationSettings,
+    pub applied_settings: OptimizationSettings,
+    pub script_presets: Vec<OptimizationScriptPreset>,
+    pub editor_buffer: String,
+    pub editor_path: Option<String>,
+    pub applied_buffer_script: Option<String>,
 }
 
 impl Default for OptimizationSettings {
@@ -205,7 +205,7 @@ impl Default for OptimizationSettings {
     }
 }
 
-pub(crate) fn build_optimization_config(
+pub fn build_optimization_config(
     settings: &OptimizationSettings,
     script_paths: &[String],
     buffer_script: Option<&str>,
@@ -262,7 +262,7 @@ pub(crate) fn build_optimization_config(
 }
 
 impl EditPosition {
-    pub(crate) const fn label(self) -> &'static str {
+    pub const fn label(self) -> &'static str {
         match self {
             Self::Replace => "Replace",
             Self::Before => "Insert Before",
@@ -272,7 +272,7 @@ impl EditPosition {
 }
 
 impl AssemblyEditorDraft {
-    pub(crate) fn from_display_text(text: &str) -> Self {
+    pub fn from_display_text(text: &str) -> Self {
         let normalized = strip_assembly_address(text);
         let (mnemonic, operands) = split_head_tail(normalized);
         Self {
@@ -283,13 +283,13 @@ impl AssemblyEditorDraft {
         }
     }
 
-    pub(crate) fn compose_line(&self) -> String {
+    pub fn compose_line(&self) -> String {
         compose_head_tail(&self.mnemonic, &self.operands)
     }
 }
 
 impl IrEditorDraft {
-    pub(crate) fn from_text(text: &str) -> Self {
+    pub fn from_text(text: &str) -> Self {
         let (opcode, detail) = split_head_tail(text);
         Self {
             raw_text: text.to_string(),
@@ -300,13 +300,13 @@ impl IrEditorDraft {
         }
     }
 
-    pub(crate) fn compose_line(&self) -> String {
+    pub fn compose_line(&self) -> String {
         compose_head_tail(&self.opcode, &self.detail)
     }
 }
 
 impl AstEditorDraft {
-    pub(crate) fn from_text(text: &str) -> Self {
+    pub fn from_text(text: &str) -> Self {
         Self {
             raw_text: text.to_string(),
             position: EditPosition::Replace,

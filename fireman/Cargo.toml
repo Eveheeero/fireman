@@ -10,6 +10,7 @@ homepage = "https://crates.io/crates/fireman"
 
 [dependencies]
 fireball.workspace = true
+firebat_lib = { path = "../firebat", package = "firebat" }
 clap = { version = "4.5", features = ["derive"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true

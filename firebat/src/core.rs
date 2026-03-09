@@ -19,7 +19,7 @@ use serde::Serialize;
 use std::{collections::HashMap, sync::Arc};
 
 #[derive(Default)]
-pub(crate) struct FirebatCore {
+pub struct FirebatCore {
     path: Option<String>,
     fireball: Option<Fireball>,
     session: Option<EditableSession>,
@@ -250,7 +250,7 @@ impl FirebatCore {
             .ok_or_else(|| "Fireball is None".to_string())
     }
 
-    pub(crate) fn open_file(&mut self, path: &str) -> Result<(), String> {
+    pub fn open_file(&mut self, path: &str) -> Result<(), String> {
         self.path = Some(path.to_owned());
         let fireball = Fireball::from_path(path).map_err(|error| error.to_string())?;
         self.fireball = Some(fireball);
@@ -259,7 +259,7 @@ impl FirebatCore {
         Ok(())
     }
 
-    pub(crate) fn analyze_section(&self, address: &str) -> Result<Vec<KnownSectionData>, String> {
+    pub fn analyze_section(&self, address: &str) -> Result<Vec<KnownSectionData>, String> {
         if address.is_empty() {
             return self.analyze_section_from_entry();
         }
@@ -267,7 +267,7 @@ impl FirebatCore {
         self.analyze_section_from_address(parsed_address)
     }
 
-    pub(crate) fn analyze_all_sections(&self) -> Result<Vec<KnownSectionData>, String> {
+    pub fn analyze_all_sections(&self) -> Result<Vec<KnownSectionData>, String> {
         let fireball = self.fireball()?;
         let analyzed = fireball.analyze_all().map_err(|error| error.to_string())?;
         Ok(block_to_result(analyzed))
@@ -289,7 +289,7 @@ impl FirebatCore {
         Ok(block_to_result([result]))
     }
 
-    pub(crate) fn decompile_sections(
+    pub fn decompile_sections(
         &mut self,
         request: DecompileRequest,
     ) -> Result<DecompileResult, String> {
@@ -305,7 +305,7 @@ impl FirebatCore {
         Ok(result)
     }
 
-    pub(crate) fn apply_edit(&mut self, request: EditRequest) -> Result<AppliedEditResult, String> {
+    pub fn apply_edit(&mut self, request: EditRequest) -> Result<AppliedEditResult, String> {
         let patch_target = self.patch_target(&request)?;
         let selected_target = {
             let session = self
@@ -340,7 +340,7 @@ impl FirebatCore {
         })
     }
 
-    pub(crate) fn export_patch(&self) -> Result<String, String> {
+    pub fn export_patch(&self) -> Result<String, String> {
         if self.fireball.is_none() {
             return Err("Open a binary before exporting a patch".to_string());
         }
@@ -604,7 +604,7 @@ fn reindex_ast_lines(lines: &mut [AstLine]) {
     }
 }
 
-pub(crate) fn parse_address(address: &str) -> Result<u64, String> {
+pub fn parse_address(address: &str) -> Result<u64, String> {
     let address = address.trim();
     if let Ok(address) = address.parse::<u64>() {
         return Ok(address);

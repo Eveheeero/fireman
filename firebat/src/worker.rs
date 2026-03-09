@@ -4,7 +4,7 @@ use crate::{
 };
 use std::{sync::mpsc, thread};
 
-pub(crate) enum WorkerRequest {
+pub enum WorkerRequest {
     OpenFile(String),
     AnalyzeSection(String),
     AnalyzeAllSections,
@@ -13,7 +13,7 @@ pub(crate) enum WorkerRequest {
     ExportPatch,
 }
 
-pub(crate) enum WorkerResponse {
+pub enum WorkerResponse {
     OpenFile(Result<(), String>),
     AnalyzeSection(Result<Vec<KnownSectionData>, String>),
     AnalyzeAllSections(Result<Vec<KnownSectionData>, String>),
@@ -22,19 +22,19 @@ pub(crate) enum WorkerResponse {
     ExportPatch(Result<String, String>),
 }
 
-pub(crate) enum WorkerTryRecv {
+pub enum WorkerTryRecv {
     Message(WorkerResponse),
     Empty,
     Disconnected,
 }
 
-pub(crate) struct FirebatWorker {
+pub struct FirebatWorker {
     request_tx: mpsc::Sender<WorkerRequest>,
     response_rx: mpsc::Receiver<WorkerResponse>,
 }
 
 impl FirebatWorker {
-    pub(crate) fn spawn() -> Self {
+    pub fn spawn() -> Self {
         let (request_tx, request_rx) = mpsc::channel::<WorkerRequest>();
         let (response_tx, response_rx) = mpsc::channel::<WorkerResponse>();
         thread::Builder::new()
@@ -75,13 +75,13 @@ impl FirebatWorker {
         }
     }
 
-    pub(crate) fn send(&self, request: WorkerRequest) -> Result<(), String> {
+    pub fn send(&self, request: WorkerRequest) -> Result<(), String> {
         self.request_tx
             .send(request)
             .map_err(|_| "Background worker is unavailable".to_string())
     }
 
-    pub(crate) fn try_recv(&self) -> WorkerTryRecv {
+    pub fn try_recv(&self) -> WorkerTryRecv {
         match self.response_rx.try_recv() {
             Ok(response) => WorkerTryRecv::Message(response),
             Err(mpsc::TryRecvError::Empty) => WorkerTryRecv::Empty,

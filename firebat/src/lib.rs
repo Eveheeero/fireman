@@ -1,4 +1,5 @@
 mod app;
+pub mod backend;
 mod core;
 mod model;
 mod theme;
@@ -28,3 +29,7 @@ pub fn run() {
         }),
     );
 }
+
+pub use core::FirebatCore;
+pub use model::*;
+pub use worker::{FirebatWorker, WorkerRequest, WorkerResponse, WorkerTryRecv};
