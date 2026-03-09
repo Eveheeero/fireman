@@ -9,6 +9,7 @@ mod fb_parser;
 mod hashing;
 mod ir_parser;
 mod predefined_pattern;
+mod rhai_types;
 pub(crate) mod stmt_pattern;
 
 use crate::{abstract_syntax_tree::AstStatement, ir::statements::IrStatement};
@@ -758,45 +759,22 @@ impl Default for AstPatternIrData {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct AstPatternScript {
-    pub source: String,
-    pub compiled: Option<RhaiAst>,
+    pub compiled: RhaiAst,
 }
 impl AstPatternScript {
-    fn single(source: String, compiled: RhaiAst) -> Self {
-        Self {
-            source,
-            compiled: Some(compiled),
-        }
-    }
-
     pub fn from_source(script: impl Into<String>) -> Result<Self, String> {
         let source = script.into().trim().to_string();
         if source.is_empty() {
             return Err("script must not be empty".to_string());
         }
         let compiled = apply::compiled_script(&source)?;
-        Ok(Self::single(source, compiled))
+        Ok(Self { compiled })
     }
 
-    fn compiled_or_parse(&self) -> Result<RhaiAst, String> {
-        if let Some(compiled) = &self.compiled {
-            return Ok(compiled.clone());
-        }
-        let source = self.source();
-        if source.is_empty() {
-            return Err("script must not be empty".to_string());
-        }
-        apply::compiled_script(source)
-    }
-
-    fn is_empty(&self) -> bool {
-        self.source.trim().is_empty()
-    }
-
-    fn source(&self) -> &str {
-        self.source.trim()
+    fn compiled(&self) -> RhaiAst {
+        self.compiled.clone()
     }
 }
 
@@ -804,4 +782,24 @@ impl AstPatternScript {
 pub struct AstPatternRange {
     pub start: usize,
     pub end_exclusive: usize,
+}
+
+#[cfg(test)]
+mod tests;
+
+#[cfg(test)]
+impl AstPatternRule {
+    pub fn clause_groups(&self) -> &[AstPatternClauseGroup] {
+        &self.clause_groups
+    }
+}
+
+#[cfg(test)]
+impl AstPatternClauseGroup {
+    pub fn in_blocks(&self) -> &[Vec<AstPatternInBlock>] {
+        &self.in_blocks
+    }
+    pub fn out_actions(&self) -> &[AstPatternOutAction] {
+        &self.out_actions
+    }
 }

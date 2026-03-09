@@ -33,14 +33,14 @@ struct AstPatternNormalizedAsmLine {
     line: String,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct AstPatternScriptContext<'a> {
     source: &'a str,
-    ast_debug: &'a str,
-    ir_debug: &'a str,
-    asm_debug: &'a str,
     statement_count: i64,
     asm_count: i64,
+    wrapped_statements: &'a [WrappedAstStatement],
+    ir_statements: &'a [IrStatement],
+    asm_lines: &'a [AstPatternNormalizedAsmLine],
 }
 
 #[derive(Debug, Clone)]
@@ -62,7 +62,6 @@ pub(in crate::abstract_syntax_tree::optimize) fn apply_patterns(
     phase: AstPatternApplyPhase,
 ) -> Result<(), DecompileError> {
     let mut body;
-    let ir_debug;
     let function_ir_statements;
     {
         let mut functions = ast.functions.write().unwrap();
@@ -71,7 +70,6 @@ pub(in crate::abstract_syntax_tree::optimize) fn apply_patterns(
             .and_then(|x| x.get_mut(&function_version))
             .unwrap();
         function_ir_statements = collect_function_ir_statements(function.ir.get_ir());
-        ir_debug = format!("{:?}", function.ir.get_ir());
         body = std::mem::take(&mut function.body);
     }
 
@@ -80,7 +78,6 @@ pub(in crate::abstract_syntax_tree::optimize) fn apply_patterns(
         apply_file_pattern_rules_recursive(
             &mut body,
             &file_rules,
-            &ir_debug,
             &function_ir_statements,
             phase,
         );
@@ -160,7 +157,6 @@ fn pattern_file_path(pattern: &AstPattern) -> Option<&str> {
 fn apply_file_pattern_rules_recursive(
     stmts: &mut Vec<WrappedAstStatement>,
     rules: &[AstPatternLoadedRule],
-    ir_debug: &str,
     function_ir_statements: &[IrStatement],
     phase: AstPatternApplyPhase,
 ) -> bool {
@@ -180,7 +176,6 @@ fn apply_file_pattern_rules_recursive(
                 stmts,
                 &loaded_rule.rule,
                 loaded_rule.input_type,
-                ir_debug,
                 function_ir_statements,
                 phase,
             );
@@ -192,7 +187,6 @@ fn apply_file_pattern_rules_recursive(
                     pass_changed |= apply_file_pattern_rules_recursive(
                         branch_true,
                         rules,
-                        ir_debug,
                         function_ir_statements,
                         phase,
                     );
@@ -200,7 +194,6 @@ fn apply_file_pattern_rules_recursive(
                         pass_changed |= apply_file_pattern_rules_recursive(
                             branch_false,
                             rules,
-                            ir_debug,
                             function_ir_statements,
                             phase,
                         );
@@ -210,7 +203,6 @@ fn apply_file_pattern_rules_recursive(
                     pass_changed |= apply_file_pattern_rules_recursive(
                         body,
                         rules,
-                        ir_debug,
                         function_ir_statements,
                         phase,
                     );
@@ -220,7 +212,6 @@ fn apply_file_pattern_rules_recursive(
                     pass_changed |= apply_file_pattern_rules_recursive(
                         &mut init_vec,
                         rules,
-                        ir_debug,
                         function_ir_statements,
                         phase,
                     );
@@ -232,7 +223,6 @@ fn apply_file_pattern_rules_recursive(
                     pass_changed |= apply_file_pattern_rules_recursive(
                         &mut update_vec,
                         rules,
-                        ir_debug,
                         function_ir_statements,
                         phase,
                     );
@@ -243,7 +233,6 @@ fn apply_file_pattern_rules_recursive(
                     pass_changed |= apply_file_pattern_rules_recursive(
                         body,
                         rules,
-                        ir_debug,
                         function_ir_statements,
                         phase,
                     );
@@ -253,7 +242,6 @@ fn apply_file_pattern_rules_recursive(
                         pass_changed |= apply_file_pattern_rules_recursive(
                             case_body,
                             rules,
-                            ir_debug,
                             function_ir_statements,
                             phase,
                         );
@@ -262,7 +250,6 @@ fn apply_file_pattern_rules_recursive(
                         pass_changed |= apply_file_pattern_rules_recursive(
                             default_body,
                             rules,
-                            ir_debug,
                             function_ir_statements,
                             phase,
                         );
@@ -272,7 +259,6 @@ fn apply_file_pattern_rules_recursive(
                     pass_changed |= apply_file_pattern_rules_recursive(
                         body,
                         rules,
-                        ir_debug,
                         function_ir_statements,
                         phase,
                     );
@@ -312,7 +298,6 @@ fn apply_single_file_rule(
     stmts: &mut Vec<WrappedAstStatement>,
     rule: &AstPatternRule,
     input_type: AstPatternInputType,
-    ir_debug: &str,
     function_ir_statements: &[IrStatement],
     phase: AstPatternApplyPhase,
 ) -> bool {
@@ -382,11 +367,6 @@ fn apply_single_file_rule(
             break;
         }
 
-        let ast_debug = if need_script {
-            collect_ast_debug(stmts)
-        } else {
-            String::new()
-        };
         let ast_statements = if need_ast {
             collect_ast_statements(stmts)
         } else {
@@ -402,22 +382,18 @@ fn apply_single_file_rule(
         } else {
             Vec::new()
         };
-        let asm_debug = if need_script {
-            asm_lines
-                .iter()
-                .map(|line| line.line.as_str())
-                .collect::<Vec<_>>()
-                .join("\n")
+        let wrapped_stmts_snapshot: Vec<WrappedAstStatement> = if need_script {
+            stmts.clone()
         } else {
-            String::new()
+            Vec::new()
         };
         let script_context = AstPatternScriptContext {
             source: &rule.source,
-            ast_debug: &ast_debug,
-            ir_debug,
-            asm_debug: &asm_debug,
             statement_count: stmts.len() as i64,
             asm_count: asm_lines.len() as i64,
+            wrapped_statements: &wrapped_stmts_snapshot,
+            ir_statements: &ir_statements,
+            asm_lines: &asm_lines,
         };
         let matched = rule
             .clause_groups
@@ -1263,13 +1239,6 @@ fn collect_asm_lines(stmts: &[WrappedAstStatement]) -> Vec<AstPatternNormalizedA
     lines
 }
 
-fn collect_ast_debug(stmts: &[WrappedAstStatement]) -> String {
-    stmts
-        .iter()
-        .map(|stmt| format!("{:?}", stmt.statement))
-        .collect::<Vec<_>>()
-        .join("\n")
-}
 
 fn build_rhai_engine() -> Engine {
     let mut engine = Engine::new();
@@ -1287,6 +1256,7 @@ fn build_rhai_engine() -> Engine {
     engine.register_fn("error", |msg: &str| error!("Pattern script: {}", msg));
     engine.register_fn("debug", |msg: &str| debug!("Pattern script: {}", msg));
     engine.register_fn("trace", |msg: &str| trace!("Pattern script: {}", msg));
+    super::rhai_types::register_analysis_types(&mut engine);
     engine
 }
 
@@ -1317,42 +1287,60 @@ pub(super) fn compiled_script(script: &str) -> Result<RhaiAst, String> {
 fn build_rhai_scope(context: &AstPatternScriptContext<'_>) -> Scope<'static> {
     let mut scope = Scope::new();
     scope.push("source", context.source.to_string());
-    scope.push("ast", context.ast_debug.to_string());
-    scope.push("ir", context.ir_debug.to_string());
-    scope.push("asm", context.asm_debug.to_string());
     scope.push("stmt_count", context.statement_count);
     scope.push("asm_count", context.asm_count);
+    scope.push("ir_count", context.ir_statements.len() as i64);
+    scope.push(
+        "comment_count",
+        context
+            .wrapped_statements
+            .iter()
+            .filter(|s| matches!(s.statement, AstStatement::Comment(_)))
+            .count() as i64,
+    );
+    scope.push(
+        "ast_stmts",
+        context
+            .wrapped_statements
+            .iter()
+            .map(|s| Dynamic::from(super::rhai_types::RhaiAstStmt::from_wrapped(s)))
+            .collect::<Vec<Dynamic>>(),
+    );
+    scope.push(
+        "ir_stmts",
+        context
+            .ir_statements
+            .iter()
+            .map(|s| Dynamic::from(super::rhai_types::RhaiIrStmt::from_statement(s)))
+            .collect::<Vec<Dynamic>>(),
+    );
+    scope.push(
+        "asm_lines",
+        context
+            .asm_lines
+            .iter()
+            .enumerate()
+            .map(|(i, line)| Dynamic::from(super::rhai_types::RhaiAsmLine::from_normalized(i, &line.line)))
+            .collect::<Vec<Dynamic>>(),
+    );
     scope
 }
 
 fn evaluate_if_script(script: &AstPatternScript, context: &AstPatternScriptContext<'_>) -> bool {
-    let source = script.source();
-    let compiled = match script.compiled_or_parse() {
-        Ok(compiled) => compiled,
-        Err(err) => {
-            error!(
-                "Pattern `{}` if script has no compiled AST: {} ({})",
-                context.source, source, err
-            );
-            return false;
-        }
-    };
+    let compiled = script.compiled();
     let mut scope = build_rhai_scope(context);
     match with_rhai_engine(|engine| engine.eval_ast_with_scope::<Dynamic>(&mut scope, &compiled)) {
         Ok(value) => match value.try_cast::<bool>() {
             Some(result) => result,
             None => {
-                error!(
-                    "Pattern `{}` if script must return bool: {}",
-                    context.source, source
-                );
+                error!("Pattern `{}` if script must return bool", context.source);
                 false
             }
         },
         Err(err) => {
             error!(
-                "Pattern `{}` if script failed: {} ({})",
-                context.source, source, err
+                "Pattern `{}` if script failed: {}",
+                context.source, err
             );
             false
         }
@@ -1364,17 +1352,7 @@ fn execute_do_script_with_captures(
     context: &AstPatternScriptContext<'_>,
     captures: Option<&stmt_pattern::Captures>,
 ) -> bool {
-    let source = script.source();
-    let compiled = match script.compiled_or_parse() {
-        Ok(compiled) => compiled,
-        Err(err) => {
-            error!(
-                "Pattern `{}` do script has no compiled AST: {} ({})",
-                context.source, source, err
-            );
-            return false;
-        }
-    };
+    let compiled = script.compiled();
     let mut scope = build_rhai_scope(context);
     if let Some(caps) = captures {
         stmt_pattern::inject_captures_into_rhai_scope(caps, &mut scope);
@@ -1393,8 +1371,8 @@ fn execute_do_script_with_captures(
         }
         Err(err) => {
             error!(
-                "Pattern `{}` do script failed: {} ({})",
-                context.source, source, err
+                "Pattern `{}` do script failed: {}",
+                context.source, err
             );
             return false;
         }
@@ -1403,17 +1381,7 @@ fn execute_do_script_with_captures(
 }
 
 fn execute_do_script(script: &AstPatternScript, context: &AstPatternScriptContext<'_>) -> bool {
-    let source = script.source();
-    let compiled = match script.compiled_or_parse() {
-        Ok(compiled) => compiled,
-        Err(err) => {
-            error!(
-                "Pattern `{}` do script has no compiled AST: {} ({})",
-                context.source, source, err
-            );
-            return false;
-        }
-    };
+    let compiled = script.compiled();
     let mut scope = build_rhai_scope(context);
     match with_rhai_engine(|engine| engine.eval_ast_with_scope::<Dynamic>(&mut scope, &compiled)) {
         Ok(value) => {
@@ -1429,8 +1397,8 @@ fn execute_do_script(script: &AstPatternScript, context: &AstPatternScriptContex
         }
         Err(err) => {
             error!(
-                "Pattern `{}` do script failed: {} ({})",
-                context.source, source, err
+                "Pattern `{}` do script failed: {}",
+                context.source, err
             );
             return false;
         }

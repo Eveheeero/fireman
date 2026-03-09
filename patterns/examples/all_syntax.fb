@@ -101,11 +101,11 @@ do:
 # matching the same anchor statement on later fixed-point iterations.
 if:
   at afterIteration
-  script `!ast.contains("inserted_before_seed")`
+  script `!ast_stmts.some(|s| s.is_comment() && s.comment_text().contains("inserted_before_seed"))`
   stmt Return
 do:
   emit_before Comment(inserted_before_seed)
-  emit_after Comment(inserted_after_seed)
+  emit_after Comment(inserted_after_seed_marker)
 
 # splice-block replaces a matched standalone block with its inner statements.
 if:
@@ -144,7 +144,7 @@ if:
   ignore asm push rbp
   stmt Return
 do:
-  emit Comment(matched-without-comments-or-push-rbp)
+  emit Comment(matched_without_comments_or_push_rbp)
 
 if:
   at afterIteration
@@ -152,7 +152,7 @@ if:
   stmt Return
 do:
   !ignore comment
-  emit Comment(seed-comments-restored-in-do)
+  emit Comment(seed_comments_restored_in_do)
 
 # ── Delete actions ──
 #
@@ -258,12 +258,145 @@ do:
 
 # ── Script variables (available in if: and do: scripts) ──
 #
-# stmt_count    — number of AST statements in current block
-# asm_count     — number of assembly lines
-# ir_count      — number of IR statements
-# asm           — full assembly text (string, for .contains() etc.)
-# ast           — full AST text (string)
-# ir            — full IR text (string)
+# Scalar variables:
+#   source        — pattern source name (file path)
+#   stmt_count    — number of AST statements in current block
+#   asm_count     — number of assembly lines
+#   ir_count      — number of IR statements
+#   comment_count — number of comment statements
+#
+# Structured arrays (PyGhidra/PyIDA style):
+#   ast_stmts     — Array of AstStmt objects
+#   ir_stmts      — Array of IrStmt objects
+#   asm_lines     — Array of AsmLine objects
+#
+# ── AstStmt methods ──
+#   .kind()              — "assignment", "call", "if", "return", "comment", etc.
+#   .to_string()         — debug text representation
+#   .is_call()           — true if Call statement
+#   .is_if()             — true if If statement
+#   .is_return()         — true if Return statement
+#   .is_comment()        — true if Comment
+#   .is_assignment()     — true if Assignment
+#   .is_declaration()    — true if Declaration
+#   .is_while()          — true if While loop
+#   .is_for()            — true if For loop
+#   .is_goto()           — true if Goto
+#   .is_label()          — true if Label
+#   .is_block()          — true if Block
+#   .is_switch()         — true if Switch
+#   .is_break()          — true if Break
+#   .is_continue()       — true if Continue
+#   .is_dowhile()        — true if DoWhile
+#   .is_empty()          — true if Empty
+#   .is_ir()             — true if Ir (lowered)
+#   .is_assembly()       — true if Assembly
+#   .call_name()         — function name (empty if not a call)
+#   .comment_text()      — comment content (empty if not a comment)
+#   .label_text()        — label text (empty if not a label)
+#   .has_else()          — true if If with else branch
+#   .body_count()        — number of statements in body (if/while/for/block)
+#   .else_count()        — number of statements in else branch
+#   .contains_call_to(name) — recursively checks for call containing name
+#   .has_operator(op)    — checks if statement uses operator (e.g. "Add", "BitXor")
+#   .origin()            — statement origin: "user_input", "predefined", "ir(...)", etc.
+#   .wrapper_comment()   — wrapper-level comment (empty if none)
+#   .condition()         — condition expression debug string (If/While/DoWhile)
+#   .body()              — Array of AstStmt for body (If/While/For/Block/DoWhile)
+#   .else_body()         — Array of AstStmt for else branch (If only)
+#   .lhs()               — left-hand side debug string (Assignment: expression, Declaration: variable)
+#   .rhs()               — right-hand side debug string (Assignment/Declaration initializer)
+#   .return_expr()       — return expression debug string (Return with value)
+#   .ir_stmt()           — IrStmt object (Ir statement only, else unit)
+#   .assembly_text()     — assembly text (Assembly statement only)
+#   .goto_target()       — goto target debug string (Goto only)
+#   .exception_text()    — exception text (Exception only)
+#
+# ── IrStmt methods ──
+#   .kind()              — "assignment", "jump", "call", "condition", "halt", etc.
+#   .to_string()         — debug text representation
+#   .is_assignment()     — true if IR assignment
+#   .is_jump()           — true if IR jump
+#   .is_call()           — true if IR call (JumpByCall)
+#   .is_condition()      — true if IR condition
+#   .is_halt()           — true if Halt
+#   .is_special()        — true if Special
+#   .from_data()         — IrData source operand (Assignment only, else unit)
+#   .to_data()           — IrData destination operand (Assignment only, else unit)
+#   .size_str()          — access size debug string (Assignment only)
+#   .target()            — IrData jump/call target (Jump/JumpByCall only, else unit)
+#   .condition_data()    — IrData condition operand (Condition only, else unit)
+#   .true_branch()       — Array of IrStmt (Condition only)
+#   .false_branch()      — Array of IrStmt (Condition only)
+#   .exception_text()    — exception text (Exception only)
+#
+# ── IrData methods ──
+#   .kind()              — "constant", "intrinsic", "register", "dereference", "operation", "operand"
+#   .to_string()         — debug text representation
+#   .is_constant()       — true if Constant
+#   .is_intrinsic()      — true if Intrinsic
+#   .is_register()       — true if Register
+#   .is_dereference()    — true if Dereference (memory access)
+#   .is_operation()      — true if Operation (unary/binary)
+#   .is_operand()        — true if Operand (nth parameter)
+#   .value()             — integer value (Constant: literal, Operand: index, else -1)
+#   .register_name()     — register debug string (Register only)
+#   .intrinsic_name()    — intrinsic name string (Intrinsic only)
+#   .inner()             — IrData inside dereference (Dereference only, else unit)
+#   .operator()          — operator debug string (Operation only)
+#   .is_unary()          — true if unary Operation
+#   .is_binary()         — true if binary Operation
+#   .arg()               — IrData operand (unary Operation only, else unit)
+#   .arg1()              — IrData first operand (binary Operation only, else unit)
+#   .arg2()              — IrData second operand (binary Operation only, else unit)
+#
+# ── AsmLine methods ──
+#   .index()             — line index in function
+#   .line()              — full asm text
+#   .mnemonic()          — instruction mnemonic (e.g. "mov", "call", "push")
+#   .operands()          — operand string after mnemonic
+#   .to_string()         — same as .line()
+#   .contains(needle)    — case-insensitive substring search (memchr)
+#   .is_call()           — true if mnemonic is "call"
+#   .is_jump()           — true if mnemonic starts with "j"
+#   .is_ret()            — true if "ret" or "retn"
+#   .is_nop()            — true if "nop"
+#   .is_push()           — true if "push"
+#   .is_pop()            — true if "pop"
+#   .is_mov()            — true if "mov", "movzx", or "movsx"
+#
+# ── Global analysis functions (in scripts) ──
+#   count_calls(ast_stmts)          — count Call statements
+#   count_assignments(ast_stmts)    — count Assignment statements
+#   count_comments(ast_stmts)       — count Comment statements
+#   find_calls_to(ast_stmts, name)  — filter stmts containing call to name
+#   is_arithmetic_op(op)            — true for Add/Sub/Mul/Div/Mod/Negate
+#   is_comparison_op(op)            — true for Equal/NotEqual/Less/Greater/etc.
+#   is_bitwise_op(op)               — true for BitAnd/BitOr/BitXor/BitNot/shifts
+#   is_logical_op(op)               — true for LogicAnd/LogicOr/Not
+
+# Example: Count calls and conditionally match
+# if:
+#   at afterIteration
+#   script `count_calls(ast_stmts) >= 2`
+# do:
+#   info("function has 2+ calls")
+
+# Example: Iterate asm lines for analysis
+# if:
+#   at beforeIrAnalyzation
+#   script `
+# let has_indirect = false;
+# for line in asm_lines {
+#   if line.is_call() && line.contains("[") {
+#     has_indirect = true;
+#     break;
+#   }
+# }
+# has_indirect
+# `
+# do:
+#   ast comment has-indirect-call
 
 # ── Log actions ──
 #

@@ -654,7 +654,7 @@ fn pattern_matching_emit_before_and_emit_after_insert_relative_to_match() {
         r#"
 if:
   at afterIteration
-  script `!ast.contains("before_seed")`
+  script `!ast_stmts.some(|s| s.is_comment() && s.comment_text().contains("before_seed"))`
   stmt Return
 do:
   emit_before Comment(before_seed)

@@ -884,10 +884,6 @@ pub(super) fn expand_in_blocks_for_script(
     blocks: &mut Vec<Vec<AstPatternInBlock>>,
     script: &AstPatternScript,
 ) {
-    if script.is_empty() {
-        return;
-    }
-
     let mut expanded = Vec::with_capacity(blocks.len() * 2);
     for block in blocks.iter() {
         if has_kind(block, AstPatternInBlockKind::Script) {
