@@ -2,7 +2,8 @@ use super::{
     AstPatternApplyAt, AstPatternApplyPhase, AstPatternAsmData, AstPatternAstData,
     AstPatternClauseGroup, AstPatternDeleteAnchor, AstPatternDeleteTarget, AstPatternInBlock,
     AstPatternInBlockKind, AstPatternIrData, AstPatternIrReplacement, AstPatternLogLevel,
-    AstPatternOutAction, AstPatternRange, AstPatternRule, AstPatternScript, add_at_clause,
+    AstPatternOutAction, AstPatternRange, AstPatternRule, AstPatternScript, ClearIgnoreTarget,
+    IgnoreCommentFilter, add_at_clause,
     has_kind,
     ir_parser::{
         find_matching_delimiter, parse_asm_arguments, parse_asm_statement, parse_ir_statement,
@@ -441,6 +442,96 @@ pub(super) fn parse_pattern_file(path: &str, content: &str) -> Result<AstPattern
                     update_all_in_blocks(&mut current_in_blocks, |block| {
                         set_clause(block, AstPatternInBlock::SkipIrRange(range));
                     });
+                } else if line.trim_start().starts_with("ignore asm ") {
+                    let value = parse_multiline_value(line.trim_start(), "ignore asm ", &lines, &mut idx)?;
+                    let trimmed_val = value.trim();
+                    if trimmed_val.is_empty() {
+                        update_all_in_blocks(&mut current_in_blocks, |block| {
+                            block.push(AstPatternInBlock::IgnoreAsm(None));
+                        });
+                    } else {
+                        let asm_data = AstPatternAsmData::from_text(trimmed_val)
+                            .map_err(|err| format!("invalid ignore asm in pattern `{path}`: {trimmed_val} ({err})"))?;
+                        update_all_in_blocks(&mut current_in_blocks, |block| {
+                            block.push(AstPatternInBlock::IgnoreAsm(Some(asm_data.clone())));
+                        });
+                    }
+                } else if line.trim_start() == "ignore asm" {
+                    update_all_in_blocks(&mut current_in_blocks, |block| {
+                        block.push(AstPatternInBlock::IgnoreAsm(None));
+                    });
+                } else if line.trim_start().starts_with("ignore ir ") {
+                    let value = parse_multiline_value(line.trim_start(), "ignore ir ", &lines, &mut idx)?;
+                    let trimmed_val = value.trim();
+                    if trimmed_val.is_empty() {
+                        update_all_in_blocks(&mut current_in_blocks, |block| {
+                            block.push(AstPatternInBlock::IgnoreIr(None));
+                        });
+                    } else {
+                        let ir_data = AstPatternIrData::from_text(trimmed_val);
+                        if let Some(ir_data) = ir_data {
+                            update_all_in_blocks(&mut current_in_blocks, |block| {
+                                block.push(AstPatternInBlock::IgnoreIr(Some(ir_data.clone())));
+                            });
+                        }
+                    }
+                } else if line.trim_start() == "ignore ir" {
+                    update_all_in_blocks(&mut current_in_blocks, |block| {
+                        block.push(AstPatternInBlock::IgnoreIr(None));
+                    });
+                } else if line.trim_start().starts_with("ignore ast ") {
+                    let value = parse_multiline_value(line.trim_start(), "ignore ast ", &lines, &mut idx)?;
+                    let trimmed_val = value.trim();
+                    if trimmed_val.is_empty() {
+                        update_all_in_blocks(&mut current_in_blocks, |block| {
+                            block.push(AstPatternInBlock::IgnoreAst(None));
+                        });
+                    } else {
+                        let ast_data = AstPatternAstData::from_text(trimmed_val);
+                        if let Some(ast_data) = ast_data {
+                            update_all_in_blocks(&mut current_in_blocks, |block| {
+                                block.push(AstPatternInBlock::IgnoreAst(Some(ast_data.clone())));
+                            });
+                        }
+                    }
+                } else if line.trim_start() == "ignore ast" {
+                    update_all_in_blocks(&mut current_in_blocks, |block| {
+                        block.push(AstPatternInBlock::IgnoreAst(None));
+                    });
+                } else if line.trim_start() == "ignore comment" {
+                    update_all_in_blocks(&mut current_in_blocks, |block| {
+                        block.push(AstPatternInBlock::IgnoreComment(IgnoreCommentFilter::All));
+                    });
+                } else if line.trim_start().starts_with("ignore commentstart ") {
+                    let value = parse_multiline_value(line.trim_start(), "ignore commentstart ", &lines, &mut idx)?;
+                    let trimmed_val = value.trim();
+                    if trimmed_val.is_empty() {
+                        return Err(format!("ignore commentstart requires a value in pattern `{path}`"));
+                    }
+                    let text = trimmed_val.to_string();
+                    update_all_in_blocks(&mut current_in_blocks, |block| {
+                        block.push(AstPatternInBlock::IgnoreComment(IgnoreCommentFilter::StartsWith(text.clone())));
+                    });
+                } else if line.trim_start().starts_with("ignore commentend ") {
+                    let value = parse_multiline_value(line.trim_start(), "ignore commentend ", &lines, &mut idx)?;
+                    let trimmed_val = value.trim();
+                    if trimmed_val.is_empty() {
+                        return Err(format!("ignore commentend requires a value in pattern `{path}`"));
+                    }
+                    let text = trimmed_val.to_string();
+                    update_all_in_blocks(&mut current_in_blocks, |block| {
+                        block.push(AstPatternInBlock::IgnoreComment(IgnoreCommentFilter::EndsWith(text.clone())));
+                    });
+                } else if line.trim_start().starts_with("ignore commentcontains ") {
+                    let value = parse_multiline_value(line.trim_start(), "ignore commentcontains ", &lines, &mut idx)?;
+                    let trimmed_val = value.trim();
+                    if trimmed_val.is_empty() {
+                        return Err(format!("ignore commentcontains requires a value in pattern `{path}`"));
+                    }
+                    let text = trimmed_val.to_string();
+                    update_all_in_blocks(&mut current_in_blocks, |block| {
+                        block.push(AstPatternInBlock::IgnoreComment(IgnoreCommentFilter::Contains(text.clone())));
+                    });
                 } else {
                     return Err(format!(
                         "unknown `if` directive in pattern `{path}`: {}",
@@ -549,6 +640,26 @@ pub(super) fn parse_pattern_file(path: &str, content: &str) -> Result<AstPattern
                     current_clause_group
                         .out_actions
                         .push(AstPatternOutAction::PruneEmptyElse);
+                } else if trimmed == "!ignore" {
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::ClearIgnore(ClearIgnoreTarget::All));
+                } else if trimmed == "!ignore asm" {
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::ClearIgnore(ClearIgnoreTarget::Asm));
+                } else if trimmed == "!ignore ir" {
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::ClearIgnore(ClearIgnoreTarget::Ir));
+                } else if trimmed == "!ignore ast" {
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::ClearIgnore(ClearIgnoreTarget::Ast));
+                } else if trimmed == "!ignore comment" {
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::ClearIgnore(ClearIgnoreTarget::Comment));
                 } else {
                     return Err(format!(
                         "unknown `do` directive in pattern `{path}`: {}",

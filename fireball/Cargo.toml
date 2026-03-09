@@ -32,6 +32,9 @@ num-bigint.workspace = true
 either.workspace = true
 rhai.workspace = true
 blake3.workspace = true
+memchr.workspace = true
+aho-corasick.workspace = true
+heck.workspace = true
 
 [dev-dependencies]
 criterion = "0.5"

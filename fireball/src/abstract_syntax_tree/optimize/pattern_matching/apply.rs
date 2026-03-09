@@ -5,6 +5,8 @@ use super::{
     AstPatternOrigin, AstPatternOutAction, AstPatternParsed, AstPatternRange, AstPatternRule,
     AstPatternScript, AstPatternSkippedMatch, block_asm, block_asm_contains, block_ast,
     block_ast_sequence, block_at_matches_phase, block_expr, block_ir, block_script,
+    block_ignore_asm_filters, block_ignore_ast_filters, block_ignore_comment_filters,
+    block_ignore_ir_filters, IgnoreCommentFilter,
     block_skip_asm_range, block_skip_ast_range, block_skip_ir_range, block_skip_range, block_stmt,
     block_stmt_seq, fb_parser::load_file_pattern_rule_cached, has_kind, has_script_in_blocks,
     hashing::structural_statement_hash, infer_input_type_from_in_blocks,
@@ -581,6 +583,9 @@ fn apply_single_file_rule(
                 AstPatternOutAction::PruneEmptyElse => {
                     prune_empty_else_recursive(stmts);
                 }
+                AstPatternOutAction::ClearIgnore(_) => {
+                    // Handled by the caller; no per-match action needed here.
+                }
             }
         }
 
@@ -619,6 +624,43 @@ fn match_if_block(
     let mut matched = AstPatternMatch::default();
     let mut stmt_captures: Option<stmt_pattern::Captures> = None;
 
+    // Apply ignore filters to produce filtered views of asm/ir/ast data.
+    let asm_ignore_filters = block_ignore_asm_filters(block);
+    let filtered_asm_lines: Vec<AstPatternNormalizedAsmLine>;
+    let effective_asm = if asm_ignore_filters.is_empty() {
+        asm_lines
+    } else {
+        filtered_asm_lines = apply_ignore_asm_filters(asm_lines, &asm_ignore_filters);
+        &filtered_asm_lines
+    };
+
+    let ir_ignore_filters = block_ignore_ir_filters(block);
+    let filtered_ir: Vec<IrStatement>;
+    let effective_ir = if ir_ignore_filters.is_empty() {
+        ir_statements
+    } else {
+        filtered_ir = apply_ignore_ir_filters(ir_statements, &ir_ignore_filters);
+        &filtered_ir
+    };
+
+    let ast_ignore_filters = block_ignore_ast_filters(block);
+    let comment_ignore_filters = block_ignore_comment_filters(block);
+    let ast_index_map: Vec<usize>;
+    let filtered_ast: Vec<AstStatement>;
+    let needs_ast_filter = !ast_ignore_filters.is_empty() || !comment_ignore_filters.is_empty();
+    let (effective_ast, ast_remap) = if !needs_ast_filter {
+        (ast_statements, None)
+    } else {
+        let (filtered, index_map) = apply_ignore_ast_and_comment_filters(
+            ast_statements,
+            &ast_ignore_filters,
+            &comment_ignore_filters,
+        );
+        filtered_ast = filtered;
+        ast_index_map = index_map;
+        (filtered_ast.as_slice(), Some(&ast_index_map))
+    };
+
     let (has_at, at_matched) = block_at_matches_phase(block, phase);
     if has_at {
         has_condition = true;
@@ -630,49 +672,52 @@ fn match_if_block(
     if let Some(asm) = block_asm(block) {
         has_condition = true;
         let asm_skip_range = block_skip_range(block).or(block_skip_asm_range(block));
-        matched.asm_statement_range = Some(find_asm_match(asm_lines, asm, asm_skip_range)?);
+        matched.asm_statement_range = Some(find_asm_match(effective_asm, asm, asm_skip_range)?);
     }
     if let Some(asm_contains) = block_asm_contains(block) {
         has_condition = true;
         let asm_skip_range = block_skip_range(block).or(block_skip_asm_range(block));
         matched.asm_statement_range = Some(find_asm_contains_match(
-            asm_lines,
+            effective_asm,
             asm_contains,
             asm_skip_range,
         )?);
     }
     if let Some(ast) = block_ast(block) {
         has_condition = true;
-        matched.ast_statement_range = Some(find_ast_match(
-            ast_statements,
+        let (start, end) = find_ast_match(
+            effective_ast,
             ast,
             block_skip_ast_range(block),
-        )?);
+        )?;
+        matched.ast_statement_range = Some(remap_ast_range(start, end, ast_remap.map(|v| &**v)));
     }
     if let Some(ast_sequence) = block_ast_sequence(block) {
         has_condition = true;
-        matched.ast_statement_range = Some(find_ast_sequence_match(
-            ast_statements,
+        let (start, end) = find_ast_sequence_match(
+            effective_ast,
             ast_sequence,
             block_skip_ast_range(block),
-        )?);
+        )?;
+        matched.ast_statement_range = Some(remap_ast_range(start, end, ast_remap.map(|v| &**v)));
     }
     // stmt structural pattern matching with captures
     if let Some((pat, predicates)) = block_stmt(block) {
         has_condition = true;
         let skip_range = block_skip_range(block).or(block_skip_ast_range(block));
-        let start = skip_range.map_or(0usize, |r| r.start.min(ast_statements.len()));
-        let end = skip_range.map_or(ast_statements.len(), |r| {
-            r.end_exclusive.min(ast_statements.len())
+        let start = skip_range.map_or(0usize, |r| r.start.min(effective_ast.len()));
+        let end = skip_range.map_or(effective_ast.len(), |r| {
+            r.end_exclusive.min(effective_ast.len())
         });
         let mut found = false;
         for i in start..end {
-            if let Some(caps) = stmt_pattern::match_statement(pat, &ast_statements[i]) {
+            if let Some(caps) = stmt_pattern::match_statement(pat, &effective_ast[i]) {
                 let preds_ok = predicates
                     .iter()
                     .all(|pred| stmt_pattern::eval_where(pred, &caps));
                 if preds_ok {
-                    matched.ast_statement_range = Some((i, i + 1));
+                    let (orig_start, orig_end) = remap_ast_range(i, i + 1, ast_remap.map(|v| &**v));
+                    matched.ast_statement_range = Some((orig_start, orig_end));
                     stmt_captures = Some(caps);
                     found = true;
                     break;
@@ -687,9 +732,9 @@ fn match_if_block(
     if let Some((pats, predicates)) = block_stmt_seq(block) {
         has_condition = true;
         let skip_range = block_skip_range(block).or(block_skip_ast_range(block));
-        let start = skip_range.map_or(0usize, |r| r.start.min(ast_statements.len()));
-        let end = skip_range.map_or(ast_statements.len(), |r| {
-            r.end_exclusive.min(ast_statements.len())
+        let start = skip_range.map_or(0usize, |r| r.start.min(effective_ast.len()));
+        let end = skip_range.map_or(effective_ast.len(), |r| {
+            r.end_exclusive.min(effective_ast.len())
         });
         let n = pats.len();
         let mut found = false;
@@ -699,7 +744,7 @@ fn match_if_block(
                 let mut merged_caps = stmt_pattern::Captures::new();
                 for (j, pat) in pats.iter().enumerate() {
                     if let Some(caps) =
-                        stmt_pattern::match_statement(pat, &ast_statements[window_start + j])
+                        stmt_pattern::match_statement(pat, &effective_ast[window_start + j])
                     {
                         merged_caps.extend(caps);
                     } else {
@@ -712,7 +757,11 @@ fn match_if_block(
                         .iter()
                         .all(|pred| stmt_pattern::eval_where(pred, &merged_caps));
                     if preds_ok {
-                        matched.ast_statement_range = Some((window_start, window_start + n));
+                        matched.ast_statement_range = Some(remap_ast_range(
+                            window_start,
+                            window_start + n,
+                            ast_remap.map(|v| &**v),
+                        ));
                         stmt_captures = Some(merged_caps);
                         found = true;
                         break;
@@ -734,7 +783,7 @@ fn match_if_block(
     }
     if let Some(ir) = block_ir(block) {
         has_condition = true;
-        if !sequence_matches_ir(ir_statements, ir, block_skip_ir_range(block)) {
+        if !sequence_matches_ir(effective_ir, ir, block_skip_ir_range(block)) {
             return None;
         }
     }
@@ -1387,4 +1436,103 @@ fn execute_do_script(script: &AstPatternScript, context: &AstPatternScriptContex
         }
     }
     true
+}
+
+// --- Ignore filter helpers ---
+
+fn apply_ignore_asm_filters(
+    asm_lines: &[AstPatternNormalizedAsmLine],
+    filters: &[Option<&AstPatternAsmData>],
+) -> Vec<AstPatternNormalizedAsmLine> {
+    if filters.iter().any(|f| f.is_none()) {
+        return Vec::new();
+    }
+    asm_lines
+        .iter()
+        .filter(|line| {
+            !filters.iter().any(|filter| {
+                if let Some(asm_data) = filter {
+                    let expected = normalize_for_match(asm_data.as_match_text());
+                    !expected.is_empty() && line.line.contains(&expected)
+                } else {
+                    true
+                }
+            })
+        })
+        .cloned()
+        .collect()
+}
+
+fn apply_ignore_ir_filters(
+    ir_statements: &[IrStatement],
+    filters: &[Option<&AstPatternIrData>],
+) -> Vec<IrStatement> {
+    if filters.iter().any(|f| f.is_none()) {
+        return Vec::new();
+    }
+    ir_statements
+        .iter()
+        .filter(|stmt| {
+            !filters.iter().any(|filter| {
+                if let Some(ir_data) = filter {
+                    ir_data.matches_statement(stmt)
+                } else {
+                    true
+                }
+            })
+        })
+        .cloned()
+        .collect()
+}
+
+/// Filter AST statements by both AST ignore filters and comment ignore filters,
+/// returning the filtered list and a map from filtered indices to original indices.
+fn apply_ignore_ast_and_comment_filters(
+    ast_statements: &[AstStatement],
+    ast_filters: &[Option<&AstPatternAstData>],
+    comment_filters: &[&IgnoreCommentFilter],
+) -> (Vec<AstStatement>, Vec<usize>) {
+    // If any bare `ignore ast` (None) is present, ignore ALL ast statements.
+    if ast_filters.iter().any(|f| f.is_none()) {
+        return (Vec::new(), Vec::new());
+    }
+    let mut filtered = Vec::new();
+    let mut index_map = Vec::new();
+    for (orig_idx, stmt) in ast_statements.iter().enumerate() {
+        let ignored_by_ast = ast_filters.iter().any(|filter| {
+            if let Some(ast_data) = filter {
+                ast_data.matches_statement(stmt)
+            } else {
+                true
+            }
+        });
+        let ignored_by_comment = if let AstStatement::Comment(text) = stmt {
+            comment_filters
+                .iter()
+                .any(|filter| filter.matches_comment(text))
+        } else {
+            false
+        };
+        if !ignored_by_ast && !ignored_by_comment {
+            filtered.push(stmt.clone());
+            index_map.push(orig_idx);
+        }
+    }
+    (filtered, index_map)
+}
+
+/// Remap a (start, end_exclusive) range from filtered indices to original indices.
+fn remap_ast_range(start: usize, end: usize, remap: Option<&[usize]>) -> (usize, usize) {
+    match remap {
+        None => (start, end),
+        Some(map) => {
+            let orig_start = map.get(start).copied().unwrap_or(start);
+            let orig_end = if end > 0 {
+                map.get(end - 1).copied().map_or(end, |e| e + 1)
+            } else {
+                0
+            };
+            (orig_start, orig_end)
+        }
+    }
 }

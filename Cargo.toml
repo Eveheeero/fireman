@@ -46,6 +46,11 @@ gimli = "0.33"
 cpp_demangle = "0.5"
 rustc-demangle = "0.1"
 
+# String matching
+memchr = "2"
+aho-corasick = "1"
+heck = "0.5"
+
 # Data structures
 bitvec = "1"
 hashbrown = "0.16"

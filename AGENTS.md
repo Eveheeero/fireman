@@ -12,6 +12,7 @@
 - Do not add optimizer-specific pattern matcher names or `do:` action names.
 - Do not add one-off script helpers as a substitute for generic `.fb` features.
 - If a rewrite cannot be expressed with the existing general pattern engine, keep it in Rust until a general-purpose pattern feature exists.
+- **Always** keep `patterns/examples/all_syntax.fb` up to date when adding or changing `.fb` DSL syntax. This file is the canonical reference for all supported directives.
 
 ## Structure Paths (fireball)
 

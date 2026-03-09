@@ -1,3 +1,19 @@
+# ══════════════════════════════════════════════════════════════════════
+# .fb DSL — Complete Syntax Reference
+# ══════════════════════════════════════════════════════════════════════
+#
+# Each rule is a pair of if: (conditions) and do: (actions) blocks.
+# Multiple if: blocks can precede a single do: block (multi-clause).
+# Lines starting with # are comments.
+
+# ── Phase targeting (at) ──
+#
+# at <phase> — restricts the rule to a specific optimization phase.
+# Phases: beforeIrAnalyzation, afterIrAnalyzation,
+#         afterParameterAnalyzation, afterCallArgumentAnalyzation,
+#         afterIteration, afterOptimization
+# Multiple at directives in one if: block → match any of them.
+
 if:
   at beforeIrAnalyzation
   asm `mov rsp, 8; push rbp`
@@ -43,7 +59,7 @@ if:
 do:
   ast comment multi-clause example
 
-# ── Statement-level pattern matching ──
+# ── Statement-level pattern matching (stmt) ──
 #
 # Match a single statement by its AST structure.
 # Capture sub-expressions with $name variables.
@@ -54,7 +70,7 @@ if:
 do:
   emit If($cond, $else, Some($then))
 
-# ── Expression-level pattern matching ──
+# ── Expression-level pattern matching (expr) ──
 #
 # Match an expression node (applies recursively to all expressions).
 if:
@@ -98,15 +114,76 @@ if:
 do:
   splice-block
 
+# ── Ignore directives ──
+#
+# Ignore directives filter out matching data BEFORE conditions are evaluated.
+# Multiple ignore directives accumulate (all are applied).
+#
+# ignore asm                     — ignore ALL assembly lines
+# ignore asm <pattern>           — ignore asm lines matching pattern
+# ignore ir                      — ignore ALL IR statements
+# ignore ir <pattern>            — ignore IR statements matching pattern
+# ignore ast                     — ignore ALL AST statements
+# ignore ast <pattern>           — ignore AST statements matching pattern
+# ignore comment                 — ignore ALL comments
+# ignore commentstart <text>     — ignore comments starting with text (case-insensitive)
+# ignore commentend <text>       — ignore comments ending with text (case-insensitive)
+# ignore commentcontains <text>  — ignore comments containing text (case-insensitive, memchr)
+#
+# In do: blocks, !ignore clears all ignore state so actions operate on
+# original unfiltered data. Selective clearing is also supported:
+#   !ignore         — clear all ignores
+#   !ignore asm     — clear asm ignores only
+#   !ignore ir      — clear ir ignores only
+#   !ignore ast     — clear ast ignores only
+#   !ignore comment — clear comment ignores only
+
+if:
+  at afterIteration
+  ignore comment
+  ignore asm push rbp
+  stmt Return
+do:
+  emit Comment(matched-without-comments-or-push-rbp)
+
+if:
+  at afterIteration
+  ignore commentcontains seed
+  stmt Return
+do:
+  !ignore comment
+  emit Comment(seed-comments-restored-in-do)
+
+# ── Delete actions ──
+#
+# del <anchor>[<offset>]         — delete a single statement
+# del <anchor>[<start>..<end>]   — delete a range of statements
+# Anchors: start, end (relative to matched range)
+#
+# if:
+#   at afterIteration
+#   stmt_seq [Comment($x), Assignment($lhs, $rhs)]
+# do:
+#   del start[0]
+
+# ── prune-empty-else ──
+#
+# Recursively removes empty else branches from if-statements.
+# if:
+#   at afterOptimization
+#   ast Some([])
+# do:
+#   prune-empty-else
+
 # ── Where predicates ──
 #
-# structurally_equal($a, $b) — two captured expressions are identical ASTs
-# is_literal($x) — the capture is a literal value
-# is_variable($x) — the capture is a variable reference
-# is_zero($x) — the capture is a literal zero (Int(0) or UInt(0))
-# is_nonzero($x) — the capture is a non-zero literal
-# greater_count($a, $b) — capture $a has more statements than $b
-# sum_equals($a, $b, N) — integer captures $a + $b == N (N can be a literal or $capture)
+# structurally_equal($a, $b)     — two captured expressions are identical ASTs
+# is_literal($x)                 — the capture is a literal value
+# is_variable($x)                — the capture is a variable reference
+# is_zero($x)                    — the capture is a literal zero (Int(0) or UInt(0))
+# is_nonzero($x)                 — the capture is a non-zero literal
+# greater_count($a, $b)          — capture $a has more statements than $b
+# sum_equals($a, $b, N)          — integer captures $a + $b == N (N can be literal or $capture)
 # call_name_matches($f, "pattern") — captured Call name contains "pattern" (case-insensitive)
 #   Works with AstCall::Unknown and AstCall::Variable (looks up variable name).
 #   Example: call_name_matches($f, "malloc") matches calls to malloc, __libc_malloc, etc.
@@ -122,20 +199,20 @@ do:
 #
 # replace_expr_fn invokes a built-in Rust function to compute the replacement.
 # Available builtins:
-#   eval_rotate_right($x, $n)  — builds __builtin_rotate_right(x, n)
-#   eval_rotate_left($x, $n)   — builds __builtin_rotate_left(x, n)
-#   eval_strength_reduce_add($x, $n) — (x<<n)+x → x*(2^n+1)
-#   eval_strength_reduce_sub($x, $n) — (x<<n)-x → x*(2^n-1)
-#   eval_strength_reduce_dual($x, $n, $m) — (x<<n)+(x<<m) → x*(2^n+2^m)
+#   eval_rotate_right($x, $n)              — builds __builtin_rotate_right(x, n)
+#   eval_rotate_left($x, $n)               — builds __builtin_rotate_left(x, n)
+#   eval_strength_reduce_add($x, $n)       — (x<<n)+x → x*(2^n+1)
+#   eval_strength_reduce_sub($x, $n)       — (x<<n)-x → x*(2^n-1)
+#   eval_strength_reduce_dual($x, $n, $m)  — (x<<n)+(x<<m) → x*(2^n+2^m)
 #   eval_magic_division($x, $magic, $shift) — (x*magic)>>shift → x/divisor
 #     Tries small divisors 2..=1024 for the magic multiply-then-shift pattern.
 #     Handles both unsigned and signed (negative magic constant) variants.
 
 # ── Additional statement matching ──
 #
-# Goto($label) — matches AstStatement::Goto(AstJumpTarget::Unknown(label))
-# Comment($text) — matches AstStatement::Comment(text)
-# Label($text) — matches AstStatement::Label(text)
+# Goto($label)    — matches AstStatement::Goto(AstJumpTarget::Unknown(label))
+# Comment($text)  — matches AstStatement::Comment(text)
+# Label($text)    — matches AstStatement::Label(text)
 # All three can be matched AND constructed in emit blocks.
 # String captures use $name and reconstruct via the captured string.
 
@@ -150,3 +227,48 @@ do:
 #   where structurally_equal($a, $a2)
 #   where structurally_equal($b, $b2)
 # do:
+
+# ── Skip ranges ──
+#
+# skip_range N..M       — skip statement indices [N, M) for all matchers
+# skip_asm_range N..M   — skip for asm matching only
+# skip_ast_range N..M   — skip for ast matching only
+# skip_ir_range N..M    — skip for ir matching only
+# Aliases: skip asm N..M, skip ast N..M, skip ir N..M
+
+# ── AST matchers (ast keyword) ──
+#
+# ast empty           — matches AstStatement::Empty
+# ast undefined       — matches AstStatement::Undefined
+# ast return          — matches any AstStatement::Return
+# ast comment <text>  — matches comments containing text (case-insensitive)
+# ast label           — matches any AstStatement::Label
+# ast label <text>    — matches label with specific text
+# ast Block(...)      — matches any block
+# ast Block([])       — matches empty block
+# ast Some([])        — matches if-stmt with empty else branch
+# ast If(...)         — matches any if-statement
+# ast <ir-statement>  — matches AstStatement::Ir with exact IR
+
+# ── IR matchers (ir keyword) ──
+#
+# ir <statement>      — matches exact IrStatement
+# ir if               — matches any IrStatement::Condition
+# ir undefined        — matches any IrStatement (wildcard)
+
+# ── Script variables (available in if: and do: scripts) ──
+#
+# stmt_count    — number of AST statements in current block
+# asm_count     — number of assembly lines
+# ir_count      — number of IR statements
+# asm           — full assembly text (string, for .contains() etc.)
+# ast           — full AST text (string)
+# ir            — full IR text (string)
+
+# ── Log actions ──
+#
+# info("message")   — log at INFO level
+# warn("message")   — log at WARN level
+# error("message")  — log at ERROR level
+# debug("message")  — log at DEBUG level
+# trace("message")  — log at TRACE level

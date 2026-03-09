@@ -236,6 +236,10 @@ pub enum AstPatternInBlock {
     SkipAsmRange(AstPatternRange),
     SkipAstRange(AstPatternRange),
     SkipIrRange(AstPatternRange),
+    IgnoreAsm(Option<AstPatternAsmData>),   // None = ignore all asm, Some = ignore specific
+    IgnoreIr(Option<AstPatternIrData>),      // None = ignore all ir, Some = ignore specific
+    IgnoreAst(Option<AstPatternAstData>),    // None = ignore all ast, Some = ignore specific
+    IgnoreComment(IgnoreCommentFilter),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -253,6 +257,10 @@ enum AstPatternInBlockKind {
     SkipAsmRange,
     SkipAstRange,
     SkipIrRange,
+    IgnoreAsm,
+    IgnoreIr,
+    IgnoreAst,
+    IgnoreComment,
 }
 
 impl AstPatternInBlock {
@@ -272,6 +280,10 @@ impl AstPatternInBlock {
             Self::SkipAsmRange(_) => AstPatternInBlockKind::SkipAsmRange,
             Self::SkipAstRange(_) => AstPatternInBlockKind::SkipAstRange,
             Self::SkipIrRange(_) => AstPatternInBlockKind::SkipIrRange,
+            Self::IgnoreAsm(_) => AstPatternInBlockKind::IgnoreAsm,
+            Self::IgnoreIr(_) => AstPatternInBlockKind::IgnoreIr,
+            Self::IgnoreAst(_) => AstPatternInBlockKind::IgnoreAst,
+            Self::IgnoreComment(_) => AstPatternInBlockKind::IgnoreComment,
         }
     }
 }
@@ -316,6 +328,10 @@ fn infer_input_type_from_in_blocks(in_blocks: &[Vec<AstPatternInBlock>]) -> AstP
             | AstPatternInBlock::SkipAsmRange(_)
             | AstPatternInBlock::SkipAstRange(_)
             | AstPatternInBlock::SkipIrRange(_) => {}
+            AstPatternInBlock::IgnoreAsm(_)
+            | AstPatternInBlock::IgnoreIr(_)
+            | AstPatternInBlock::IgnoreAst(_)
+            | AstPatternInBlock::IgnoreComment(_) => {}
         }
     }
 
@@ -461,6 +477,57 @@ fn block_skip_ir_range(clauses: &[AstPatternInBlock]) -> Option<AstPatternRange>
     })
 }
 
+fn block_ignore_asm_filters(clauses: &[AstPatternInBlock]) -> Vec<Option<&AstPatternAsmData>> {
+    clauses.iter().filter_map(|clause| match clause {
+        AstPatternInBlock::IgnoreAsm(filter) => Some(filter.as_ref()),
+        _ => None,
+    }).collect()
+}
+
+fn block_ignore_ir_filters(clauses: &[AstPatternInBlock]) -> Vec<Option<&AstPatternIrData>> {
+    clauses.iter().filter_map(|clause| match clause {
+        AstPatternInBlock::IgnoreIr(filter) => Some(filter.as_ref()),
+        _ => None,
+    }).collect()
+}
+
+fn block_ignore_ast_filters(clauses: &[AstPatternInBlock]) -> Vec<Option<&AstPatternAstData>> {
+    clauses.iter().filter_map(|clause| match clause {
+        AstPatternInBlock::IgnoreAst(filter) => Some(filter.as_ref()),
+        _ => None,
+    }).collect()
+}
+
+fn block_ignore_comment_filters(clauses: &[AstPatternInBlock]) -> Vec<&IgnoreCommentFilter> {
+    clauses.iter().filter_map(|clause| match clause {
+        AstPatternInBlock::IgnoreComment(filter) => Some(filter),
+        _ => None,
+    }).collect()
+}
+
+#[derive(Debug, Clone)]
+pub enum IgnoreCommentFilter {
+    All,
+    StartsWith(String),
+    EndsWith(String),
+    Contains(String),
+}
+
+impl IgnoreCommentFilter {
+    pub(super) fn matches_comment(&self, comment: &str) -> bool {
+        let normalized = comment.trim().to_lowercase();
+        match self {
+            Self::All => true,
+            Self::StartsWith(prefix) => normalized.starts_with(&prefix.to_lowercase()),
+            Self::EndsWith(suffix) => normalized.ends_with(&suffix.to_lowercase()),
+            Self::Contains(needle) => {
+                let needle_lower = needle.to_lowercase();
+                memchr::memmem::find(normalized.as_bytes(), needle_lower.as_bytes()).is_some()
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum AstPatternOutAction {
     ReplaceAsm(AstPatternAsmData),
@@ -481,6 +548,16 @@ pub enum AstPatternOutAction {
     },
     Log(AstPatternLogLevel, String),
     PruneEmptyElse,
+    ClearIgnore(ClearIgnoreTarget),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClearIgnoreTarget {
+    All,
+    Asm,
+    Ir,
+    Ast,
+    Comment,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
