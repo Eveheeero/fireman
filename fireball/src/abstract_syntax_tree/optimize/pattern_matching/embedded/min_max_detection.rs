@@ -2,12 +2,13 @@
 //!
 //! Extracted from auto_comment.rs for parity testing with min-max-detection.fb.
 
-use crate::abstract_syntax_tree::{
-    optimize::opt_utils,
-    Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement,
-    AstStatementOrigin, WrappedAstStatement,
+use crate::{
+    abstract_syntax_tree::{
+        Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement,
+        AstStatementOrigin, WrappedAstStatement, optimize::opt_utils,
+    },
+    prelude::DecompileError,
 };
-use crate::prelude::DecompileError;
 
 pub(crate) fn annotate_min_max(
     ast: &mut Ast,

@@ -14,6 +14,8 @@ crate-type = ["rlib"]
 
 [dependencies]
 fireball.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 chrono = { version = "0.4", default-features = true, features = ["clock"] }
 eframe = "0.33"
 egui = "0.33"

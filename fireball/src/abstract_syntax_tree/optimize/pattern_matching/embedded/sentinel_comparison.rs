@@ -3,11 +3,13 @@
 //!
 //! Extracted from bit_trick_recognition.rs for parity testing with sentinel-comparison.fb.
 
-use crate::abstract_syntax_tree::{
-    Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
-    AstStatement, Wrapped, WrappedAstStatement,
+use crate::{
+    abstract_syntax_tree::{
+        Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
+        AstStatement, Wrapped, WrappedAstStatement,
+    },
+    prelude::DecompileError,
 };
-use crate::prelude::DecompileError;
 
 pub(crate) fn annotate_sentinel_comparisons(
     ast: &mut Ast,
@@ -120,8 +122,7 @@ fn detect_sentinel(expr: &AstExpression) -> Option<&'static str> {
         return None;
     }
 
-    extract_sentinel_kind(&rhs.item)
-        .or_else(|| extract_sentinel_kind(&lhs.item))
+    extract_sentinel_kind(&rhs.item).or_else(|| extract_sentinel_kind(&lhs.item))
 }
 
 fn extract_sentinel_kind(expr: &AstExpression) -> Option<&'static str> {
@@ -129,9 +130,7 @@ fn extract_sentinel_kind(expr: &AstExpression) -> Option<&'static str> {
         AstExpression::Literal(AstLiteral::Int(-1)) => {
             Some("sentinel check (-1 / INVALID_HANDLE_VALUE)")
         }
-        AstExpression::Literal(AstLiteral::UInt(0xFFFFFFFF)) => {
-            Some("sentinel check (0xFFFFFFFF)")
-        }
+        AstExpression::Literal(AstLiteral::UInt(0xFFFFFFFF)) => Some("sentinel check (0xFFFFFFFF)"),
         AstExpression::Literal(AstLiteral::UInt(0xFFFFFFFFFFFFFFFF)) => {
             Some("sentinel check (-1 / INVALID_HANDLE_VALUE)")
         }

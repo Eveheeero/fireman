@@ -8,17 +8,25 @@ use egui_dock::TabViewer;
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub(super) enum PanelTab {
     Sections,
+    Optimization,
     Assembly,
     Ir,
     Ast,
 }
 
 impl PanelTab {
-    pub(super) const ALL: [Self; 4] = [Self::Sections, Self::Assembly, Self::Ir, Self::Ast];
+    pub(super) const ALL: [Self; 5] = [
+        Self::Sections,
+        Self::Optimization,
+        Self::Assembly,
+        Self::Ir,
+        Self::Ast,
+    ];
 
     pub(super) const fn title(self) -> &'static str {
         match self {
             Self::Sections => "Sections",
+            Self::Optimization => "Optimization",
             Self::Assembly => "Assembly",
             Self::Ir => "IR",
             Self::Ast => "Decompiled AST",
@@ -53,6 +61,7 @@ impl TabViewer for FirebatTabViewer<'_> {
                     ui.separator();
                     match tab {
                         PanelTab::Sections => self.state.render_section_panel(ui),
+                        PanelTab::Optimization => self.state.render_optimization_panel(ui),
                         PanelTab::Assembly => self.state.render_assembly_panel(ui),
                         PanelTab::Ir => self.state.render_ir_panel(ui),
                         PanelTab::Ast => self.state.render_ast_panel(ui),

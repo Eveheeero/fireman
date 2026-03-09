@@ -1,6 +1,6 @@
 use crate::{
     core::FirebatCore,
-    model::{DecompileResult, KnownSectionData},
+    model::{AppliedEditResult, DecompileRequest, DecompileResult, EditRequest, KnownSectionData},
 };
 use std::{sync::mpsc, thread};
 
@@ -8,7 +8,9 @@ pub(crate) enum WorkerRequest {
     OpenFile(String),
     AnalyzeSection(String),
     AnalyzeAllSections,
-    DecompileSections(Vec<u64>),
+    DecompileSections(DecompileRequest),
+    ApplyEdit(EditRequest),
+    ExportPatch,
 }
 
 pub(crate) enum WorkerResponse {
@@ -16,6 +18,8 @@ pub(crate) enum WorkerResponse {
     AnalyzeSection(Result<Vec<KnownSectionData>, String>),
     AnalyzeAllSections(Result<Vec<KnownSectionData>, String>),
     DecompileSections(Result<DecompileResult, String>),
+    ApplyEdit(Result<AppliedEditResult, String>),
+    ExportPatch(Result<String, String>),
 }
 
 pub(crate) enum WorkerTryRecv {
@@ -48,12 +52,17 @@ impl FirebatWorker {
                         WorkerRequest::AnalyzeAllSections => {
                             WorkerResponse::AnalyzeAllSections(core.analyze_all_sections())
                         }
-                        WorkerRequest::DecompileSections(start_addresses) => {
-                            WorkerResponse::DecompileSections(
-                                core.decompile_sections(start_addresses),
-                            )
+                        WorkerRequest::DecompileSections(request) => {
+                            WorkerResponse::DecompileSections(core.decompile_sections(request))
+                        }
+                        WorkerRequest::ApplyEdit(request) => {
+                            WorkerResponse::ApplyEdit(core.apply_edit(request))
+                        }
+                        WorkerRequest::ExportPatch => {
+                            WorkerResponse::ExportPatch(core.export_patch())
                         }
                     };
+
                     if response_tx.send(response).is_err() {
                         break;
                     }

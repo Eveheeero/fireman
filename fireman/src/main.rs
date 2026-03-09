@@ -4,6 +4,7 @@ mod tests;
 mod tui;
 pub mod utils;
 
+use clap::{Arg, ArgAction, Command};
 use fireball::{Fireball, core::FireRaw};
 
 #[allow(dead_code)]
@@ -14,7 +15,6 @@ struct Setting {
 }
 
 fn parse_arg() -> clap::ArgMatches {
-    use clap::*;
     Command::new("fireman")
         .author("Eveheeero, xhve00000@mail.com")
         .version("0.0.0")
@@ -30,17 +30,32 @@ fn parse_arg() -> clap::ArgMatches {
                 .value_name("PATH")
                 .action(ArgAction::Set)
                 .help("JSON config path"),
-            Arg::new("json sample")
+            Arg::new("jsonsample")
                 .long("jsonsample")
                 .action(ArgAction::SetTrue)
                 .help("Print json sample"),
+            Arg::new("opt")
+                .long("opt")
+                .value_name("KEY=VALUE")
+                .action(ArgAction::Append)
+                .help("Override optimization setting, e.g. ir_analyzation=false"),
+            Arg::new("script")
+                .long("script")
+                .value_name("PATH")
+                .action(ArgAction::Append)
+                .help("Enable an optimization script (.fb)"),
+            Arg::new("script-buffer")
+                .long("script-buffer")
+                .value_name("PATH")
+                .action(ArgAction::Set)
+                .help("Load optimization script buffer from file"),
             Arg::new("input path")
                 .short('i')
                 .long("path")
                 .value_name("TARGET PATH")
                 .action(ArgAction::Set)
                 .help("Program wants to decompile")
-                .required_unless_present_any(["tui", "json", "json sample"]),
+                .required_unless_present_any(["tui", "json", "jsonsample"]),
             Arg::new("output path")
                 .short('o')
                 .long("out")

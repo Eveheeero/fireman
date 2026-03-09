@@ -1,5 +1,8 @@
 //! Recover function call arguments from register and stack locations.
 
+mod external_imports;
+mod register_maps;
+
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunction,
@@ -20,17 +23,13 @@ use crate::{
     utils::version_map::VersionMap,
 };
 use either::Either;
-use hashbrown::{HashMap, HashSet};
-
-mod external_imports;
-mod register_maps;
-
 use external_imports::{
     apply_external_import_thunk_names, collect_external_import_thunks,
     external_slot_address_from_unknown_target, external_symbol_identifier,
     external_symbol_name_from_slot, infer_external_import_symbol_from_body,
     rewrite_external_import_calls_recursive,
 };
+use hashbrown::{HashMap, HashSet};
 use register_maps::{
     RegKey, RegNameExprMap, RegNameSet, RegNameToVarMap, build_data_location_to_var_map,
     build_register_name_to_var_map, build_rsp_offset_to_var_map, build_var_id_to_register_name_map,
