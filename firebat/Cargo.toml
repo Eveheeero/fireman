@@ -8,10 +8,6 @@ license.workspace = true
 description = "GUI of Fireball"
 homepage = "https://crates.io/crates/firebat"
 
-[lib]
-name = "firebat_lib"
-crate-type = ["rlib"]
-
 [dependencies]
 fireball.workspace = true
 serde.workspace = true

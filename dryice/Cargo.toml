@@ -16,3 +16,10 @@ path = "src/main.rs"
 crate-type = ["cdylib", "rlib", "staticlib"]
 
 [dependencies]
+clap.workspace = true
+fireball.workspace = true
+flate2.workspace = true
+hashbrown.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true

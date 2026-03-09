@@ -27,6 +27,8 @@ iceball = { path = "iceball" }
 dryice = { path = "dryice" }
 
 # Common external dependencies
+clap = { version = "4.5", features = ["derive"] }
+flate2 = "1.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tracing = "0.1"

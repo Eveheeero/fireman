@@ -2,7 +2,7 @@ mod app;
 
 use crate::utils::log::init_log;
 use app::App;
-use firebat_lib::OptimizationStore;
+use crate::model::OptimizationStore;
 
 #[derive(Clone, Debug)]
 pub(super) struct StartupConfig {

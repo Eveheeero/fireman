@@ -1,8 +1,11 @@
+pub mod core;
+pub mod model;
 pub mod prelude;
 #[cfg(test)]
 mod tests;
 mod tui;
 pub mod utils;
+pub mod worker;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, builder::BoolishValueParser};
 use fireball::{
@@ -11,7 +14,7 @@ use fireball::{
     core::{Block, FireRaw},
     ir::analyze::generate_ast,
 };
-use firebat_lib::{
+use crate::model::{
     OptimizationScriptPreset, OptimizationSettings, OptimizationStore, build_optimization_config,
 };
 use serde::{Deserialize, Serialize};

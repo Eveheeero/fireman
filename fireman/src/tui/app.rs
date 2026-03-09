@@ -1,9 +1,12 @@
 use super::StartupConfig;
-use firebat_lib::{
-    AppliedEditResult, AssemblyEditorDraft, AstEditorDraft, DecompileRequest, DecompileResult,
-    EditPosition, EditRequest, EditorDraft, EditorLayer, EditorTarget, FirebatWorker,
-    IrEditorDraft, KnownSection, KnownSectionData, OptimizationScriptPreset, OptimizationSettings,
-    OptimizationStore, WorkerRequest, WorkerResponse, WorkerTryRecv,
+use crate::{
+    model::{
+        AppliedEditResult, AssemblyEditorDraft, AstEditorDraft, DecompileRequest, DecompileResult,
+        EditPosition, EditRequest, EditorDraft, EditorLayer, EditorTarget, IrEditorDraft,
+        KnownSection, KnownSectionData, OptimizationScriptPreset, OptimizationSettings,
+        OptimizationStore,
+    },
+    worker::{FirebatWorker, WorkerRequest, WorkerResponse, WorkerTryRecv},
 };
 use ratatui::{
     Frame,
