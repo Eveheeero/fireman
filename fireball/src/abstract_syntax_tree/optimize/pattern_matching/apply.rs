@@ -493,6 +493,19 @@ fn apply_single_file_rule(
                         }
                     }
                 }
+                AstPatternOutAction::EmitBefore(emit_pat) => {
+                    if let Some((start, _end)) = matched.ast_statement_range {
+                        if let Some(caps) = &stmt_captures {
+                            if let Some(list) =
+                                stmt_pattern::construct_emit_after_list(emit_pat, caps)
+                            {
+                                for (j, before_stmt) in list.into_iter().enumerate() {
+                                    stmts.insert(start + j, before_stmt);
+                                }
+                            }
+                        }
+                    }
+                }
                 AstPatternOutAction::Script(script) => {
                     if !execute_do_script_with_captures(
                         script,

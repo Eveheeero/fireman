@@ -55,6 +55,22 @@ const PREDEFINED_MIN_MAX_DETECTION_FB: &str =
     include_str!("../../../../../patterns/annotation/after-optimization/min-max-detection.fb");
 const PREDEFINED_SENTINEL_COMPARISON_FB: &str =
     include_str!("../../../../../patterns/annotation/after-optimization/sentinel-comparison.fb");
+const PREDEFINED_BRANCHLESS_ABS_FB: &str =
+    include_str!("../../../../../patterns/annotation/after-optimization/branchless-abs.fb");
+const PREDEFINED_OVERFLOW_CHECK_FB: &str =
+    include_str!("../../../../../patterns/annotation/after-optimization/overflow-check.fb");
+const PREDEFINED_SATURATING_ARITHMETIC_FB: &str =
+    include_str!("../../../../../patterns/annotation/after-optimization/saturating-arithmetic.fb");
+const PREDEFINED_INTRINSIC_IDIOMS_FB: &str =
+    include_str!("../../../../../patterns/annotation/after-optimization/intrinsic-idioms.fb");
+const PREDEFINED_STRIDE_ACCESS_FB: &str =
+    include_str!("../../../../../patterns/annotation/after-optimization/stride-access.fb");
+const PREDEFINED_BYTE_SWAP_FB: &str =
+    include_str!("../../../../../patterns/annotation/after-optimization/byte-swap.fb");
+const PREDEFINED_MAGIC_NUMBER_LABELS_FB: &str =
+    include_str!("../../../../../patterns/annotation/after-optimization/magic-number-labels.fb");
+const PREDEFINED_ERROR_CODE_RETURNS_FB: &str =
+    include_str!("../../../../../patterns/annotation/after-optimization/error-code-returns.fb");
 
 pub(super) fn predefined_patterns() -> Vec<AstPattern> {
     vec![
@@ -132,6 +148,19 @@ pub(super) fn predefined_patterns() -> Vec<AstPattern> {
         AstPattern::from_predefined_include(
             "sentinel-comparison.fb",
             PREDEFINED_SENTINEL_COMPARISON_FB,
+        ),
+        AstPattern::from_predefined_include("branchless-abs.fb", PREDEFINED_BRANCHLESS_ABS_FB),
+        AstPattern::from_predefined_include("overflow-check.fb", PREDEFINED_OVERFLOW_CHECK_FB),
+        AstPattern::from_predefined_include(
+            "saturating-arithmetic.fb",
+            PREDEFINED_SATURATING_ARITHMETIC_FB,
+        ),
+        AstPattern::from_predefined_include("intrinsic-idioms.fb", PREDEFINED_INTRINSIC_IDIOMS_FB),
+        AstPattern::from_predefined_include("stride-access.fb", PREDEFINED_STRIDE_ACCESS_FB),
+        AstPattern::from_predefined_include("byte-swap.fb", PREDEFINED_BYTE_SWAP_FB),
+        AstPattern::from_predefined_include(
+            "magic-number-labels.fb",
+            PREDEFINED_MAGIC_NUMBER_LABELS_FB,
         ),
     ]
 }
@@ -243,6 +272,38 @@ pub(super) fn predefined_pattern(name: &str) -> Option<AstPattern> {
         "sentinel-comparison.fb" => Some(AstPattern::from_predefined_include(
             "sentinel-comparison.fb",
             PREDEFINED_SENTINEL_COMPARISON_FB,
+        )),
+        "branchless-abs.fb" => Some(AstPattern::from_predefined_include(
+            "branchless-abs.fb",
+            PREDEFINED_BRANCHLESS_ABS_FB,
+        )),
+        "overflow-check.fb" => Some(AstPattern::from_predefined_include(
+            "overflow-check.fb",
+            PREDEFINED_OVERFLOW_CHECK_FB,
+        )),
+        "saturating-arithmetic.fb" => Some(AstPattern::from_predefined_include(
+            "saturating-arithmetic.fb",
+            PREDEFINED_SATURATING_ARITHMETIC_FB,
+        )),
+        "intrinsic-idioms.fb" => Some(AstPattern::from_predefined_include(
+            "intrinsic-idioms.fb",
+            PREDEFINED_INTRINSIC_IDIOMS_FB,
+        )),
+        "stride-access.fb" => Some(AstPattern::from_predefined_include(
+            "stride-access.fb",
+            PREDEFINED_STRIDE_ACCESS_FB,
+        )),
+        "byte-swap.fb" => Some(AstPattern::from_predefined_include(
+            "byte-swap.fb",
+            PREDEFINED_BYTE_SWAP_FB,
+        )),
+        "magic-number-labels.fb" => Some(AstPattern::from_predefined_include(
+            "magic-number-labels.fb",
+            PREDEFINED_MAGIC_NUMBER_LABELS_FB,
+        )),
+        "error-code-returns.fb" => Some(AstPattern::from_predefined_include(
+            "error-code-returns.fb",
+            PREDEFINED_ERROR_CODE_RETURNS_FB,
         )),
         _ => None,
     }

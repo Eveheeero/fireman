@@ -508,6 +508,13 @@ pub(super) fn parse_pattern_file(path: &str, content: &str) -> Result<AstPattern
                     current_clause_group
                         .out_actions
                         .push(AstPatternOutAction::Log(AstPatternLogLevel::Trace, msg));
+                } else if trimmed.starts_with("emit_before ") {
+                    let value = parse_multiline_value(trimmed, "emit_before ", &lines, &mut idx)?;
+                    let emit_pat = stmt_pattern::parse_pattern(&value)
+                        .map_err(|err| format!("invalid emit_before pattern in `{path}`: {err}"))?;
+                    current_clause_group
+                        .out_actions
+                        .push(AstPatternOutAction::EmitBefore(emit_pat));
                 } else if trimmed.starts_with("emit_after ") {
                     let value = parse_multiline_value(trimmed, "emit_after ", &lines, &mut idx)?;
                     let emit_pat = stmt_pattern::parse_pattern(&value)

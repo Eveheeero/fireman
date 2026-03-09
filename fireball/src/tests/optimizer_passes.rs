@@ -335,6 +335,135 @@ fn optimize_control_flow_cleanup_flattens_standalone_block_without_global_patter
 }
 
 #[test]
+fn optimize_control_flow_cleanup_annotates_error_code_returns_without_global_pattern_matching() {
+    let function_id = AstFunctionId { address: 0x1002 };
+    let version = AstFunctionVersion(1);
+    let cond_id = AstVariableId {
+        index: 1,
+        parent: Some(function_id),
+    };
+    let variable_map = Arc::new(RwLock::new(HashMap::from([(
+        cond_id,
+        AstVariable {
+            name: Some("cond".to_string()),
+            id: cond_id,
+            var_type: AstValueType::Int,
+            const_value: None,
+            data_access_ir: None,
+        },
+    )])));
+
+    let body = vec![wrap_statement(AstStatement::If(
+        wrap_expression(AstExpression::Variable(variable_map.clone(), cond_id)),
+        vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::Literal(AstLiteral::Int(0)),
+        ))))],
+        Some(vec![wrap_statement(AstStatement::Return(Some(
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(42))),
+        )))]),
+    ))];
+
+    let function = build_test_function(function_id, "test_fn", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize(Some(AstOptimizationConfig::NONE.control_flow_cleanup(true)))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+
+    assert!(
+        printed.contains("success: returns 0"),
+        "zero return should be annotated as success, got:\n{}",
+        printed
+    );
+    assert!(
+        printed.contains("error"),
+        "non-zero return should be annotated as error, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_bit_trick_annotations_include_sentinel_without_global_pattern_matching() {
+    let function_id = AstFunctionId { address: 0x1003 };
+    let version = AstFunctionVersion(1);
+    let var_x = AstVariableId {
+        index: 1,
+        parent: Some(function_id),
+    };
+    let var_result = AstVariableId {
+        index: 2,
+        parent: Some(function_id),
+    };
+    let variable_map = Arc::new(RwLock::new(HashMap::from([
+        (
+            var_x,
+            AstVariable {
+                name: Some("x".to_string()),
+                id: var_x,
+                var_type: AstValueType::Int,
+                const_value: None,
+                data_access_ir: None,
+            },
+        ),
+        (
+            var_result,
+            AstVariable {
+                name: Some("result".to_string()),
+                id: var_result,
+                var_type: AstValueType::Int,
+                const_value: None,
+                data_access_ir: None,
+            },
+        ),
+    ])));
+
+    let body = vec![wrap_statement(AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(variable_map.clone(), var_result)),
+        wrap_expression(AstExpression::BinaryOp(
+            AstBinaryOperator::Equal,
+            Box::new(wrap_expression(AstExpression::Variable(
+                variable_map.clone(),
+                var_x,
+            ))),
+            Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(-1)))),
+        )),
+    ))];
+
+    let function = build_test_function(function_id, "test_fn", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize(Some(
+            AstOptimizationConfig::NONE
+                .pattern_matching_enabled(false)
+                .max_pass_iterations(1),
+        ))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+
+    assert!(
+        printed.contains("sentinel check"),
+        "sentinel comparison should still be annotated without global pattern matching, got:\n{}",
+        printed
+    );
+}
+
+#[test]
 fn optimize_control_flow_cleanup_removes_tail_after_noreturn_function_call() {
     let caller_id = AstFunctionId { address: 0x1000 };
     let helper_id = AstFunctionId { address: 0x2000 };
@@ -399,6 +528,234 @@ fn optimize_control_flow_cleanup_removes_tail_after_noreturn_function_call() {
         !caller_suffix.contains("77"),
         "tail after noreturn call should be removed in caller, got:\n{}",
         caller_suffix
+    );
+}
+
+#[test]
+fn optimize_bit_trick_annotations_include_stride_without_global_pattern_matching() {
+    let function_id = AstFunctionId { address: 0x1000 };
+    let version = AstFunctionVersion(1);
+    let var_base = AstVariableId {
+        index: 1,
+        parent: Some(function_id),
+    };
+    let var_index = AstVariableId {
+        index: 2,
+        parent: Some(function_id),
+    };
+    let var_result = AstVariableId {
+        index: 3,
+        parent: Some(function_id),
+    };
+    let variable_map = Arc::new(RwLock::new(HashMap::from([
+        (
+            var_base,
+            AstVariable {
+                name: Some("base".to_string()),
+                id: var_base,
+                var_type: AstValueType::Int,
+                const_value: None,
+                data_access_ir: None,
+            },
+        ),
+        (
+            var_index,
+            AstVariable {
+                name: Some("index".to_string()),
+                id: var_index,
+                var_type: AstValueType::Int,
+                const_value: None,
+                data_access_ir: None,
+            },
+        ),
+        (
+            var_result,
+            AstVariable {
+                name: Some("result".to_string()),
+                id: var_result,
+                var_type: AstValueType::Int,
+                const_value: None,
+                data_access_ir: None,
+            },
+        ),
+    ])));
+
+    let body = vec![wrap_statement(AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(variable_map.clone(), var_result)),
+        wrap_expression(AstExpression::BinaryOp(
+            AstBinaryOperator::Add,
+            Box::new(wrap_expression(AstExpression::Variable(
+                variable_map.clone(),
+                var_base,
+            ))),
+            Box::new(wrap_expression(AstExpression::BinaryOp(
+                AstBinaryOperator::Mul,
+                Box::new(wrap_expression(AstExpression::Variable(
+                    variable_map.clone(),
+                    var_index,
+                ))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(4)))),
+            ))),
+        )),
+    ))];
+
+    let function = build_test_function(function_id, "test_fn", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize(Some(
+            AstOptimizationConfig::NONE
+                .pattern_matching_enabled(false)
+                .max_pass_iterations(1),
+        ))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+
+    assert!(
+        printed.contains("stride=4"),
+        "stride access should still be annotated without global pattern matching, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_bit_trick_annotations_include_bswap16_without_global_pattern_matching() {
+    let function_id = AstFunctionId { address: 0x1000 };
+    let version = AstFunctionVersion(1);
+    let var_x = AstVariableId {
+        index: 1,
+        parent: Some(function_id),
+    };
+    let var_result = AstVariableId {
+        index: 2,
+        parent: Some(function_id),
+    };
+    let variable_map = Arc::new(RwLock::new(HashMap::from([
+        (
+            var_x,
+            AstVariable {
+                name: Some("x".to_string()),
+                id: var_x,
+                var_type: AstValueType::Int,
+                const_value: None,
+                data_access_ir: None,
+            },
+        ),
+        (
+            var_result,
+            AstVariable {
+                name: Some("result".to_string()),
+                id: var_result,
+                var_type: AstValueType::Int,
+                const_value: None,
+                data_access_ir: None,
+            },
+        ),
+    ])));
+
+    let body = vec![wrap_statement(AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(variable_map.clone(), var_result)),
+        wrap_expression(AstExpression::BinaryOp(
+            AstBinaryOperator::BitOr,
+            Box::new(wrap_expression(AstExpression::BinaryOp(
+                AstBinaryOperator::RightShift,
+                Box::new(wrap_expression(AstExpression::Variable(
+                    variable_map.clone(),
+                    var_x,
+                ))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(8)))),
+            ))),
+            Box::new(wrap_expression(AstExpression::BinaryOp(
+                AstBinaryOperator::LeftShift,
+                Box::new(wrap_expression(AstExpression::Variable(
+                    variable_map.clone(),
+                    var_x,
+                ))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(8)))),
+            ))),
+        )),
+    ))];
+
+    let function = build_test_function(function_id, "test_fn", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize(Some(
+            AstOptimizationConfig::NONE
+                .pattern_matching_enabled(false)
+                .max_pass_iterations(1),
+        ))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+
+    assert!(
+        printed.contains("bswap16 / ntohs"),
+        "bswap16 should still be annotated without global pattern matching, got:\n{}",
+        printed
+    );
+}
+
+#[test]
+fn optimize_bit_trick_annotations_include_magic_number_labels_without_global_pattern_matching() {
+    let function_id = AstFunctionId { address: 0x1000 };
+    let version = AstFunctionVersion(1);
+    let var_result = AstVariableId {
+        index: 1,
+        parent: Some(function_id),
+    };
+    let variable_map = Arc::new(RwLock::new(HashMap::from([(
+        var_result,
+        AstVariable {
+            name: Some("result".to_string()),
+            id: var_result,
+            var_type: AstValueType::Int,
+            const_value: None,
+            data_access_ir: None,
+        },
+    )])));
+
+    let body = vec![wrap_statement(AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(variable_map.clone(), var_result)),
+        wrap_expression(AstExpression::Literal(AstLiteral::Int(23117))),
+    ))];
+
+    let function = build_test_function(function_id, "test_fn", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize(Some(
+            AstOptimizationConfig::NONE
+                .pattern_matching_enabled(false)
+                .max_pass_iterations(1),
+        ))
+        .unwrap();
+    let printed = optimized.print(Some(AstPrintConfig::NONE));
+
+    assert!(
+        printed.contains("IMAGE_DOS_SIGNATURE"),
+        "magic number labels should still be annotated without global pattern matching, got:\n{}",
+        printed
     );
 }
 

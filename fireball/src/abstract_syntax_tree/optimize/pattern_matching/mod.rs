@@ -470,6 +470,7 @@ pub enum AstPatternOutAction {
     SpliceBlock,
     Script(AstPatternScript),
     Emit(stmt_pattern::PatTree),
+    EmitBefore(stmt_pattern::PatTree),
     EmitAfter(stmt_pattern::PatTree),
     ReplaceExpr(stmt_pattern::PatTree),
     /// Built-in function applied to captures for expression replacement.

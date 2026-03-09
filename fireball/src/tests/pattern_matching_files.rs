@@ -647,6 +647,59 @@ do:
 }
 
 #[test]
+fn pattern_matching_emit_before_and_emit_after_insert_relative_to_match() {
+    let (ast, function_id) = build_pattern_test_ast();
+    let pattern = AstPattern::new(
+        "emit-before-after",
+        r#"
+if:
+  at afterIteration
+  script `!ast.contains("before_seed")`
+  stmt Return
+do:
+  emit_before Comment(before_seed)
+  emit_after Comment(after_seed)
+"#,
+    );
+
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(1),
+            ),
+        )
+        .expect("emit_before/emit_after pattern must parse and execute");
+    let body = optimized_function_body(&optimized, function_id);
+
+    let lines = statement_debug_lines(&body);
+    let seed_index = lines
+        .iter()
+        .position(|line| line == "Comment(\"seed-comment\")")
+        .expect("seed-comment must remain present");
+    let before_index = lines
+        .iter()
+        .position(|line| line == "Comment(\"before_seed\")")
+        .expect("emit_before must insert the new statement");
+    let return_index = lines
+        .iter()
+        .position(|line| line == "Return(None)")
+        .expect("the matched return statement must remain present");
+    let after_index = lines
+        .iter()
+        .position(|line| line == "Comment(\"after_seed\")")
+        .expect("emit_after must insert the new statement");
+
+    assert!(
+        seed_index < before_index && before_index < return_index && return_index < after_index,
+        "emit_before must insert before the matched statement and emit_after must insert after it"
+    );
+}
+
+#[test]
 fn pattern_matching_ast_sequence_requires_contiguous_order() {
     let (ast, function_id) = build_ast_sequence_pattern_test_ast();
     let pattern = AstPattern::new(

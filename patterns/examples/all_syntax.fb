@@ -77,6 +77,27 @@ if:
 do:
   emit Return(Some(Call($f)))
 
+# ── Emit-family insertion actions ──
+#
+# emit_before inserts new statements before the matched statement.
+# emit_after inserts new statements after the matched statement.
+# Pure insertion rules should usually guard themselves so they do not keep
+# matching the same anchor statement on later fixed-point iterations.
+if:
+  at afterIteration
+  script `!ast.contains("inserted_before_seed")`
+  stmt Return
+do:
+  emit_before Comment(inserted_before_seed)
+  emit_after Comment(inserted_after_seed)
+
+# splice-block replaces a matched standalone block with its inner statements.
+if:
+  at afterIteration
+  ast Block(...)
+do:
+  splice-block
+
 # ── Where predicates ──
 #
 # structurally_equal($a, $b) — two captured expressions are identical ASTs

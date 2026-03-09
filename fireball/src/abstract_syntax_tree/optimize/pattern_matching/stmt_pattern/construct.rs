@@ -365,8 +365,21 @@ fn construct_stmt_list(pat: &PatTree, caps: &Captures) -> Option<Vec<WrappedAstS
     match pat {
         PatTree::Capture(name) => match caps.get(name)? {
             Captured::StmtList(l) => Some(l.clone()),
+            Captured::Statement(stmt) => Some(vec![WrappedAstStatement {
+                statement: stmt.clone(),
+                origin: AstStatementOrigin::Unknown,
+                comment: None,
+            }]),
             _ => None,
         },
+        PatTree::Node { .. } => {
+            let stmt = construct_statement(pat, caps)?;
+            Some(vec![WrappedAstStatement {
+                statement: stmt,
+                origin: AstStatementOrigin::Unknown,
+                comment: None,
+            }])
+        }
         PatTree::List(pats) => {
             let mut result = Vec::new();
             for p in pats {

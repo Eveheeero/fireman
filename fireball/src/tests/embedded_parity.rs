@@ -849,6 +849,95 @@ fn parity_sentinel_comparison_neg1() {
     );
 }
 
+#[test]
+fn parity_stride_access_annotation() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["base", "index", "result"]);
+
+    let body = vec![wrap_statement(AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(vm.clone(), ids[2])),
+        wrap_expression(AstExpression::BinaryOp(
+            AstBinaryOperator::Add,
+            Box::new(wrap_expression(AstExpression::Variable(vm.clone(), ids[0]))),
+            Box::new(wrap_expression(AstExpression::BinaryOp(
+                AstBinaryOperator::Mul,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), ids[1]))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(4)))),
+            ))),
+        )),
+    ))];
+
+    let (fb, embed) = run_parity(body, vm, |c| c);
+    assert!(
+        embed.contains("stride=4"),
+        "embed should annotate stride access, got:\n{}",
+        embed
+    );
+    assert!(
+        fb.contains("stride=4"),
+        "fb should annotate stride access, got:\n{}",
+        fb
+    );
+}
+
+#[test]
+fn parity_byte_swap16_annotation() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["x", "result"]);
+
+    let body = vec![wrap_statement(AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(vm.clone(), ids[1])),
+        wrap_expression(AstExpression::BinaryOp(
+            AstBinaryOperator::BitOr,
+            Box::new(wrap_expression(AstExpression::BinaryOp(
+                AstBinaryOperator::RightShift,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), ids[0]))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(8)))),
+            ))),
+            Box::new(wrap_expression(AstExpression::BinaryOp(
+                AstBinaryOperator::LeftShift,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), ids[0]))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(8)))),
+            ))),
+        )),
+    ))];
+
+    let (fb, embed) = run_parity(body, vm, |c| c);
+    assert!(
+        embed.contains("bswap16 / ntohs"),
+        "embed should annotate byte swap, got:\n{}",
+        embed
+    );
+    assert!(
+        fb.contains("bswap16 / ntohs"),
+        "fb should annotate byte swap, got:\n{}",
+        fb
+    );
+}
+
+#[test]
+fn parity_magic_number_label_annotation() {
+    let fid = AstFunctionId { address: 0x9000 };
+    let (ids, vm) = make_var_map(fid, &["result"]);
+
+    let body = vec![wrap_statement(AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(vm.clone(), ids[0])),
+        wrap_expression(AstExpression::Literal(AstLiteral::UInt(23117))),
+    ))];
+
+    let (fb, embed) = run_parity(body, vm, |c| c);
+    assert!(
+        embed.contains("IMAGE_DOS_SIGNATURE"),
+        "embed should annotate magic number label, got:\n{}",
+        embed
+    );
+    assert!(
+        fb.contains("IMAGE_DOS_SIGNATURE"),
+        "fb should annotate magic number label, got:\n{}",
+        fb
+    );
+}
+
 // ── call_name_annotation ──
 
 #[test]

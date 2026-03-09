@@ -24,11 +24,7 @@ pub struct AstOptimizationConfig {
     pub early_return_normalization: bool,
     pub max_pass_iterations: usize,
     /// When true, use the original embedded Rust implementations instead of
-    /// `.fb` pattern files for migrated passes (boolean_recovery, ternary_recovery,
-    /// early_return_normalization, cast_minimization, operator_canonicalization,
-    /// identity_simplification, constant_folding identity/reassociation,
-    /// rotation_recovery, strength_reduction, tail_call_merge, branch_inversion,
-    /// magic_division_recovery, merge_same_condition_ifs).
+    /// `.fb` pattern files for migrated passes
     pub use_embedded_passes: bool,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -85,7 +81,7 @@ impl AstOptimizationConfig {
         auto_comment: true,
         early_return_normalization: true,
         max_pass_iterations: 3,
-        use_embedded_passes: true,
+        use_embedded_passes: false,
     };
     pub const ALL: Self = Self {
         ir_analyzation: true,
@@ -109,7 +105,7 @@ impl AstOptimizationConfig {
         auto_comment: true,
         early_return_normalization: true,
         max_pass_iterations: 3,
-        use_embedded_passes: true,
+        use_embedded_passes: false,
     };
     pub const NONE: Self = Self {
         ir_analyzation: false,
