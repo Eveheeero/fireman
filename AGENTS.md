@@ -139,7 +139,12 @@
 - `GetRelatedVariables` (trait) - `fireball/src/abstract_syntax_tree/traits.rs`
 - `AstVariableAccessType` (enum) - `fireball/src/abstract_syntax_tree/traits.rs`
 
-### AST optimize (`fireball/src/abstract_syntax_tree/optimize`)
+### AST Analyzation (AST Optimization) (`fireball/src/abstract_syntax_tree/optimize`)
+
+- NEVER WRITE "just auto commenting" analyzation, such as "annotate_expr ONLY" or "emit_comment ONLY".
+- Instead, rewrite AST to human readable structure.
+- Wrtie `.fb` file with `DSL` in `pattern_matching` and `.rs` at `fireball::abstract_syntax_tree::optimize::pattern_matching::embedded` both.
+- You can use `rhai` script and can modify `.fb` make general patterns and functions.
 
 - `AstPattern` - `fireball/src/abstract_syntax_tree/optimize/pattern_matching.rs`
 - `AstPatternOrigin` (enum) - `fireball/src/abstract_syntax_tree/optimize/pattern_matching.rs`
