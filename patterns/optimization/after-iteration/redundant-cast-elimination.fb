@@ -1,0 +1,21 @@
+# Redundant cast elimination: Cast wrapping a unary sign/zero-extension cast.
+# Cast(T, UnaryOp(CastSigned, x)) → Cast(T, x)
+# Cast(T, UnaryOp(CastUnsigned, x)) → Cast(T, x)
+#
+# The inner unary CastSigned/CastUnsigned is redundant because the outer
+# typed Cast already determines the final width and representation.
+# In this decompiler, Cast nodes are type annotations recovered from assembly,
+# not C-level cast semantics with defined truncation — the outer Cast fully
+# determines intent (same reasoning as cast-minimization.fb double-cast rule).
+
+if:
+  at afterIteration
+  expr Cast($t, UnaryOp(CastSigned, $x))
+do:
+  replace_expr Cast($t, $x)
+
+if:
+  at afterIteration
+  expr Cast($t, UnaryOp(CastUnsigned, $x))
+do:
+  replace_expr Cast($t, $x)

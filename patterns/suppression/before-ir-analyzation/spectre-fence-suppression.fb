@@ -1,0 +1,7 @@
+# Suppress Spectre mitigation lfence barriers.
+
+if:
+  at beforeIrAnalyzation
+  asm_contains lfence
+do:
+  del start[0]

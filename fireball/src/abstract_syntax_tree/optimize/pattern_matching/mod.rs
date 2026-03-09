@@ -237,9 +237,9 @@ pub enum AstPatternInBlock {
     SkipAsmRange(AstPatternRange),
     SkipAstRange(AstPatternRange),
     SkipIrRange(AstPatternRange),
-    IgnoreAsm(Option<AstPatternAsmData>),   // None = ignore all asm, Some = ignore specific
-    IgnoreIr(Option<AstPatternIrData>),      // None = ignore all ir, Some = ignore specific
-    IgnoreAst(Option<AstPatternAstData>),    // None = ignore all ast, Some = ignore specific
+    IgnoreAsm(Option<AstPatternAsmData>), // None = ignore all asm, Some = ignore specific
+    IgnoreIr(Option<AstPatternIrData>),   // None = ignore all ir, Some = ignore specific
+    IgnoreAst(Option<AstPatternAstData>), // None = ignore all ast, Some = ignore specific
     IgnoreComment(IgnoreCommentFilter),
 }
 
@@ -479,31 +479,43 @@ fn block_skip_ir_range(clauses: &[AstPatternInBlock]) -> Option<AstPatternRange>
 }
 
 fn block_ignore_asm_filters(clauses: &[AstPatternInBlock]) -> Vec<Option<&AstPatternAsmData>> {
-    clauses.iter().filter_map(|clause| match clause {
-        AstPatternInBlock::IgnoreAsm(filter) => Some(filter.as_ref()),
-        _ => None,
-    }).collect()
+    clauses
+        .iter()
+        .filter_map(|clause| match clause {
+            AstPatternInBlock::IgnoreAsm(filter) => Some(filter.as_ref()),
+            _ => None,
+        })
+        .collect()
 }
 
 fn block_ignore_ir_filters(clauses: &[AstPatternInBlock]) -> Vec<Option<&AstPatternIrData>> {
-    clauses.iter().filter_map(|clause| match clause {
-        AstPatternInBlock::IgnoreIr(filter) => Some(filter.as_ref()),
-        _ => None,
-    }).collect()
+    clauses
+        .iter()
+        .filter_map(|clause| match clause {
+            AstPatternInBlock::IgnoreIr(filter) => Some(filter.as_ref()),
+            _ => None,
+        })
+        .collect()
 }
 
 fn block_ignore_ast_filters(clauses: &[AstPatternInBlock]) -> Vec<Option<&AstPatternAstData>> {
-    clauses.iter().filter_map(|clause| match clause {
-        AstPatternInBlock::IgnoreAst(filter) => Some(filter.as_ref()),
-        _ => None,
-    }).collect()
+    clauses
+        .iter()
+        .filter_map(|clause| match clause {
+            AstPatternInBlock::IgnoreAst(filter) => Some(filter.as_ref()),
+            _ => None,
+        })
+        .collect()
 }
 
 fn block_ignore_comment_filters(clauses: &[AstPatternInBlock]) -> Vec<&IgnoreCommentFilter> {
-    clauses.iter().filter_map(|clause| match clause {
-        AstPatternInBlock::IgnoreComment(filter) => Some(filter),
-        _ => None,
-    }).collect()
+    clauses
+        .iter()
+        .filter_map(|clause| match clause {
+            AstPatternInBlock::IgnoreComment(filter) => Some(filter),
+            _ => None,
+        })
+        .collect()
 }
 
 #[derive(Debug, Clone)]

@@ -1,0 +1,8 @@
+# Suppress stack-clash protection guard page probing.
+# del start[0] targets the matched asm statement (not a fixed index).
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __stack_chk_guard_page
+do:
+  del start[0]

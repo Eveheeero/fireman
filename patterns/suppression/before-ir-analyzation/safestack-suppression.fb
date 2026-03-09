@@ -1,0 +1,14 @@
+# Suppress SafeStack and split-stack instrumentation.
+# Deletes the specific asm statement containing the matched symbol.
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __safestack
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __morestack
+do:
+  del start[0]

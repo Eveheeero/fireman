@@ -50,6 +50,63 @@ const PREDEFINED_MERGE_SAME_CONDITION_IFS_FB: &str =
 const PREDEFINED_MAGIC_DIVISION_RECOVERY_FB: &str =
     include_str!("../../../../../patterns/recognition/after-iteration/magic-division-recovery.fb");
 
+// ── New suppression patterns (beforeIrAnalyzation) ──
+const PREDEFINED_REGISTER_SPILL_SUPPRESSION_FB: &str = include_str!(
+    "../../../../../patterns/suppression/before-ir-analyzation/register-spill-suppression.fb"
+);
+const PREDEFINED_SHADOW_SPACE_SUPPRESSION_FB: &str = include_str!(
+    "../../../../../patterns/suppression/before-ir-analyzation/shadow-space-suppression.fb"
+);
+const PREDEFINED_RETPOLINE_SUPPRESSION_FB: &str = include_str!(
+    "../../../../../patterns/suppression/before-ir-analyzation/retpoline-suppression.fb"
+);
+const PREDEFINED_SPECTRE_FENCE_SUPPRESSION_FB: &str = include_str!(
+    "../../../../../patterns/suppression/before-ir-analyzation/spectre-fence-suppression.fb"
+);
+const PREDEFINED_SANITIZER_SUPPRESSION_FB: &str = include_str!(
+    "../../../../../patterns/suppression/before-ir-analyzation/sanitizer-suppression.fb"
+);
+const PREDEFINED_COVERAGE_INSTRUMENTATION_SUPPRESSION_FB: &str = include_str!(
+    "../../../../../patterns/suppression/before-ir-analyzation/coverage-instrumentation-suppression.fb"
+);
+const PREDEFINED_FUZZER_HOOK_SUPPRESSION_FB: &str = include_str!(
+    "../../../../../patterns/suppression/before-ir-analyzation/fuzzer-hook-suppression.fb"
+);
+const PREDEFINED_SHADOW_CALLSTACK_SUPPRESSION_FB: &str = include_str!(
+    "../../../../../patterns/suppression/before-ir-analyzation/shadow-callstack-suppression.fb"
+);
+const PREDEFINED_SAFESTACK_SUPPRESSION_FB: &str = include_str!(
+    "../../../../../patterns/suppression/before-ir-analyzation/safestack-suppression.fb"
+);
+const PREDEFINED_STACK_CLASH_SUPPRESSION_FB: &str = include_str!(
+    "../../../../../patterns/suppression/before-ir-analyzation/stack-clash-suppression.fb"
+);
+
+// ── New cleanup patterns (afterOptimization) ──
+const PREDEFINED_REDUNDANT_RETURN_ELIMINATION_FB: &str = include_str!(
+    "../../../../../patterns/cleanup/after-optimization/redundant-return-elimination.fb"
+);
+const PREDEFINED_SINGLE_ARM_IF_CLEANUP_FB: &str =
+    include_str!("../../../../../patterns/cleanup/after-optimization/single-arm-if-cleanup.fb");
+const PREDEFINED_REDUNDANT_BLOCK_UNWRAP_FB: &str =
+    include_str!("../../../../../patterns/cleanup/after-optimization/redundant-block-unwrap.fb");
+
+// ── New optimization patterns (afterIteration) ──
+const PREDEFINED_REDUNDANT_CAST_ELIMINATION_FB: &str = include_str!(
+    "../../../../../patterns/optimization/after-iteration/redundant-cast-elimination.fb"
+);
+const PREDEFINED_NULL_CHECK_CANONICALIZATION_FB: &str = include_str!(
+    "../../../../../patterns/optimization/after-iteration/null-check-canonicalization.fb"
+);
+const PREDEFINED_ASSERTION_RECOVERY_FB: &str =
+    include_str!("../../../../../patterns/optimization/after-iteration/assertion-recovery.fb");
+const PREDEFINED_TERNARY_TO_MINMAX_FB: &str =
+    include_str!("../../../../../patterns/optimization/after-iteration/ternary-to-minmax.fb");
+
+// ── New recognition patterns (afterIteration) ──
+const PREDEFINED_DEREF_ADDRESSOF_CLEANUP_FB: &str =
+    include_str!("../../../../../patterns/recognition/after-iteration/deref-addressof-cleanup.fb");
+
 pub(super) fn predefined_patterns() -> Vec<AstPattern> {
     vec![
         AstPattern::from_predefined_include("flatten-blocks.fb", PREDEFINED_FLATTEN_BLOCKS_FB),
@@ -114,6 +171,82 @@ pub(super) fn predefined_patterns() -> Vec<AstPattern> {
         AstPattern::from_predefined_include(
             "magic-division-recovery.fb",
             PREDEFINED_MAGIC_DIVISION_RECOVERY_FB,
+        ),
+        // ── New suppression patterns ──
+        AstPattern::from_predefined_include(
+            "register-spill-suppression.fb",
+            PREDEFINED_REGISTER_SPILL_SUPPRESSION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "shadow-space-suppression.fb",
+            PREDEFINED_SHADOW_SPACE_SUPPRESSION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "retpoline-suppression.fb",
+            PREDEFINED_RETPOLINE_SUPPRESSION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "spectre-fence-suppression.fb",
+            PREDEFINED_SPECTRE_FENCE_SUPPRESSION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "sanitizer-suppression.fb",
+            PREDEFINED_SANITIZER_SUPPRESSION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "coverage-instrumentation-suppression.fb",
+            PREDEFINED_COVERAGE_INSTRUMENTATION_SUPPRESSION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "fuzzer-hook-suppression.fb",
+            PREDEFINED_FUZZER_HOOK_SUPPRESSION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "shadow-callstack-suppression.fb",
+            PREDEFINED_SHADOW_CALLSTACK_SUPPRESSION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "safestack-suppression.fb",
+            PREDEFINED_SAFESTACK_SUPPRESSION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "stack-clash-suppression.fb",
+            PREDEFINED_STACK_CLASH_SUPPRESSION_FB,
+        ),
+        // ── New cleanup patterns ──
+        AstPattern::from_predefined_include(
+            "redundant-return-elimination.fb",
+            PREDEFINED_REDUNDANT_RETURN_ELIMINATION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "single-arm-if-cleanup.fb",
+            PREDEFINED_SINGLE_ARM_IF_CLEANUP_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "redundant-block-unwrap.fb",
+            PREDEFINED_REDUNDANT_BLOCK_UNWRAP_FB,
+        ),
+        // ── New optimization patterns ──
+        AstPattern::from_predefined_include(
+            "redundant-cast-elimination.fb",
+            PREDEFINED_REDUNDANT_CAST_ELIMINATION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "null-check-canonicalization.fb",
+            PREDEFINED_NULL_CHECK_CANONICALIZATION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "assertion-recovery.fb",
+            PREDEFINED_ASSERTION_RECOVERY_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "ternary-to-minmax.fb",
+            PREDEFINED_TERNARY_TO_MINMAX_FB,
+        ),
+        // ── New recognition patterns ──
+        AstPattern::from_predefined_include(
+            "deref-addressof-cleanup.fb",
+            PREDEFINED_DEREF_ADDRESSOF_CLEANUP_FB,
         ),
     ]
 }
@@ -213,6 +346,82 @@ pub(super) fn predefined_pattern(name: &str) -> Option<AstPattern> {
         "magic-division-recovery.fb" => Some(AstPattern::from_predefined_include(
             "magic-division-recovery.fb",
             PREDEFINED_MAGIC_DIVISION_RECOVERY_FB,
+        )),
+        // ── New suppression patterns ──
+        "register-spill-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "register-spill-suppression.fb",
+            PREDEFINED_REGISTER_SPILL_SUPPRESSION_FB,
+        )),
+        "shadow-space-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "shadow-space-suppression.fb",
+            PREDEFINED_SHADOW_SPACE_SUPPRESSION_FB,
+        )),
+        "retpoline-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "retpoline-suppression.fb",
+            PREDEFINED_RETPOLINE_SUPPRESSION_FB,
+        )),
+        "spectre-fence-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "spectre-fence-suppression.fb",
+            PREDEFINED_SPECTRE_FENCE_SUPPRESSION_FB,
+        )),
+        "sanitizer-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "sanitizer-suppression.fb",
+            PREDEFINED_SANITIZER_SUPPRESSION_FB,
+        )),
+        "coverage-instrumentation-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "coverage-instrumentation-suppression.fb",
+            PREDEFINED_COVERAGE_INSTRUMENTATION_SUPPRESSION_FB,
+        )),
+        "fuzzer-hook-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "fuzzer-hook-suppression.fb",
+            PREDEFINED_FUZZER_HOOK_SUPPRESSION_FB,
+        )),
+        "shadow-callstack-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "shadow-callstack-suppression.fb",
+            PREDEFINED_SHADOW_CALLSTACK_SUPPRESSION_FB,
+        )),
+        "safestack-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "safestack-suppression.fb",
+            PREDEFINED_SAFESTACK_SUPPRESSION_FB,
+        )),
+        "stack-clash-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "stack-clash-suppression.fb",
+            PREDEFINED_STACK_CLASH_SUPPRESSION_FB,
+        )),
+        // ── New cleanup patterns ──
+        "redundant-return-elimination.fb" => Some(AstPattern::from_predefined_include(
+            "redundant-return-elimination.fb",
+            PREDEFINED_REDUNDANT_RETURN_ELIMINATION_FB,
+        )),
+        "single-arm-if-cleanup.fb" => Some(AstPattern::from_predefined_include(
+            "single-arm-if-cleanup.fb",
+            PREDEFINED_SINGLE_ARM_IF_CLEANUP_FB,
+        )),
+        "redundant-block-unwrap.fb" => Some(AstPattern::from_predefined_include(
+            "redundant-block-unwrap.fb",
+            PREDEFINED_REDUNDANT_BLOCK_UNWRAP_FB,
+        )),
+        // ── New optimization patterns ──
+        "redundant-cast-elimination.fb" => Some(AstPattern::from_predefined_include(
+            "redundant-cast-elimination.fb",
+            PREDEFINED_REDUNDANT_CAST_ELIMINATION_FB,
+        )),
+        "null-check-canonicalization.fb" => Some(AstPattern::from_predefined_include(
+            "null-check-canonicalization.fb",
+            PREDEFINED_NULL_CHECK_CANONICALIZATION_FB,
+        )),
+        "assertion-recovery.fb" => Some(AstPattern::from_predefined_include(
+            "assertion-recovery.fb",
+            PREDEFINED_ASSERTION_RECOVERY_FB,
+        )),
+        "ternary-to-minmax.fb" => Some(AstPattern::from_predefined_include(
+            "ternary-to-minmax.fb",
+            PREDEFINED_TERNARY_TO_MINMAX_FB,
+        )),
+        // ── New recognition patterns ──
+        "deref-addressof-cleanup.fb" => Some(AstPattern::from_predefined_include(
+            "deref-addressof-cleanup.fb",
+            PREDEFINED_DEREF_ADDRESSOF_CLEANUP_FB,
         )),
         _ => None,
     }

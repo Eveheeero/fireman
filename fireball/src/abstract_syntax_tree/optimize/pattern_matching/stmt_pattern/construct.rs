@@ -63,6 +63,10 @@ fn construct_stmt_node(
             let call = construct_call(&children[0], caps)?;
             Some(AstStatement::Call(call))
         }
+        NodeName::Call if children.len() == 2 => {
+            let call = construct_call_from_name_and_args(&children[0], &children[1], caps)?;
+            Some(AstStatement::Call(call))
+        }
         NodeName::Comment if children.len() == 1 => {
             let s = construct_string(&children[0], caps)?;
             Some(AstStatement::Comment(s))
@@ -213,6 +217,10 @@ fn construct_expr_node(
             let call = construct_call(&children[0], caps)?;
             Some(AstExpression::Call(call))
         }
+        NodeName::Call if children.len() == 2 => {
+            let call = construct_call_from_name_and_args(&children[0], &children[1], caps)?;
+            Some(AstExpression::Call(call))
+        }
         NodeName::Unknown if children.is_empty() => Some(AstExpression::Unknown),
         NodeName::Undefined if children.is_empty() => Some(AstExpression::Undefined),
         _ => None,
@@ -227,6 +235,37 @@ fn construct_call(pat: &PatTree, caps: &Captures) -> Option<AstCall> {
         },
         _ => None,
     }
+}
+
+/// Construct an `AstCall::Unknown(name, args)` from a string name + expression list.
+fn construct_call_from_name_and_args(
+    name_pat: &PatTree,
+    args_pat: &PatTree,
+    caps: &Captures,
+) -> Option<AstCall> {
+    let name = match name_pat {
+        PatTree::StringLiteral(s) => s.clone(),
+        PatTree::Capture(cap_name) => match caps.get(cap_name)? {
+            Captured::Literal(AstLiteral::String(s)) => s.clone(),
+            _ => return None,
+        },
+        _ => return None,
+    };
+    let args = match args_pat {
+        PatTree::List(pats) => {
+            let mut result = Vec::new();
+            for p in pats {
+                result.push(construct_wrapped_expr(p, caps)?);
+            }
+            result
+        }
+        PatTree::Capture(cap_name) => match caps.get(cap_name)? {
+            Captured::StmtList(_) => return None,
+            _ => return None,
+        },
+        _ => return None,
+    };
+    Some(AstCall::Unknown(name, args))
 }
 
 fn construct_variable_map(pat: &PatTree, caps: &Captures) -> Option<ArcAstVariableMap> {

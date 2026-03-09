@@ -1,8 +1,7 @@
 mod app;
 
-use crate::utils::log::init_log;
+use crate::{model::OptimizationStore, utils::log::init_log};
 use app::App;
-use crate::model::OptimizationStore;
 
 #[derive(Clone, Debug)]
 pub(super) struct StartupConfig {

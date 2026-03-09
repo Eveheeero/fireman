@@ -1,0 +1,54 @@
+# Ternary to min/max recovery.
+# Ternary(Less(a, b), a, b) → Call("min", [a, b])
+# Ternary(Greater(a, b), a, b) → Call("max", [a, b])
+# Ternary(LessEqual(a, b), a, b) → Call("min", [a, b])
+# Ternary(GreaterEqual(a, b), a, b) → Call("max", [a, b])
+
+if:
+  at afterIteration
+  expr Ternary(BinaryOp(Less, $a, $b), $a2, $b2)
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  replace_expr Call("min", [$a, $b])
+
+if:
+  at afterIteration
+  expr Ternary(BinaryOp(LessEqual, $a, $b), $a2, $b2)
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  replace_expr Call("min", [$a, $b])
+
+if:
+  at afterIteration
+  expr Ternary(BinaryOp(Greater, $a, $b), $a2, $b2)
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  replace_expr Call("max", [$a, $b])
+
+if:
+  at afterIteration
+  expr Ternary(BinaryOp(GreaterEqual, $a, $b), $a2, $b2)
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  replace_expr Call("max", [$a, $b])
+
+# Reversed operands: Ternary(Less(a, b), b, a) → Call("max", [a, b])
+if:
+  at afterIteration
+  expr Ternary(BinaryOp(Less, $a, $b), $b2, $a2)
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  replace_expr Call("max", [$a, $b])
+
+if:
+  at afterIteration
+  expr Ternary(BinaryOp(Greater, $a, $b), $b2, $a2)
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  replace_expr Call("min", [$a, $b])

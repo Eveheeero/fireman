@@ -7,10 +7,11 @@ use super::{node_name::NodeName, types::PatTree};
 #[derive(Debug, Clone, PartialEq)]
 enum Token {
     Ident(String),
-    Capture(String), // $name
-    Wildcard,        // _
-    Number(i64),     // integer literal (positive or negative)
-    UIntNumber(u64), // unsigned integer literal (overflow from i64)
+    Capture(String),      // $name
+    Wildcard,             // _
+    Number(i64),          // integer literal (positive or negative)
+    UIntNumber(u64),      // unsigned integer literal (overflow from i64)
+    QuotedString(String), // "string literal"
     LParen,
     RParen,
     LBracket,
@@ -44,6 +45,19 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
             ',' => {
                 tokens.push(Token::Comma);
                 i += 1;
+            }
+            '"' => {
+                i += 1;
+                let start = i;
+                while i < chars.len() && chars[i] != '"' {
+                    i += 1;
+                }
+                if i >= chars.len() {
+                    return Err("unterminated string literal".to_string());
+                }
+                let s: String = chars[start..i].iter().collect();
+                tokens.push(Token::QuotedString(s));
+                i += 1; // skip closing "
             }
             '$' => {
                 i += 1;
@@ -136,6 +150,7 @@ impl Parser {
             Some(Token::Wildcard) => Ok(PatTree::Wildcard),
             Some(Token::Number(n)) => Ok(PatTree::NumberLiteral(n)),
             Some(Token::UIntNumber(n)) => Ok(PatTree::UIntLiteral(n)),
+            Some(Token::QuotedString(s)) => Ok(PatTree::StringLiteral(s)),
             Some(Token::LBracket) => {
                 let mut items = Vec::new();
                 if self.peek() != Some(&Token::RBracket) {

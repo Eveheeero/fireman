@@ -1,0 +1,14 @@
+# Unwrap blocks nested inside if-branches: If(c, [Block(inner)], e) → If(c, inner, e).
+# Block($inner) already requires a non-empty body (empty blocks match Block([])).
+
+if:
+  at afterOptimization
+  stmt If($cond, [Block($inner)], $else)
+do:
+  emit If($cond, $inner, $else)
+
+if:
+  at afterOptimization
+  stmt If($cond, $then, Some([Block($inner)]))
+do:
+  emit If($cond, $then, Some($inner))

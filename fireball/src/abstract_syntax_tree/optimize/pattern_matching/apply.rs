@@ -3,14 +3,13 @@ use super::{
     AstPatternDeleteTarget, AstPatternInBlock, AstPatternInBlockKind, AstPatternInputType,
     AstPatternIrData, AstPatternIrReplacement, AstPatternLogLevel, AstPatternMatch,
     AstPatternOrigin, AstPatternOutAction, AstPatternParsed, AstPatternRange, AstPatternRule,
-    AstPatternScript, AstPatternSkippedMatch, block_asm, block_asm_contains, block_ast,
-    block_ast_sequence, block_at_matches_phase, block_expr, block_ir, block_script,
-    block_ignore_asm_filters, block_ignore_ast_filters, block_ignore_comment_filters,
-    block_ignore_ir_filters, IgnoreCommentFilter,
-    block_skip_asm_range, block_skip_ast_range, block_skip_ir_range, block_skip_range, block_stmt,
-    block_stmt_seq, fb_parser::load_file_pattern_rule_cached, has_kind, has_script_in_blocks,
-    hashing::structural_statement_hash, infer_input_type_from_in_blocks,
-    ir_parser::normalize_for_match, stmt_pattern,
+    AstPatternScript, AstPatternSkippedMatch, IgnoreCommentFilter, block_asm, block_asm_contains,
+    block_ast, block_ast_sequence, block_at_matches_phase, block_expr, block_ignore_asm_filters,
+    block_ignore_ast_filters, block_ignore_comment_filters, block_ignore_ir_filters, block_ir,
+    block_script, block_skip_asm_range, block_skip_ast_range, block_skip_ir_range,
+    block_skip_range, block_stmt, block_stmt_seq, fb_parser::load_file_pattern_rule_cached,
+    has_kind, has_script_in_blocks, hashing::structural_statement_hash,
+    infer_input_type_from_in_blocks, ir_parser::normalize_for_match, stmt_pattern,
 };
 use crate::{
     abstract_syntax_tree::{
@@ -75,12 +74,7 @@ pub(in crate::abstract_syntax_tree::optimize) fn apply_patterns(
 
     let file_rules = load_file_pattern_rules(patterns)?;
     if !file_rules.is_empty() {
-        apply_file_pattern_rules_recursive(
-            &mut body,
-            &file_rules,
-            &function_ir_statements,
-            phase,
-        );
+        apply_file_pattern_rules_recursive(&mut body, &file_rules, &function_ir_statements, phase);
     }
 
     {
@@ -661,20 +655,13 @@ fn match_if_block(
     }
     if let Some(ast) = block_ast(block) {
         has_condition = true;
-        let (start, end) = find_ast_match(
-            effective_ast,
-            ast,
-            block_skip_ast_range(block),
-        )?;
+        let (start, end) = find_ast_match(effective_ast, ast, block_skip_ast_range(block))?;
         matched.ast_statement_range = Some(remap_ast_range(start, end, ast_remap.map(|v| &**v)));
     }
     if let Some(ast_sequence) = block_ast_sequence(block) {
         has_condition = true;
-        let (start, end) = find_ast_sequence_match(
-            effective_ast,
-            ast_sequence,
-            block_skip_ast_range(block),
-        )?;
+        let (start, end) =
+            find_ast_sequence_match(effective_ast, ast_sequence, block_skip_ast_range(block))?;
         matched.ast_statement_range = Some(remap_ast_range(start, end, ast_remap.map(|v| &**v)));
     }
     // stmt structural pattern matching with captures
@@ -1239,7 +1226,6 @@ fn collect_asm_lines(stmts: &[WrappedAstStatement]) -> Vec<AstPatternNormalizedA
     lines
 }
 
-
 fn build_rhai_engine() -> Engine {
     let mut engine = Engine::new();
     engine.on_print(move |msg| {
@@ -1320,7 +1306,11 @@ fn build_rhai_scope(context: &AstPatternScriptContext<'_>) -> Scope<'static> {
             .asm_lines
             .iter()
             .enumerate()
-            .map(|(i, line)| Dynamic::from(super::rhai_types::RhaiAsmLine::from_normalized(i, &line.line)))
+            .map(|(i, line)| {
+                Dynamic::from(super::rhai_types::RhaiAsmLine::from_normalized(
+                    i, &line.line,
+                ))
+            })
             .collect::<Vec<Dynamic>>(),
     );
     scope
@@ -1338,10 +1328,7 @@ fn evaluate_if_script(script: &AstPatternScript, context: &AstPatternScriptConte
             }
         },
         Err(err) => {
-            error!(
-                "Pattern `{}` if script failed: {}",
-                context.source, err
-            );
+            error!("Pattern `{}` if script failed: {}", context.source, err);
             false
         }
     }
@@ -1370,10 +1357,7 @@ fn execute_do_script_with_captures(
             }
         }
         Err(err) => {
-            error!(
-                "Pattern `{}` do script failed: {}",
-                context.source, err
-            );
+            error!("Pattern `{}` do script failed: {}", context.source, err);
             return false;
         }
     }
@@ -1396,10 +1380,7 @@ fn execute_do_script(script: &AstPatternScript, context: &AstPatternScriptContex
             }
         }
         Err(err) => {
-            error!(
-                "Pattern `{}` do script failed: {}",
-                context.source, err
-            );
+            error!("Pattern `{}` do script failed: {}", context.source, err);
             return false;
         }
     }

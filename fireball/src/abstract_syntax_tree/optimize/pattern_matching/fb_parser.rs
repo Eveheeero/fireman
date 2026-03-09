@@ -3,8 +3,7 @@ use super::{
     AstPatternClauseGroup, AstPatternDeleteAnchor, AstPatternDeleteTarget, AstPatternInBlock,
     AstPatternInBlockKind, AstPatternIrData, AstPatternIrReplacement, AstPatternLogLevel,
     AstPatternOutAction, AstPatternRange, AstPatternRule, AstPatternScript, ClearIgnoreTarget,
-    IgnoreCommentFilter, add_at_clause,
-    has_kind,
+    IgnoreCommentFilter, add_at_clause, has_kind,
     ir_parser::{
         find_matching_delimiter, parse_asm_arguments, parse_asm_statement, parse_ir_statement,
     },
@@ -443,15 +442,20 @@ pub(super) fn parse_pattern_file(path: &str, content: &str) -> Result<AstPattern
                         set_clause(block, AstPatternInBlock::SkipIrRange(range));
                     });
                 } else if line.trim_start().starts_with("ignore asm ") {
-                    let value = parse_multiline_value(line.trim_start(), "ignore asm ", &lines, &mut idx)?;
+                    let value =
+                        parse_multiline_value(line.trim_start(), "ignore asm ", &lines, &mut idx)?;
                     let trimmed_val = value.trim();
                     if trimmed_val.is_empty() {
                         update_all_in_blocks(&mut current_in_blocks, |block| {
                             block.push(AstPatternInBlock::IgnoreAsm(None));
                         });
                     } else {
-                        let asm_data = AstPatternAsmData::from_text(trimmed_val)
-                            .map_err(|err| format!("invalid ignore asm in pattern `{path}`: {trimmed_val} ({err})"))?;
+                        let asm_data =
+                            AstPatternAsmData::from_text(trimmed_val).map_err(|err| {
+                                format!(
+                                    "invalid ignore asm in pattern `{path}`: {trimmed_val} ({err})"
+                                )
+                            })?;
                         update_all_in_blocks(&mut current_in_blocks, |block| {
                             block.push(AstPatternInBlock::IgnoreAsm(Some(asm_data.clone())));
                         });
@@ -461,7 +465,8 @@ pub(super) fn parse_pattern_file(path: &str, content: &str) -> Result<AstPattern
                         block.push(AstPatternInBlock::IgnoreAsm(None));
                     });
                 } else if line.trim_start().starts_with("ignore ir ") {
-                    let value = parse_multiline_value(line.trim_start(), "ignore ir ", &lines, &mut idx)?;
+                    let value =
+                        parse_multiline_value(line.trim_start(), "ignore ir ", &lines, &mut idx)?;
                     let trimmed_val = value.trim();
                     if trimmed_val.is_empty() {
                         update_all_in_blocks(&mut current_in_blocks, |block| {
@@ -480,7 +485,8 @@ pub(super) fn parse_pattern_file(path: &str, content: &str) -> Result<AstPattern
                         block.push(AstPatternInBlock::IgnoreIr(None));
                     });
                 } else if line.trim_start().starts_with("ignore ast ") {
-                    let value = parse_multiline_value(line.trim_start(), "ignore ast ", &lines, &mut idx)?;
+                    let value =
+                        parse_multiline_value(line.trim_start(), "ignore ast ", &lines, &mut idx)?;
                     let trimmed_val = value.trim();
                     if trimmed_val.is_empty() {
                         update_all_in_blocks(&mut current_in_blocks, |block| {
@@ -503,34 +509,61 @@ pub(super) fn parse_pattern_file(path: &str, content: &str) -> Result<AstPattern
                         block.push(AstPatternInBlock::IgnoreComment(IgnoreCommentFilter::All));
                     });
                 } else if line.trim_start().starts_with("ignore commentstart ") {
-                    let value = parse_multiline_value(line.trim_start(), "ignore commentstart ", &lines, &mut idx)?;
+                    let value = parse_multiline_value(
+                        line.trim_start(),
+                        "ignore commentstart ",
+                        &lines,
+                        &mut idx,
+                    )?;
                     let trimmed_val = value.trim();
                     if trimmed_val.is_empty() {
-                        return Err(format!("ignore commentstart requires a value in pattern `{path}`"));
+                        return Err(format!(
+                            "ignore commentstart requires a value in pattern `{path}`"
+                        ));
                     }
                     let text = trimmed_val.to_string();
                     update_all_in_blocks(&mut current_in_blocks, |block| {
-                        block.push(AstPatternInBlock::IgnoreComment(IgnoreCommentFilter::StartsWith(text.clone())));
+                        block.push(AstPatternInBlock::IgnoreComment(
+                            IgnoreCommentFilter::StartsWith(text.clone()),
+                        ));
                     });
                 } else if line.trim_start().starts_with("ignore commentend ") {
-                    let value = parse_multiline_value(line.trim_start(), "ignore commentend ", &lines, &mut idx)?;
+                    let value = parse_multiline_value(
+                        line.trim_start(),
+                        "ignore commentend ",
+                        &lines,
+                        &mut idx,
+                    )?;
                     let trimmed_val = value.trim();
                     if trimmed_val.is_empty() {
-                        return Err(format!("ignore commentend requires a value in pattern `{path}`"));
+                        return Err(format!(
+                            "ignore commentend requires a value in pattern `{path}`"
+                        ));
                     }
                     let text = trimmed_val.to_string();
                     update_all_in_blocks(&mut current_in_blocks, |block| {
-                        block.push(AstPatternInBlock::IgnoreComment(IgnoreCommentFilter::EndsWith(text.clone())));
+                        block.push(AstPatternInBlock::IgnoreComment(
+                            IgnoreCommentFilter::EndsWith(text.clone()),
+                        ));
                     });
                 } else if line.trim_start().starts_with("ignore commentcontains ") {
-                    let value = parse_multiline_value(line.trim_start(), "ignore commentcontains ", &lines, &mut idx)?;
+                    let value = parse_multiline_value(
+                        line.trim_start(),
+                        "ignore commentcontains ",
+                        &lines,
+                        &mut idx,
+                    )?;
                     let trimmed_val = value.trim();
                     if trimmed_val.is_empty() {
-                        return Err(format!("ignore commentcontains requires a value in pattern `{path}`"));
+                        return Err(format!(
+                            "ignore commentcontains requires a value in pattern `{path}`"
+                        ));
                     }
                     let text = trimmed_val.to_string();
                     update_all_in_blocks(&mut current_in_blocks, |block| {
-                        block.push(AstPatternInBlock::IgnoreComment(IgnoreCommentFilter::Contains(text.clone())));
+                        block.push(AstPatternInBlock::IgnoreComment(
+                            IgnoreCommentFilter::Contains(text.clone()),
+                        ));
                     });
                 } else {
                     return Err(format!(

@@ -50,7 +50,7 @@
 - [x] Side-effect modeling — Track memory writes, volatile accesses, syscalls, and I/O to avoid unsafe eliminations.
 - [x] Common subexpression elimination — Reuse repeated expressions to reduce clutter and improve readability.
 - [x] Algebraic simplification — Canonicalize arithmetic/bitwise forms (e.g., x+0, x^0, reassociation rules).
-- [x] Bit-trick idiom recognition — Detect rotates, bswap, popcount, clz/ctz, min/max idioms, etc.
+- [x] Bit-trick idiom recognition — Detect rotates, bswap, popcount, clz/ctz, min/max idioms, etc. [implemented as .fb pattern]
 - [x] Magic-constant division recovery — Recognize multiply/shift sequences used for optimized div/mod.
 - [~] Flag/condition recovery — Model CPU flags to reconstruct high-level comparisons and boolean logic.
   > cmovcc/setcc 개별 조건 코드 IR 핸들러 구현 완료; 전체 플래그 전파/소거는 미구현
@@ -64,7 +64,7 @@
 - [x] Loop reconstruction heuristics — Choose while vs do-while vs for based on header/test placement.
 - [x] Induction variable analysis — Detect counters/strides/bounds to emit for (i=…; …; i+=…).
 - [ ] Loop-invariant code motion (reverse) — Recognize hoisted expressions and place them naturally in source output. [comment-only removed]
-- [x] Control-flow simplification — Remove redundant gotos, invert conditions, merge equivalent tails.
+- [x] Control-flow simplification — Remove redundant gotos, invert conditions, merge equivalent tails. [implemented as .fb pattern]
 - [x] Goto containment heuristics — Use labeled blocks sparingly; prefer structured constructs when safe.
 - [~] Stack pointer tracking — Track SP deltas across blocks to recover frame layout even without frame pointers.
 - [~] Frame-pointer omission handling — Infer locals/spills when compiler omits FP (FPO) and uses SP-relative addressing.
@@ -149,7 +149,7 @@
   > 에뮬레이션/심볼릭 실행 필요
 - [ ] VM/protector detection — Identify virtualization/protection stubs and isolate them from normal decompilation flow.
   > VM 탐지 프레임워크 필요
-- [x] Casts insertion minimization — Insert only necessary casts to keep output readable while type-correct.
+- [x] Casts insertion minimization — Insert only necessary casts to keep output readable while type-correct. [implemented as .fb pattern]
 - [x] Declaration placement heuristics — Place variable declarations near first use or at block start for readability.
 - [x] Name recovery heuristics — Derive names from API usage, field offsets, strings, and role patterns (len, idx, buf).
 - [x] Pretty-printer structuring — Emit stable formatting, block scopes, and expression parentheses to match C semantics.
@@ -236,8 +236,8 @@
   > `ir/analyze/escape.rs`가 points-to 결과를 바탕으로 포인터형 레지스터가 공통 호출 인자 레지스터로 살아남거나 non-stack memory store로 저장될 때 intraprocedural escape로 표기한다. heap/stack ownership 결정, stack-slot escape, interprocedural propagation은 미구현
 - [x] Lifetime-based scoping — Emit tighter C scopes based on live ranges to reduce variable clutter.
 - [x] Variable coalescing by interference — Merge non-overlapping temporaries into a single C local when safe/readable.
-- [ ] Register spill pattern recovery — Identify spill/reload sequences and treat them as variable preservation, not logic. [comment-only removed]
-- [ ] Shadow-space modeling (Win64) — Recognize Win64 home space usage and suppress it in output.
+- [x] Register spill pattern recovery — Identify spill/reload sequences and treat them as variable preservation, not logic. [comment-only removed] [implemented as .fb pattern]
+- [x] Shadow-space modeling (Win64) — Recognize Win64 home space usage and suppress it in output. [implemented as .fb pattern]
   > Win64 ABI 스택 모델링 필요
 - [ ] Red-zone modeling (SysV) — Recognize red-zone stack usage and prevent mis-classifying it as locals.
   > SysV ABI 레드존 모델링 필요
@@ -432,7 +432,7 @@
 - [ ] Memcmp/strcmp loop lifting — Replace compare loops with memcmp/strcmp when semantics match.
 - [ ] Strlen/scan loop lifting — Detect null-terminated scans and emit strlen/strchr-style calls.
 - [ ] Bounds-check synthesis — Emit explicit bounds checks from compare+branch patterns around loads/stores. [comment-only removed]
-- [x] Null-check canonicalization — Normalize pointer guards into if (p == NULL) / if (!p) forms.
+- [x] Null-check canonicalization — Normalize pointer guards into if (p == NULL) / if (!p) forms. [implemented as .fb pattern]
   > x != 0 → x, x == 0 → !x 조건 정규화 구현 완료 (operator_canonicalization.rs)
 - [x] Sign/zero-extend cast recovery — Turn extension sequences into explicit (int8_t), (uint32_t) casts.
   > IR→AST 변환 시 할당 크기(IrAccessSize)로 CastSigned/CastUnsigned를 Cast(Int32)/(UInt8) 등 명시적 타입 캐스트로 변환
@@ -579,14 +579,14 @@
   > 언어별 런타임 분석 필요 — 현재 인프라 없음
 - [ ] Go itab/interface table parsing — Recover interface method tables and dynamic dispatch patterns from Go binaries.
   > 언어별 런타임 분석 필요 — 현재 인프라 없음
-- [ ] Sanitizer instrumentation de-noising — Detect ASan/UBSan/TSan scaffolding and collapse it to comments or omitted checks. [comment-only removed]
-- [ ] Coverage/profiling instrumentation removal — Recognize gcov/llvm-prof counters and emit them as no-ops or annotations. [comment-only removed]
-- [ ] Fuzzer hook suppression — Identify AFL/libFuzzer coverage edges and strip them from recovered logic. [comment-only removed]
-- [ ] Retpoline mitigation recognition — Collapse retpoline call/return sequences into normal indirect calls. [comment-only removed]
-- [ ] Spectre fence de-noising — Recognize lfence/barrier patterns added for speculation mitigations and annotate/remove when safe. [comment-only removed]
-- [ ] Shadow-call-stack modeling — Handle shadow stack reads/writes as calling-convention scaffolding, not user variables. [comment-only removed]
-- [ ] SafeStack/split-stack recognition — Detect stack splitting/safestack prologues and suppress them in high-level output. [comment-only removed]
-- [ ] Stack-clash protection modeling — Recognize guard-page probing loops distinct from generic_chkstk patterns. [comment-only removed]
+- [x] Sanitizer instrumentation de-noising — Detect ASan/UBSan/TSan scaffolding and collapse it to comments or omitted checks. [comment-only removed] [implemented as .fb pattern]
+- [x] Coverage/profiling instrumentation removal — Recognize gcov/llvm-prof counters and emit them as no-ops or annotations. [comment-only removed] [implemented as .fb pattern]
+- [x] Fuzzer hook suppression — Identify AFL/libFuzzer coverage edges and strip them from recovered logic. [comment-only removed] [implemented as .fb pattern]
+- [x] Retpoline mitigation recognition — Collapse retpoline call/return sequences into normal indirect calls. [comment-only removed] [implemented as .fb pattern]
+- [x] Spectre fence de-noising — Recognize lfence/barrier patterns added for speculation mitigations and annotate/remove when safe. [comment-only removed] [implemented as .fb pattern]
+- [x] Shadow-call-stack modeling — Handle shadow stack reads/writes as calling-convention scaffolding, not user variables. [comment-only removed] [implemented as .fb pattern]
+- [x] SafeStack/split-stack recognition — Detect stack splitting/safestack prologues and suppress them in high-level output. [comment-only removed] [implemented as .fb pattern]
+- [x] Stack-clash protection modeling — Recognize guard-page probing loops distinct from generic_chkstk patterns. [comment-only removed] [implemented as .fb pattern]
 - [ ] Formal ISA semantics lifting — Generate lifters from authoritative ISA semantics (Sail/K/Isla-style) for correctness.
   > ISA/아키텍처별 처리 필요
 - [ ] Translation validation with SMT — Prove lifted IR matches instruction semantics on bounded regions using solver checks.
@@ -639,7 +639,7 @@
 - [ ] Protocol/parser feature inference — Infer token classes/states from branch patterns and table-driven transitions.
   > 고급 휴리스틱 프레임워크 필요 — 현재 인프라 부족
 - [ ] Error-code convention inference — Detect 0/-1/errno-style conventions and label return types/paths accordingly. [comment-only removed]
-- [x] Assertion pattern recovery — Recognize if(!cond) abort() or trap patterns and emit assert(cond)-like constructs.
+- [x] Assertion pattern recovery — Recognize if(!cond) abort() or trap patterns and emit assert(cond)-like constructs. [implemented as .fb pattern]
 - [ ] Logging/telemetry scaffolding de-noising — Collapse repeated logging macros/wrappers into concise calls with inferred formats. [comment-only removed]
 - [ ] Resource cleanup normalization — Detect multi-resource release patterns and synthesize a single cleanup block. [comment-only removed]
 - [ ] Interrupt/vector table recognition — For firmware, parse vector tables to discover handlers and true entrypoints.
@@ -678,7 +678,7 @@
   > ML/통계 모델 필요 — 현재 인프라 없음
 - [ ] Uncertainty-aware ensembles — Combine multiple models/heuristics and keep alternatives when confidence is low.
   > ML/통계 모델 필요 — 현재 인프라 없음
-- [x] AST-level refactoring passes — After structuring, run C-centric rewrites (merge declarations, simplify loops, hoist temps).
+- [x] AST-level refactoring passes — After structuring, run C-centric rewrites (merge declarations, simplify loops, hoist temps). [implemented as .fb pattern]
 - [~] Loop rotation normalization — Convert “rotated” loops into canonical while/for forms for readability.
   > if(cond){while(cond){body}} → while(cond){body} 부분 구현; 순수(side-effect-free) 조건만 지원. 추가로 while(true) { ... if(!cond) break; } → do { ... } while(cond) 안전 변환을 구현했지만, 비순수 조건과 body-duplication 기반의 완전한 do-while 회전은 아직 미구현 (loop_analyzation.rs)
 - [x] If/else inversion heuristics — Prefer positive conditions and reduce negations based on readability cost models.

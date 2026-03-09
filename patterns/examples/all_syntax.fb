@@ -194,6 +194,14 @@ do:
 # In stmt patterns: Call($f) captures the entire AstCall.
 # In expr patterns: Call($f) captures the call expression.
 # In emit/replace: Call($f) reconstructs from the captured call.
+#
+# Call("name", [args...]) constructs a new AstCall::Unknown with a
+# string name and expression arguments. String literals use "quotes".
+#
+# Examples:
+#   emit Call("assert", [$cond])           — emit assert(cond) call statement
+#   replace_expr Call("min", [$a, $b])     — replace expression with min(a, b)
+#   emit Call("memset", [$ptr, $val, $n])  — emit memset(ptr, val, n)
 
 # ── Builtin evaluation functions (replace_expr_fn) ──
 #

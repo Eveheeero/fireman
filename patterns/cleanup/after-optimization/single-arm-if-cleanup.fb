@@ -1,0 +1,9 @@
+# Remove if statements with empty bodies and no else branch.
+# if(cond) {} → delete (when condition is pure / side-effect-free).
+
+if:
+  at afterOptimization
+  stmt If($cond, [], None)
+  where is_pure($cond)
+do:
+  emit Empty

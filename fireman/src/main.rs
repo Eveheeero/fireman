@@ -7,15 +7,15 @@ mod tui;
 pub mod utils;
 pub mod worker;
 
+use crate::model::{
+    OptimizationScriptPreset, OptimizationSettings, OptimizationStore, build_optimization_config,
+};
 use clap::{Arg, ArgAction, ArgMatches, Command, builder::BoolishValueParser};
 use fireball::{
     Fireball,
     abstract_syntax_tree::AstPrintConfig,
     core::{Block, FireRaw},
     ir::analyze::generate_ast,
-};
-use crate::model::{
-    OptimizationScriptPreset, OptimizationSettings, OptimizationStore, build_optimization_config,
 };
 use serde::{Deserialize, Serialize};
 use std::{

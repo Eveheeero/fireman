@@ -1,0 +1,26 @@
+# Suppress Win64 shadow space allocation/deallocation.
+# Matches both hex (0x28) and decimal (40) encodings.
+
+if:
+  at beforeIrAnalyzation
+  asm `sub rsp, 0x28`
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm `sub rsp, 40`
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm `add rsp, 0x28`
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm `add rsp, 40`
+do:
+  del start[0]

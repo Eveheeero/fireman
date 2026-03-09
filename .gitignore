@@ -48,6 +48,3 @@ Cargo.lock
 TODO.md
 *.log
 .worktrees/
-!patterns/
-*.fb
-*.fb.gz

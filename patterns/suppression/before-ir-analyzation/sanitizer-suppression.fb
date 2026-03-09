@@ -1,0 +1,20 @@
+# Suppress sanitizer instrumentation (ASan, UBSan, TSan).
+# Deletes the specific asm statement containing the matched symbol.
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __asan_
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __ubsan_
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __tsan_
+do:
+  del start[0]

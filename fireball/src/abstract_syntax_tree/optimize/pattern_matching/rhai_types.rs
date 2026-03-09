@@ -549,9 +549,7 @@ impl RhaiIrData {
 
     fn inner(&mut self) -> Dynamic {
         match &self.inner {
-            IrData::Dereference(inner) => {
-                Dynamic::from(RhaiIrData::from_ir_data(inner.as_ref()))
-            }
+            IrData::Dereference(inner) => Dynamic::from(RhaiIrData::from_ir_data(inner.as_ref())),
             _ => Dynamic::UNIT,
         }
     }
@@ -565,10 +563,7 @@ impl RhaiIrData {
     }
 
     fn is_unary(&mut self) -> bool {
-        matches!(
-            self.inner,
-            IrData::Operation(IrDataOperation::Unary { .. })
-        )
+        matches!(self.inner, IrData::Operation(IrDataOperation::Unary { .. }))
     }
 
     fn is_binary(&mut self) -> bool {
@@ -620,7 +615,10 @@ impl RhaiAsmLine {
     pub fn from_normalized(index: usize, line: &str) -> Self {
         let trimmed = line.trim();
         let (mnemonic, operands) = match trimmed.find(|c: char| c.is_whitespace()) {
-            Some(pos) => (trimmed[..pos].to_string(), trimmed[pos..].trim().to_string()),
+            Some(pos) => (
+                trimmed[..pos].to_string(),
+                trimmed[pos..].trim().to_string(),
+            ),
             None => (trimmed.to_string(), String::new()),
         };
         Self {
@@ -691,14 +689,17 @@ fn stmt_contains_call(stmt: &AstStatement, needle: &str) -> bool {
     match stmt {
         AstStatement::Call(call) => call_matches(call, needle),
         AstStatement::If(_, body, else_body) => {
-            body.iter().any(|s| stmt_contains_call(&s.statement, needle))
+            body.iter()
+                .any(|s| stmt_contains_call(&s.statement, needle))
                 || else_body
                     .as_ref()
                     .is_some_and(|e| e.iter().any(|s| stmt_contains_call(&s.statement, needle)))
         }
-        AstStatement::While(_, body) | AstStatement::Block(body) | AstStatement::DoWhile(_, body) => {
-            body.iter().any(|s| stmt_contains_call(&s.statement, needle))
-        }
+        AstStatement::While(_, body)
+        | AstStatement::Block(body)
+        | AstStatement::DoWhile(_, body) => body
+            .iter()
+            .any(|s| stmt_contains_call(&s.statement, needle)),
         AstStatement::Assignment(_, rhs) => expr_contains_call(&rhs.item, needle),
         AstStatement::Return(Some(expr)) => expr_contains_call(&expr.item, needle),
         _ => false,
@@ -717,9 +718,9 @@ fn expr_contains_call(expr: &AstExpression, needle: &str) -> bool {
                 || expr_contains_call(&t.item, needle)
                 || expr_contains_call(&f.item, needle)
         }
-        AstExpression::Cast(_, inner) | AstExpression::Deref(inner) | AstExpression::AddressOf(inner) => {
-            expr_contains_call(&inner.item, needle)
-        }
+        AstExpression::Cast(_, inner)
+        | AstExpression::Deref(inner)
+        | AstExpression::AddressOf(inner) => expr_contains_call(&inner.item, needle),
         AstExpression::ArrayAccess(base, idx) => {
             expr_contains_call(&base.item, needle) || expr_contains_call(&idx.item, needle)
         }
@@ -742,9 +743,9 @@ fn stmt_has_operator(stmt: &AstStatement, op_name: &str) -> bool {
         AstStatement::Assignment(lhs, rhs) => {
             expr_has_operator(&lhs.item, op_name) || expr_has_operator(&rhs.item, op_name)
         }
-        AstStatement::If(cond, _, _) | AstStatement::While(cond, _) | AstStatement::DoWhile(cond, _) => {
-            expr_has_operator(&cond.item, op_name)
-        }
+        AstStatement::If(cond, _, _)
+        | AstStatement::While(cond, _)
+        | AstStatement::DoWhile(cond, _) => expr_has_operator(&cond.item, op_name),
         AstStatement::Return(Some(expr)) => expr_has_operator(&expr.item, op_name),
         _ => false,
     }
@@ -766,9 +767,9 @@ fn expr_has_operator(expr: &AstExpression, op_name: &str) -> bool {
                 || expr_has_operator(&t.item, op_name)
                 || expr_has_operator(&f.item, op_name)
         }
-        AstExpression::Cast(_, inner) | AstExpression::Deref(inner) | AstExpression::AddressOf(inner) => {
-            expr_has_operator(&inner.item, op_name)
-        }
+        AstExpression::Cast(_, inner)
+        | AstExpression::Deref(inner)
+        | AstExpression::AddressOf(inner) => expr_has_operator(&inner.item, op_name),
         _ => false,
     }
 }
@@ -842,10 +843,7 @@ fn rhai_is_bitwise_op(op: &str) -> bool {
 }
 
 fn rhai_is_logical_op(op: &str) -> bool {
-    matches!(
-        op.to_lowercase().as_str(),
-        "logicand" | "logicor" | "not"
-    )
+    matches!(op.to_lowercase().as_str(), "logicand" | "logicor" | "not")
 }
 
 // ── Engine registration ──

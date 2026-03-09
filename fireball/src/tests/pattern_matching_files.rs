@@ -241,10 +241,11 @@ fn build_predefined_pattern_test_ast() -> (Ast, AstFunctionId) {
         wrap_statement(AstStatement::Block(Vec::new())),
         wrap_statement(AstStatement::If(
             wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
-            Vec::new(),
+            vec![wrap_statement(AstStatement::Comment("then".to_string()))],
             Some(Vec::new()),
         )),
         wrap_statement(AstStatement::Label("cleanup".to_string())),
+        wrap_statement(AstStatement::Comment("keep".to_string())),
         wrap_statement(AstStatement::Return(None)),
     ];
 
