@@ -28,6 +28,7 @@ dryice = { path = "dryice" }
 
 # Common external dependencies
 clap = { version = "4.5", features = ["derive"] }
+bitcode = { version = "0.6.7", features = ["derive"] }
 flate2 = "1.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

@@ -139,13 +139,33 @@ fn pattern_file_path(pattern: &AstPattern) -> Option<&str> {
             return Some(pattern.name.trim());
         }
     }
-    if pattern.pattern.trim().ends_with(".fb") {
+    if pattern.pattern.trim().ends_with(".fb")
+        || pattern.pattern.trim().ends_with(".fbz")
+        || pattern.pattern.trim().ends_with(".fb.gz")
+    {
         return Some(pattern.pattern.trim());
     }
-    if pattern.name.trim().ends_with(".fb") {
+    if pattern.name.trim().ends_with(".fb")
+        || pattern.name.trim().ends_with(".fbz")
+        || pattern.name.trim().ends_with(".fb.gz")
+    {
         return Some(pattern.name.trim());
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pattern_file_path_accepts_compressed_extensions() {
+        let fbz_pattern = AstPattern::new("script.fbz", "script.fbz");
+        assert_eq!(pattern_file_path(&fbz_pattern), Some("script.fbz"));
+
+        let fb_gz_pattern = AstPattern::new("script.fb.gz", "script.fb.gz");
+        assert_eq!(pattern_file_path(&fb_gz_pattern), Some("script.fb.gz"));
+    }
 }
 
 fn apply_file_pattern_rules_recursive(

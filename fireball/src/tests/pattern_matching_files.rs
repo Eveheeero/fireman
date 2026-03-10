@@ -15,6 +15,7 @@ use crate::{
 };
 use hashbrown::HashMap;
 use std::{
+    fs,
     path::{Path, PathBuf},
     sync::{Arc, RwLock},
 };
@@ -372,6 +373,17 @@ fn example_pattern_path(file: &str) -> String {
         .to_string()
 }
 
+fn temp_pattern_path(file: &str) -> PathBuf {
+    let unique = format!(
+        "fireball-pattern-{}-{file}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos()
+    );
+    std::env::temp_dir().join(unique)
+}
+
 fn optimized_function_body(ast: &Ast, function_id: AstFunctionId) -> Vec<WrappedAstStatement> {
     let optimized_version = *ast
         .function_versions
@@ -426,6 +438,56 @@ fn pattern_matching_example_fb_files_parse_and_execute() {
             panic!("example pattern file `{file}` failed: {err:?}");
         }
     }
+}
+
+#[test]
+fn pattern_matching_accepts_fbz_files() {
+    let source_path = example_pattern_path("if_do_asm_ir_ast.fb");
+    let source = fs::read_to_string(&source_path).expect("example .fb should be readable");
+    let fbz_path = temp_pattern_path("if_do_asm_ir_ast.fbz");
+    AstPattern::fbz_bytes_from_source(&source)
+        .and_then(|bytes| fs::write(&fbz_path, bytes).map_err(|err| err.to_string()))
+        .expect("fbz file should be written");
+
+    let (ast, function_id) = build_pattern_test_ast();
+    let pattern = AstPattern::from_file(fbz_path.to_string_lossy().to_string());
+    let result = ast.optimize_function(
+        function_id,
+        Some(
+            AstOptimizationConfig::NONE
+                .pattern_matching_enabled(true)
+                .pattern_matching(vec![pattern])
+                .max_pass_iterations(1),
+        ),
+    );
+
+    let _ = fs::remove_file(&fbz_path);
+    result.expect("fbz-backed pattern should optimize successfully");
+}
+
+#[test]
+fn pattern_matching_accepts_fb_gz_files() {
+    let source_path = example_pattern_path("if_do_asm_ir_ast.fb");
+    let source = fs::read_to_string(&source_path).expect("example .fb should be readable");
+    let fb_gz_path = temp_pattern_path("if_do_asm_ir_ast.fb.gz");
+    AstPattern::fb_gz_bytes_from_source(&source)
+        .and_then(|bytes| fs::write(&fb_gz_path, bytes).map_err(|err| err.to_string()))
+        .expect("fb.gz file should be written");
+
+    let (ast, function_id) = build_pattern_test_ast();
+    let pattern = AstPattern::from_file(fb_gz_path.to_string_lossy().to_string());
+    let result = ast.optimize_function(
+        function_id,
+        Some(
+            AstOptimizationConfig::NONE
+                .pattern_matching_enabled(true)
+                .pattern_matching(vec![pattern])
+                .max_pass_iterations(1),
+        ),
+    );
+
+    let _ = fs::remove_file(&fb_gz_path);
+    result.expect("fb.gz-backed pattern should optimize successfully");
 }
 
 #[test]

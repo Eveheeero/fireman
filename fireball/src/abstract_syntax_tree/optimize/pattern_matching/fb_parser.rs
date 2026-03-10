@@ -3,7 +3,7 @@ use super::{
     AstPatternClauseGroup, AstPatternDeleteAnchor, AstPatternDeleteTarget, AstPatternInBlock,
     AstPatternInBlockKind, AstPatternIrData, AstPatternIrReplacement, AstPatternLogLevel,
     AstPatternOutAction, AstPatternRange, AstPatternRule, AstPatternScript, ClearIgnoreTarget,
-    IgnoreCommentFilter, add_at_clause, has_kind,
+    IgnoreCommentFilter, add_at_clause, fb_gz, fbz, has_kind,
     ir_parser::{
         find_matching_delimiter, parse_asm_arguments, parse_asm_statement, parse_ir_statement,
     },
@@ -51,9 +51,63 @@ pub(super) fn load_file_pattern_rule_cached(path: &str) -> Result<AstPatternRule
 }
 
 pub(super) fn load_file_pattern_rule_uncached(path: &str) -> Result<AstPatternRule, String> {
-    let content = fs::read_to_string(path)
-        .map_err(|err| format!("failed to read pattern file `{path}`: {err}"))?;
+    let content = load_pattern_source_from_path(path)?;
     parse_pattern_file(path, &content)
+}
+
+pub(super) fn load_pattern_rule_from_fbz_bytes(
+    path: &str,
+    bytes: &[u8],
+) -> Result<(AstPatternRule, String), String> {
+    let content = fbz::decode_source(bytes)?;
+    let rule = parse_pattern_file(path, &content)?;
+    Ok((rule, content))
+}
+
+pub(super) fn load_pattern_source_from_fbz_bytes(bytes: &[u8]) -> Result<String, String> {
+    fbz::decode_source(bytes)
+}
+
+pub(super) fn load_pattern_rule_from_fb_gz_bytes(
+    path: &str,
+    bytes: &[u8],
+) -> Result<(AstPatternRule, String), String> {
+    let content = fb_gz::decode_source(bytes)?;
+    let rule = parse_pattern_file(path, &content)?;
+    Ok((rule, content))
+}
+
+pub(super) fn load_pattern_source_from_fb_gz_bytes(bytes: &[u8]) -> Result<String, String> {
+    fb_gz::decode_source(bytes)
+}
+
+pub(super) fn encode_pattern_source_to_fbz_bytes(source: &str) -> Result<Vec<u8>, String> {
+    fbz::encode_source(source)
+}
+
+pub(super) fn encode_pattern_source_to_fb_gz_bytes(source: &str) -> Result<Vec<u8>, String> {
+    fb_gz::encode_source(source)
+}
+
+pub(super) fn write_pattern_source_to_fbz_file(
+    path: &std::path::Path,
+    source: &str,
+) -> Result<(), String> {
+    fbz::write_source_to_path(path, source)
+}
+
+pub(super) fn write_pattern_source_to_fb_gz_file(
+    path: &std::path::Path,
+    source: &str,
+) -> Result<(), String> {
+    fb_gz::write_source_to_path(path, source)
+}
+
+pub(super) fn load_pattern_source_from_path(path: &str) -> Result<String, String> {
+    if fb_gz::is_fb_gz_path(path) {
+        return fb_gz::read_source_from_path(path);
+    }
+    fbz::read_source_from_path(path)
 }
 
 pub(super) fn fingerprint(path: &str) -> Result<AstPatternFileFingerprint, String> {

@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use fireball::{
     Fireball,
     abstract_syntax_tree::{
@@ -9,12 +9,10 @@ use fireball::{
     ir::analyze::generate_ast_with_pre_defined_symbols,
     utils::test_log_subscriber_with_file,
 };
-use flate2::{Compression, read::GzDecoder, write::GzEncoder};
 use serde::Serialize;
 use std::{
     fmt::Write as _,
     fs,
-    io::Write as IoWrite,
     path::{Path, PathBuf},
 };
 
@@ -27,20 +25,40 @@ fn main() {
 
 #[derive(Debug, Parser)]
 #[command(name = "glacier")]
-#[command(about = "Export recovered Fireball analysis as compressed .fb.gz patterns")]
+#[command(
+    about = "Export recovered Fireball analysis as compressed patterns (.fb.gz by default, .fbz optional)"
+)]
 struct Cli {
     #[arg(value_name = "INPUT")]
     input: PathBuf,
     #[arg(short = 'o', long)]
     output: Option<PathBuf>,
+    #[arg(long, value_enum, default_value_t = OutputFormat::FbGz)]
+    format: OutputFormat,
     #[arg(long = "log")]
     log: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum OutputFormat {
+    FbGz,
+    Fbz,
+}
+
+impl OutputFormat {
+    fn extension(self) -> &'static str {
+        match self {
+            Self::FbGz => "fb.gz",
+            Self::Fbz => "fbz",
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 struct ExportRequest {
     input_path: PathBuf,
     output_path: PathBuf,
+    output_format: OutputFormat,
     log_file_path: Option<PathBuf>,
     overwrite: bool,
 }
@@ -95,10 +113,13 @@ struct PhasePayload {
 
 fn run() -> Result<(), String> {
     let cli = Cli::parse();
-    let default_output_path = default_output_path(&cli.input);
+    let default_output_path = default_output_path(&cli.input, cli.format);
+    let output_path = cli.output.unwrap_or(default_output_path);
+    validate_output_path_format(&output_path, cli.format)?;
     let request = ExportRequest {
         input_path: cli.input,
-        output_path: cli.output.unwrap_or(default_output_path),
+        output_path,
+        output_format: cli.format,
         log_file_path: cli.log,
         overwrite: true,
     };
@@ -202,8 +223,11 @@ fn export_fb_inner(
         .collect::<Result<Vec<_>, _>>()?;
 
     let output = rendered_rules.join("\n\n");
-    let compressed = compress_fb_gz(&output)?;
-    fs::write(&output_path, compressed)
+    let encoded = match request.output_format {
+        OutputFormat::FbGz => AstPattern::fb_gz_bytes_from_source(&output)?,
+        OutputFormat::Fbz => AstPattern::fbz_bytes_from_source(&output)?,
+    };
+    fs::write(&output_path, encoded)
         .map_err(|err| format!("failed to write {}: {err}", output_path.display()))?;
 
     Ok(ExportSummary {
@@ -511,18 +535,21 @@ fn fb_literal(value: &str) -> String {
     format!("`{escaped}`")
 }
 
-fn compress_fb_gz(value: &str) -> Result<Vec<u8>, String> {
-    let mut encoder = GzEncoder::new(Vec::new(), Compression::best());
-    encoder
-        .write_all(value.as_bytes())
-        .map_err(|err| format!("failed to compress .fb.gz payload: {err}"))?;
-    encoder
-        .finish()
-        .map_err(|err| format!("failed to finish .fb.gz payload: {err}"))
+fn default_output_path(input: &Path, format: OutputFormat) -> PathBuf {
+    input.with_extension(format.extension())
 }
 
-fn default_output_path(input: &Path) -> PathBuf {
-    input.with_extension("fb.gz")
+fn validate_output_path_format(path: &Path, format: OutputFormat) -> Result<(), String> {
+    let expected_extension = format.extension();
+    let rendered = path.to_string_lossy();
+    if rendered.ends_with(expected_extension) {
+        return Ok(());
+    }
+
+    Err(format!(
+        "output path `{}` does not match selected format `.{expected_extension}`",
+        path.display()
+    ))
 }
 
 fn path_string(path: &Path) -> Result<String, String> {
@@ -540,35 +567,16 @@ fn absolute_path(path: &Path) -> Result<PathBuf, String> {
     }
 }
 
-fn _decompress_fb_gz_for_debug(bytes: &[u8], path: &Path) -> Result<String, String> {
-    let mut decoder = GzDecoder::new(bytes);
-    let mut decoded = String::new();
-    std::io::Read::read_to_string(&mut decoder, &mut decoded)
-        .map_err(|err| format!("failed to decompress {}: {err}", path.display()))?;
-    Ok(decoded)
-}
-
 fn _validate_generated_pattern_file_for_debug(
     input_path: &Path,
     pattern_path: &Path,
 ) -> Result<(), String> {
-    let bytes = fs::read(pattern_path)
-        .map_err(|err| format!("failed to read {}: {err}", pattern_path.display()))?;
-    let pattern_text = _decompress_fb_gz_for_debug(&bytes, pattern_path)?;
-    let temp_path = std::env::temp_dir().join("glacier-pattern-validate.fb");
-    fs::write(&temp_path, pattern_text).map_err(|err| {
-        format!(
-            "failed to write validation file {}: {err}",
-            temp_path.display()
-        )
-    })?;
-
     let input_path_string = path_string(input_path)?;
     let fireball = Fireball::from_path(&input_path_string).map_err(|err| err.to_string())?;
     let blocks = fireball.analyze_all().map_err(|err| err.to_string())?;
     let ast = generate_ast_with_pre_defined_symbols(blocks, fireball.get_defined())
         .map_err(|err| err.to_string())?;
-    let pattern_path_string = path_string(&temp_path)?;
+    let pattern_path_string = path_string(pattern_path)?;
     let pattern = AstPattern::from_file(pattern_path_string);
     let result = ast.optimize(Some(
         AstOptimizationConfig::NONE
@@ -576,6 +584,31 @@ fn _validate_generated_pattern_file_for_debug(
             .pattern_matching(vec![pattern])
             .max_pass_iterations(1),
     ));
-    let _ = fs::remove_file(&temp_path);
     result.map(|_| ()).map_err(|err| err.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_output_path_uses_fb_gz_for_default_format() {
+        let input = Path::new("sample.exe");
+        assert_eq!(
+            default_output_path(input, OutputFormat::FbGz),
+            PathBuf::from("sample.fb.gz")
+        );
+        assert_eq!(
+            default_output_path(input, OutputFormat::Fbz),
+            PathBuf::from("sample.fbz")
+        );
+    }
+
+    #[test]
+    fn validate_output_path_format_rejects_extension_mismatch() {
+        assert!(validate_output_path_format(Path::new("out.fb.gz"), OutputFormat::FbGz).is_ok());
+        assert!(validate_output_path_format(Path::new("out.fbz"), OutputFormat::Fbz).is_ok());
+        assert!(validate_output_path_format(Path::new("out.fbz"), OutputFormat::FbGz).is_err());
+        assert!(validate_output_path_format(Path::new("out.fb.gz"), OutputFormat::Fbz).is_err());
+    }
 }

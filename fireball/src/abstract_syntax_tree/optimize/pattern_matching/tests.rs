@@ -1,4 +1,9 @@
 use super::{fb_parser::parse_pattern_file, *};
+use std::{
+    fs,
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 fn parse(content: &str) -> AstPatternRule {
     parse_pattern_file("test", content).expect("parse failed")
@@ -6,6 +11,29 @@ fn parse(content: &str) -> AstPatternRule {
 
 fn parse_err(content: &str) -> String {
     parse_pattern_file("test", content).unwrap_err()
+}
+
+#[test]
+fn fbz_bytes_round_trip_through_ast_pattern() {
+    let source = r#"
+if:
+  ast comment seed-comment
+do:
+  ast comment roundtrip
+"#;
+
+    let bytes = AstPattern::fbz_bytes_from_source(source).expect("fbz encoding should succeed");
+    let pattern = AstPattern::from_fbz_bytes("roundtrip.fbz", &bytes);
+
+    assert_eq!(pattern.origin(), AstPatternOrigin::UserInput);
+    assert_eq!(pattern.input_type(), AstPatternInputType::WithAst);
+    assert_eq!(pattern.pattern().trim(), source.trim());
+    assert!(
+        !pattern
+            .to_fbz_bytes()
+            .expect("pattern should export back to fbz")
+            .is_empty()
+    );
 }
 
 fn first_group(rule: &AstPatternRule) -> &AstPatternClauseGroup {
@@ -18,6 +46,22 @@ fn first_in_block(rule: &AstPatternRule) -> &[AstPatternInBlock] {
 
 fn find_kind(blocks: &[AstPatternInBlock], kind: AstPatternInBlockKind) -> bool {
     blocks.iter().any(|b| b.kind() == kind)
+}
+
+fn temp_fbz_path(name: &str) -> PathBuf {
+    let suffix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time should be after the unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!("{name}-{suffix}.fbz"))
+}
+
+fn temp_fb_gz_path(name: &str) -> PathBuf {
+    let suffix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time should be after the unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!("{name}-{suffix}.fb.gz"))
 }
 
 // ── Phase targeting (at) ──
@@ -80,6 +124,126 @@ fn parse_at_after_parameter_analyzation() {
             AstPatternApplyPhase::AfterParameterAnalyzation
         ))
     )));
+}
+
+#[test]
+fn fbz_bytes_round_trip_preserves_canonical_source() {
+    let source = r#"
+if:
+  ast return
+do:
+  info("ok")
+"#;
+    let pattern = AstPattern::new("fbz-inline", source);
+    let bytes = pattern
+        .to_fbz_bytes()
+        .expect("inline patterns should encode to .fbz");
+    let loaded = AstPattern::from_fbz_bytes("fbz-inline", &bytes);
+
+    assert_eq!(loaded.pattern(), source);
+    match &loaded.parsed {
+        AstPatternParsed::File(rule) => {
+            assert_eq!(
+                rule.clause_groups().len(),
+                parse(source).clause_groups().len()
+            );
+        }
+        AstPatternParsed::ParseError(err) => panic!("fbz bytes should parse successfully: {err}"),
+        AstPatternParsed::None => panic!("fbz bytes should produce a parsed rule"),
+    }
+}
+
+#[test]
+fn fb_gz_bytes_round_trip_preserves_canonical_source() {
+    let source = r#"
+if:
+  ast return
+do:
+  info("ok")
+"#;
+    let pattern = AstPattern::new("fb-gz-inline", source);
+    let bytes = pattern
+        .to_fb_gz_bytes()
+        .expect("inline patterns should encode to .fb.gz");
+    let loaded = AstPattern::from_fb_gz_bytes("fb-gz-inline", &bytes);
+
+    assert_eq!(loaded.pattern(), source);
+    match &loaded.parsed {
+        AstPatternParsed::File(rule) => {
+            assert_eq!(
+                rule.clause_groups().len(),
+                parse(source).clause_groups().len()
+            );
+        }
+        AstPatternParsed::ParseError(err) => {
+            panic!("fb.gz bytes should parse successfully: {err}")
+        }
+        AstPatternParsed::None => panic!("fb.gz bytes should produce a parsed rule"),
+    }
+}
+
+#[test]
+fn fbz_files_round_trip_through_from_file() {
+    let source = r#"
+if:
+  asm `mov rax, rbx`
+do:
+  info("asm")
+"#;
+    let path = temp_fbz_path("fireball-pattern");
+    let path_string = path.to_string_lossy().to_string();
+    let pattern = AstPattern::new("fbz-file", source);
+    pattern
+        .write_fbz_file(&path)
+        .expect("pattern should write to an .fbz file");
+
+    let loaded = AstPattern::from_file(path_string.clone());
+    assert_eq!(loaded.name(), path_string);
+
+    match &loaded.parsed {
+        AstPatternParsed::File(rule) => {
+            assert_eq!(
+                rule.clause_groups().len(),
+                parse(source).clause_groups().len()
+            );
+        }
+        AstPatternParsed::ParseError(err) => panic!("fbz file should parse successfully: {err}"),
+        AstPatternParsed::None => panic!("fbz file should produce a parsed rule"),
+    }
+
+    fs::remove_file(path).expect("temporary .fbz file should be removable");
+}
+
+#[test]
+fn fb_gz_files_round_trip_through_from_file() {
+    let source = r#"
+if:
+  asm `mov rax, rbx`
+do:
+  info("asm")
+"#;
+    let path = temp_fb_gz_path("fireball-pattern");
+    let path_string = path.to_string_lossy().to_string();
+    let pattern = AstPattern::new("fb-gz-file", source);
+    pattern
+        .write_fb_gz_file(&path)
+        .expect("pattern should write to an .fb.gz file");
+
+    let loaded = AstPattern::from_file(path_string.clone());
+    assert_eq!(loaded.name(), path_string);
+
+    match &loaded.parsed {
+        AstPatternParsed::File(rule) => {
+            assert_eq!(
+                rule.clause_groups().len(),
+                parse(source).clause_groups().len()
+            );
+        }
+        AstPatternParsed::ParseError(err) => panic!("fb.gz file should parse successfully: {err}"),
+        AstPatternParsed::None => panic!("fb.gz file should produce a parsed rule"),
+    }
+
+    fs::remove_file(path).expect("temporary .fb.gz file should be removable");
 }
 
 #[test]

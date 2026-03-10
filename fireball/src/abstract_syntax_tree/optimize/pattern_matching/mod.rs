@@ -5,7 +5,9 @@
 
 mod apply;
 pub(crate) mod embedded;
+mod fb_gz;
 mod fb_parser;
+mod fbz;
 mod hashing;
 mod ir_parser;
 mod predefined_pattern;
@@ -19,7 +21,7 @@ pub use fb_parser::{
 };
 pub(super) use hashing::{Blake3StdHasher, hash_statement_list};
 use rhai::AST as RhaiAst;
-use std::{fs, hash::Hash};
+use std::{fs, hash::Hash, path::Path};
 
 #[derive(Debug, Clone)]
 pub struct AstPattern {
@@ -39,6 +41,46 @@ impl PartialEq for AstPattern {
 }
 impl Eq for AstPattern {}
 impl AstPattern {
+    fn from_parse_result(
+        name: String,
+        origin: AstPatternOrigin,
+        pattern: String,
+        parse_result: Result<AstPatternRule, String>,
+    ) -> Self {
+        let (parsed, input_type) = match parse_result {
+            Ok(rule) => {
+                let input_type = infer_input_type_from_in_blocks(&rule.in_blocks);
+                (AstPatternParsed::File(rule), input_type)
+            }
+            Err(err) => (
+                AstPatternParsed::ParseError(err),
+                AstPatternInputType::Complex,
+            ),
+        };
+        Self {
+            name,
+            origin,
+            input_type,
+            pattern,
+            parsed,
+        }
+    }
+
+    fn canonical_source_text(&self) -> Result<String, String> {
+        let pattern_trimmed = self.pattern.trim();
+        if !pattern_trimmed.is_empty() && fs::metadata(pattern_trimmed).is_ok() {
+            return fb_parser::load_pattern_source_from_path(pattern_trimmed);
+        }
+        match self.origin {
+            AstPatternOrigin::UserInput => Ok(self.pattern.clone()),
+            AstPatternOrigin::File => fb_parser::load_pattern_source_from_path(pattern_trimmed),
+            AstPatternOrigin::PreDefined => Err(format!(
+                "pattern `{}` does not retain canonical source text for compressed export",
+                self.name
+            )),
+        }
+    }
+
     // NOTE: stable Rust cannot hold a non-empty `Vec<Self>` in a `const`.
     // Empty here acts as a sentinel, resolved to embedded predefined patterns.
     pub const ALL: Vec<Self> = vec![];
@@ -52,44 +94,73 @@ impl AstPattern {
         } else {
             fb_parser::parse_pattern_file(&name, &pattern)
         };
-        let (parsed, input_type) = match parse_result {
-            Ok(rule) => {
-                let input_type = infer_input_type_from_in_blocks(&rule.in_blocks);
-                (AstPatternParsed::File(rule), input_type)
-            }
-            Err(err) => (
-                AstPatternParsed::ParseError(err),
-                AstPatternInputType::Complex,
-            ),
-        };
-        Self {
-            name,
-            origin: AstPatternOrigin::UserInput,
-            input_type,
-            pattern,
-            parsed,
-        }
+        Self::from_parse_result(name, AstPatternOrigin::UserInput, pattern, parse_result)
     }
 
     pub fn from_file(path: impl Into<String>) -> Self {
         let path = path.into();
-        let (parsed, input_type) = match fb_parser::load_file_pattern_rule_uncached(&path) {
-            Ok(rule) => {
-                let input_type = infer_input_type_from_in_blocks(&rule.in_blocks);
-                (AstPatternParsed::File(rule), input_type)
+        let parse_result = fb_parser::load_file_pattern_rule_uncached(&path);
+        Self::from_parse_result(path.clone(), AstPatternOrigin::File, path, parse_result)
+    }
+
+    pub fn from_fbz_file(path: impl Into<String>) -> Self {
+        Self::from_file(path)
+    }
+
+    pub fn from_fb_gz_file(path: impl Into<String>) -> Self {
+        Self::from_file(path)
+    }
+
+    pub fn from_fbz_bytes(name: impl Into<String>, bytes: &[u8]) -> Self {
+        let name = name.into();
+        match fb_parser::load_pattern_rule_from_fbz_bytes(&name, bytes) {
+            Ok((rule, source)) => {
+                Self::from_parse_result(name, AstPatternOrigin::UserInput, source, Ok(rule))
             }
-            Err(err) => (
-                AstPatternParsed::ParseError(err),
-                AstPatternInputType::Complex,
-            ),
-        };
-        Self {
-            name: path.clone(),
-            origin: AstPatternOrigin::File,
-            input_type,
-            pattern: path,
-            parsed,
+            Err(err) => {
+                Self::from_parse_result(name, AstPatternOrigin::UserInput, String::new(), Err(err))
+            }
         }
+    }
+
+    pub fn from_fb_gz_bytes(name: impl Into<String>, bytes: &[u8]) -> Self {
+        let name = name.into();
+        match fb_parser::load_pattern_rule_from_fb_gz_bytes(&name, bytes) {
+            Ok((rule, source)) => {
+                Self::from_parse_result(name, AstPatternOrigin::UserInput, source, Ok(rule))
+            }
+            Err(err) => {
+                Self::from_parse_result(name, AstPatternOrigin::UserInput, String::new(), Err(err))
+            }
+        }
+    }
+
+    pub fn fbz_bytes_from_source(source: &str) -> Result<Vec<u8>, String> {
+        fb_parser::encode_pattern_source_to_fbz_bytes(source)
+    }
+
+    pub fn fb_gz_bytes_from_source(source: &str) -> Result<Vec<u8>, String> {
+        fb_parser::encode_pattern_source_to_fb_gz_bytes(source)
+    }
+
+    pub fn to_fbz_bytes(&self) -> Result<Vec<u8>, String> {
+        let source = self.canonical_source_text()?;
+        fb_parser::encode_pattern_source_to_fbz_bytes(&source)
+    }
+
+    pub fn to_fb_gz_bytes(&self) -> Result<Vec<u8>, String> {
+        let source = self.canonical_source_text()?;
+        fb_parser::encode_pattern_source_to_fb_gz_bytes(&source)
+    }
+
+    pub fn write_fbz_file(&self, path: impl AsRef<Path>) -> Result<(), String> {
+        let source = self.canonical_source_text()?;
+        fb_parser::write_pattern_source_to_fbz_file(path.as_ref(), &source)
+    }
+
+    pub fn write_fb_gz_file(&self, path: impl AsRef<Path>) -> Result<(), String> {
+        let source = self.canonical_source_text()?;
+        fb_parser::write_pattern_source_to_fb_gz_file(path.as_ref(), &source)
     }
 
     pub fn with_rule(mut self, rule: AstPatternRule) -> Self {
