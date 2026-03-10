@@ -51,3 +51,19 @@ pub(crate) fn suppress_timing_checks(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::optimize::pattern_matching::embedded::test_utils::test_utils::assert_before_ir_suppression;
+
+    #[test]
+    fn direct_timing_check_suppression_removes_timing_probes() {
+        assert_before_ir_suppression(
+            "suppression/before-ir-analyzation/timing-check-suppression.fb",
+            "rdtsc",
+            "mov eax, ebx",
+            suppress_timing_checks,
+        );
+    }
+}

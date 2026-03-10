@@ -180,7 +180,12 @@ mod tests {
             ))),
         ];
 
-        let (fb, embed) = run_parity(body, vm, |c| c.static_guard_suppression(true));
+        let (fb, embed) = run_parity(
+            "suppression/after-iteration/static-guard-suppression.fb",
+            body,
+            vm,
+            |c| c.static_guard_suppression(true),
+        );
         assert_eq!(fb, embed, "static_guard_suppression parity failed");
         assert!(embed.contains("real_work"));
         assert!(!embed.contains("__cxa_guard_acquire"));

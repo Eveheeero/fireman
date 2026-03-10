@@ -182,7 +182,12 @@ mod tests {
             ))),
         ];
 
-        let (fb, embed) = run_parity(body, vm, |c| c.logging_suppression(true));
+        let (fb, embed) = run_parity(
+            "suppression/after-iteration/logging-suppression.fb",
+            body,
+            vm,
+            |c| c.logging_suppression(true),
+        );
         assert_eq!(fb, embed, "logging_suppression parity failed");
         assert!(embed.contains("real_work"));
         assert!(!embed.contains("syslog"));

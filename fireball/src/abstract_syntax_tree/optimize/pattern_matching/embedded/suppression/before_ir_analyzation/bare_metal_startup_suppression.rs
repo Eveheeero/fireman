@@ -57,3 +57,19 @@ pub(crate) fn suppress_bare_metal_startup(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::optimize::pattern_matching::embedded::test_utils::test_utils::assert_before_ir_suppression;
+
+    #[test]
+    fn direct_bare_metal_startup_suppression_removes_startup_stubs() {
+        assert_before_ir_suppression(
+            "suppression/before-ir-analyzation/bare-metal-startup-suppression.fb",
+            "call __libc_start_main",
+            "mov eax, ebx",
+            suppress_bare_metal_startup,
+        );
+    }
+}

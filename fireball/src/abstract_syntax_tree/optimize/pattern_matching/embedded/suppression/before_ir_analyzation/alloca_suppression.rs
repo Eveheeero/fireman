@@ -50,3 +50,19 @@ pub(crate) fn suppress_alloca(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::optimize::pattern_matching::embedded::test_utils::test_utils::assert_before_ir_suppression;
+
+    #[test]
+    fn direct_alloca_suppression_removes_alloca_helpers() {
+        assert_before_ir_suppression(
+            "suppression/before-ir-analyzation/alloca-suppression.fb",
+            "call __alloca",
+            "mov eax, ebx",
+            suppress_alloca,
+        );
+    }
+}

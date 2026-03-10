@@ -58,3 +58,19 @@ pub(crate) fn suppress_loader_stubs(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::optimize::pattern_matching::embedded::test_utils::test_utils::assert_before_ir_suppression;
+
+    #[test]
+    fn direct_loader_stub_suppression_removes_loader_bootstrap() {
+        assert_before_ir_suppression(
+            "suppression/before-ir-analyzation/loader-stub-suppression.fb",
+            "call __security_init_cookie",
+            "mov eax, ebx",
+            suppress_loader_stubs,
+        );
+    }
+}

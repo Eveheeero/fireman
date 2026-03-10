@@ -76,6 +76,62 @@ fn recover_clamp_in_list(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::{
+        AstCall, AstFunctionId, AstLiteral,
+        optimize::pattern_matching::embedded::test_utils::test_utils::*,
+    };
+
+    #[test]
+    fn parity_clamp_recovery_min_max() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::Call(AstCall::Unknown(
+                "min".to_string(),
+                vec![
+                    wrap_expression(AstExpression::Call(AstCall::Unknown(
+                        "max".to_string(),
+                        vec![
+                            wrap_expression(AstExpression::Variable(vm.clone(), x)),
+                            wrap_expression(AstExpression::Literal(AstLiteral::Int(3))),
+                        ],
+                    ))),
+                    wrap_expression(AstExpression::Literal(AstLiteral::Int(10))),
+                ],
+            )),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "optimization/after-iteration/clamp-recovery.fb",
+            body,
+            vm,
+            |c| c.clamp_recovery(true),
+        );
+        assert!(
+            fb.contains("min(max"),
+            "fb should preserve the original min/max form for this known gap, got:\n{}",
+            fb
+        );
+        assert!(
+            embed.contains("clamp"),
+            "embed should recover clamp(...), got:\n{}",
+            embed
+        );
+        if fb != embed {
+            eprintln!(
+                "KNOWN DIFF: clamp_recovery fb vs embedded differs.\n  fb: {}\n  embed: {}",
+                fb.replace('\n', "\\n"),
+                embed.replace('\n', "\\n"),
+            );
+        }
+    }
+}
+
 fn try_recover_clamp_in_stmt(stmt: &mut WrappedAstStatement) {
     match &mut stmt.statement {
         AstStatement::Assignment(_, rhs) | AstStatement::Return(Some(rhs)) => {

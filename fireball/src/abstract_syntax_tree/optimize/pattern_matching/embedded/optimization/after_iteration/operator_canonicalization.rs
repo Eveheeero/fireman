@@ -56,6 +56,121 @@ fn canonicalize_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::optimize::pattern_matching::embedded::test_utils::test_utils::*;
+
+    #[test]
+    fn parity_operator_canonicalization_literal_swap() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::BinaryOp(
+                AstBinaryOperator::Add,
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(5)))),
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "optimization/after-iteration/operator-canonicalization.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert_eq!(
+            fb, embed,
+            "operator_canonicalization literal swap parity failed"
+        );
+    }
+
+    #[test]
+    fn parity_operator_canonicalization_double_negation() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::UnaryOp(
+                AstUnaryOperator::Not,
+                Box::new(wrap_expression(AstExpression::UnaryOp(
+                    AstUnaryOperator::Not,
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                ))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "optimization/after-iteration/operator-canonicalization.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert_eq!(
+            fb, embed,
+            "operator_canonicalization double negation parity failed"
+        );
+    }
+
+    #[test]
+    fn parity_operator_canonicalization_not_comparison() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::UnaryOp(
+                AstUnaryOperator::Not,
+                Box::new(wrap_expression(AstExpression::BinaryOp(
+                    AstBinaryOperator::Equal,
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(0)))),
+                ))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "optimization/after-iteration/operator-canonicalization.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert_eq!(
+            fb, embed,
+            "operator_canonicalization not comparison parity failed"
+        );
+    }
+
+    #[test]
+    fn parity_operator_canonicalization_comparison_flip() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::BinaryOp(
+                AstBinaryOperator::Less,
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(5)))),
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "optimization/after-iteration/operator-canonicalization.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert_eq!(
+            fb, embed,
+            "operator_canonicalization comparison flip parity failed"
+        );
+    }
+}
+
 fn canonicalize_statement(stmt: &mut WrappedAstStatement) {
     match &mut stmt.statement {
         AstStatement::Declaration(_lhs, rhs) => {

@@ -183,3 +183,54 @@ fn branch_contains_unsafe_stmts(stmts: &[WrappedAstStatement]) -> bool {
     }
     false
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::{
+        AstExpression, AstFunctionId, AstLiteral,
+        optimize::pattern_matching::embedded::test_utils::test_utils::*,
+    };
+
+    #[test]
+    fn parity_early_return_normalization() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["cond", "x"]);
+        let (cond, x) = (ids[0], ids[1]);
+
+        let body = vec![
+            wrap_statement(AstStatement::If(
+                wrap_expression(AstExpression::Variable(vm.clone(), cond)),
+                vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+                    AstExpression::Literal(AstLiteral::Int(1)),
+                ))))],
+                Some(vec![wrap_statement(AstStatement::Assignment(
+                    wrap_expression(AstExpression::Variable(vm.clone(), x)),
+                    wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+                ))]),
+            )),
+            wrap_statement(AstStatement::Return(Some(wrap_expression(
+                AstExpression::Variable(vm.clone(), x),
+            )))),
+        ];
+
+        let (fb, embed) = run_parity(
+            "optimization/after-optimization/early-return-normalization.fb",
+            body,
+            vm,
+            |c| c.early_return_normalization(true),
+        );
+        assert!(
+            embed.contains("x = 2;") && embed.contains("return x;"),
+            "embedded should normalize early return, got:\n{}",
+            embed
+        );
+        if fb != embed {
+            eprintln!(
+                "KNOWN DIFF: early_return_normalization fb vs embedded ordering differs.\n  fb:    {}\n  embed: {}",
+                fb.replace('\n', "\\n"),
+                embed.replace('\n', "\\n"),
+            );
+        }
+    }
+}

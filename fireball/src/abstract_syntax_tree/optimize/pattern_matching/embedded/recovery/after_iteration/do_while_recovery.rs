@@ -63,6 +63,64 @@ fn recover_do_while_in_list(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::{
+        AstFunctionId, AstLiteral, AstUnaryOperator,
+        optimize::pattern_matching::embedded::test_utils::test_utils::*,
+    };
+
+    #[test]
+    fn parity_do_while_recovery_guard_break() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["cond", "x"]);
+        let (cond, x) = (ids[0], ids[1]);
+
+        let body = vec![wrap_statement(AstStatement::While(
+            wrap_expression(AstExpression::Literal(AstLiteral::Bool(true))),
+            vec![
+                wrap_statement(AstStatement::Assignment(
+                    wrap_expression(AstExpression::Variable(vm.clone(), x)),
+                    wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+                )),
+                wrap_statement(AstStatement::If(
+                    wrap_expression(AstExpression::UnaryOp(
+                        AstUnaryOperator::Not,
+                        Box::new(wrap_expression(AstExpression::Variable(vm.clone(), cond))),
+                    )),
+                    vec![wrap_statement(AstStatement::Break)],
+                    None,
+                )),
+            ],
+        ))];
+
+        let (fb, embed) = run_parity(
+            "recovery/after-iteration/do-while-recovery.fb",
+            body,
+            vm,
+            |c| c.do_while_recovery(true),
+        );
+        assert!(
+            fb.contains("[recovered-do-while-"),
+            "fb should emit a recovery marker for this fixture, got:\n{}",
+            fb
+        );
+        assert!(
+            embed.contains("do"),
+            "embed should recover do-while syntax, got:\n{}",
+            embed
+        );
+        if fb != embed {
+            eprintln!(
+                "KNOWN DIFF: do_while_recovery fb vs embedded differs.\n  fb: {}\n  embed: {}",
+                fb.replace('\n', "\\n"),
+                embed.replace('\n', "\\n"),
+            );
+        }
+    }
+}
+
 fn try_recover_do_while(stmt: &mut WrappedAstStatement) {
     let AstStatement::While(cond, body) = &stmt.statement else {
         return;

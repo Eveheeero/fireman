@@ -80,3 +80,56 @@ fn try_remove_last_continue(body: &mut Vec<WrappedAstStatement>) {
         body.remove(last_idx);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::{
+        AstExpression, AstFunctionId, AstLiteral,
+        optimize::pattern_matching::embedded::test_utils::test_utils::*,
+    };
+
+    #[test]
+    fn parity_loop_cleanup_trailing_continue() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["cond", "x"]);
+        let (cond, x) = (ids[0], ids[1]);
+
+        let body = vec![wrap_statement(AstStatement::While(
+            wrap_expression(AstExpression::Variable(vm.clone(), cond)),
+            vec![
+                wrap_statement(AstStatement::Assignment(
+                    wrap_expression(AstExpression::Variable(vm.clone(), x)),
+                    wrap_expression(AstExpression::Literal(AstLiteral::Int(7))),
+                )),
+                wrap_statement(AstStatement::Continue),
+            ],
+        ))];
+
+        let (fb, embed) = run_parity("cleanup/after-iteration/loop-cleanup.fb", body, vm, |c| {
+            c.loop_cleanup(true)
+        });
+        assert!(
+            !fb.contains("continue;"),
+            "fb should remove trailing continue, got:\n{}",
+            fb
+        );
+        assert!(
+            !embed.contains("continue;"),
+            "embed should remove trailing continue, got:\n{}",
+            embed
+        );
+        assert!(
+            embed.contains("while (cond) { x = 7; }"),
+            "embed should preserve the loop body after cleanup, got:\n{}",
+            embed
+        );
+        if fb != embed {
+            eprintln!(
+                "KNOWN DIFF: loop_cleanup fb vs embedded differs.\n  fb: {}\n  embed: {}",
+                fb.replace('\n', "\\n"),
+                embed.replace('\n', "\\n"),
+            );
+        }
+    }
+}

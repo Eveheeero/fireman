@@ -52,6 +52,89 @@ fn minimize_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::optimize::pattern_matching::embedded::test_utils::test_utils::*;
+
+    #[test]
+    fn parity_cast_minimization_double_cast() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::Cast(
+                AstValueType::Int32,
+                Box::new(wrap_expression(AstExpression::Cast(
+                    AstValueType::Int16,
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                ))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "optimization/after-iteration/cast-minimization.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert_eq!(fb, embed, "cast_minimization double cast parity failed");
+    }
+
+    #[test]
+    fn parity_cast_minimization_identity_literal() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (_ids, vm) = make_var_map(fid, &["x"]);
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::Cast(
+                AstValueType::Int32,
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(42)))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "optimization/after-iteration/cast-minimization.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert_eq!(
+            fb, embed,
+            "cast_minimization identity literal parity failed"
+        );
+    }
+
+    #[test]
+    fn parity_cast_minimization_double_unary_cast() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::UnaryOp(
+                AstUnaryOperator::CastSigned,
+                Box::new(wrap_expression(AstExpression::UnaryOp(
+                    AstUnaryOperator::CastSigned,
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                ))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "optimization/after-iteration/cast-minimization.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert_eq!(
+            fb, embed,
+            "cast_minimization double unary cast parity failed"
+        );
+    }
+}
+
 fn minimize_statement(stmt: &mut WrappedAstStatement) {
     match &mut stmt.statement {
         AstStatement::Declaration(_lhs, rhs) => {

@@ -130,3 +130,38 @@ fn try_convert_to_ternary(stmt: &mut WrappedAstStatement) {
 
     stmt.statement = AstStatement::Assignment(lhs, ternary_wrapped);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::{
+        AstLiteral, optimize::pattern_matching::embedded::test_utils::test_utils::*,
+    };
+
+    #[test]
+    fn parity_ternary_recovery() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["cond", "result"]);
+        let (cond, result) = (ids[0], ids[1]);
+
+        let body = vec![wrap_statement(AstStatement::If(
+            wrap_expression(AstExpression::Variable(vm.clone(), cond)),
+            vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), result)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            ))],
+            Some(vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), result)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+            ))]),
+        ))];
+
+        let (fb, embed) = run_parity(
+            "recovery/after-iteration/ternary-recovery.fb",
+            body,
+            vm,
+            |c| c.ternary_recovery(true),
+        );
+        assert_eq!(fb, embed, "ternary_recovery parity failed");
+    }
+}

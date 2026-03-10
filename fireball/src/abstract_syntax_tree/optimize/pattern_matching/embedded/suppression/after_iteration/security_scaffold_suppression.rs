@@ -126,7 +126,12 @@ mod tests {
             ))),
         ];
 
-        let (fb, embed) = run_parity(body, vm, |c| c.security_scaffold_suppression(true));
+        let (fb, embed) = run_parity(
+            "suppression/after-iteration/security-scaffold-suppression.fb",
+            body,
+            vm,
+            |c| c.security_scaffold_suppression(true),
+        );
         assert_eq!(fb, embed, "security_scaffold_suppression parity failed");
         assert!(embed.contains("real_work"));
         assert!(!embed.contains("__stack_chk_fail"));

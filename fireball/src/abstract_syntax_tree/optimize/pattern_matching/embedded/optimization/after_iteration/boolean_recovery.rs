@@ -259,3 +259,77 @@ fn match_bool_assignment(
     }
     (None, None)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::optimize::pattern_matching::embedded::test_utils::test_utils::*;
+
+    #[test]
+    fn parity_boolean_recovery_and() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["a", "b", "v"]);
+        let (a, b, v) = (ids[0], ids[1], ids[2]);
+
+        let body = vec![wrap_statement(AstStatement::If(
+            wrap_expression(AstExpression::Variable(vm.clone(), a)),
+            vec![wrap_statement(AstStatement::If(
+                wrap_expression(AstExpression::Variable(vm.clone(), b)),
+                vec![wrap_statement(AstStatement::Assignment(
+                    wrap_expression(AstExpression::Variable(vm.clone(), v)),
+                    wrap_expression(AstExpression::Literal(AstLiteral::Bool(true))),
+                ))],
+                Some(vec![wrap_statement(AstStatement::Assignment(
+                    wrap_expression(AstExpression::Variable(vm.clone(), v)),
+                    wrap_expression(AstExpression::Literal(AstLiteral::Bool(false))),
+                ))]),
+            ))],
+            Some(vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), v)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Bool(false))),
+            ))]),
+        ))];
+
+        let (fb, embed) = run_parity(
+            "optimization/after-iteration/boolean-recovery.fb",
+            body,
+            vm,
+            |c| c.boolean_recovery(true),
+        );
+        assert_eq!(fb, embed, "boolean_recovery AND parity failed");
+    }
+
+    #[test]
+    fn parity_boolean_recovery_or() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["a", "b", "v"]);
+        let (a, b, v) = (ids[0], ids[1], ids[2]);
+
+        let body = vec![wrap_statement(AstStatement::If(
+            wrap_expression(AstExpression::Variable(vm.clone(), a)),
+            vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), v)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Bool(true))),
+            ))],
+            Some(vec![wrap_statement(AstStatement::If(
+                wrap_expression(AstExpression::Variable(vm.clone(), b)),
+                vec![wrap_statement(AstStatement::Assignment(
+                    wrap_expression(AstExpression::Variable(vm.clone(), v)),
+                    wrap_expression(AstExpression::Literal(AstLiteral::Bool(true))),
+                ))],
+                Some(vec![wrap_statement(AstStatement::Assignment(
+                    wrap_expression(AstExpression::Variable(vm.clone(), v)),
+                    wrap_expression(AstExpression::Literal(AstLiteral::Bool(false))),
+                ))]),
+            ))]),
+        ))];
+
+        let (fb, embed) = run_parity(
+            "optimization/after-iteration/boolean-recovery.fb",
+            body,
+            vm,
+            |c| c.boolean_recovery(true),
+        );
+        assert_eq!(fb, embed, "boolean_recovery OR parity failed");
+    }
+}

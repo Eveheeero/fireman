@@ -179,7 +179,12 @@ mod tests {
             ))),
         ];
 
-        let (fb, embed) = run_parity(body, vm, |c| c.anti_debug_ast_suppression(true));
+        let (fb, embed) = run_parity(
+            "suppression/after-iteration/anti-debug-ast-suppression.fb",
+            body,
+            vm,
+            |c| c.anti_debug_ast_suppression(true),
+        );
         assert_eq!(fb, embed, "anti_debug_ast_suppression parity failed");
         assert!(embed.contains("real_work"));
         assert!(!embed.contains("IsDebuggerPresent"));

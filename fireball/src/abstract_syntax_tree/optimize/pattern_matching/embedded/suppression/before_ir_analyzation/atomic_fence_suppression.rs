@@ -52,3 +52,19 @@ pub(crate) fn suppress_atomic_fences(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::optimize::pattern_matching::embedded::test_utils::test_utils::assert_before_ir_suppression;
+
+    #[test]
+    fn direct_atomic_fence_suppression_removes_fence_instructions() {
+        assert_before_ir_suppression(
+            "suppression/before-ir-analyzation/atomic-fence-suppression.fb",
+            "mfence",
+            "mov eax, ebx",
+            suppress_atomic_fences,
+        );
+    }
+}

@@ -50,3 +50,19 @@ pub(crate) fn suppress_trampolines(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::optimize::pattern_matching::embedded::test_utils::test_utils::assert_before_ir_suppression;
+
+    #[test]
+    fn direct_trampoline_suppression_removes_indirect_thunks() {
+        assert_before_ir_suppression(
+            "suppression/before-ir-analyzation/trampoline-suppression.fb",
+            "jmp __x86_indirect_thunk_rax",
+            "mov eax, ebx",
+            suppress_trampolines,
+        );
+    }
+}

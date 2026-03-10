@@ -130,7 +130,12 @@ mod tests {
             None,
         ))];
 
-        let (fb, embed) = run_parity(body, vm, |c| c.ternary_recovery(true)); // ternary_recovery enables this pass in coordinator
+        let (fb, embed) = run_parity(
+            "optimization/after-iteration/assertion-recovery.fb",
+            body,
+            vm,
+            |c| c.ternary_recovery(true),
+        ); // ternary_recovery enables this pass in coordinator
         assert_eq!(fb, embed, "assertion_recovery parity failed");
         assert!(embed.contains("assert"), "should contain assert");
     }

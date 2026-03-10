@@ -1,8 +1,14 @@
 #[cfg(test)]
 pub(crate) mod test_utils {
-    use crate::{abstract_syntax_tree::*, ir::analyze::IrFunction, utils::version_map::VersionMap};
+    use crate::{
+        abstract_syntax_tree::*, ir::analyze::IrFunction, pattern_matching::AstPattern,
+        utils::version_map::VersionMap,
+    };
     use hashbrown::HashMap;
-    use std::sync::{Arc, RwLock};
+    use std::{
+        path::PathBuf,
+        sync::{Arc, RwLock},
+    };
 
     pub fn wrap_expression(item: AstExpression) -> Wrapped<AstExpression> {
         Wrapped {
@@ -85,7 +91,26 @@ pub(crate) mod test_utils {
         }
     }
 
+    fn pattern_file_path(relative_path: &str) -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("fireball manifest should live under the workspace root")
+            .join("patterns")
+            .join(relative_path)
+    }
+
+    fn file_backed_pattern(relative_path: &str) -> AstPattern {
+        let path = pattern_file_path(relative_path);
+        assert!(
+            path.is_file(),
+            "expected pattern file to exist: {}",
+            path.display()
+        );
+        AstPattern::from_file(path.to_string_lossy().to_string())
+    }
+
     pub fn run_parity(
+        relative_path: &str,
         body: Vec<WrappedAstStatement>,
         vm: Arc<RwLock<HashMap<AstVariableId, AstVariable>>>,
         config_fn: impl Fn(AstOptimizationConfig) -> AstOptimizationConfig,
@@ -93,9 +118,11 @@ pub(crate) mod test_utils {
         let ast_fb = build_ast(body.clone(), vm.clone());
         let ast_embed = build_ast(body, vm);
 
+        let fb_pattern = file_backed_pattern(relative_path);
         let fb_base = AstOptimizationConfig::NONE
             .constant_folding(true)
             .pattern_matching_enabled(true)
+            .pattern_matching(vec![fb_pattern])
             .use_embedded_passes(false);
         let embed_base = AstOptimizationConfig::NONE
             .constant_folding(true)
@@ -109,5 +136,70 @@ pub(crate) mod test_utils {
 
         let print_cfg = Some(AstPrintConfig::NONE);
         (fb_result.print(print_cfg), embed_result.print(print_cfg))
+    }
+
+    pub fn run_direct_embedded_pass<F>(body: Vec<WrappedAstStatement>, pass: F) -> String
+    where
+        F: FnOnce(
+            &mut Ast,
+            AstFunctionId,
+            AstFunctionVersion,
+        ) -> Result<(), crate::prelude::DecompileError>,
+    {
+        let vm = Arc::new(RwLock::new(HashMap::new()));
+        let fid = AstFunctionId { address: 0x9000 };
+        let version = AstFunctionVersion(1);
+        let mut ast = build_ast(body, vm);
+        pass(&mut ast, fid, version).unwrap();
+        ast.print(Some(AstPrintConfig::NONE))
+    }
+
+    pub fn assert_before_ir_suppression<F>(
+        relative_path: &str,
+        trigger: &str,
+        retained: &str,
+        pass: F,
+    ) where
+        F: FnOnce(
+            &mut Ast,
+            AstFunctionId,
+            AstFunctionVersion,
+        ) -> Result<(), crate::prelude::DecompileError>,
+    {
+        let body = vec![
+            wrap_statement(AstStatement::Comment("keep-comment".to_string())),
+            wrap_statement(AstStatement::Assembly(trigger.to_string())),
+            wrap_statement(AstStatement::Assembly(retained.to_string())),
+        ];
+        let printed = run_direct_embedded_pass(body.clone(), pass);
+        let fb_pattern = file_backed_pattern(relative_path);
+        let ast = build_ast(body, Arc::new(RwLock::new(HashMap::new())));
+        let fb_printed = ast
+            .optimize(Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![fb_pattern])
+                    .use_embedded_passes(false),
+            ))
+            .expect("file-backed suppression pattern should optimize successfully")
+            .print(Some(AstPrintConfig::NONE));
+
+        assert_eq!(
+            fb_printed, printed,
+            "embedded pass and `{relative_path}` should produce identical output"
+        );
+
+        assert!(
+            !printed.contains(trigger),
+            "suppressed assembly should be removed, but `{trigger}` remained:\n{printed}"
+        );
+        assert!(
+            printed.contains(retained),
+            "non-matching assembly should be preserved, missing `{retained}`:\n{printed}"
+        );
+        assert!(
+            printed.contains("keep-comment"),
+            "non-assembly statements should be preserved:\n{printed}"
+        );
     }
 }

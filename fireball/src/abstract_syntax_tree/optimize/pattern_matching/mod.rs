@@ -868,6 +868,9 @@ pub struct AstPatternRange {
 }
 
 #[cfg(test)]
+mod file_tests;
+
+#[cfg(test)]
 mod tests;
 
 #[cfg(test)]

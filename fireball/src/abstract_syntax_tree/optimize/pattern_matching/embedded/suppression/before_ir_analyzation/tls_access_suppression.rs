@@ -50,3 +50,19 @@ pub(crate) fn suppress_tls_access(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::optimize::pattern_matching::embedded::test_utils::test_utils::assert_before_ir_suppression;
+
+    #[test]
+    fn direct_tls_access_suppression_removes_tls_helpers() {
+        assert_before_ir_suppression(
+            "suppression/before-ir-analyzation/tls-access-suppression.fb",
+            "call __tls_get_addr",
+            "mov eax, ebx",
+            suppress_tls_access,
+        );
+    }
+}

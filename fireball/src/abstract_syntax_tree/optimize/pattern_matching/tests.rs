@@ -13,6 +13,24 @@ fn parse_err(content: &str) -> String {
     parse_pattern_file("test", content).unwrap_err()
 }
 
+fn patterns_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("fireball manifest should live under the workspace root")
+        .join("patterns")
+}
+
+fn pattern_file_path(relative: &str) -> PathBuf {
+    patterns_dir().join(relative)
+}
+
+fn load_pattern_file(relative: &str) -> (PathBuf, String) {
+    let path = pattern_file_path(relative);
+    let source = fs::read_to_string(&path)
+        .unwrap_or_else(|err| panic!("failed to read pattern file {}: {err}", path.display()));
+    (path, source)
+}
+
 #[test]
 fn fbz_bytes_round_trip_through_ast_pattern() {
     let source = r#"
@@ -244,6 +262,62 @@ do:
     }
 
     fs::remove_file(path).expect("temporary .fb.gz file should be removable");
+}
+
+#[test]
+fn all_syntax_file_parses_and_round_trips_through_binary_formats() {
+    let (path, source) = load_pattern_file("examples/all_syntax.fb");
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .expect("all_syntax path should have a utf-8 file name");
+
+    let rule = parse_pattern_file(file_name, &source)
+        .expect("all_syntax.fb should stay parser-valid as the DSL reference");
+    assert!(
+        !rule.clause_groups().is_empty(),
+        "all_syntax.fb should contain at least one parsed clause group"
+    );
+
+    let pattern = AstPattern::from_file(path.to_string_lossy().to_string());
+    assert_eq!(pattern.origin(), AstPatternOrigin::File);
+    assert_eq!(pattern.name(), path.to_string_lossy());
+
+    let fbz_bytes = pattern
+        .to_fbz_bytes()
+        .expect("all_syntax.fb should round-trip through .fbz");
+    let fbz_loaded = AstPattern::from_fbz_bytes("all_syntax.fbz", &fbz_bytes);
+    assert_eq!(fbz_loaded.pattern().trim(), source.trim());
+
+    let fb_gz_bytes = pattern
+        .to_fb_gz_bytes()
+        .expect("all_syntax.fb should round-trip through .fb.gz");
+    let fb_gz_loaded = AstPattern::from_fb_gz_bytes("all_syntax.fb.gz", &fb_gz_bytes);
+    assert_eq!(fb_gz_loaded.pattern().trim(), source.trim());
+}
+
+#[test]
+fn cet_cfg_cleanup_parse_failure_is_explicit() {
+    let (path, source) = load_pattern_file("cleanup/before-ir-analyzation/cet-cfg-cleanup.fb");
+    let err = parse_pattern_file(&path.display().to_string(), &source).expect_err(
+        "cet-cfg-cleanup should remain a documented parse failure until endbr asm is supported",
+    );
+    assert!(
+        err.contains("endbr"),
+        "cet-cfg-cleanup parse failure should mention unsupported endbr asm, got: {err}"
+    );
+}
+
+#[test]
+fn nop_padding_cleanup_parse_failure_is_explicit() {
+    let (path, source) = load_pattern_file("cleanup/before-ir-analyzation/nop-padding-cleanup.fb");
+    let err = parse_pattern_file(&path.display().to_string(), &source).expect_err(
+        "nop-padding-cleanup should remain a documented parse failure until nop asm is supported",
+    );
+    assert!(
+        err.contains("nop") || err.contains("xchg"),
+        "nop-padding-cleanup parse failure should mention unsupported nop/xchg asm, got: {err}"
+    );
 }
 
 #[test]
@@ -1447,13 +1521,11 @@ fn all_pattern_files_parse() {
                     visit_dir(&path, failures);
                 } else if path.extension().is_some_and(|ext| ext == "fb") {
                     let content = std::fs::read_to_string(&path).unwrap();
-                    // Skip example/reference file (contains documentation-only syntax)
-                    // and known patterns with unsupported asm (endbr64, nop)
+                    // Skip only the known before-ir assembly patterns that still rely
+                    // on unsupported editable asm mnemonics. These have explicit tests
+                    // above so the gap stays intentional and visible.
                     let fname = path.file_name().unwrap().to_str().unwrap();
-                    if matches!(
-                        fname,
-                        "all_syntax.fb" | "cet-cfg-cleanup.fb" | "nop-padding-cleanup.fb"
-                    ) {
+                    if matches!(fname, "cet-cfg-cleanup.fb" | "nop-padding-cleanup.fb") {
                         continue;
                     }
                     let name = path.display().to_string();

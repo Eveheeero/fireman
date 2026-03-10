@@ -88,3 +88,45 @@ pub(crate) fn try_simplify_identity_op(
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::{
+        AstFunctionId, AstStatement,
+        optimize::pattern_matching::embedded::test_utils::test_utils::*,
+    };
+
+    #[test]
+    fn parity_identity_simplification_add_zero() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::BinaryOp(
+                AstBinaryOperator::Add,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(0)))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "optimization/after-iteration/identity-simplification.fb",
+            body,
+            vm,
+            |c| c.identity_simplification(true),
+        );
+        assert_eq!(fb, embed, "identity_simplification parity failed");
+        assert!(
+            !fb.contains("+ 0"),
+            "fb should remove additive identity, got:\n{}",
+            fb
+        );
+        assert!(
+            !embed.contains("+ 0"),
+            "embed should remove additive identity, got:\n{}",
+            embed
+        );
+    }
+}

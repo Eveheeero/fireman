@@ -50,3 +50,19 @@ pub(crate) fn suppress_veneers(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::optimize::pattern_matching::embedded::test_utils::test_utils::assert_before_ir_suppression;
+
+    #[test]
+    fn direct_veneer_suppression_removes_linker_veneers() {
+        assert_before_ir_suppression(
+            "suppression/before-ir-analyzation/veneer-suppression.fb",
+            "bl __veneer_memcpy",
+            "mov eax, ebx",
+            suppress_veneers,
+        );
+    }
+}

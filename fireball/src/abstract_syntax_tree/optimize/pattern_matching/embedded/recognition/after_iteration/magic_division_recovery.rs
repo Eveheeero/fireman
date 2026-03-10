@@ -267,3 +267,90 @@ fn wrap_with_source(
         comment: source.comment.clone(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::{
+        AstFunctionId,
+        optimize::pattern_matching::embedded::test_utils::test_utils::{
+            make_var_map, run_parity, wrap_expression, wrap_statement,
+        },
+    };
+
+    #[test]
+    fn parity_magic_division_recovery_div4() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::BinaryOp(
+                AstBinaryOperator::RightShift,
+                Box::new(wrap_expression(AstExpression::BinaryOp(
+                    AstBinaryOperator::Mul,
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(
+                        0x8000000000000000,
+                    )))),
+                ))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(1)))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "recognition/after-iteration/magic-division-recovery.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert!(
+            fb.contains("/ 4") || fb.contains("/4"),
+            "fb should recover division by 4, got:\n{}",
+            fb
+        );
+        assert!(
+            embed.contains("/ 4") || embed.contains("/4"),
+            "embed should recover division by 4, got:\n{}",
+            embed
+        );
+    }
+
+    #[test]
+    fn parity_magic_division_recovery_commutative() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::BinaryOp(
+                AstBinaryOperator::RightShift,
+                Box::new(wrap_expression(AstExpression::BinaryOp(
+                    AstBinaryOperator::Mul,
+                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(
+                        0x8000000000000000,
+                    )))),
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                ))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(1)))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "recognition/after-iteration/magic-division-recovery.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert!(
+            fb.contains("/ 4") || fb.contains("/4"),
+            "fb should recover division by 4 (commutative), got:\n{}",
+            fb
+        );
+        assert!(
+            embed.contains("/ 4") || embed.contains("/4"),
+            "embed should recover division by 4 (commutative), got:\n{}",
+            embed
+        );
+    }
+}

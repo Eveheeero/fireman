@@ -360,6 +360,37 @@ fn build_multi_return_pattern_test_ast() -> (Ast, AstFunctionId) {
     )
 }
 
+fn build_complex_pattern_test_ast() -> (Ast, AstFunctionId) {
+    let function_id = AstFunctionId { address: 0x4810 };
+    let version = AstFunctionVersion(1);
+    let variable_map = Arc::new(RwLock::new(HashMap::new()));
+
+    let body = vec![
+        wrap_statement(AstStatement::Comment("seed-comment".to_string())),
+        wrap_statement(AstStatement::Assembly("push rbp".to_string())),
+        wrap_statement(AstStatement::Ir(Box::new(IrStatement::Condition {
+            condition: IrData::Intrinsic(IrIntrinsic::Unknown).into(),
+            true_branch: vec![IrStatement::Halt].into_boxed_slice(),
+            false_branch: vec![IrStatement::Undefined].into_boxed_slice(),
+        }))),
+        wrap_statement(AstStatement::Return(None)),
+    ];
+
+    let function = build_test_function(function_id, "pattern_complex_target", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+
+    (
+        Ast {
+            function_versions: HashMap::from([(function_id, version)]),
+            functions: Arc::new(RwLock::new(functions)),
+            last_variable_id: HashMap::new(),
+            pre_defined_symbols: HashMap::new(),
+        },
+        function_id,
+    )
+}
+
 fn pattern_examples_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../patterns/examples")
@@ -411,32 +442,85 @@ fn statement_debug_lines(body: &[WrappedAstStatement]) -> Vec<String> {
         .collect()
 }
 
-#[test]
-fn pattern_matching_example_fb_files_parse_and_execute() {
-    let files = [
-        "if_do_asm_ir_ast.fb",
-        "skip_ranges.fb",
-        "skip_aliases.fb",
-        "script_and_logs.fb",
-        "all_syntax.fb",
-        "do_del_syntax.fb",
-    ];
+type TestAstBuilder = fn() -> (Ast, AstFunctionId);
 
-    for file in files {
-        let (ast, function_id) = build_pattern_test_ast();
-        let pattern = AstPattern::from_file(example_pattern_path(file));
-        let result = ast.optimize_function(
+fn fixture_builder_for_pattern_input(input_type: AstPatternInputType) -> TestAstBuilder {
+    match input_type {
+        AstPatternInputType::WithAssembly => build_pattern_test_ast,
+        AstPatternInputType::WithAst => build_predefined_pattern_test_ast,
+        AstPatternInputType::WithIr => build_ir_if_pattern_test_ast,
+        AstPatternInputType::Complex => build_complex_pattern_test_ast,
+    }
+}
+
+fn optimize_with_file_backed_pattern(
+    pattern: AstPattern,
+    max_pass_iterations: usize,
+) -> Vec<WrappedAstStatement> {
+    let pattern_name = pattern.name().to_string();
+    let build_ast = fixture_builder_for_pattern_input(pattern.input_type());
+    let (ast, function_id) = build_ast();
+    let optimized = ast
+        .optimize_function(
             function_id,
             Some(
                 AstOptimizationConfig::NONE
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
-                    .max_pass_iterations(1),
+                    .max_pass_iterations(max_pass_iterations),
             ),
+        )
+        .unwrap_or_else(|err| panic!("pattern `{pattern_name}` failed to optimize: {err:?}"));
+
+    optimized_function_body(&optimized, function_id)
+}
+
+fn example_pattern_files() -> Vec<String> {
+    let mut files = fs::read_dir(pattern_examples_dir())
+        .expect("pattern examples directory should exist")
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "fb"))
+        .filter_map(|path| {
+            path.file_name()
+                .map(|name| name.to_string_lossy().to_string())
+        })
+        .collect::<Vec<_>>();
+    files.sort();
+    files
+}
+
+#[test]
+fn pattern_matching_example_fb_files_parse_and_execute() {
+    let files = example_pattern_files();
+    assert!(
+        !files.is_empty(),
+        "example .fb file list should not be empty"
+    );
+
+    for file in files {
+        let _ = optimize_with_file_backed_pattern(
+            AstPattern::from_file(example_pattern_path(&file)),
+            1,
         );
-        if let Err(err) = result {
-            panic!("example pattern file `{file}` failed: {err:?}");
-        }
+    }
+}
+
+#[test]
+fn pattern_matching_all_predefined_runtime_patterns_execute() {
+    let patterns = AstPattern::predefined_patterns();
+    assert!(
+        !patterns.is_empty(),
+        "predefined runtime pattern registry should not be empty"
+    );
+
+    for pattern in patterns {
+        let pattern_name = pattern.name().to_string();
+        let body = optimize_with_file_backed_pattern(pattern, 1);
+        assert!(
+            !body.is_empty(),
+            "predefined pattern `{pattern_name}` should leave an optimized body"
+        );
     }
 }
 

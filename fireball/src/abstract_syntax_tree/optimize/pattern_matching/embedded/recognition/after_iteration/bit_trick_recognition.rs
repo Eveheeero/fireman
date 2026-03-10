@@ -372,3 +372,140 @@ pub(crate) fn to_literal_u64(v: u64) -> AstLiteral {
         AstLiteral::UInt(v)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::{
+        AstBinaryOperator, AstFunctionId,
+        optimize::pattern_matching::embedded::test_utils::test_utils::{
+            make_var_map, run_parity, wrap_expression, wrap_statement,
+        },
+    };
+
+    #[test]
+    fn parity_rotation_recovery_right_32() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::BinaryOp(
+                AstBinaryOperator::BitOr,
+                Box::new(wrap_expression(AstExpression::BinaryOp(
+                    AstBinaryOperator::RightShift,
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(5)))),
+                ))),
+                Box::new(wrap_expression(AstExpression::BinaryOp(
+                    AstBinaryOperator::LeftShift,
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(
+                        27,
+                    )))),
+                ))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "recognition/after-iteration/rotation-recovery.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert_eq!(fb, embed, "rotation_recovery right-32 parity failed");
+    }
+
+    #[test]
+    fn parity_rotation_recovery_left_64() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::BinaryOp(
+                AstBinaryOperator::BitOr,
+                Box::new(wrap_expression(AstExpression::BinaryOp(
+                    AstBinaryOperator::LeftShift,
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(
+                        13,
+                    )))),
+                ))),
+                Box::new(wrap_expression(AstExpression::BinaryOp(
+                    AstBinaryOperator::RightShift,
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(
+                        51,
+                    )))),
+                ))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "recognition/after-iteration/rotation-recovery.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert_eq!(fb, embed, "rotation_recovery left-64 parity failed");
+    }
+
+    #[test]
+    fn parity_strength_reduction_shift_add() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::BinaryOp(
+                AstBinaryOperator::Add,
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                Box::new(wrap_expression(AstExpression::BinaryOp(
+                    AstBinaryOperator::LeftShift,
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(2)))),
+                ))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "recognition/after-iteration/strength-reduction.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert_eq!(fb, embed, "strength_reduction shift-add parity failed");
+    }
+
+    #[test]
+    fn parity_strength_reduction_dual_shift() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            AstExpression::BinaryOp(
+                AstBinaryOperator::Sub,
+                Box::new(wrap_expression(AstExpression::BinaryOp(
+                    AstBinaryOperator::LeftShift,
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(3)))),
+                ))),
+                Box::new(wrap_expression(AstExpression::BinaryOp(
+                    AstBinaryOperator::LeftShift,
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(1)))),
+                ))),
+            ),
+        ))))];
+
+        let (fb, embed) = run_parity(
+            "recognition/after-iteration/strength-reduction.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert_eq!(fb, embed, "strength_reduction dual shift parity failed");
+    }
+}

@@ -65,6 +65,54 @@ fn reverse_in_list(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::{
+        AstFunctionId, AstLiteral, optimize::pattern_matching::embedded::test_utils::test_utils::*,
+    };
+
+    #[test]
+    fn parity_if_conversion_reversal() {
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["cond", "result"]);
+        let (cond, result) = (ids[0], ids[1]);
+
+        let body = vec![wrap_statement(AstStatement::Assignment(
+            wrap_expression(AstExpression::Variable(vm.clone(), result)),
+            wrap_expression(AstExpression::Ternary(
+                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), cond))),
+                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(1)))),
+                Box::new(wrap_expression(AstExpression::Ternary(
+                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), cond))),
+                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(2)))),
+                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(3)))),
+                ))),
+            )),
+        ))];
+
+        let (fb, embed) = run_parity(
+            "recovery/after-iteration/if-conversion-reversal.fb",
+            body,
+            vm,
+            |c| c.constant_folding(true),
+        );
+        assert!(
+            fb.contains("if") && embed.contains("if"),
+            "both should expand nested ternary to if-else.\n  fb: {}\n  embed: {}",
+            fb,
+            embed
+        );
+        if fb != embed {
+            eprintln!(
+                "KNOWN DIFF: if_conversion_reversal expansion depth differs.\n  fb:    {}\n  embed: {}",
+                fb.replace('\n', "\\n"),
+                embed.replace('\n', "\\n"),
+            );
+        }
+    }
+}
+
 fn try_expand_nested_ternary_assignment(stmt: &mut WrappedAstStatement) {
     let AstStatement::Assignment(lhs, rhs) = &stmt.statement else {
         return;

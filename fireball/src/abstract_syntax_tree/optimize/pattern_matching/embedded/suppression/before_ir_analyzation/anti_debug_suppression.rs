@@ -57,3 +57,19 @@ pub(crate) fn suppress_anti_debug(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::optimize::pattern_matching::embedded::test_utils::test_utils::assert_before_ir_suppression;
+
+    #[test]
+    fn direct_anti_debug_suppression_removes_debug_probes() {
+        assert_before_ir_suppression(
+            "suppression/before-ir-analyzation/anti-debug-suppression.fb",
+            "call IsDebuggerPresent",
+            "mov eax, ebx",
+            suppress_anti_debug,
+        );
+    }
+}
