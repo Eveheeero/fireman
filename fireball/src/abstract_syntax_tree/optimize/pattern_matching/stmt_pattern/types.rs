@@ -1,4 +1,4 @@
-use super::node_name::{FitsTarget, NodeName};
+use super::node_name::{CaptureRef, FitsTarget, NodeName};
 use crate::abstract_syntax_tree::{
     ArcAstVariableMap, AstBinaryOperator, AstCall, AstExpression, AstLiteral, AstStatement,
     AstUnaryOperator, AstValueType, AstVariable, AstVariableId, Wrapped, WrappedAstStatement,
@@ -63,48 +63,103 @@ pub type Captures = HashMap<String, Captured>;
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
+pub struct UnaryCapturePredicate {
+    pub capture: CaptureRef,
+}
+
+#[derive(Debug, Clone)]
+pub struct BinaryCapturePredicate {
+    pub left: CaptureRef,
+    pub right: CaptureRef,
+}
+
+#[derive(Debug, Clone)]
+pub struct FitsPredicate {
+    pub capture: CaptureRef,
+    pub target: FitsTarget,
+}
+
+#[derive(Debug, Clone)]
+pub struct SumEqualsPredicate {
+    pub left: CaptureRef,
+    pub right: CaptureRef,
+    pub target: SumEqualsTarget,
+}
+
+#[derive(Debug, Clone)]
+pub struct CallNameMatchesPredicate {
+    pub capture: CaptureRef,
+    pub pattern: CaseInsensitivePattern,
+}
+
+#[derive(Debug, Clone)]
+pub struct StmtListPredicate {
+    pub capture: CaptureRef,
+    pub kind: StmtListPredicateKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StmtListPredicateKind {
+    NoUnsafeStmts,
+    EndsWithContinue,
+    EndsWithIfNotCondBreak,
+    EndsWithIfCondElseBreak,
+    IsEmpty,
+    IsNonEmpty,
+    EndsWithBreak,
+    EndsWithReturn,
+}
+
+#[derive(Debug, Clone)]
 pub enum WherePredicate {
-    Eq(String, String),
-    Ne(String, String),
-    /// Check that a captured StmtList does not contain Label, Goto, or Declaration at any depth.
-    NoUnsafeStmts(String),
-    /// Check that a captured statement list ends with `Continue`.
-    EndsWithContinue(String),
-    /// Check that a captured statement list ends with `if (!cond) break;`.
-    IsEndIfNotCondBreak(String),
-    /// Check that a captured statement list ends with `if (cond) {} else { break; }`.
-    IsEndIfCondElseBreak(String),
+    Eq(BinaryCapturePredicate),
+    Ne(BinaryCapturePredicate),
+    /// Check that a captured StmtList satisfies a statement-list predicate.
+    StmtList(StmtListPredicate),
     /// Check that a captured literal fits in the named type's range.
     /// `fits($lit_capture, TypeName)` where TypeName is e.g. Int8, Int16, Int32, Int64, Int.
-    Fits(String, FitsTarget),
+    Fits(FitsPredicate),
     /// Check that a captured expression is a literal value.
-    IsLiteral(String),
+    IsLiteral(UnaryCapturePredicate),
     /// Check that a captured expression is NOT a literal value.
-    NotLiteral(String),
+    NotLiteral(UnaryCapturePredicate),
     /// Check that a captured expression is pure (no side effects: no calls, deref, etc.).
-    IsPure(String),
+    IsPure(UnaryCapturePredicate),
     /// Check that two captured expressions are structurally equal.
-    StructurallyEqual(String, String),
+    StructurallyEqual(BinaryCapturePredicate),
     /// Check that two captured values have the same discriminant (e.g. same operator variant).
-    SameDiscriminant(String, String),
+    SameDiscriminant(BinaryCapturePredicate),
     /// Check that the first captured StmtList has more statements than the second.
-    GreaterCount(String, String),
+    GreaterCount(BinaryCapturePredicate),
     /// Check that a captured literal is zero (Int(0), UInt(0), Bool(false)).
-    IsZero(String),
+    IsZero(UnaryCapturePredicate),
     /// Check that a captured literal is non-zero (Int(n) where n!=0, UInt(n) where n!=0, Bool(true)).
-    IsNonZero(String),
+    IsNonZero(UnaryCapturePredicate),
     /// Check that a captured expression is a Variable (not a complex expression).
-    IsVariable(String),
+    IsVariable(UnaryCapturePredicate),
     /// Check that two captured Int literals sum to a specific value (capture or literal).
-    SumEquals(String, String, SumEqualsTarget),
+    SumEquals(SumEqualsPredicate),
     /// Check that a captured Call's name contains a given substring (case-insensitive).
     /// `call_name_matches($f, "pattern")`
-    CallNameMatches(String, String),
+    CallNameMatches(CallNameMatchesPredicate),
 }
 
 /// The third operand of `sum_equals()`: either a capture reference or an inline integer literal.
 #[derive(Debug, Clone)]
 pub enum SumEqualsTarget {
-    Capture(String),
+    Capture(CaptureRef),
     Literal(i64),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CaseInsensitivePattern(String);
+
+impl CaseInsensitivePattern {
+    pub fn new(pattern: impl Into<String>) -> Self {
+        Self(pattern.into().to_ascii_lowercase())
+    }
+
+    pub fn matches(&self, value: &str) -> bool {
+        value.to_ascii_lowercase().contains(&self.0)
+    }
 }

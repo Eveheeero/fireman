@@ -265,6 +265,38 @@ fn parse_stmt_where_greater_count() {
 }
 
 #[test]
+fn parse_stmt_where_stmt_list_helpers() {
+    let rule = parse(
+        "if:\n  at afterIteration\n  stmt Block($body)\n  where is_empty_stmt_list($body)\n  where is_nonempty_stmt_list($body)\n  where ends_with_break($body)\n  where ends_with_return($body)\ndo:\n  emit Block($body)",
+    );
+    let blocks = first_in_block(&rule);
+    let stmt_block = blocks
+        .iter()
+        .find(|b| b.kind() == AstPatternInBlockKind::Stmt)
+        .unwrap();
+    match stmt_block {
+        AstPatternInBlock::Stmt(_, preds) => assert_eq!(preds.len(), 4),
+        _ => panic!("expected Stmt"),
+    }
+}
+
+#[test]
+fn parse_stmt_where_tail_shape_helpers() {
+    let rule = parse(
+        "if:\n  at afterIteration\n  stmt While($cond, $body)\n  where ends_with_continue($body)\n  where is_end_if_not_cond_break($body)\n  where is_end_if_cond_else_break($body)\ndo:\n  emit While($cond, $body)",
+    );
+    let blocks = first_in_block(&rule);
+    let stmt_block = blocks
+        .iter()
+        .find(|b| b.kind() == AstPatternInBlockKind::Stmt)
+        .unwrap();
+    match stmt_block {
+        AstPatternInBlock::Stmt(_, preds) => assert_eq!(preds.len(), 3),
+        _ => panic!("expected Stmt"),
+    }
+}
+
+#[test]
 fn parse_stmt_multiple_where() {
     let rule = parse(
         "if:\n  at afterIteration\n  expr BinaryOp(BitOr, $x, $y)\n  where structurally_equal($x, $y)\n  where is_nonzero($x)\ndo:\n  info(\"ok\")",
@@ -305,9 +337,8 @@ fn parse_stmt_seq() {
 // ── skip ranges ──
 
 #[test]
-fn parse_skip_range() {
-    let rule =
-        parse("if:\n  at afterIteration\n  skip_range 0..8\n  ast return\ndo:\n  info(\"ok\")");
+fn parse_skip_alias_global() {
+    let rule = parse("if:\n  at afterIteration\n  skip 0..8\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     let skip = blocks
         .iter()
@@ -322,32 +353,6 @@ fn parse_skip_range() {
     }
 }
 
-#[test]
-fn parse_skip_asm_range() {
-    let rule =
-        parse("if:\n  at afterIteration\n  skip_asm_range 1..5\n  ast return\ndo:\n  info(\"ok\")");
-    let blocks = first_in_block(&rule);
-    assert!(find_kind(blocks, AstPatternInBlockKind::SkipAsmRange));
-}
-
-#[test]
-fn parse_skip_ast_range() {
-    let rule = parse(
-        "if:\n  at afterIteration\n  skip_ast_range 2..10\n  ast return\ndo:\n  info(\"ok\")",
-    );
-    let blocks = first_in_block(&rule);
-    assert!(find_kind(blocks, AstPatternInBlockKind::SkipAstRange));
-}
-
-#[test]
-fn parse_skip_ir_range() {
-    let rule =
-        parse("if:\n  at afterIteration\n  skip_ir_range 0..3\n  ast return\ndo:\n  info(\"ok\")");
-    let blocks = first_in_block(&rule);
-    assert!(find_kind(blocks, AstPatternInBlockKind::SkipIrRange));
-}
-
-#[test]
 fn parse_skip_asm_alias() {
     let rule =
         parse("if:\n  at afterIteration\n  skip asm 0..8\n  ast return\ndo:\n  info(\"ok\")");

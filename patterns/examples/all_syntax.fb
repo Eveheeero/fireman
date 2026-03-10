@@ -22,10 +22,7 @@ if:
   script `
 stmt_count >= 5 && asm_count >= 2
 `
-  skip_range 0..8
-  skip_asm_range 0..8
-  skip_ast_range 0..8
-  skip_ir_range 0..8
+  skip 0..8
 if:
   at afterIteration
   asm push rbp
@@ -177,12 +174,26 @@ do:
 
 # ── Where predicates ──
 #
+# eq($a, $b)                        — two captures are structurally equal
+# ne($a, $b)                        — two captures are structurally different
+# fits($x, Int32)                   — literal capture fits target integer type
 # structurally_equal($a, $b)     — two captured expressions are identical ASTs
+# same_discriminant($a, $b)      — two captures have the same enum/operator variant
 # is_literal($x)                 — the capture is a literal value
+# not_literal($x)                — the capture is not a literal value
+# is_pure($x)                    — the capture is side-effect free
 # is_variable($x)                — the capture is a variable reference
 # is_zero($x)                    — the capture is a literal zero (Int(0) or UInt(0))
 # is_nonzero($x)                 — the capture is a non-zero literal
+# no_unsafe_stmts($body)         — stmt-list capture contains no Label/Goto/Declaration
+# is_empty_stmt_list($body)      — stmt-list capture is empty
+# is_nonempty_stmt_list($body)   — stmt-list capture is non-empty
 # greater_count($a, $b)          — capture $a has more statements than $b
+# ends_with_continue($body)      — stmt-list capture ends in Continue
+# ends_with_break($body)         — stmt-list capture ends in Break
+# ends_with_return($body)        — stmt-list capture ends in Return(...)
+# is_end_if_not_cond_break($body) — stmt-list ends in if (!cond) break;
+# is_end_if_cond_else_break($body) — stmt-list ends in if (cond) {} else { break; }
 # sum_equals($a, $b, N)          — integer captures $a + $b == N (N can be literal or $capture)
 # call_name_matches($f, "pattern") — captured Call name contains "pattern" (case-insensitive)
 #   Works with AstCall::Unknown and AstCall::Variable (looks up variable name).
@@ -238,11 +249,10 @@ do:
 
 # ── Skip ranges ──
 #
-# skip_range N..M       — skip statement indices [N, M) for all matchers
-# skip_asm_range N..M   — skip for asm matching only
-# skip_ast_range N..M   — skip for ast matching only
-# skip_ir_range N..M    — skip for ir matching only
-# Aliases: skip asm N..M, skip ast N..M, skip ir N..M
+# skip N..M             — skip statement indices [N, M) for all matchers
+# skip asm N..M         — skip for asm matching only
+# skip ast N..M         — skip for ast matching only
+# skip ir N..M          — skip for ir matching only
 
 # ── AST matchers (ast keyword) ──
 #

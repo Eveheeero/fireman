@@ -1,11 +1,35 @@
 use super::{
-    node_name::{FitsTarget, FitsTypeName},
-    types::{Captured, Captures, SumEqualsTarget, WherePredicate},
+    node_name::{CaptureRef, FitsTarget, FitsTypeName},
+    types::{
+        BinaryCapturePredicate, CallNameMatchesPredicate, Captured, Captures,
+        CaseInsensitivePattern, FitsPredicate, StmtListPredicate, StmtListPredicateKind,
+        SumEqualsPredicate, SumEqualsTarget, UnaryCapturePredicate, WherePredicate,
+    },
 };
 use crate::abstract_syntax_tree::{
     AstCall, AstExpression, AstLiteral, AstStatement, AstUnaryOperator, AstValueType,
     WrappedAstStatement,
 };
+
+fn parse_capture_ref(value: &str) -> CaptureRef {
+    CaptureRef::new(value)
+}
+
+fn capture<'a>(caps: &'a Captures, name: &CaptureRef) -> Option<&'a Captured> {
+    caps.get(name.as_str())
+}
+
+fn unary(capture: CaptureRef) -> UnaryCapturePredicate {
+    UnaryCapturePredicate { capture }
+}
+
+fn binary(left: CaptureRef, right: CaptureRef) -> BinaryCapturePredicate {
+    BinaryCapturePredicate { left, right }
+}
+
+fn stmt_list(capture: CaptureRef, kind: StmtListPredicateKind) -> StmtListPredicate {
+    StmtListPredicate { capture, kind }
+}
 
 pub fn parse_where(input: &str) -> Result<WherePredicate, String> {
     let input = input.trim();
@@ -19,19 +43,16 @@ pub fn parse_where(input: &str) -> Result<WherePredicate, String> {
         if parts.len() != 2 {
             return Err(format!("fits() requires exactly 2 arguments: {input}"));
         }
-        let capture_name = parts[0]
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
+        let capture_name =
+            parse_capture_ref(parts[0].trim().strip_prefix('$').ok_or_else(|| {
                 format!(
                     "fits() first argument must be a capture ($name): {}",
                     parts[0].trim()
                 )
-            })?
-            .to_string();
+            })?);
         let type_arg = parts[1].trim();
         let target = if let Some(cap) = type_arg.strip_prefix('$') {
-            FitsTarget::Capture(cap.to_string())
+            FitsTarget::Capture(parse_capture_ref(cap))
         } else {
             let ty = match type_arg {
                 "Int8" => FitsTypeName::Int8,
@@ -47,58 +68,49 @@ pub fn parse_where(input: &str) -> Result<WherePredicate, String> {
             };
             FitsTarget::TypeName(ty)
         };
-        return Ok(WherePredicate::Fits(capture_name, target));
+        return Ok(WherePredicate::Fits(FitsPredicate {
+            capture: capture_name,
+            target,
+        }));
     }
 
     if let Some(rest) = input.strip_prefix("is_literal(") {
         let rest = rest
             .strip_suffix(')')
             .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
-        let name = rest
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "is_literal() argument must be a capture ($name): {}",
-                    rest.trim()
-                )
-            })?
-            .to_string();
-        return Ok(WherePredicate::IsLiteral(name));
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "is_literal() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::IsLiteral(unary(name)));
     }
 
     if let Some(rest) = input.strip_prefix("not_literal(") {
         let rest = rest
             .strip_suffix(')')
             .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
-        let name = rest
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "not_literal() argument must be a capture ($name): {}",
-                    rest.trim()
-                )
-            })?
-            .to_string();
-        return Ok(WherePredicate::NotLiteral(name));
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "not_literal() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::NotLiteral(unary(name)));
     }
 
     if let Some(rest) = input.strip_prefix("is_pure(") {
         let rest = rest
             .strip_suffix(')')
             .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
-        let name = rest
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "is_pure() argument must be a capture ($name): {}",
-                    rest.trim()
-                )
-            })?
-            .to_string();
-        return Ok(WherePredicate::IsPure(name));
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "is_pure() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::IsPure(unary(name)));
     }
 
     if let Some(rest) = input.strip_prefix("structurally_equal(") {
@@ -111,27 +123,19 @@ pub fn parse_where(input: &str) -> Result<WherePredicate, String> {
                 "structurally_equal() requires exactly 2 arguments: {input}"
             ));
         }
-        let a = parts[0]
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "structurally_equal() argument must be a capture ($name): {}",
-                    parts[0].trim()
-                )
-            })?
-            .to_string();
-        let b = parts[1]
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "structurally_equal() argument must be a capture ($name): {}",
-                    parts[1].trim()
-                )
-            })?
-            .to_string();
-        return Ok(WherePredicate::StructurallyEqual(a, b));
+        let a = parse_capture_ref(parts[0].trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "structurally_equal() argument must be a capture ($name): {}",
+                parts[0].trim()
+            )
+        })?);
+        let b = parse_capture_ref(parts[1].trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "structurally_equal() argument must be a capture ($name): {}",
+                parts[1].trim()
+            )
+        })?);
+        return Ok(WherePredicate::StructurallyEqual(binary(a, b)));
     }
 
     if let Some(rest) = input.strip_prefix("same_discriminant(") {
@@ -144,27 +148,19 @@ pub fn parse_where(input: &str) -> Result<WherePredicate, String> {
                 "same_discriminant() requires exactly 2 arguments: {input}"
             ));
         }
-        let a = parts[0]
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "same_discriminant() argument must be a capture ($name): {}",
-                    parts[0].trim()
-                )
-            })?
-            .to_string();
-        let b = parts[1]
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "same_discriminant() argument must be a capture ($name): {}",
-                    parts[1].trim()
-                )
-            })?
-            .to_string();
-        return Ok(WherePredicate::SameDiscriminant(a, b));
+        let a = parse_capture_ref(parts[0].trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "same_discriminant() argument must be a capture ($name): {}",
+                parts[0].trim()
+            )
+        })?);
+        let b = parse_capture_ref(parts[1].trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "same_discriminant() argument must be a capture ($name): {}",
+                parts[1].trim()
+            )
+        })?);
+        return Ok(WherePredicate::SameDiscriminant(binary(a, b)));
     }
 
     if let Some(rest) = input.strip_prefix("greater_count(") {
@@ -177,78 +173,58 @@ pub fn parse_where(input: &str) -> Result<WherePredicate, String> {
                 "greater_count() requires exactly 2 arguments: {input}"
             ));
         }
-        let a = parts[0]
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "greater_count() argument must be a capture ($name): {}",
-                    parts[0].trim()
-                )
-            })?
-            .to_string();
-        let b = parts[1]
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "greater_count() argument must be a capture ($name): {}",
-                    parts[1].trim()
-                )
-            })?
-            .to_string();
-        return Ok(WherePredicate::GreaterCount(a, b));
+        let a = parse_capture_ref(parts[0].trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "greater_count() argument must be a capture ($name): {}",
+                parts[0].trim()
+            )
+        })?);
+        let b = parse_capture_ref(parts[1].trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "greater_count() argument must be a capture ($name): {}",
+                parts[1].trim()
+            )
+        })?);
+        return Ok(WherePredicate::GreaterCount(binary(a, b)));
     }
 
     if let Some(rest) = input.strip_prefix("is_zero(") {
         let rest = rest
             .strip_suffix(')')
             .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
-        let name = rest
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "is_zero() argument must be a capture ($name): {}",
-                    rest.trim()
-                )
-            })?
-            .to_string();
-        return Ok(WherePredicate::IsZero(name));
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "is_zero() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::IsZero(unary(name)));
     }
 
     if let Some(rest) = input.strip_prefix("is_nonzero(") {
         let rest = rest
             .strip_suffix(')')
             .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
-        let name = rest
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "is_nonzero() argument must be a capture ($name): {}",
-                    rest.trim()
-                )
-            })?
-            .to_string();
-        return Ok(WherePredicate::IsNonZero(name));
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "is_nonzero() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::IsNonZero(unary(name)));
     }
 
     if let Some(rest) = input.strip_prefix("is_variable(") {
         let rest = rest
             .strip_suffix(')')
             .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
-        let name = rest
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "is_variable() argument must be a capture ($name): {}",
-                    rest.trim()
-                )
-            })?
-            .to_string();
-        return Ok(WherePredicate::IsVariable(name));
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "is_variable() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::IsVariable(unary(name)));
     }
 
     if let Some(rest) = input.strip_prefix("sum_equals(") {
@@ -261,29 +237,21 @@ pub fn parse_where(input: &str) -> Result<WherePredicate, String> {
                 "sum_equals() requires exactly 3 arguments: {input}"
             ));
         }
-        let a = parts[0]
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "sum_equals() argument must be a capture ($name): {}",
-                    parts[0].trim()
-                )
-            })?
-            .to_string();
-        let b = parts[1]
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "sum_equals() argument must be a capture ($name): {}",
-                    parts[1].trim()
-                )
-            })?
-            .to_string();
+        let a = parse_capture_ref(parts[0].trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "sum_equals() argument must be a capture ($name): {}",
+                parts[0].trim()
+            )
+        })?);
+        let b = parse_capture_ref(parts[1].trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "sum_equals() argument must be a capture ($name): {}",
+                parts[1].trim()
+            )
+        })?);
         let c_raw = parts[2].trim();
         let c = if let Some(cap_name) = c_raw.strip_prefix('$') {
-            SumEqualsTarget::Capture(cap_name.to_string())
+            SumEqualsTarget::Capture(parse_capture_ref(cap_name))
         } else {
             let lit = c_raw.parse::<i64>().map_err(|_| {
                 format!(
@@ -293,7 +261,11 @@ pub fn parse_where(input: &str) -> Result<WherePredicate, String> {
             })?;
             SumEqualsTarget::Literal(lit)
         };
-        return Ok(WherePredicate::SumEquals(a, b, c));
+        return Ok(WherePredicate::SumEquals(SumEqualsPredicate {
+            left: a,
+            right: b,
+            target: c,
+        }));
     }
 
     if let Some(rest) = input.strip_prefix("call_name_matches(") {
@@ -306,16 +278,13 @@ pub fn parse_where(input: &str) -> Result<WherePredicate, String> {
                 "call_name_matches() requires exactly 2 arguments: {input}"
             ));
         }
-        let capture_name = parts[0]
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
+        let capture_name =
+            parse_capture_ref(parts[0].trim().strip_prefix('$').ok_or_else(|| {
                 format!(
                     "call_name_matches() first argument must be a capture ($name): {}",
                     parts[0].trim()
                 )
-            })?
-            .to_string();
+            })?);
         let pattern_str = parts[1].trim();
         // Accept quoted or unquoted string
         let pattern_str = pattern_str
@@ -323,75 +292,138 @@ pub fn parse_where(input: &str) -> Result<WherePredicate, String> {
             .and_then(|s| s.strip_suffix('"'))
             .unwrap_or(pattern_str)
             .to_string();
-        return Ok(WherePredicate::CallNameMatches(capture_name, pattern_str));
+        return Ok(WherePredicate::CallNameMatches(CallNameMatchesPredicate {
+            capture: capture_name,
+            pattern: CaseInsensitivePattern::new(pattern_str),
+        }));
     }
 
     if let Some(rest) = input.strip_prefix("no_unsafe_stmts(") {
         let rest = rest
             .strip_suffix(')')
             .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
-        let name = rest
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "no_unsafe_stmts() argument must be a capture ($name): {}",
-                    rest.trim()
-                )
-            })?
-            .to_string();
-        return Ok(WherePredicate::NoUnsafeStmts(name));
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "no_unsafe_stmts() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::StmtList(stmt_list(
+            name,
+            StmtListPredicateKind::NoUnsafeStmts,
+        )));
     }
 
     if let Some(rest) = input.strip_prefix("ends_with_continue(") {
         let rest = rest
             .strip_suffix(')')
             .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
-        let name = rest
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "ends_with_continue() argument must be a capture ($name): {}",
-                    rest.trim()
-                )
-            })?
-            .to_string();
-        return Ok(WherePredicate::EndsWithContinue(name));
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "ends_with_continue() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::StmtList(stmt_list(
+            name,
+            StmtListPredicateKind::EndsWithContinue,
+        )));
     }
 
     if let Some(rest) = input.strip_prefix("is_end_if_not_cond_break(") {
         let rest = rest
             .strip_suffix(')')
             .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
-        let name = rest
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "is_end_if_not_cond_break() argument must be a capture ($name): {}",
-                    rest.trim()
-                )
-            })?
-            .to_string();
-        return Ok(WherePredicate::IsEndIfNotCondBreak(name));
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "is_end_if_not_cond_break() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::StmtList(stmt_list(
+            name,
+            StmtListPredicateKind::EndsWithIfNotCondBreak,
+        )));
     }
 
     if let Some(rest) = input.strip_prefix("is_end_if_cond_else_break(") {
         let rest = rest
             .strip_suffix(')')
             .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
-        let name = rest
-            .trim()
-            .strip_prefix('$')
-            .ok_or_else(|| {
-                format!(
-                    "is_end_if_cond_else_break() argument must be a capture ($name): {}",
-                    rest.trim()
-                )
-            })?
-            .to_string();
-        return Ok(WherePredicate::IsEndIfCondElseBreak(name));
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "is_end_if_cond_else_break() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::StmtList(stmt_list(
+            name,
+            StmtListPredicateKind::EndsWithIfCondElseBreak,
+        )));
+    }
+
+    if let Some(rest) = input.strip_prefix("is_empty_stmt_list(") {
+        let rest = rest
+            .strip_suffix(')')
+            .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "is_empty_stmt_list() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::StmtList(stmt_list(
+            name,
+            StmtListPredicateKind::IsEmpty,
+        )));
+    }
+
+    if let Some(rest) = input.strip_prefix("is_nonempty_stmt_list(") {
+        let rest = rest
+            .strip_suffix(')')
+            .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "is_nonempty_stmt_list() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::StmtList(stmt_list(
+            name,
+            StmtListPredicateKind::IsNonEmpty,
+        )));
+    }
+
+    if let Some(rest) = input.strip_prefix("ends_with_break(") {
+        let rest = rest
+            .strip_suffix(')')
+            .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "ends_with_break() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::StmtList(stmt_list(
+            name,
+            StmtListPredicateKind::EndsWithBreak,
+        )));
+    }
+
+    if let Some(rest) = input.strip_prefix("ends_with_return(") {
+        let rest = rest
+            .strip_suffix(')')
+            .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
+        let name = parse_capture_ref(rest.trim().strip_prefix('$').ok_or_else(|| {
+            format!(
+                "ends_with_return() argument must be a capture ($name): {}",
+                rest.trim()
+            )
+        })?);
+        return Ok(WherePredicate::StmtList(stmt_list(
+            name,
+            StmtListPredicateKind::EndsWithReturn,
+        )));
     }
 
     let (pred_name, rest) = if let Some(rest) = input.strip_prefix("eq(") {
@@ -412,96 +444,112 @@ pub fn parse_where(input: &str) -> Result<WherePredicate, String> {
     }
     let a = parts[0].trim();
     let b = parts[1].trim();
-    let a = a
-        .strip_prefix('$')
-        .ok_or_else(|| format!("{pred_name}() argument must be a capture ($name): {a}"))?
-        .to_string();
-    let b = b
-        .strip_prefix('$')
-        .ok_or_else(|| format!("{pred_name}() argument must be a capture ($name): {b}"))?
-        .to_string();
+    let a = parse_capture_ref(
+        a.strip_prefix('$')
+            .ok_or_else(|| format!("{pred_name}() argument must be a capture ($name): {a}"))?,
+    );
+    let b = parse_capture_ref(
+        b.strip_prefix('$')
+            .ok_or_else(|| format!("{pred_name}() argument must be a capture ($name): {b}"))?,
+    );
     match pred_name {
-        "eq" => Ok(WherePredicate::Eq(a, b)),
-        "ne" => Ok(WherePredicate::Ne(a, b)),
+        "eq" => Ok(WherePredicate::Eq(binary(a, b))),
+        "ne" => Ok(WherePredicate::Ne(binary(a, b))),
         _ => unreachable!(),
     }
 }
 
 pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
     match pred {
-        WherePredicate::Eq(a, b) => {
-            let Some(cap_a) = caps.get(a) else {
+        WherePredicate::Eq(pair) => {
+            let Some(cap_a) = capture(caps, &pair.left) else {
                 return false;
             };
-            let Some(cap_b) = caps.get(b) else {
+            let Some(cap_b) = capture(caps, &pair.right) else {
                 return false;
             };
             captured_structurally_equal(cap_a, cap_b)
         }
-        WherePredicate::Ne(a, b) => {
-            let Some(cap_a) = caps.get(a) else {
+        WherePredicate::Ne(pair) => {
+            let Some(cap_a) = capture(caps, &pair.left) else {
                 return false;
             };
-            let Some(cap_b) = caps.get(b) else {
+            let Some(cap_b) = capture(caps, &pair.right) else {
                 return false;
             };
             !captured_structurally_equal(cap_a, cap_b)
         }
-        WherePredicate::NoUnsafeStmts(name) => {
-            let Some(captured) = caps.get(name) else {
+        WherePredicate::StmtList(predicate) => {
+            let Some(captured) = capture(caps, &predicate.capture) else {
                 return false;
             };
-            match captured {
-                Captured::StmtList(stmts) => !branch_contains_unsafe_stmts(stmts),
-                Captured::OptStmtList(Some(stmts)) => !branch_contains_unsafe_stmts(stmts),
-                Captured::OptStmtList(None) => true,
+            match (&predicate.kind, captured) {
+                (StmtListPredicateKind::NoUnsafeStmts, Captured::StmtList(stmts)) => {
+                    !branch_contains_unsafe_stmts(stmts)
+                }
+                (StmtListPredicateKind::NoUnsafeStmts, Captured::OptStmtList(Some(stmts))) => {
+                    !branch_contains_unsafe_stmts(stmts)
+                }
+                (StmtListPredicateKind::NoUnsafeStmts, Captured::OptStmtList(None)) => true,
+                (StmtListPredicateKind::EndsWithContinue, Captured::StmtList(stmts)) => {
+                    stmt_list_ends_with_continue(stmts)
+                }
+                (StmtListPredicateKind::EndsWithContinue, Captured::OptStmtList(Some(stmts))) => {
+                    stmt_list_ends_with_continue(stmts)
+                }
+                (StmtListPredicateKind::EndsWithIfNotCondBreak, Captured::StmtList(stmts)) => {
+                    stmt_list_ends_with_if_not_cond_break(stmts)
+                }
+                (
+                    StmtListPredicateKind::EndsWithIfNotCondBreak,
+                    Captured::OptStmtList(Some(stmts)),
+                ) => stmt_list_ends_with_if_not_cond_break(stmts),
+                (StmtListPredicateKind::EndsWithIfCondElseBreak, Captured::StmtList(stmts)) => {
+                    stmt_list_ends_with_if_cond_else_break(stmts)
+                }
+                (
+                    StmtListPredicateKind::EndsWithIfCondElseBreak,
+                    Captured::OptStmtList(Some(stmts)),
+                ) => stmt_list_ends_with_if_cond_else_break(stmts),
+                (StmtListPredicateKind::IsEmpty, Captured::StmtList(stmts)) => {
+                    stmt_list_is_empty(stmts)
+                }
+                (StmtListPredicateKind::IsEmpty, Captured::OptStmtList(Some(stmts))) => {
+                    stmt_list_is_empty(stmts)
+                }
+                (StmtListPredicateKind::IsEmpty, Captured::OptStmtList(None)) => true,
+                (StmtListPredicateKind::IsNonEmpty, Captured::StmtList(stmts)) => {
+                    !stmt_list_is_empty(stmts)
+                }
+                (StmtListPredicateKind::IsNonEmpty, Captured::OptStmtList(Some(stmts))) => {
+                    !stmt_list_is_empty(stmts)
+                }
+                (StmtListPredicateKind::EndsWithBreak, Captured::StmtList(stmts)) => {
+                    stmt_list_ends_with_break(stmts)
+                }
+                (StmtListPredicateKind::EndsWithBreak, Captured::OptStmtList(Some(stmts))) => {
+                    stmt_list_ends_with_break(stmts)
+                }
+                (StmtListPredicateKind::EndsWithReturn, Captured::StmtList(stmts)) => {
+                    stmt_list_ends_with_return(stmts)
+                }
+                (StmtListPredicateKind::EndsWithReturn, Captured::OptStmtList(Some(stmts))) => {
+                    stmt_list_ends_with_return(stmts)
+                }
                 _ => false,
             }
         }
-        WherePredicate::EndsWithContinue(name) => {
-            let Some(captured) = caps.get(name) else {
-                return false;
-            };
-            match captured {
-                Captured::StmtList(stmts) => stmt_list_ends_with_continue(stmts),
-                Captured::OptStmtList(Some(stmts)) => stmt_list_ends_with_continue(stmts),
-                Captured::OptStmtList(None) => false,
-                _ => false,
-            }
-        }
-        WherePredicate::IsEndIfNotCondBreak(name) => {
-            let Some(captured) = caps.get(name) else {
-                return false;
-            };
-            match captured {
-                Captured::StmtList(stmts) => stmt_list_ends_with_if_not_cond_break(stmts),
-                Captured::OptStmtList(Some(stmts)) => stmt_list_ends_with_if_not_cond_break(stmts),
-                Captured::OptStmtList(None) => false,
-                _ => false,
-            }
-        }
-        WherePredicate::IsEndIfCondElseBreak(name) => {
-            let Some(captured) = caps.get(name) else {
-                return false;
-            };
-            match captured {
-                Captured::StmtList(stmts) => stmt_list_ends_with_if_cond_else_break(stmts),
-                Captured::OptStmtList(Some(stmts)) => stmt_list_ends_with_if_cond_else_break(stmts),
-                Captured::OptStmtList(None) => false,
-                _ => false,
-            }
-        }
-        WherePredicate::Fits(capture_name, target) => {
-            let Some(captured) = caps.get(capture_name) else {
+        WherePredicate::Fits(predicate) => {
+            let Some(captured) = capture(caps, &predicate.capture) else {
                 return false;
             };
             let n = match captured {
                 Captured::Literal(AstLiteral::Int(n)) => *n,
                 _ => return false,
             };
-            let fits_type = match target {
+            let fits_type = match &predicate.target {
                 FitsTarget::TypeName(ty) => *ty,
-                FitsTarget::Capture(var_name) => match caps.get(var_name) {
+                FitsTarget::Capture(var_name) => match capture(caps, var_name) {
                     Some(Captured::ValueType(ty)) => match value_type_to_fits_type(ty) {
                         Some(ft) => ft,
                         None => return false,
@@ -516,8 +564,8 @@ pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
                 FitsTypeName::Int64 | FitsTypeName::Int => true,
             }
         }
-        WherePredicate::IsLiteral(name) => {
-            let Some(captured) = caps.get(name) else {
+        WherePredicate::IsLiteral(predicate) => {
+            let Some(captured) = capture(caps, &predicate.capture) else {
                 return false;
             };
             matches!(
@@ -528,8 +576,8 @@ pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
                 Captured::ExpressionBox(e) if matches!(e.item, AstExpression::Literal(_))
             ) || matches!(captured, Captured::Literal(_))
         }
-        WherePredicate::NotLiteral(name) => {
-            let Some(captured) = caps.get(name) else {
+        WherePredicate::NotLiteral(predicate) => {
+            let Some(captured) = capture(caps, &predicate.capture) else {
                 return false;
             };
             match captured {
@@ -539,8 +587,8 @@ pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
                 _ => true,
             }
         }
-        WherePredicate::IsPure(name) => {
-            let Some(captured) = caps.get(name) else {
+        WherePredicate::IsPure(predicate) => {
+            let Some(captured) = capture(caps, &predicate.capture) else {
                 return false;
             };
             match captured {
@@ -554,20 +602,20 @@ pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
                 _ => false,
             }
         }
-        WherePredicate::StructurallyEqual(a, b) => {
-            let Some(cap_a) = caps.get(a) else {
+        WherePredicate::StructurallyEqual(pair) => {
+            let Some(cap_a) = capture(caps, &pair.left) else {
                 return false;
             };
-            let Some(cap_b) = caps.get(b) else {
+            let Some(cap_b) = capture(caps, &pair.right) else {
                 return false;
             };
             captured_structurally_equal(cap_a, cap_b)
         }
-        WherePredicate::SameDiscriminant(a, b) => {
-            let Some(cap_a) = caps.get(a) else {
+        WherePredicate::SameDiscriminant(pair) => {
+            let Some(cap_a) = capture(caps, &pair.left) else {
                 return false;
             };
-            let Some(cap_b) = caps.get(b) else {
+            let Some(cap_b) = capture(caps, &pair.right) else {
                 return false;
             };
             match (cap_a, cap_b) {
@@ -580,11 +628,11 @@ pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
                 _ => false,
             }
         }
-        WherePredicate::GreaterCount(a, b) => {
-            let Some(cap_a) = caps.get(a) else {
+        WherePredicate::GreaterCount(pair) => {
+            let Some(cap_a) = capture(caps, &pair.left) else {
                 return false;
             };
-            let Some(cap_b) = caps.get(b) else {
+            let Some(cap_b) = capture(caps, &pair.right) else {
                 return false;
             };
             let len_a = match cap_a {
@@ -601,8 +649,8 @@ pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
             };
             len_a > len_b
         }
-        WherePredicate::IsZero(name) => {
-            let Some(captured) = caps.get(name) else {
+        WherePredicate::IsZero(predicate) => {
+            let Some(captured) = capture(caps, &predicate.capture) else {
                 return false;
             };
             match captured {
@@ -624,8 +672,8 @@ pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
                 _ => false,
             }
         }
-        WherePredicate::IsNonZero(name) => {
-            let Some(captured) = caps.get(name) else {
+        WherePredicate::IsNonZero(predicate) => {
+            let Some(captured) = capture(caps, &predicate.capture) else {
                 return false;
             };
             match captured {
@@ -647,8 +695,8 @@ pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
                 _ => false,
             }
         }
-        WherePredicate::IsVariable(name) => {
-            let Some(captured) = caps.get(name) else {
+        WherePredicate::IsVariable(predicate) => {
+            let Some(captured) = capture(caps, &predicate.capture) else {
                 return false;
             };
             match captured {
@@ -657,11 +705,11 @@ pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
                 _ => false,
             }
         }
-        WherePredicate::SumEquals(a, b, target) => {
-            let Some(cap_a) = caps.get(a) else {
+        WherePredicate::SumEquals(predicate) => {
+            let Some(cap_a) = capture(caps, &predicate.left) else {
                 return false;
             };
-            let Some(cap_b) = caps.get(b) else {
+            let Some(cap_b) = capture(caps, &predicate.right) else {
                 return false;
             };
             let val_a = match cap_a {
@@ -688,10 +736,10 @@ pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
                 },
                 _ => return false,
             };
-            let val_total = match target {
+            let val_total = match &predicate.target {
                 SumEqualsTarget::Literal(n) => *n,
                 SumEqualsTarget::Capture(name) => {
-                    let Some(cap_total) = caps.get(name) else {
+                    let Some(cap_total) = capture(caps, name) else {
                         return false;
                     };
                     match cap_total {
@@ -710,8 +758,8 @@ pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
             };
             val_a + val_b == val_total
         }
-        WherePredicate::CallNameMatches(capture_name, pattern) => {
-            let Some(captured) = caps.get(capture_name) else {
+        WherePredicate::CallNameMatches(predicate) => {
+            let Some(captured) = capture(caps, &predicate.capture) else {
                 return false;
             };
             let call = match captured {
@@ -738,9 +786,7 @@ pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
             if name.is_empty() {
                 return false;
             }
-            let lower = name.to_ascii_lowercase();
-            let pattern_lower = pattern.to_ascii_lowercase();
-            lower.contains(&pattern_lower)
+            predicate.pattern.matches(name)
         }
     }
 }
@@ -766,8 +812,20 @@ fn branch_contains_unsafe_stmts(stmts: &[WrappedAstStatement]) -> bool {
     false
 }
 
+fn stmt_list_is_empty(stmts: &[WrappedAstStatement]) -> bool {
+    stmts.is_empty()
+}
+
 fn stmt_list_ends_with_continue(stmts: &[WrappedAstStatement]) -> bool {
     matches!(stmts.last(), Some(last) if matches!(last.statement, AstStatement::Continue))
+}
+
+fn stmt_list_ends_with_break(stmts: &[WrappedAstStatement]) -> bool {
+    matches!(stmts.last(), Some(last) if matches!(last.statement, AstStatement::Break))
+}
+
+fn stmt_list_ends_with_return(stmts: &[WrappedAstStatement]) -> bool {
+    matches!(stmts.last(), Some(last) if matches!(last.statement, AstStatement::Return(_)))
 }
 
 fn stmt_list_ends_with_if_not_cond_break(stmts: &[WrappedAstStatement]) -> bool {

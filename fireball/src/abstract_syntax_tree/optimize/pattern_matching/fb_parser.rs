@@ -380,41 +380,12 @@ pub(super) fn parse_pattern_file(path: &str, content: &str) -> Result<AstPattern
                             add_at_clause(block, phase);
                         }
                     });
-                } else if line.trim_start().starts_with("skip_range ") {
-                    let value =
-                        parse_multiline_value(line.trim_start(), "skip_range ", &lines, &mut idx)?;
-                    let range = parse_skip_range(&value)?;
-                    update_all_in_blocks(&mut current_in_blocks, |block| {
-                        set_clause(block, AstPatternInBlock::SkipRange(range));
-                    });
-                } else if line.trim_start().starts_with("skip_asm_range ") {
-                    let value = parse_multiline_value(
-                        line.trim_start(),
-                        "skip_asm_range ",
-                        &lines,
-                        &mut idx,
-                    )?;
-                    let range = parse_skip_range(&value)?;
-                    update_all_in_blocks(&mut current_in_blocks, |block| {
-                        set_clause(block, AstPatternInBlock::SkipAsmRange(range));
-                    });
                 } else if line.trim_start().starts_with("skip asm ") {
                     let value =
                         parse_multiline_value(line.trim_start(), "skip asm ", &lines, &mut idx)?;
                     let range = parse_skip_range(&value)?;
                     update_all_in_blocks(&mut current_in_blocks, |block| {
                         set_clause(block, AstPatternInBlock::SkipAsmRange(range));
-                    });
-                } else if line.trim_start().starts_with("skip_ast_range ") {
-                    let value = parse_multiline_value(
-                        line.trim_start(),
-                        "skip_ast_range ",
-                        &lines,
-                        &mut idx,
-                    )?;
-                    let range = parse_skip_range(&value)?;
-                    update_all_in_blocks(&mut current_in_blocks, |block| {
-                        set_clause(block, AstPatternInBlock::SkipAstRange(range));
                     });
                 } else if line.trim_start().starts_with("skip ast ") {
                     let value =
@@ -423,23 +394,19 @@ pub(super) fn parse_pattern_file(path: &str, content: &str) -> Result<AstPattern
                     update_all_in_blocks(&mut current_in_blocks, |block| {
                         set_clause(block, AstPatternInBlock::SkipAstRange(range));
                     });
-                } else if line.trim_start().starts_with("skip_ir_range ") {
-                    let value = parse_multiline_value(
-                        line.trim_start(),
-                        "skip_ir_range ",
-                        &lines,
-                        &mut idx,
-                    )?;
-                    let range = parse_skip_range(&value)?;
-                    update_all_in_blocks(&mut current_in_blocks, |block| {
-                        set_clause(block, AstPatternInBlock::SkipIrRange(range));
-                    });
                 } else if line.trim_start().starts_with("skip ir ") {
                     let value =
                         parse_multiline_value(line.trim_start(), "skip ir ", &lines, &mut idx)?;
                     let range = parse_skip_range(&value)?;
                     update_all_in_blocks(&mut current_in_blocks, |block| {
                         set_clause(block, AstPatternInBlock::SkipIrRange(range));
+                    });
+                } else if line.trim_start().starts_with("skip ") {
+                    let value =
+                        parse_multiline_value(line.trim_start(), "skip ", &lines, &mut idx)?;
+                    let range = parse_skip_range(&value)?;
+                    update_all_in_blocks(&mut current_in_blocks, |block| {
+                        set_clause(block, AstPatternInBlock::SkipRange(range));
                     });
                 } else if line.trim_start().starts_with("ignore asm ") {
                     let value =

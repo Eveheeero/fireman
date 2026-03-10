@@ -1,0 +1,377 @@
+# .fb DSL — Example Companion
+#
+# This file complements `all_syntax.fb` with concrete examples for the
+# documented DSL forms. It is intentionally example-heavy and grouped by
+# syntax category.
+
+# ── Phase targeting ──
+if:
+  at beforeIrAnalyzation
+  at afterIrAnalyzation
+  stmt Return
+do:
+  ast comment phase_targeting_example
+
+# ── Multi-clause ──
+if:
+  at beforeIrAnalyzation
+  asm push rbp
+if:
+  at afterOptimization
+  asm_contains stack_chk_fail
+do:
+  ast comment multi_clause_example
+
+# ── Core matchers ──
+if:
+  at afterIteration
+  asm `mov rsp, 8; push rbp`
+  ast comment seed_comment
+  ir undefined
+  script `stmt_count >= 0 && asm_count >= 0 && ir_count >= 0 && comment_count >= 0`
+do:
+  asm mov esp, 8
+  ir halt
+  ast asm push rbp
+  ast comment core_matcher_example
+
+# ── Skip ranges ──
+if:
+  at afterIteration
+  asm push rbp
+  skip 0..8
+do:
+  ast comment skip_range_example
+
+# ── Skip aliases ──
+if:
+  at afterIteration
+  asm push rbp
+  skip asm 0..4
+  skip ast 0..4
+  skip ir 0..4
+do:
+  ast comment skip_alias_example
+
+# ── stmt ──
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, $cond), $then, Some($else))
+  where greater_count($else, $then)
+do:
+  emit If($cond, $else, Some($then))
+
+# ── expr ──
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, BinaryOp(RightShift, $x, Literal(Int($n))), BinaryOp(LeftShift, $x2, Literal(Int($m))))
+  where structurally_equal($x, $x2)
+  where is_nonzero($n)
+  where is_nonzero($m)
+  where sum_equals($n, $m, 32)
+do:
+  replace_expr_fn eval_rotate_right($x, $n)
+
+# ── stmt_seq ──
+if:
+  at afterIteration
+  stmt_seq [Call($f), Return(None)]
+do:
+  emit Return(Some(Call($f)))
+
+# ── emit_before / emit_after ──
+if:
+  at afterIteration
+  script `!ast_stmts.some(|s| s.is_comment() && s.comment_text().contains("inserted-before"))`
+  stmt Return
+do:
+  emit_before Comment(inserted_before)
+  emit_after Comment(inserted_after)
+
+# ── splice-block ──
+if:
+  at afterIteration
+  ast Block(...)
+do:
+  splice-block
+
+# ── ignore / !ignore ──
+if:
+  at afterIteration
+  ignore asm
+  ignore ir
+  ignore ast
+  ignore comment
+  ignore commentstart TRACE:
+  ignore commentend :done
+  ignore commentcontains seed
+  stmt Return
+do:
+  !ignore
+  !ignore asm
+  !ignore ir
+  !ignore ast
+  !ignore comment
+  emit Comment(ignore_cleared)
+
+# ── del single / range ──
+if:
+  at afterIteration
+  stmt_seq [Comment($x), Assignment($lhs, $rhs), Return(None)]
+do:
+  del start[0]
+  del end[-1]
+  del start[0..2]
+
+# ── prune-empty-else ──
+if:
+  at afterOptimization
+  ast Some([])
+do:
+  prune-empty-else
+
+# ── Where predicates: eq / ne / fits / structural helpers ──
+if:
+  at afterIteration
+  stmt If($cond, [Assignment(Variable($_, $v1), $a)], Some([Assignment(Variable($_, $v2), $b)]))
+  where eq($v1, $v2)
+  where ne($a, $b)
+do:
+  emit Assignment(Variable($_, $v1), Ternary($cond, $a, $b))
+
+if:
+  at afterIteration
+  expr Cast($t, Literal(Int($n)))
+  where fits($n, Int32)
+do:
+  replace_expr Cast($t, Literal(Int($n)))
+
+if:
+  at afterIteration
+  expr BinaryOp($op1, $x, $y)
+  where same_discriminant($op1, $op1)
+  where is_pure($x)
+  where not_literal($x)
+  where is_literal($y)
+do:
+  info("discriminant-and-purity example")
+
+if:
+  at afterIteration
+  expr BinaryOp(NotEqual, $x, Literal(Int($zero)))
+  where is_variable($x)
+  where is_zero($zero)
+do:
+  replace_expr $x
+
+# ── Where predicates: stmt-list helpers ──
+if:
+  at afterIteration
+  stmt Block($body)
+  where no_unsafe_stmts($body)
+  where is_empty_stmt_list($body)
+do:
+  emit Block($body)
+
+if:
+  at afterIteration
+  stmt While($cond, $body)
+  where is_nonempty_stmt_list($body)
+  where ends_with_continue($body)
+do:
+  del end[-1]
+
+if:
+  at afterIteration
+  stmt While(Literal(Bool(true)), $body)
+  where is_end_if_not_cond_break($body)
+do:
+  ast comment tail_if_not_cond_break
+
+if:
+  at afterIteration
+  stmt While(Literal(Bool(true)), $body)
+  where is_end_if_cond_else_break($body)
+do:
+  ast comment tail_if_cond_else_break
+
+if:
+  at afterIteration
+  stmt Block($body)
+  where ends_with_break($body)
+do:
+  ast comment ends_with_break
+
+if:
+  at afterIteration
+  stmt Block($body)
+  where ends_with_return($body)
+do:
+  ast comment ends_with_return
+
+# ── call_name_matches ──
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, $cond), [Call($f)], None)
+  where call_name_matches($f, "abort")
+do:
+  emit Call("assert", [$cond])
+
+# ── Call matching and construction ──
+if:
+  at afterIteration
+  stmt Call($f)
+do:
+  emit Call("memset", [$f, Literal(Int(0)), Literal(Int(16))])
+
+# ── replace_expr ──
+if:
+  at afterIteration
+  expr Deref(AddressOf($x))
+do:
+  replace_expr $x
+
+# ── replace_expr_fn builtins ──
+if:
+  at afterIteration
+  expr BinaryOp(Add, BinaryOp(LeftShift, $x, Literal(Int($n))), $x2)
+  where structurally_equal($x, $x2)
+do:
+  replace_expr_fn eval_strength_reduce_add($x, $n)
+
+if:
+  at afterIteration
+  expr BinaryOp(Sub, BinaryOp(LeftShift, $x, Literal(Int($n))), $x2)
+  where structurally_equal($x, $x2)
+do:
+  replace_expr_fn eval_strength_reduce_sub($x, $n)
+
+if:
+  at afterIteration
+  expr BinaryOp(Add, BinaryOp(LeftShift, $x, Literal(Int($n))), BinaryOp(LeftShift, $x2, Literal(Int($m))))
+  where structurally_equal($x, $x2)
+do:
+  replace_expr_fn eval_strength_reduce_dual($x, $n, $m)
+
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, BinaryOp(LeftShift, $x, Literal(Int($n))), BinaryOp(RightShift, $x2, Literal(Int($m))))
+  where structurally_equal($x, $x2)
+do:
+  replace_expr_fn eval_rotate_left($x, $n)
+
+if:
+  at afterIteration
+  expr BinaryOp(RightShift, BinaryOp(Mul, $x, Literal(Int($magic))), Literal(Int($shift)))
+do:
+  replace_expr_fn eval_magic_division($x, $magic, $shift)
+
+# ── Additional statement matching ──
+if:
+  at afterIteration
+  stmt Goto($label)
+do:
+  emit Comment($label)
+
+if:
+  at afterIteration
+  stmt Comment($text)
+do:
+  emit Label($text)
+
+if:
+  at afterIteration
+  stmt Label($text)
+do:
+  emit Goto($text)
+
+# ── Ternary matching ──
+if:
+  at afterOptimization
+  stmt Assignment($lhs, Ternary(BinaryOp(Less, $a, $b), $a2, $b2))
+  where structurally_equal($a, $a2)
+  where structurally_equal($b, $b2)
+do:
+  emit Call("min", [$a, $b])
+
+# ── AST matchers ──
+if:
+  at afterOptimization
+  ast empty
+  ast undefined
+  ast return
+  ast comment marker
+  ast label
+  ast label marker_label
+  ast Block([])
+  ast If(...)
+do:
+  ast comment ast_matcher_example
+
+if:
+  at afterOptimization
+  ast Some([])
+do:
+  ast comment some_empty_example
+
+# ── IR matchers ──
+if:
+  at beforeIrAnalyzation
+  ir if
+  ir undefined
+do:
+  ir halt
+
+# ── Script API examples (commented because these are script-side APIs) ──
+#
+# if:
+#   at afterIteration
+#   script `
+# ast_stmts.any(|s| s.is_call())
+#   && ast_stmts.any(|s| s.is_if())
+#   && ast_stmts.any(|s| s.is_return())
+#   && ast_stmts.any(|s| s.is_comment())
+#   && ast_stmts.any(|s| s.is_assignment())
+#   && ast_stmts.any(|s| s.is_declaration())
+#   && ast_stmts.any(|s| s.is_while())
+#   && ast_stmts.any(|s| s.is_for())
+#   && ast_stmts.any(|s| s.is_goto())
+#   && ast_stmts.any(|s| s.is_label())
+#   && ast_stmts.any(|s| s.is_block())
+#   && ast_stmts.any(|s| s.is_switch())
+#   && ast_stmts.any(|s| s.is_break())
+#   && ast_stmts.any(|s| s.is_continue())
+#   && ast_stmts.any(|s| s.is_dowhile())
+#   && ast_stmts.any(|s| s.is_empty())
+#   && ast_stmts.any(|s| s.is_ir())
+#   && ast_stmts.any(|s| s.is_assembly())
+# `
+# do:
+#   info("ast_stmts helper example")
+#
+# if:
+#   at beforeIrAnalyzation
+#   script `
+# ir_stmts.any(|s| s.is_assignment())
+#   || ir_stmts.any(|s| s.is_jump())
+#   || ir_stmts.any(|s| s.is_call())
+#   || ir_stmts.any(|s| s.is_condition())
+#   || ir_stmts.any(|s| s.is_halt())
+#   || ir_stmts.any(|s| s.is_special())
+# `
+# do:
+#   info("ir_stmts helper example")
+#
+# if:
+#   at beforeIrAnalyzation
+#   script `
+# asm_lines.any(|line| line.is_call())
+#   || asm_lines.any(|line| line.is_jump())
+#   || asm_lines.any(|line| line.is_ret())
+#   || asm_lines.any(|line| line.is_nop())
+#   || asm_lines.any(|line| line.is_push())
+#   || asm_lines.any(|line| line.is_pop())
+#   || asm_lines.any(|line| line.is_mov())
+# `
+# do:
+#   info("asm_lines helper example")

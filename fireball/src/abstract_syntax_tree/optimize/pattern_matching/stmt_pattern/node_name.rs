@@ -253,6 +253,19 @@ impl NodeName {
 // Fits type enum
 // ---------------------------------------------------------------------------
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CaptureRef(String);
+
+impl CaptureRef {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FitsTypeName {
     Int8,
@@ -265,5 +278,5 @@ pub enum FitsTypeName {
 #[derive(Debug, Clone)]
 pub enum FitsTarget {
     TypeName(FitsTypeName),
-    Capture(String),
+    Capture(CaptureRef),
 }
