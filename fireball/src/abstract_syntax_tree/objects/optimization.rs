@@ -32,6 +32,9 @@ pub struct AstOptimizationConfig {
     pub name_recovery: bool,
     pub auto_comment: bool,
     pub early_return_normalization: bool,
+    pub anti_debug_ast_suppression: bool,
+    pub logging_suppression: bool,
+    pub static_guard_suppression: bool,
     pub security_scaffold_suppression: bool,
     pub max_pass_iterations: usize,
     /// When true, use the original embedded Rust implementations instead of
@@ -103,6 +106,9 @@ impl AstOptimizationConfig {
         name_recovery: true,
         auto_comment: true,
         early_return_normalization: true,
+        anti_debug_ast_suppression: false,
+        logging_suppression: false,
+        static_guard_suppression: false,
         security_scaffold_suppression: true,
         max_pass_iterations: 3,
         use_embedded_passes: false,
@@ -138,6 +144,9 @@ impl AstOptimizationConfig {
         name_recovery: true,
         auto_comment: true,
         early_return_normalization: true,
+        anti_debug_ast_suppression: true,
+        logging_suppression: true,
+        static_guard_suppression: true,
         security_scaffold_suppression: true,
         max_pass_iterations: 3,
         use_embedded_passes: false,
@@ -173,6 +182,9 @@ impl AstOptimizationConfig {
         name_recovery: false,
         auto_comment: false,
         early_return_normalization: false,
+        anti_debug_ast_suppression: false,
+        logging_suppression: false,
+        static_guard_suppression: false,
         security_scaffold_suppression: false,
         max_pass_iterations: 1,
         use_embedded_passes: false,
@@ -313,6 +325,18 @@ impl AstOptimizationConfig {
     }
     pub fn early_return_normalization(mut self, value: bool) -> Self {
         self.early_return_normalization = value;
+        self
+    }
+    pub fn anti_debug_ast_suppression(mut self, value: bool) -> Self {
+        self.anti_debug_ast_suppression = value;
+        self
+    }
+    pub fn logging_suppression(mut self, value: bool) -> Self {
+        self.logging_suppression = value;
+        self
+    }
+    pub fn static_guard_suppression(mut self, value: bool) -> Self {
+        self.static_guard_suppression = value;
         self
     }
     pub fn security_scaffold_suppression(mut self, value: bool) -> Self {

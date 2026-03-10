@@ -496,6 +496,9 @@ impl Ast {
                     || config.do_while_recovery
                     || config.clamp_recovery
                     || config.loop_cleanup
+                    || config.anti_debug_ast_suppression
+                    || config.logging_suppression
+                    || config.static_guard_suppression
                     || config.security_scaffold_suppression
                 {
                     if config.use_embedded_passes {
@@ -533,6 +536,27 @@ impl Ast {
                             }
                             if config.loop_cleanup {
                                 pattern_matching::embedded::cleanup::after_iteration::loop_cleanup::cleanup_loops(
+                                    &mut ast,
+                                    function_id,
+                                    to_version,
+                                )?;
+                            }
+                            if config.anti_debug_ast_suppression {
+                                pattern_matching::embedded::suppression::after_iteration::anti_debug_ast_suppression::suppress_anti_debug_ast(
+                                    &mut ast,
+                                    function_id,
+                                    to_version,
+                                )?;
+                            }
+                            if config.logging_suppression {
+                                pattern_matching::embedded::suppression::after_iteration::logging_suppression::suppress_logging(
+                                    &mut ast,
+                                    function_id,
+                                    to_version,
+                                )?;
+                            }
+                            if config.static_guard_suppression {
+                                pattern_matching::embedded::suppression::after_iteration::static_guard_suppression::suppress_static_guards(
                                     &mut ast,
                                     function_id,
                                     to_version,
@@ -584,6 +608,30 @@ impl Ast {
                             pats.push(
                                 pattern_matching::AstPattern::predefined_pattern("loop-cleanup.fb")
                                     .unwrap(),
+                            );
+                        }
+                        if config.anti_debug_ast_suppression {
+                            pats.push(
+                                pattern_matching::AstPattern::predefined_pattern(
+                                    "anti-debug-ast-suppression.fb",
+                                )
+                                .unwrap(),
+                            );
+                        }
+                        if config.logging_suppression {
+                            pats.push(
+                                pattern_matching::AstPattern::predefined_pattern(
+                                    "logging-suppression.fb",
+                                )
+                                .unwrap(),
+                            );
+                        }
+                        if config.static_guard_suppression {
+                            pats.push(
+                                pattern_matching::AstPattern::predefined_pattern(
+                                    "static-guard-suppression.fb",
+                                )
+                                .unwrap(),
                             );
                         }
                         if config.security_scaffold_suppression {

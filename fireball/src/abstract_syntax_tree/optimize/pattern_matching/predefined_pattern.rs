@@ -81,6 +81,13 @@ const PREDEFINED_SAFESTACK_SUPPRESSION_FB: &str = include_str!(
 const PREDEFINED_STACK_CLASH_SUPPRESSION_FB: &str = include_str!(
     "../../../../../patterns/suppression/before-ir-analyzation/stack-clash-suppression.fb"
 );
+const PREDEFINED_ANTI_DEBUG_AST_SUPPRESSION_FB: &str = include_str!(
+    "../../../../../patterns/suppression/after-iteration/anti-debug-ast-suppression.fb"
+);
+const PREDEFINED_LOGGING_SUPPRESSION_FB: &str =
+    include_str!("../../../../../patterns/suppression/after-iteration/logging-suppression.fb");
+const PREDEFINED_STATIC_GUARD_SUPPRESSION_FB: &str =
+    include_str!("../../../../../patterns/suppression/after-iteration/static-guard-suppression.fb");
 const PREDEFINED_SECURITY_SCAFFOLD_SUPPRESSION_FB: &str = include_str!(
     "../../../../../patterns/suppression/after-iteration/security-scaffold-suppression.fb"
 );
@@ -221,6 +228,18 @@ pub(super) fn predefined_patterns() -> Vec<AstPattern> {
         AstPattern::from_predefined_include(
             "stack-clash-suppression.fb",
             PREDEFINED_STACK_CLASH_SUPPRESSION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "anti-debug-ast-suppression.fb",
+            PREDEFINED_ANTI_DEBUG_AST_SUPPRESSION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "logging-suppression.fb",
+            PREDEFINED_LOGGING_SUPPRESSION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "static-guard-suppression.fb",
+            PREDEFINED_STATIC_GUARD_SUPPRESSION_FB,
         ),
         AstPattern::from_predefined_include(
             "security-scaffold-suppression.fb",
@@ -402,6 +421,18 @@ pub(super) fn predefined_pattern(name: &str) -> Option<AstPattern> {
         "stack-clash-suppression.fb" => Some(AstPattern::from_predefined_include(
             "stack-clash-suppression.fb",
             PREDEFINED_STACK_CLASH_SUPPRESSION_FB,
+        )),
+        "anti-debug-ast-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "anti-debug-ast-suppression.fb",
+            PREDEFINED_ANTI_DEBUG_AST_SUPPRESSION_FB,
+        )),
+        "logging-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "logging-suppression.fb",
+            PREDEFINED_LOGGING_SUPPRESSION_FB,
+        )),
+        "static-guard-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "static-guard-suppression.fb",
+            PREDEFINED_STATIC_GUARD_SUPPRESSION_FB,
         )),
         "security-scaffold-suppression.fb" => Some(AstPattern::from_predefined_include(
             "security-scaffold-suppression.fb",

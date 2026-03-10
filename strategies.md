@@ -272,7 +272,8 @@
 - [ ] Reference-count pattern recognition — Detect AddRef/Release-style idioms and annotate ownership semantics.
 - [ ] RAII shape recovery — Reconstruct destructor-driven cleanup patterns from C++ unwinding/cleanup code.
   > C++ 소멸자 패턴 분석 필요
-- [ ] Static-local guard detection — Detect thread-safe static initialization guards and de-noise them.
+- [~] Static-local guard detection — Detect thread-safe static initialization guards and de-noise them. [implemented as .fb pattern and embedded Rust pass]
+  > after-iteration static-guard call suppression is implemented; broader static-local initialization analysis remains unimplemented
 - [ ] Coroutine state machine recovery — Identify compiler-generated coroutine frames and render as state-based logic.
   > 코루틴 상태 머신 분석 필요
 - [ ] Async/await frame recovery — Detect async state machines (where applicable) and present as structured states.
@@ -342,7 +343,8 @@
   > 런타임 힙 분석 필요
 - [ ] API-hook based target capture — Capture indirect call/jump targets at runtime to refine static CFG/callgraph.
   > 런타임 후킹 필요
-- [ ] Anti-debug/anti-VM spotting — Detect common checks and annotate them as environment/analysis defenses. [comment-only removed]
+- [~] Anti-debug/anti-VM spotting — Detect common checks and annotate them as environment/analysis defenses. [implemented as .fb pattern and embedded Rust pass]
+  > after-iteration anti-debug call suppression is implemented; broader anti-VM/environment-check spotting remains unimplemented
 - [ ] Timing-check classification — Identify high-resolution timer checks and treat them as anti-analysis scaffolding. [comment-only removed]
 - [ ] Decompression routine detection — Detect inflate/LZ-like loops and label them to reduce noise in reverse engineering. [comment-only removed]
 - [ ] Config/string xref mining — Extract likely config keys/paths/URLs by xref patterns and usage context. [comment-only removed]
@@ -640,7 +642,8 @@
   > 고급 휴리스틱 프레임워크 필요 — 현재 인프라 부족
 - [ ] Error-code convention inference — Detect 0/-1/errno-style conventions and label return types/paths accordingly. [comment-only removed]
 - [x] Assertion pattern recovery — Recognize if(!cond) abort() or trap patterns and emit assert(cond)-like constructs. [implemented as .fb pattern and embedded Rust pass]
-- [ ] Logging/telemetry scaffolding de-noising — Collapse repeated logging macros/wrappers into concise calls with inferred formats. [comment-only removed]
+- [~] Logging/telemetry scaffolding de-noising — Collapse repeated logging macros/wrappers into concise calls with inferred formats. [implemented as .fb pattern and embedded Rust pass]
+  > known logging/telemetry call suppression is implemented; format inference and wrapper summarization remain unimplemented
 - [ ] Resource cleanup normalization — Detect multi-resource release patterns and synthesize a single cleanup block. [comment-only removed]
 - [ ] Interrupt/vector table recognition — For firmware, parse vector tables to discover handlers and true entrypoints.
   > 펌웨어/임베디드 전용 분석 필요
