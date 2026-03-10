@@ -19,6 +19,7 @@ use self::{
     rtti::RttiEntry,
 };
 use crate::core::{Address, Blocks, PreDefinedOffsets, Relations, Sections};
+use iceball::MachineArchitecture;
 use std::{
     pin::Pin,
     sync::{Arc, atomic::AtomicBool},
@@ -31,6 +32,8 @@ pub struct Pe {
     path: Option<String>,
     /// Binary data
     binary: Vec<u8>,
+    /// Detected instruction-set architecture for parsing and IR lowering.
+    architecture: MachineArchitecture,
     /// Capstone engine
     capstone: Pin<Box<capstone::Capstone>>,
 

@@ -170,7 +170,7 @@ pub fn parse_editable_asm_to_ir_statements(text: &str) -> Result<Vec<IrStatement
         return Err("assembly mnemonic cannot be empty".to_string());
     }
 
-    let statement = iceball::parse_statement(iceball::Architecture::X64, mnemonic)
+    let statement = iceball::parse_statement(iceball::MachineArchitecture::X64, mnemonic)
         .map_err(|_| format!("unknown assembly mnemonic `{mnemonic}`"))?;
     let arguments = parse_asm_arguments(operands)
         .ok_or_else(|| format!("invalid assembly operands `{operands}`"))?;

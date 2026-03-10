@@ -2,10 +2,10 @@
 
 use super::{Pe, analysis, cfi_parser, dwarf_parser, pdb_parser, rtti};
 use crate::{
+    arch,
     core::{Address, Blocks, PreDefinedOffset, PreDefinedOffsets, Relations, Sections},
     prelude::*,
 };
-use capstone::prelude::BuildsCapstone;
 use std::sync::atomic::Ordering;
 
 impl Pe {
@@ -27,6 +27,7 @@ impl Pe {
         // Common objects used throughout
         let gl = goblin::pe::PE::parse(&binary)?;
 
+        let architecture = arch::from_pe_machine(gl.header.coff_header.machine, gl.is_64);
         let forwarded_exports = analysis::resolve_forwarded_exports(&gl);
 
         // Build section information for the entire binary
@@ -34,22 +35,7 @@ impl Pe {
         sections.build_all(&binary);
 
         // Create Capstone object
-        let capstone = {
-            // Check if it's 86x64 based on the binary
-            let is_86 = !gl.is_64;
-
-            // Create Capstone object
-            let capstone = capstone::Capstone::new()
-                .x86()
-                .mode(if is_86 {
-                    capstone::arch::x86::ArchMode::Mode32
-                } else {
-                    capstone::arch::x86::ArchMode::Mode64
-                })
-                .build()?;
-
-            Box::pin(capstone)
-        };
+        let capstone = arch::build_capstone(architecture)?;
 
         let image_base = gl
             .header
@@ -221,6 +207,7 @@ impl Pe {
             entry: Address::from_virtual_address(&sections, gl.entry as u64),
             path,
             binary,
+            architecture,
             capstone,
             defined,
             sections,
@@ -240,6 +227,10 @@ impl Pe {
 
     pub fn entry(&self) -> &Address {
         &self.entry
+    }
+
+    pub(crate) fn architecture(&self) -> iceball::MachineArchitecture {
+        self.architecture
     }
 
     pub fn cancel_analysis(&self) {

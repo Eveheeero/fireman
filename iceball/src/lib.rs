@@ -1,10 +1,21 @@
+pub mod arm;
 pub mod x64;
+pub use arm::{ArmRegister, ArmStatement};
 pub use x64::{register::X64Register, statement::X64Statement};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Architecture {
+    Arm,
     X64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MachineArchitecture {
+    X86,
+    X64,
+    Arm,
+    Arm64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,6 +32,7 @@ pub struct Instruction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Statement {
+    Arm(ArmStatement),
     X64(X64Statement),
 }
 pub trait StatementInner {
@@ -64,6 +76,7 @@ pub enum AddressingOperator {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Register {
+    Arm(ArmRegister),
     X64(X64Register),
 }
 pub trait RegisterInner {}
@@ -93,21 +106,25 @@ impl Instruction {
 impl Statement {
     pub fn is_jcc(&self) -> bool {
         match self {
+            Statement::Arm(statement) => statement.is_jcc(),
             Statement::X64(statement) => statement.is_jcc(),
         }
     }
     pub fn is_jmp(&self) -> bool {
         match self {
+            Statement::Arm(statement) => statement.is_jmp(),
             Statement::X64(statement) => statement.is_jmp(),
         }
     }
     pub fn is_call(&self) -> bool {
         match self {
+            Statement::Arm(statement) => statement.is_call(),
             Statement::X64(statement) => statement.is_call(),
         }
     }
     pub fn is_ret(&self) -> bool {
         match self {
+            Statement::Arm(statement) => statement.is_ret(),
             Statement::X64(statement) => statement.is_ret(),
         }
     }
@@ -119,25 +136,28 @@ pub enum DisassembleError {
     Unknown,
     UnknownStatement,
     UnknownRegister,
+    UnsupportedArchitecture,
 }
 
 unsafe impl Send for Instruction {}
 unsafe impl Sync for Instruction {}
 
 pub fn parse_statement(
-    arch: Architecture,
+    arch: MachineArchitecture,
     mnemonic: impl AsRef<str>,
 ) -> Result<Statement, DisassembleError> {
     match arch {
-        Architecture::X64 => X64Statement::parse(mnemonic),
+        MachineArchitecture::X86 | MachineArchitecture::X64 => X64Statement::parse(mnemonic),
+        MachineArchitecture::Arm | MachineArchitecture::Arm64 => ArmStatement::parse(mnemonic),
     }
 }
 pub fn parse_argument(
-    arch: Architecture,
+    arch: MachineArchitecture,
     op: impl AsRef<str>,
 ) -> Result<Argument, DisassembleError> {
     match arch {
-        Architecture::X64 => x64::parse_argument(op),
+        MachineArchitecture::X86 | MachineArchitecture::X64 => x64::parse_argument(op),
+        MachineArchitecture::Arm | MachineArchitecture::Arm64 => arm::parse_argument(op),
     }
 }
 
@@ -162,6 +182,7 @@ impl std::fmt::Display for Instruction {
 impl std::fmt::Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Statement::Arm(statement) => write!(f, "{}", statement),
             Statement::X64(statement) => write!(f, "{}", statement),
         }
     }
@@ -178,6 +199,7 @@ impl std::fmt::Display for Argument {
 impl std::fmt::Display for Register {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Register::Arm(register) => write!(f, "{}", register),
             Register::X64(register) => write!(f, "{}", register),
         }
     }

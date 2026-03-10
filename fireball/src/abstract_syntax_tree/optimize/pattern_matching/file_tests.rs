@@ -42,7 +42,7 @@ fn parse_test_argument(op: &str) -> Option<iceball::Argument> {
     }
 
     fn try_parse(op: &str) -> Option<iceball::Argument> {
-        iceball::parse_argument(iceball::Architecture::X64, op).ok()
+        iceball::parse_argument(iceball::MachineArchitecture::X64, op).ok()
     }
     try_parse(op)
         .or_else(|| try_parse(&op.to_ascii_uppercase()))
@@ -57,7 +57,7 @@ fn parse_asm_ir_statement(asm: &str) -> IrStatement {
         .expect("asm text must include a mnemonic")
         .trim();
     let operands = parts.next().unwrap_or_default().trim();
-    let statement = iceball::parse_statement(iceball::Architecture::X64, mnemonic)
+    let statement = iceball::parse_statement(iceball::MachineArchitecture::X64, mnemonic)
         .expect("mnemonic must parse in tests");
     let arguments = if operands.is_empty() {
         Vec::new()

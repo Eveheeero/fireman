@@ -13,6 +13,7 @@ impl Pe {
         offset: &Address,
         size: u64,
     ) -> Result<Vec<Instruction>, DisassembleError> {
+        let parser_architecture = self.architecture();
         let file_offset = if let Some(file_offset) = offset.get_file_offset() {
             file_offset
         } else {
@@ -38,7 +39,7 @@ impl Pe {
                 return Err(DisassembleError::CapstoneFailed(e.to_string()));
             }
         };
-        Ok(self.transform_instructions(insns))
+        Ok(self.transform_instructions(parser_architecture, insns))
     }
 
     /// Parses the specified number of assembly instructions.
@@ -47,6 +48,7 @@ impl Pe {
         offset: &Address,
         count: usize,
     ) -> Result<Vec<Instruction>, DisassembleError> {
+        let parser_architecture = self.architecture();
         let file_offset = if let Some(file_offset) = offset.get_file_offset() {
             file_offset
         } else {
@@ -73,22 +75,26 @@ impl Pe {
                 return Err(DisassembleError::CapstoneFailed(e.to_string()));
             }
         };
-        Ok(self.transform_instructions(insns))
+        Ok(self.transform_instructions(parser_architecture, insns))
     }
 
-    fn transform_instructions(&self, input: capstone::Instructions) -> Vec<Instruction> {
+    fn transform_instructions(
+        &self,
+        parser_architecture: iceball::MachineArchitecture,
+        input: capstone::Instructions,
+    ) -> Vec<Instruction> {
         let mut result = Vec::new();
         for item in input.iter() {
             let mnemonic = item.mnemonic().unwrap();
             let op = item.op_str();
-            let statement = iceball::parse_statement(iceball::Architecture::X64, mnemonic);
+            let statement = iceball::parse_statement(parser_architecture, mnemonic);
             let mut arguments = Vec::new();
             if op.is_some() {
-                for op in op.unwrap().split(", ") {
+                for op in split_operands(op.unwrap()) {
                     if op.is_empty() {
                         continue;
                     }
-                    if let Some(argument) = Self::parse_argument_lossy(op) {
+                    if let Some(argument) = Self::parse_argument_lossy(parser_architecture, &op) {
                         arguments.push(argument);
                     } else {
                         warn!(
@@ -113,8 +119,11 @@ impl Pe {
         result
     }
 
-    fn parse_argument_lossy(op: &str) -> Option<iceball::Argument> {
-        if let Some(arg) = Self::parse_argument_safe(op) {
+    fn parse_argument_lossy(
+        parser_architecture: iceball::MachineArchitecture,
+        op: &str,
+    ) -> Option<iceball::Argument> {
+        if let Some(arg) = Self::parse_argument_safe(parser_architecture, op) {
             return Some(arg);
         }
 
@@ -133,7 +142,7 @@ impl Pe {
         .find_map(|prefix| lowered.strip_prefix(prefix).map(str::trim));
 
         if let Some(candidate) = stripped
-            && let Some(arg) = Self::parse_argument_safe(candidate)
+            && let Some(arg) = Self::parse_argument_safe(parser_architecture, candidate)
         {
             return Some(arg);
         }
@@ -141,9 +150,64 @@ impl Pe {
         None
     }
 
-    fn parse_argument_safe(op: &str) -> Option<iceball::Argument> {
-        std::panic::catch_unwind(|| iceball::parse_argument(iceball::Architecture::X64, op))
+    fn parse_argument_safe(
+        parser_architecture: iceball::MachineArchitecture,
+        op: &str,
+    ) -> Option<iceball::Argument> {
+        std::panic::catch_unwind(|| iceball::parse_argument(parser_architecture, op))
             .ok()
             .and_then(Result::ok)
     }
+}
+
+fn split_operands(op: &str) -> Vec<String> {
+    let mut result = Vec::new();
+    let mut current = String::new();
+    let mut bracket_depth = 0usize;
+    let mut brace_depth = 0usize;
+    let mut paren_depth = 0usize;
+
+    for ch in op.chars() {
+        match ch {
+            '[' => {
+                bracket_depth += 1;
+                current.push(ch);
+            }
+            ']' => {
+                bracket_depth = bracket_depth.saturating_sub(1);
+                current.push(ch);
+            }
+            '{' => {
+                brace_depth += 1;
+                current.push(ch);
+            }
+            '}' => {
+                brace_depth = brace_depth.saturating_sub(1);
+                current.push(ch);
+            }
+            '(' => {
+                paren_depth += 1;
+                current.push(ch);
+            }
+            ')' => {
+                paren_depth = paren_depth.saturating_sub(1);
+                current.push(ch);
+            }
+            ',' if bracket_depth == 0 && brace_depth == 0 && paren_depth == 0 => {
+                let operand = current.trim();
+                if !operand.is_empty() {
+                    result.push(operand.to_string());
+                }
+                current.clear();
+            }
+            _ => current.push(ch),
+        }
+    }
+
+    let operand = current.trim();
+    if !operand.is_empty() {
+        result.push(operand.to_string());
+    }
+
+    result
 }

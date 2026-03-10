@@ -141,7 +141,7 @@ pub(super) fn parse_asm_statement(text: &str) -> Option<IrStatement> {
     let mnemonic = parts.next()?.trim();
     let operands = parts.next().unwrap_or_default().trim();
 
-    let statement = iceball::parse_statement(iceball::Architecture::X64, mnemonic).ok()?;
+    let statement = iceball::parse_statement(iceball::MachineArchitecture::X64, mnemonic).ok()?;
     let arguments = parse_asm_arguments(operands)?;
     let instruction = crate::core::Instruction {
         address: 0,
@@ -200,7 +200,7 @@ pub(super) fn parse_asm_argument_lossy(op: &str) -> Option<iceball::Argument> {
 
 pub(super) fn parse_asm_argument_safe(op: &str) -> Option<iceball::Argument> {
     fn try_parse(op: &str) -> Option<iceball::Argument> {
-        std::panic::catch_unwind(|| iceball::parse_argument(iceball::Architecture::X64, op))
+        std::panic::catch_unwind(|| iceball::parse_argument(iceball::MachineArchitecture::X64, op))
             .ok()
             .and_then(Result::ok)
     }
