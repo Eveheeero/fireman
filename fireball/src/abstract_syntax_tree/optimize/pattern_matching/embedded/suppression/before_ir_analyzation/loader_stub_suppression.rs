@@ -1,8 +1,11 @@
-//! PLT resolver stub suppression.
+//! MSVC/CRT loader stub suppression.
 //!
-//! Removes assembly lines containing dynamic linker resolution stubs:
-//!   - _dl_runtime_resolve
-//!   - _dl_fixup
+//! Removes assembly lines containing CRT initialization and security cookie
+//! routines that clutter decompiled output:
+//!   - __security_init_cookie
+//!   - _initterm
+//!   - __scrt_common_main
+//!   - _CRT_INIT
 
 use crate::{
     abstract_syntax_tree::{
@@ -11,9 +14,14 @@ use crate::{
     prelude::DecompileError,
 };
 
-const PLT_RESOLVER_SYMBOLS: &[&str] = &["_dl_runtime_resolve", "_dl_fixup"];
+const LOADER_STUB_SYMBOLS: &[&str] = &[
+    "__security_init_cookie",
+    "_initterm",
+    "__scrt_common_main",
+    "_CRT_INIT",
+];
 
-pub(crate) fn suppress_plt_resolver(
+pub(crate) fn suppress_loader_stubs(
     ast: &mut Ast,
     function_id: AstFunctionId,
     function_version: AstFunctionVersion,
@@ -30,7 +38,7 @@ pub(crate) fn suppress_plt_resolver(
 
     body.retain(|stmt| {
         if let AstStatement::Assembly(asm_text) = &stmt.statement {
-            !PLT_RESOLVER_SYMBOLS.iter().any(|sym| asm_text.contains(sym))
+            !LOADER_STUB_SYMBOLS.iter().any(|sym| asm_text.contains(sym))
         } else {
             true
         }

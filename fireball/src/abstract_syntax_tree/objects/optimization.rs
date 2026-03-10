@@ -14,8 +14,18 @@ pub struct AstOptimizationConfig {
     pub loop_analyzation: bool,
     pub copy_propagation: bool,
     pub expression_inlining: bool,
+    pub operator_canonicalization: bool,
+    pub magic_division_recovery: bool,
+    pub identity_simplification: bool,
+    pub bit_trick_recognition: bool,
+    pub cast_minimization: bool,
     pub ternary_recovery: bool,
     pub boolean_recovery: bool,
+    pub assertion_recovery: bool,
+    pub do_while_recovery: bool,
+    pub clamp_recovery: bool,
+    pub loop_cleanup: bool,
+    pub if_conversion_reversal: bool,
     pub switch_reconstruction: bool,
     pub lifetime_scoping: bool,
     pub signedness_inference: bool,
@@ -74,8 +84,18 @@ impl AstOptimizationConfig {
         loop_analyzation: true,
         copy_propagation: true,
         expression_inlining: true,
+        operator_canonicalization: true,
+        magic_division_recovery: true,
+        identity_simplification: true,
+        bit_trick_recognition: true,
+        cast_minimization: true,
         ternary_recovery: true,
         boolean_recovery: true,
+        assertion_recovery: true,
+        do_while_recovery: true,
+        clamp_recovery: true,
+        loop_cleanup: true,
+        if_conversion_reversal: true,
         switch_reconstruction: true,
         lifetime_scoping: true,
         signedness_inference: true,
@@ -98,8 +118,18 @@ impl AstOptimizationConfig {
         loop_analyzation: true,
         copy_propagation: true,
         expression_inlining: true,
+        operator_canonicalization: true,
+        magic_division_recovery: true,
+        identity_simplification: true,
+        bit_trick_recognition: true,
+        cast_minimization: true,
         ternary_recovery: true,
         boolean_recovery: true,
+        assertion_recovery: true,
+        do_while_recovery: true,
+        clamp_recovery: true,
+        loop_cleanup: true,
+        if_conversion_reversal: true,
         switch_reconstruction: true,
         lifetime_scoping: true,
         signedness_inference: true,
@@ -122,8 +152,18 @@ impl AstOptimizationConfig {
         loop_analyzation: false,
         copy_propagation: false,
         expression_inlining: false,
+        operator_canonicalization: false,
+        magic_division_recovery: false,
+        identity_simplification: false,
+        bit_trick_recognition: false,
+        cast_minimization: false,
         ternary_recovery: false,
         boolean_recovery: false,
+        assertion_recovery: false,
+        do_while_recovery: false,
+        clamp_recovery: false,
+        loop_cleanup: false,
+        if_conversion_reversal: false,
         switch_reconstruction: false,
         lifetime_scoping: false,
         signedness_inference: false,
@@ -148,6 +188,14 @@ impl AstOptimizationConfig {
     }
     pub fn constant_folding(mut self, value: bool) -> Self {
         self.constant_folding = value;
+        if value {
+            self.operator_canonicalization = true;
+            self.magic_division_recovery = true;
+            self.identity_simplification = true;
+            self.bit_trick_recognition = true;
+            self.cast_minimization = true;
+            self.if_conversion_reversal = true;
+        }
         self
     }
     pub fn control_flow_cleanup(mut self, value: bool) -> Self {
@@ -185,12 +233,58 @@ impl AstOptimizationConfig {
         self.expression_inlining = value;
         self
     }
+    pub fn operator_canonicalization(mut self, value: bool) -> Self {
+        self.operator_canonicalization = value;
+        self
+    }
+    pub fn magic_division_recovery(mut self, value: bool) -> Self {
+        self.magic_division_recovery = value;
+        self
+    }
+    pub fn identity_simplification(mut self, value: bool) -> Self {
+        self.identity_simplification = value;
+        self
+    }
+    pub fn bit_trick_recognition(mut self, value: bool) -> Self {
+        self.bit_trick_recognition = value;
+        self
+    }
+    pub fn cast_minimization(mut self, value: bool) -> Self {
+        self.cast_minimization = value;
+        self
+    }
     pub fn ternary_recovery(mut self, value: bool) -> Self {
         self.ternary_recovery = value;
+        if value {
+            self.assertion_recovery = true;
+            self.do_while_recovery = true;
+            self.clamp_recovery = true;
+            self.loop_cleanup = true;
+        }
         self
     }
     pub fn boolean_recovery(mut self, value: bool) -> Self {
         self.boolean_recovery = value;
+        self
+    }
+    pub fn assertion_recovery(mut self, value: bool) -> Self {
+        self.assertion_recovery = value;
+        self
+    }
+    pub fn do_while_recovery(mut self, value: bool) -> Self {
+        self.do_while_recovery = value;
+        self
+    }
+    pub fn clamp_recovery(mut self, value: bool) -> Self {
+        self.clamp_recovery = value;
+        self
+    }
+    pub fn loop_cleanup(mut self, value: bool) -> Self {
+        self.loop_cleanup = value;
+        self
+    }
+    pub fn if_conversion_reversal(mut self, value: bool) -> Self {
+        self.if_conversion_reversal = value;
         self
     }
     pub fn switch_reconstruction(mut self, value: bool) -> Self {

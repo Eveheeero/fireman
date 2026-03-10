@@ -206,26 +206,36 @@ impl Ast {
             || config.dead_store_elimination
             || config.copy_propagation
             || config.expression_inlining
+            || config.operator_canonicalization
+            || config.magic_division_recovery
+            || config.identity_simplification
+            || config.bit_trick_recognition
+            || config.cast_minimization
             || config.ternary_recovery
-            || config.boolean_recovery;
+            || config.boolean_recovery
+            || config.assertion_recovery
+            || config.do_while_recovery
+            || config.clamp_recovery
+            || config.loop_cleanup
+            || config.if_conversion_reversal;
         let max_pass_iterations = config.max_pass_iterations.max(1);
         if run_iterative_passes {
             for _ in 0..max_pass_iterations {
                 let before = snapshot_optimized_functions(&ast, &versions);
 
                 // Operator canonicalization.
-                if config.use_embedded_passes {
+                if config.operator_canonicalization && config.use_embedded_passes {
                     for (function_id, to_version) in versions.iter().copied() {
                         if !has_function_version(&ast, function_id, to_version) {
                             continue;
                         }
-                        pattern_matching::embedded::operator_canonicalization::canonicalize_operators(
+                        pattern_matching::embedded::optimization::after_iteration::operator_canonicalization::canonicalize_operators(
                             &mut ast,
                             function_id,
                             to_version,
                         )?;
                     }
-                } else {
+                } else if config.operator_canonicalization {
                     let op_canon_pat = pattern_matching::AstPattern::predefined_pattern(
                         "operator-canonicalization.fb",
                     )
@@ -246,18 +256,18 @@ impl Ast {
 
                 // Magic-constant division recovery: before constant folding so
                 // the new Div expressions can be further simplified.
-                if config.use_embedded_passes {
+                if config.magic_division_recovery && config.use_embedded_passes {
                     for (function_id, to_version) in versions.iter().copied() {
                         if !has_function_version(&ast, function_id, to_version) {
                             continue;
                         }
-                        pattern_matching::embedded::magic_division_recovery::recover_magic_divisions(
+                        pattern_matching::embedded::recognition::after_iteration::magic_division_recovery::recover_magic_divisions(
                             &mut ast,
                             function_id,
                             to_version,
                         )?;
                     }
-                } else {
+                } else if config.magic_division_recovery {
                     let magic_div_pat = pattern_matching::AstPattern::predefined_pattern(
                         "magic-division-recovery.fb",
                     )
@@ -389,7 +399,7 @@ impl Ast {
                             if !has_function_version(&ast, function_id, to_version) {
                                 continue;
                             }
-                            pattern_matching::embedded::control_flow_cleanup::cleanup_tail_calls_and_branches(
+                            pattern_matching::embedded::cleanup::after_iteration::control_flow_cleanup::cleanup_tail_calls_and_branches(
                                 &mut ast,
                                 function_id,
                                 to_version,
@@ -424,7 +434,7 @@ impl Ast {
                             if !has_function_version(&ast, function_id, to_version) {
                                 continue;
                             }
-                            pattern_matching::embedded::control_flow_cleanup::merge_same_condition_ifs(
+                            pattern_matching::embedded::cleanup::after_iteration::control_flow_cleanup::merge_same_condition_ifs(
                                 &mut ast,
                                 function_id,
                                 to_version,
@@ -456,7 +466,7 @@ impl Ast {
                             if !has_function_version(&ast, function_id, to_version) {
                                 continue;
                             }
-                            pattern_matching::embedded::boolean_recovery::recover_boolean(
+                            pattern_matching::embedded::optimization::after_iteration::boolean_recovery::recover_boolean(
                                 &mut ast,
                                 function_id,
                                 to_version,
@@ -481,90 +491,122 @@ impl Ast {
                     }
                 }
 
-                if config.ternary_recovery {
+                if config.ternary_recovery
+                    || config.assertion_recovery
+                    || config.do_while_recovery
+                    || config.clamp_recovery
+                    || config.loop_cleanup
+                {
                     if config.use_embedded_passes {
                         for (function_id, to_version) in versions.iter().copied() {
                             if !has_function_version(&ast, function_id, to_version) {
                                 continue;
                             }
-                            pattern_matching::embedded::ternary_recovery::recover_ternary(
-                                &mut ast,
-                                function_id,
-                                to_version,
-                            )?;
-                            pattern_matching::embedded::assertion_recovery::recover_assertions(
-                                &mut ast,
-                                function_id,
-                                to_version,
-                            )?;
-                            pattern_matching::embedded::do_while_recovery::recover_do_while(
-                                &mut ast,
-                                function_id,
-                                to_version,
-                            )?;
-                            pattern_matching::embedded::clamp_recovery::recover_clamp(
-                                &mut ast,
-                                function_id,
-                                to_version,
-                            )?;
-                            pattern_matching::embedded::loop_cleanup::cleanup_loops(
-                                &mut ast,
-                                function_id,
-                                to_version,
-                            )?;
+                            if config.ternary_recovery {
+                                pattern_matching::embedded::recovery::after_iteration::ternary_recovery::recover_ternary(
+                                    &mut ast,
+                                    function_id,
+                                    to_version,
+                                )?;
+                            }
+                            if config.assertion_recovery {
+                                pattern_matching::embedded::optimization::after_iteration::assertion_recovery::recover_assertions(
+                                    &mut ast,
+                                    function_id,
+                                    to_version,
+                                )?;
+                            }
+                            if config.do_while_recovery {
+                                pattern_matching::embedded::recovery::after_iteration::do_while_recovery::recover_do_while(
+                                    &mut ast,
+                                    function_id,
+                                    to_version,
+                                )?;
+                            }
+                            if config.clamp_recovery {
+                                pattern_matching::embedded::optimization::after_iteration::clamp_recovery::recover_clamp(
+                                    &mut ast,
+                                    function_id,
+                                    to_version,
+                                )?;
+                            }
+                            if config.loop_cleanup {
+                                pattern_matching::embedded::cleanup::after_iteration::loop_cleanup::cleanup_loops(
+                                    &mut ast,
+                                    function_id,
+                                    to_version,
+                                )?;
+                            }
                         }
                     } else {
-                        let ternary_pat =
-                            pattern_matching::AstPattern::predefined_pattern("ternary-recovery.fb")
-                                .unwrap();
-                        let assertion_pat = pattern_matching::AstPattern::predefined_pattern(
-                            "assertion-recovery.fb",
-                        )
-                        .unwrap();
-                        let do_while_pat = pattern_matching::AstPattern::predefined_pattern(
-                            "do-while-recovery.fb",
-                        )
-                        .unwrap();
-                        let clamp_pat =
-                            pattern_matching::AstPattern::predefined_pattern("clamp-recovery.fb")
-                                .unwrap();
-                        let loop_cleanup_pat =
-                            pattern_matching::AstPattern::predefined_pattern("loop-cleanup.fb")
-                                .unwrap();
-                        let pats = vec![
-                            ternary_pat,
-                            assertion_pat,
-                            do_while_pat,
-                            clamp_pat,
-                            loop_cleanup_pat,
-                        ];
-                        for (function_id, to_version) in versions.iter().copied() {
-                            if !has_function_version(&ast, function_id, to_version) {
-                                continue;
+                        let mut pats = Vec::new();
+                        if config.ternary_recovery {
+                            pats.push(
+                                pattern_matching::AstPattern::predefined_pattern(
+                                    "ternary-recovery.fb",
+                                )
+                                .unwrap(),
+                            );
+                        }
+                        if config.assertion_recovery {
+                            pats.push(
+                                pattern_matching::AstPattern::predefined_pattern(
+                                    "assertion-recovery.fb",
+                                )
+                                .unwrap(),
+                            );
+                        }
+                        if config.do_while_recovery {
+                            pats.push(
+                                pattern_matching::AstPattern::predefined_pattern(
+                                    "do-while-recovery.fb",
+                                )
+                                .unwrap(),
+                            );
+                        }
+                        if config.clamp_recovery {
+                            pats.push(
+                                pattern_matching::AstPattern::predefined_pattern(
+                                    "clamp-recovery.fb",
+                                )
+                                .unwrap(),
+                            );
+                        }
+                        if config.loop_cleanup {
+                            pats.push(
+                                pattern_matching::AstPattern::predefined_pattern("loop-cleanup.fb")
+                                    .unwrap(),
+                            );
+                        }
+                        if !pats.is_empty() {
+                            for (function_id, to_version) in versions.iter().copied() {
+                                if !has_function_version(&ast, function_id, to_version) {
+                                    continue;
+                                }
+                                pattern_matching::apply_patterns(
+                                    &mut ast,
+                                    function_id,
+                                    to_version,
+                                    &pats,
+                                    pattern_matching::AstPatternApplyPhase::AfterIteration,
+                                )?;
                             }
-                            pattern_matching::apply_patterns(
-                                &mut ast,
-                                function_id,
-                                to_version,
-                                &pats,
-                                pattern_matching::AstPatternApplyPhase::AfterIteration,
-                            )?;
                         }
                     }
                 }
 
-                if config.use_embedded_passes {
+                if config.if_conversion_reversal && config.use_embedded_passes {
                     for (function_id, to_version) in versions.iter().copied() {
                         if !has_function_version(&ast, function_id, to_version) {
                             continue;
                         }
-                        pattern_matching::embedded::if_conversion_reversal::reverse_if_conversion(
+                        pattern_matching::embedded::recovery::after_iteration::if_conversion_reversal::reverse_if_conversion(
                             &mut ast,
                             function_id,
                             to_version,
                         )?;
                     }
-                } else {
+                } else if config.if_conversion_reversal {
                     let if_conv_pat = pattern_matching::AstPattern::predefined_pattern(
                         "if-conversion-reversal.fb",
                     )
@@ -606,7 +648,7 @@ impl Ast {
                 // Identity simplification (x+0→x, x*1→x, etc.) via predefined pattern.
                 // Runs before bit trick recognition so that simplified expressions
                 // feed into rotation/strength-reduction detection.
-                {
+                if config.identity_simplification {
                     let id_simp_pat = pattern_matching::AstPattern::predefined_pattern(
                         "identity-simplification.fb",
                     )
@@ -626,31 +668,36 @@ impl Ast {
                     }
                 }
 
-                // Bit trick recognition runs unconditionally (no config toggle yet).
-                // It is cheap and should run after constant folding has simplified
-                // shift amounts into literals. Identity ops already extracted to .fb above.
-                for (function_id, to_version) in versions.iter().copied() {
-                    if !has_function_version(&ast, function_id, to_version) {
-                        continue;
-                    }
-                    bit_trick_recognition::recognize_bit_tricks(&mut ast, function_id, to_version)?;
-                }
-
-                // Rotation recovery and strength reduction: rewrite shift/or
-                // rotation idioms and shift/add strength-reduction back to
-                // high-level rotate/multiply operations.
-                if config.use_embedded_passes {
+                // Bit trick recognition should run after constant folding has
+                // simplified shift amounts into literals.
+                if config.bit_trick_recognition {
                     for (function_id, to_version) in versions.iter().copied() {
                         if !has_function_version(&ast, function_id, to_version) {
                             continue;
                         }
-                        pattern_matching::embedded::bit_trick_recognition::recognize_rotation_and_strength_reduction(
+                        bit_trick_recognition::recognize_bit_tricks(
                             &mut ast,
                             function_id,
                             to_version,
                         )?;
                     }
-                } else {
+                }
+
+                // Rotation recovery and strength reduction: rewrite shift/or
+                // rotation idioms and shift/add strength-reduction back to
+                // high-level rotate/multiply operations.
+                if config.bit_trick_recognition && config.use_embedded_passes {
+                    for (function_id, to_version) in versions.iter().copied() {
+                        if !has_function_version(&ast, function_id, to_version) {
+                            continue;
+                        }
+                        pattern_matching::embedded::recognition::after_iteration::bit_trick_recognition::recognize_rotation_and_strength_reduction(
+                            &mut ast,
+                            function_id,
+                            to_version,
+                        )?;
+                    }
+                } else if config.bit_trick_recognition {
                     let rotation_pat =
                         pattern_matching::AstPattern::predefined_pattern("rotation-recovery.fb")
                             .unwrap();
@@ -673,18 +720,18 @@ impl Ast {
                 }
 
                 // Cast minimization runs unconditionally.
-                if config.use_embedded_passes {
+                if config.cast_minimization && config.use_embedded_passes {
                     for (function_id, to_version) in versions.iter().copied() {
                         if !has_function_version(&ast, function_id, to_version) {
                             continue;
                         }
-                        pattern_matching::embedded::cast_minimization::minimize_casts(
+                        pattern_matching::embedded::optimization::after_iteration::cast_minimization::minimize_casts(
                             &mut ast,
                             function_id,
                             to_version,
                         )?;
                     }
-                } else {
+                } else if config.cast_minimization {
                     let cast_min_pattern =
                         pattern_matching::AstPattern::predefined_pattern("cast-minimization.fb");
                     if let Some(cast_min) = cast_min_pattern {
@@ -768,7 +815,7 @@ impl Ast {
                     if !has_function_version(&ast, function_id, to_version) {
                         continue;
                     }
-                    pattern_matching::embedded::early_return_normalization::normalize_early_returns(
+                    pattern_matching::embedded::optimization::after_optimization::early_return_normalization::normalize_early_returns(
                         &mut ast,
                         function_id,
                         to_version,
