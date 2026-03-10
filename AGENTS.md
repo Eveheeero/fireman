@@ -6,13 +6,16 @@
 - Formatting uses `cargo +nightly fmt`
 - To avoid context overflow from voluminous logs, use regular expressions to filter and retrieve only the necessary segments for analysis.
 
-## Pattern Policy
+## `.fb` Pattern Policy
 
+- COMMENT ONLY ANALYZATION NOT ALLOWED. INLINE FUNCTION ONLY OR FLAG ONLY TOO.
 - Centralize predefined `.fb` pattern and script registration in `fireball/src/abstract_syntax_tree/optimize/pattern_matching.rs`.
-- Do not add optimizer-specific pattern matcher names or `do:` action names.
-- Do not add one-off script helpers as a substitute for generic `.fb` features.
+- Instead, rewrite IR or AST to human readable structure.
+- Wrtie `.fb` file with `DSL` in `pattern_matching` and `.rs` at `fireball::abstract_syntax_tree::optimize::pattern_matching::embedded` both.
+- You can use `rhai` script and can modify `.fb` DSL to make general methods.
 - If a rewrite cannot be expressed with the existing general pattern engine, keep it in Rust until a general-purpose pattern feature exists.
 - **Always** keep `patterns/examples/all_syntax.fb` up to date when adding or changing `.fb` DSL syntax. This file is the canonical reference for all supported directives.
+- Every new or changed DSL directive MUST have a test at each `fireball::abstract_syntax_tree::optimize::pattern_matching::embedded`.
 
 ## Structure Paths (fireball)
 
@@ -142,11 +145,6 @@
 
 ### AST Analyzation (AST Optimization) (`fireball/src/abstract_syntax_tree/optimize`)
 
-- NEVER WRITE "just auto commenting" analyzation, such as "annotate_expr ONLY" or "emit_comment ONLY".
-- Instead, rewrite AST to human readable structure.
-- Wrtie `.fb` file with `DSL` in `pattern_matching` and `.rs` at `fireball::abstract_syntax_tree::optimize::pattern_matching::embedded` both.
-- You can use `rhai` script and can modify `.fb` make general patterns and functions.
-
 - `AstPattern` - `fireball/src/abstract_syntax_tree/optimize/pattern_matching.rs`
 - `AstPatternOrigin` (enum) - `fireball/src/abstract_syntax_tree/optimize/pattern_matching.rs`
 - `AstPatternArgType` (enum) - `fireball/src/abstract_syntax_tree/optimize/pattern_matching.rs`
@@ -156,10 +154,9 @@
 - `mod.rs` — Core types: `AstPatternRule`, `AstPatternClauseGroup`, `AstPatternInBlock` (enum), `AstPatternOutAction` (enum), `AstPatternScript` (stores pre-compiled `rhai::AST`, no source text), `AstPatternAsmData`, `AstPatternAstData`, `AstPatternIrData`, `AstPatternRange`, `IgnoreCommentFilter` (enum), `ClearIgnoreTarget` (enum)
 - `apply.rs` — Execution engine: `AstPatternScriptContext` (holds `&[WrappedAstStatement]`, `&[IrStatement]`, `&[AstPatternNormalizedAsmLine]`), `AstPatternLoadedRule`, Rhai engine/scope setup, if/do script evaluation, ignore filter application, asm/ast/ir matching
 - `fb_parser.rs` — `.fb` DSL parser: `parse_pattern_file()`, `parse_rhai_script()`, all `if:`/`do:` directive parsing
-- `rhai_types.rs` — Rhai wrapper types: `RhaiAstStmt` (wraps `WrappedAstStatement`, exposes `kind()`, `origin()`, `is_*()`, `call_name()`, `comment_text()`, `body_count()`, `else_count()`, `contains_call_to()`, `has_operator()`, comment modulation, deep getters: `condition()`, `body()`, `else_body()`, `lhs()`, `rhs()`, `return_expr()`, `ir_stmt()`, `assembly_text()`, `goto_target()`, `exception_text()`), `RhaiIrStmt` (wraps `IrStatement`, exposes `kind()`, `is_*()`, deep getters: `from_data()`, `to_data()`, `size_str()`, `target()`, `condition_data()`, `true_branch()`, `false_branch()`, `exception_text()`), `RhaiIrData` (wraps `IrData`, exposes `kind()`, `is_*()`, `value()`, `register_name()`, `intrinsic_name()`, `inner()`, `operator()`, `is_unary()`, `is_binary()`, `arg()`, `arg1()`, `arg2()`), `RhaiAsmLine` (parsed asm line with mnemonic/operands). Global functions: `count_calls`, `count_assignments`, `count_comments`, `find_calls_to`, `is_arithmetic_op`, `is_comparison_op`, `is_bitwise_op`, `is_logical_op`
+- `rhai_types.rs` — Rhai wrapper types.
 - `stmt_pattern/` — PatTree matching: `parser.rs` (PatTree parser), `matcher.rs` (statement/expression matching), `construct.rs` (emit construction from PatTree), `predicate.rs` (where predicates)
 - `ir_parser.rs` — IR/asm text parsing for pattern conditions
-- `tests.rs` — **Mandatory** comprehensive tests for all .fb DSL syntax. Every new or changed DSL directive MUST have a corresponding test. Run `cargo test -p fireball --lib pattern_matching::tests`
 
 ### Utils / errors (`fireball/src/utils`)
 
