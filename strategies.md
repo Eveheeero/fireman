@@ -821,7 +821,8 @@
   > 런타임/동적 분석 필요 — 정적 분석만 가능
 - [ ] Input-guided deobfuscation — Use chosen inputs to drive through opaque predicates and confirm dead arms.
   > 난독화 해제 프레임워크 필요 — 현재 인프라 없음
-- [ ] Security-mitigation scaffold collapsing — Detect and condense mitigation glue (IBT landing pads, fence sequences) into annotations. [comment-only removed]
+- [~] Security-mitigation scaffold collapsing — Detect and condense mitigation glue (IBT landing pads, fence sequences) into annotations. [implemented as .fb pattern and embedded Rust pass]
+  > `__stack_chk_fail` / CFI slowpath call scaffolding suppression is implemented; broader IBT landing-pad and fence annotation remains unimplemented
 - [ ] Instrumentation signature catalogs — Recognize compiler-inserted probes/counters and fold into “instrumentation” nodes. [comment-only removed]
 - [ ] Sanitizer shadow-memory modeling — Treat ASan/TSan shadow checks as side-effect-free guards to simplify output. [comment-only removed]
 - [ ] Safe UB-free emission mode — Emit helper functions/macros to preserve machine semantics without C undefined behavior.

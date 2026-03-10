@@ -42,4 +42,26 @@ pub(crate) mod recovery {
     }
 }
 
+pub(crate) mod suppression {
+    pub(crate) mod after_iteration {
+        pub(crate) mod anti_debug_ast_suppression;
+        pub(crate) mod logging_suppression;
+        pub(crate) mod security_scaffold_suppression;
+        pub(crate) mod static_guard_suppression;
+    }
+
+    pub(crate) mod before_ir_analyzation {
+        pub(crate) mod alloca_suppression;
+        pub(crate) mod anti_debug_suppression;
+        pub(crate) mod atomic_fence_suppression;
+        pub(crate) mod bare_metal_startup_suppression;
+        pub(crate) mod loader_stub_suppression;
+        pub(crate) mod plt_resolver_suppression;
+        pub(crate) mod timing_check_suppression;
+        pub(crate) mod tls_access_suppression;
+        pub(crate) mod trampoline_suppression;
+        pub(crate) mod veneer_suppression;
+    }
+}
+
 pub(crate) mod test_utils;

@@ -32,6 +32,7 @@ pub struct AstOptimizationConfig {
     pub name_recovery: bool,
     pub auto_comment: bool,
     pub early_return_normalization: bool,
+    pub security_scaffold_suppression: bool,
     pub max_pass_iterations: usize,
     /// When true, use the original embedded Rust implementations instead of
     /// `.fb` pattern files for migrated passes
@@ -102,6 +103,7 @@ impl AstOptimizationConfig {
         name_recovery: true,
         auto_comment: true,
         early_return_normalization: true,
+        security_scaffold_suppression: true,
         max_pass_iterations: 3,
         use_embedded_passes: false,
     };
@@ -136,6 +138,7 @@ impl AstOptimizationConfig {
         name_recovery: true,
         auto_comment: true,
         early_return_normalization: true,
+        security_scaffold_suppression: true,
         max_pass_iterations: 3,
         use_embedded_passes: false,
     };
@@ -170,6 +173,7 @@ impl AstOptimizationConfig {
         name_recovery: false,
         auto_comment: false,
         early_return_normalization: false,
+        security_scaffold_suppression: false,
         max_pass_iterations: 1,
         use_embedded_passes: false,
     };
@@ -309,6 +313,10 @@ impl AstOptimizationConfig {
     }
     pub fn early_return_normalization(mut self, value: bool) -> Self {
         self.early_return_normalization = value;
+        self
+    }
+    pub fn security_scaffold_suppression(mut self, value: bool) -> Self {
+        self.security_scaffold_suppression = value;
         self
     }
     pub fn max_pass_iterations(mut self, value: usize) -> Self {

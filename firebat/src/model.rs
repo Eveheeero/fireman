@@ -234,6 +234,7 @@ pub fn build_optimization_config(
         early_return_normalization: settings.early_return_normalization,
         max_pass_iterations: settings.max_pass_iterations,
         use_embedded_passes: settings.use_embedded_passes,
+        ..defaults.clone()
     };
 
     if !config.pattern_matching_enabled {

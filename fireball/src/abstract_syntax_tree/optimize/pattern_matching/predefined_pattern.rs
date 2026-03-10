@@ -81,6 +81,9 @@ const PREDEFINED_SAFESTACK_SUPPRESSION_FB: &str = include_str!(
 const PREDEFINED_STACK_CLASH_SUPPRESSION_FB: &str = include_str!(
     "../../../../../patterns/suppression/before-ir-analyzation/stack-clash-suppression.fb"
 );
+const PREDEFINED_SECURITY_SCAFFOLD_SUPPRESSION_FB: &str = include_str!(
+    "../../../../../patterns/suppression/after-iteration/security-scaffold-suppression.fb"
+);
 
 // ── New cleanup patterns (afterOptimization) ──
 const PREDEFINED_REDUNDANT_RETURN_ELIMINATION_FB: &str = include_str!(
@@ -218,6 +221,10 @@ pub(super) fn predefined_patterns() -> Vec<AstPattern> {
         AstPattern::from_predefined_include(
             "stack-clash-suppression.fb",
             PREDEFINED_STACK_CLASH_SUPPRESSION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "security-scaffold-suppression.fb",
+            PREDEFINED_SECURITY_SCAFFOLD_SUPPRESSION_FB,
         ),
         // ── New cleanup patterns ──
         AstPattern::from_predefined_include(
@@ -395,6 +402,10 @@ pub(super) fn predefined_pattern(name: &str) -> Option<AstPattern> {
         "stack-clash-suppression.fb" => Some(AstPattern::from_predefined_include(
             "stack-clash-suppression.fb",
             PREDEFINED_STACK_CLASH_SUPPRESSION_FB,
+        )),
+        "security-scaffold-suppression.fb" => Some(AstPattern::from_predefined_include(
+            "security-scaffold-suppression.fb",
+            PREDEFINED_SECURITY_SCAFFOLD_SUPPRESSION_FB,
         )),
         // ── New cleanup patterns ──
         "redundant-return-elimination.fb" => Some(AstPattern::from_predefined_include(

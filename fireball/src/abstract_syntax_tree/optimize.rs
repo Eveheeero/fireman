@@ -496,6 +496,7 @@ impl Ast {
                     || config.do_while_recovery
                     || config.clamp_recovery
                     || config.loop_cleanup
+                    || config.security_scaffold_suppression
                 {
                     if config.use_embedded_passes {
                         for (function_id, to_version) in versions.iter().copied() {
@@ -532,6 +533,13 @@ impl Ast {
                             }
                             if config.loop_cleanup {
                                 pattern_matching::embedded::cleanup::after_iteration::loop_cleanup::cleanup_loops(
+                                    &mut ast,
+                                    function_id,
+                                    to_version,
+                                )?;
+                            }
+                            if config.security_scaffold_suppression {
+                                pattern_matching::embedded::suppression::after_iteration::security_scaffold_suppression::suppress_security_scaffolds(
                                     &mut ast,
                                     function_id,
                                     to_version,
@@ -576,6 +584,14 @@ impl Ast {
                             pats.push(
                                 pattern_matching::AstPattern::predefined_pattern("loop-cleanup.fb")
                                     .unwrap(),
+                            );
+                        }
+                        if config.security_scaffold_suppression {
+                            pats.push(
+                                pattern_matching::AstPattern::predefined_pattern(
+                                    "security-scaffold-suppression.fb",
+                                )
+                                .unwrap(),
                             );
                         }
                         if !pats.is_empty() {

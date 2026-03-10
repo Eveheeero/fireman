@@ -45,7 +45,7 @@ pub(crate) fn suppress_anti_debug_ast(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::PatternMatch);
+            .push(ProcessedOptimization::PatternMatching);
     }
 
     Ok(())
@@ -92,7 +92,6 @@ fn suppress_calls_in_list(stmts: &mut Vec<WrappedAstStatement>) {
 
 fn call_matches_any(call: &AstCall) -> bool {
     let name = match call {
-        AstCall::Function { name, .. } => name.to_string(),
         AstCall::Unknown(name, _) => name.clone(),
         _ => return false,
     };
