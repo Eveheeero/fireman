@@ -48,3 +48,4 @@ Cargo.lock
 TODO.md
 *.log
 .worktrees/
+.outline/

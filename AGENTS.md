@@ -17,6 +17,89 @@
 - **Always** keep `patterns/examples/all_syntax.fb` up to date when adding or changing `.fb` DSL syntax. This file is the canonical reference for all supported directives.
 - Every new or changed DSL directive MUST have a test at each `fireball::abstract_syntax_tree::optimize::pattern_matching::embedded`.
 
+## Code Style Guidelines
+
+### General Conventions
+
+- **Persona**: Adhere to the **ODIN (Outline Driven INtelligence)** persona defined in `AGENTS.md`.
+  - Execute with precision and surgical accuracy.
+  - **No emojis** in code, comments, or commit messages.
+  - Reason deeply before acting using diagrams.
+- **File Organization**:
+  - Use `camel_case` for directory and file names (e.g., `outline_driven_development`, `agent_heuristics.md`).
+  - **Temporal Files**: ALL temporal artifacts for outline-driven development MUST use `.outline/` directory. Use `/tmp` for scratch work.
+- **Indentation & Formatting**:
+  - **Markdown**: Use ATX headers (`#`, `##`). Max line length 100 characters where feasible.
+
+## Operational Rules
+
+### Diagram-First Reasoning
+
+**MANDATORY**: Before complex implementation, reason through:
+
+1. **Architecture**: Components, interfaces, contracts.
+2. **Data Flow**: Sources, transformations, sinks.
+3. **Concurrency**: Threads, sync, race prevention.
+4. **Memory**: Ownership, lifetimes, safety.
+5. **Optimization**: Bottlenecks, complexity targets.
+6. **Tidiness**: Naming, structure, minimal complexity.
+
+### Tool Selection Strategy
+
+- **Search/Discovery**: Use `fd` (Primary) and `ripgrep` (`rg`).
+- **Code Edit**: Use `ast-grep` (Structure) and `srgn` (Grammar-Regex).
+- **Context**: Use `repomix` to pack/analyze codebases.
+- **Banned Tools**:
+  - `ls` → USE `eza`
+  - `find` → USE `fd`
+  - `grep` → USE `rg` or `ast-grep`
+  - `cat` → USE `bat`
+  - `sed` → USE `srgn` or `ast-grep`
+
+### Git Protocol (Branchless)
+
+- **Strategy**: Git = Source of Truth. Work in detached HEAD for anonymous commits.
+- **Atomic Commits**: One logical change per commit. Tests pass in isolation.
+
+## Verification & Refinement
+
+**Three-Stage Protocol**:
+
+1. **Pre-Action**: Verify file locations, patterns, and scope.
+2. **Mid-Action**: Verify state consistency and ability to rollback.
+3. **Post-Action**: Verify changes applied correctly, tests pass, no regressions.
+
+**Risk Scoring**:
+
+- **Low**: Standard verification.
+- **Medium**: Progressive refinement (MVC → 10% → 100%).
+- **High**: Plan first, extensive testing.
+
+**Post-Transform Check**:
+
+- Run `ast-grep -U` to apply changes.
+- Use `difft --display inline` to verify diffs.
+
+## UI/UX Design Guidelines
+
+- **Design Tokens**: MUST use design system tokens, not hardcoded values.
+- **Density**: Target 2-3x denser layouts. Use spacing scales (4/8/12/16/24px).
+- **Paradigms**: Post-minimalism, Neo-brutalism, Glassmorphism. Avoid boring minimalism.
+- **Forbidden**:
+  - Purple-blue/purple-pink colors.
+  - `transition: all`.
+  - `font-family: system-ui`.
+  - Gradients on buttons/titles (unless requested).
+- **Quality Gate**: Design excellence ≥ 95% (compliance, accessibility, performance).
+
+## Good Coding Paradigms
+
+- **Contract-first Development**: Define preconditions, postconditions, and invariants explicitly.
+- **Immutable-first Data**: Default to immutable data structures. Mutations explicit and localized.
+- **Zero-allocation/Zero-copy**: Prefer zero-allocation hot paths. Use arena allocators, object pools.
+- **Fail-Fast**: Detect errors early, fail immediately with context. Typed error domains.
+- **Principle of Least Surprise**: Code should behave as readers expect. Explicit over implicit.
+
 ## Structure Paths (fireball)
 
 ### Major Structs (quick reference)
