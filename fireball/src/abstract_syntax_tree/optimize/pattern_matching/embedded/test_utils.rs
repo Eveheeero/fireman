@@ -1,8 +1,6 @@
 #[cfg(test)]
 pub(crate) mod test_utils {
-    use crate::abstract_syntax_tree::*;
-    use crate::ir::analyze::IrFunction;
-    use crate::utils::version_map::VersionMap;
+    use crate::{abstract_syntax_tree::*, ir::analyze::IrFunction, utils::version_map::VersionMap};
     use hashbrown::HashMap;
     use std::sync::{Arc, RwLock};
 

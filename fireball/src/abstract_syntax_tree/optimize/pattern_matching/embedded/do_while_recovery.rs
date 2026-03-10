@@ -2,8 +2,8 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement,
-        ProcessedOptimization, WrappedAstStatement,
+        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement, ProcessedOptimization,
+        WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -69,7 +69,10 @@ fn try_recover_do_while(stmt: &mut WrappedAstStatement) {
     };
 
     // Check for while(true)
-    if !matches!(&cond.item, AstExpression::Literal(crate::abstract_syntax_tree::AstLiteral::Bool(true))) {
+    if !matches!(
+        &cond.item,
+        AstExpression::Literal(crate::abstract_syntax_tree::AstLiteral::Bool(true))
+    ) {
         return;
     }
 
@@ -87,14 +90,21 @@ fn try_recover_do_while(stmt: &mut WrappedAstStatement) {
                 // Recover: do { ... } while (!!inner_cond)
                 let mut new_body = body.clone();
                 new_body.remove(last_idx);
-                
+
                 // Simplified: if (!cond) break; => while (cond)
                 // If inner_cond is UnaryOp(Not, C), then we use C.
-                let final_cond = if let AstExpression::UnaryOp(crate::abstract_syntax_tree::AstUnaryOperator::Not, inner) = &inner_cond.item {
+                let final_cond = if let AstExpression::UnaryOp(
+                    crate::abstract_syntax_tree::AstUnaryOperator::Not,
+                    inner,
+                ) = &inner_cond.item
+                {
                     (**inner).clone()
                 } else {
                     crate::abstract_syntax_tree::Wrapped {
-                        item: AstExpression::UnaryOp(crate::abstract_syntax_tree::AstUnaryOperator::Not, Box::new(inner_cond.clone())),
+                        item: AstExpression::UnaryOp(
+                            crate::abstract_syntax_tree::AstUnaryOperator::Not,
+                            Box::new(inner_cond.clone()),
+                        ),
                         origin: inner_cond.origin.clone(),
                         comment: None,
                     }
@@ -105,7 +115,10 @@ fn try_recover_do_while(stmt: &mut WrappedAstStatement) {
         }
         // Pattern 2: if (cond) {} else break;
         AstStatement::If(inner_cond, branch_true, Some(branch_false)) => {
-            if branch_true.is_empty() && branch_false.len() == 1 && matches!(branch_false[0].statement, AstStatement::Break) {
+            if branch_true.is_empty()
+                && branch_false.len() == 1
+                && matches!(branch_false[0].statement, AstStatement::Break)
+            {
                 let mut new_body = body.clone();
                 new_body.remove(last_idx);
                 stmt.statement = AstStatement::DoWhile(inner_cond.clone(), new_body);

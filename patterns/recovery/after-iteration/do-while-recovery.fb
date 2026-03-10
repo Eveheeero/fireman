@@ -8,15 +8,6 @@ if:
   stmt While(Literal(Bool(true)), $body)
   where is_end_if_not_cond_break($body)
 do:
-  # emit DoWhile($cond, $body_without_last)
-  # Using structural replacement enabled by the parser update
-  script `
-    let body = $body;
-    let last = body.pop();
-    // last is If(UnaryOp(Not, $cond), [Break], None)
-    // We need to extract $cond. In Rhai, we can't easily extract from structural captures yet
-    // but the engine will be extended or we use a specialized action.
-  `
   ast comment [recovered-do-while-1]
 
 # Pattern 2: if (cond) {} else break; at the end of while(true)

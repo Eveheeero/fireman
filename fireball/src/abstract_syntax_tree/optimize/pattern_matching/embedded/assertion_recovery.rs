@@ -84,7 +84,11 @@ fn try_recover_assertion(stmt: &mut WrappedAstStatement) {
     if name.contains("abort") || name.contains("assert_fail") || name.contains("builtin_trap") {
         // if (!cond) abort() => assert(cond)
         // if (cond) abort() => assert(!cond)
-        let final_cond = if let AstExpression::UnaryOp(crate::abstract_syntax_tree::AstUnaryOperator::Not, inner) = &cond.item {
+        let final_cond = if let AstExpression::UnaryOp(
+            crate::abstract_syntax_tree::AstUnaryOperator::Not,
+            inner,
+        ) = &cond.item
+        {
             (**inner).clone()
         } else {
             crate::abstract_syntax_tree::Wrapped {
@@ -97,7 +101,8 @@ fn try_recover_assertion(stmt: &mut WrappedAstStatement) {
             }
         };
 
-        stmt.statement = AstStatement::Call(AstCall::Unknown("assert".to_string(), vec![final_cond]));
+        stmt.statement =
+            AstStatement::Call(AstCall::Unknown("assert".to_string(), vec![final_cond]));
     }
 }
 
@@ -118,7 +123,10 @@ mod tests {
                 crate::abstract_syntax_tree::AstUnaryOperator::Not,
                 Box::new(wrap_expression(AstExpression::Variable(vm.clone(), cond))),
             )),
-            vec![wrap_statement(AstStatement::Call(AstCall::Unknown("abort".to_string(), vec![])))],
+            vec![wrap_statement(AstStatement::Call(AstCall::Unknown(
+                "abort".to_string(),
+                vec![],
+            )))],
             None,
         ))];
 

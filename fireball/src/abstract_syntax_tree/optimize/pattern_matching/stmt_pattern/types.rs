@@ -68,6 +68,12 @@ pub enum WherePredicate {
     Ne(String, String),
     /// Check that a captured StmtList does not contain Label, Goto, or Declaration at any depth.
     NoUnsafeStmts(String),
+    /// Check that a captured statement list ends with `Continue`.
+    EndsWithContinue(String),
+    /// Check that a captured statement list ends with `if (!cond) break;`.
+    IsEndIfNotCondBreak(String),
+    /// Check that a captured statement list ends with `if (cond) {} else { break; }`.
+    IsEndIfCondElseBreak(String),
     /// Check that a captured literal fits in the named type's range.
     /// `fits($lit_capture, TypeName)` where TypeName is e.g. Int8, Int16, Int32, Int64, Int.
     Fits(String, FitsTarget),

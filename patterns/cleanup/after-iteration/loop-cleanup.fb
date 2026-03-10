@@ -6,26 +6,20 @@
 if:
   at afterIteration
   stmt While($cond, $body)
-  script `
-    return $body.length > 0 && $body[$body.length - 1].is_continue();
-  `
+  where ends_with_continue($body)
 do:
   del end[-1]
 
 if:
   at afterIteration
   stmt For($init, $cond, $up, $body)
-  script `
-    return $body.length > 0 && $body[$body.length - 1].is_continue();
-  `
+  where ends_with_continue($body)
 do:
   del end[-1]
 
 if:
   at afterIteration
   stmt DoWhile($cond, $body)
-  script `
-    return $body.length > 0 && $body[$body.length - 1].is_continue();
-  `
+  where ends_with_continue($body)
 do:
   del end[-1]

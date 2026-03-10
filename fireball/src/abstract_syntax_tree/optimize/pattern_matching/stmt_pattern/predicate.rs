@@ -3,7 +3,8 @@ use super::{
     types::{Captured, Captures, SumEqualsTarget, WherePredicate},
 };
 use crate::abstract_syntax_tree::{
-    AstCall, AstExpression, AstLiteral, AstStatement, AstValueType, WrappedAstStatement,
+    AstCall, AstExpression, AstLiteral, AstStatement, AstUnaryOperator, AstValueType,
+    WrappedAstStatement,
 };
 
 pub fn parse_where(input: &str) -> Result<WherePredicate, String> {
@@ -342,6 +343,57 @@ pub fn parse_where(input: &str) -> Result<WherePredicate, String> {
         return Ok(WherePredicate::NoUnsafeStmts(name));
     }
 
+    if let Some(rest) = input.strip_prefix("ends_with_continue(") {
+        let rest = rest
+            .strip_suffix(')')
+            .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
+        let name = rest
+            .trim()
+            .strip_prefix('$')
+            .ok_or_else(|| {
+                format!(
+                    "ends_with_continue() argument must be a capture ($name): {}",
+                    rest.trim()
+                )
+            })?
+            .to_string();
+        return Ok(WherePredicate::EndsWithContinue(name));
+    }
+
+    if let Some(rest) = input.strip_prefix("is_end_if_not_cond_break(") {
+        let rest = rest
+            .strip_suffix(')')
+            .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
+        let name = rest
+            .trim()
+            .strip_prefix('$')
+            .ok_or_else(|| {
+                format!(
+                    "is_end_if_not_cond_break() argument must be a capture ($name): {}",
+                    rest.trim()
+                )
+            })?
+            .to_string();
+        return Ok(WherePredicate::IsEndIfNotCondBreak(name));
+    }
+
+    if let Some(rest) = input.strip_prefix("is_end_if_cond_else_break(") {
+        let rest = rest
+            .strip_suffix(')')
+            .ok_or_else(|| format!("missing closing ')' in where predicate: {input}"))?;
+        let name = rest
+            .trim()
+            .strip_prefix('$')
+            .ok_or_else(|| {
+                format!(
+                    "is_end_if_cond_else_break() argument must be a capture ($name): {}",
+                    rest.trim()
+                )
+            })?
+            .to_string();
+        return Ok(WherePredicate::IsEndIfCondElseBreak(name));
+    }
+
     let (pred_name, rest) = if let Some(rest) = input.strip_prefix("eq(") {
         ("eq", rest)
     } else if let Some(rest) = input.strip_prefix("ne(") {
@@ -403,6 +455,39 @@ pub fn eval_where(pred: &WherePredicate, caps: &Captures) -> bool {
                 Captured::StmtList(stmts) => !branch_contains_unsafe_stmts(stmts),
                 Captured::OptStmtList(Some(stmts)) => !branch_contains_unsafe_stmts(stmts),
                 Captured::OptStmtList(None) => true,
+                _ => false,
+            }
+        }
+        WherePredicate::EndsWithContinue(name) => {
+            let Some(captured) = caps.get(name) else {
+                return false;
+            };
+            match captured {
+                Captured::StmtList(stmts) => stmt_list_ends_with_continue(stmts),
+                Captured::OptStmtList(Some(stmts)) => stmt_list_ends_with_continue(stmts),
+                Captured::OptStmtList(None) => false,
+                _ => false,
+            }
+        }
+        WherePredicate::IsEndIfNotCondBreak(name) => {
+            let Some(captured) = caps.get(name) else {
+                return false;
+            };
+            match captured {
+                Captured::StmtList(stmts) => stmt_list_ends_with_if_not_cond_break(stmts),
+                Captured::OptStmtList(Some(stmts)) => stmt_list_ends_with_if_not_cond_break(stmts),
+                Captured::OptStmtList(None) => false,
+                _ => false,
+            }
+        }
+        WherePredicate::IsEndIfCondElseBreak(name) => {
+            let Some(captured) = caps.get(name) else {
+                return false;
+            };
+            match captured {
+                Captured::StmtList(stmts) => stmt_list_ends_with_if_cond_else_break(stmts),
+                Captured::OptStmtList(Some(stmts)) => stmt_list_ends_with_if_cond_else_break(stmts),
+                Captured::OptStmtList(None) => false,
                 _ => false,
             }
         }
@@ -679,6 +764,41 @@ fn branch_contains_unsafe_stmts(stmts: &[WrappedAstStatement]) -> bool {
         }
     }
     false
+}
+
+fn stmt_list_ends_with_continue(stmts: &[WrappedAstStatement]) -> bool {
+    matches!(stmts.last(), Some(last) if matches!(last.statement, AstStatement::Continue))
+}
+
+fn stmt_list_ends_with_if_not_cond_break(stmts: &[WrappedAstStatement]) -> bool {
+    let Some(last) = stmts.last() else {
+        return false;
+    };
+    match &last.statement {
+        AstStatement::If(inner_cond, branch_true, None) => {
+            branch_true.len() == 1
+                && matches!(branch_true[0].statement, AstStatement::Break)
+                && matches!(
+                    inner_cond.item,
+                    AstExpression::UnaryOp(AstUnaryOperator::Not, _)
+                )
+        }
+        _ => false,
+    }
+}
+
+fn stmt_list_ends_with_if_cond_else_break(stmts: &[WrappedAstStatement]) -> bool {
+    let Some(last) = stmts.last() else {
+        return false;
+    };
+    match &last.statement {
+        AstStatement::If(_, branch_true, Some(branch_false)) => {
+            branch_true.is_empty()
+                && branch_false.len() == 1
+                && matches!(branch_false[0].statement, AstStatement::Break)
+        }
+        _ => false,
+    }
 }
 
 fn stmt_contains_unsafe(stmt: &AstStatement) -> bool {
