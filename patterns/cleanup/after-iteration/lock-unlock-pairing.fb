@@ -1,0 +1,24 @@
+# Lock/unlock pairing via Rhai script.
+# Detects pthread_mutex_lock/unlock pairs.
+
+if:
+  at afterIteration
+  script `
+    let has_lock = false;
+    let has_unlock = false;
+    for s in ast_stmts {
+      if s.is_call() {
+        let n = s.call_name();
+        if n.contains("pthread_mutex_lock") || n.contains("EnterCriticalSection") {
+          has_lock = true;
+        }
+        if n.contains("pthread_mutex_unlock") || n.contains("LeaveCriticalSection") {
+          has_unlock = true;
+        }
+      }
+    }
+    has_lock && has_unlock
+  `
+do:
+  info("lock/unlock pair detected")
+  del start[0]

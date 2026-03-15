@@ -1,0 +1,19 @@
+# Strlen/scan loop lifting via Rhai script.
+# Detects null-terminator scan loops.
+
+if:
+  at afterIteration
+  script `
+    let found = false;
+    for s in ast_stmts {
+      if s.is_while() || s.is_do_while() {
+        if s.contains_call_to("strlen") || s.contains_call_to("wcslen") {
+          found = true;
+        }
+      }
+    }
+    found
+  `
+do:
+  info("strlen/scan loop detected")
+  del start[0]

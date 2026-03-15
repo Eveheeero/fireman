@@ -27,4 +27,16 @@ pub enum AstStatement {
     Comment(String),
     Ir(Box<IrStatement>),
     Empty,
+    /// switch(expr) { case val: body; ... default: body; }
+    Switch(
+        Wrapped<AstExpression>,
+        Vec<(AstLiteral, Vec<WrappedAstStatement>)>,
+        Option<Vec<WrappedAstStatement>>,
+    ),
+    /// break statement (exits innermost loop/switch)
+    Break,
+    /// continue statement (jumps to loop header)
+    Continue,
+    /// do { body } while (condition)
+    DoWhile(Wrapped<AstExpression>, Vec<WrappedAstStatement>),
 }

@@ -1,3 +1,5 @@
+//! Analyze and recover function parameter types and calling convention locations.
+
 use crate::{
     abstract_syntax_tree::{
         Ast, AstFunctionId, AstFunctionVersion, AstParameter, AstVariableAccessType, AstVariableId,

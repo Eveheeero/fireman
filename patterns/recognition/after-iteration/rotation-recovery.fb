@@ -1,0 +1,40 @@
+# Recover rotation intrinsics from shift/or bit patterns.
+#   (x >> n) | (x << (W-n))  →  rotate_right(x, n)
+#   (x << n) | (x >> (W-n))  →  rotate_left(x, n)
+
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, BinaryOp(RightShift, $x, Literal(Int($n))), BinaryOp(LeftShift, $x2, Literal(Int($m))))
+  where structurally_equal($x, $x2)
+  where is_nonzero($n)
+  where is_nonzero($m)
+  where sum_equals($n, $m, 32)
+do:
+  replace_expr_fn eval_rotate_right($x, $n)
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, BinaryOp(RightShift, $x, Literal(Int($n))), BinaryOp(LeftShift, $x2, Literal(Int($m))))
+  where structurally_equal($x, $x2)
+  where is_nonzero($n)
+  where is_nonzero($m)
+  where sum_equals($n, $m, 64)
+do:
+  replace_expr_fn eval_rotate_right($x, $n)
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, BinaryOp(LeftShift, $x, Literal(Int($n))), BinaryOp(RightShift, $x2, Literal(Int($m))))
+  where structurally_equal($x, $x2)
+  where is_nonzero($n)
+  where is_nonzero($m)
+  where sum_equals($n, $m, 32)
+do:
+  replace_expr_fn eval_rotate_left($x, $n)
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, BinaryOp(LeftShift, $x, Literal(Int($n))), BinaryOp(RightShift, $x2, Literal(Int($m))))
+  where structurally_equal($x, $x2)
+  where is_nonzero($n)
+  where is_nonzero($m)
+  where sum_equals($n, $m, 64)
+do:
+  replace_expr_fn eval_rotate_left($x, $n)

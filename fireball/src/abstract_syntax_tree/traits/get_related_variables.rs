@@ -38,7 +38,7 @@ impl GetRelatedVariables for AstStatement {
                 }
                 ret
             }
-            AstStatement::While(cond, stmts) => {
+            AstStatement::While(cond, stmts) | AstStatement::DoWhile(cond, stmts) => {
                 let mut ret = Vec::new();
                 for var_id in cond.get_related_variables() {
                     ret.push((AstVariableAccessType::Read, var_id));
@@ -121,6 +121,23 @@ impl GetRelatedVariables for AstStatement {
                     .map(|var_id| (AstVariableAccessType::Read, var_id))
                     .collect(),
             },
+            AstStatement::Switch(discrim, cases, default) => {
+                let mut ret = Vec::new();
+                for var_id in discrim.get_related_variables() {
+                    ret.push((AstVariableAccessType::Read, var_id));
+                }
+                for (_lit, case_body) in cases {
+                    for stmt in case_body {
+                        ret.extend(stmt.get_related_variables());
+                    }
+                }
+                if let Some(default_body) = default {
+                    for stmt in default_body {
+                        ret.extend(stmt.get_related_variables());
+                    }
+                }
+                ret
+            }
             AstStatement::Goto(target) => target.get_related_variables(),
             AstStatement::Block(stmts) => stmts
                 .iter()
@@ -133,6 +150,8 @@ impl GetRelatedVariables for AstStatement {
             | AstStatement::Exception(_)
             | AstStatement::Comment(_)
             | AstStatement::Ir(_)
+            | AstStatement::Break
+            | AstStatement::Continue
             | AstStatement::Empty => Vec::new(),
         }
     }

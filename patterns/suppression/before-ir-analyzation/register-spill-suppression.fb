@@ -1,0 +1,25 @@
+# Suppress register spill/reload sequences (push/pop pairs used as register saves).
+
+if:
+  at beforeIrAnalyzation
+  asm `push rbx; pop rbx`
+if:
+  at beforeIrAnalyzation
+  asm `push r12; pop r12`
+if:
+  at beforeIrAnalyzation
+  asm `push r13; pop r13`
+if:
+  at beforeIrAnalyzation
+  asm `push r14; pop r14`
+if:
+  at beforeIrAnalyzation
+  asm `push r15; pop r15`
+if:
+  at beforeIrAnalyzation
+  asm `push rdi; pop rdi`
+if:
+  at beforeIrAnalyzation
+  asm `push rsi; pop rsi`
+do:
+  del start[0..2]

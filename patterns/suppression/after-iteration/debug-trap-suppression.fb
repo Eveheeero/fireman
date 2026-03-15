@@ -1,0 +1,22 @@
+# Suppress debug trap and builtin trap calls.
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__debugbreak")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__builtin_trap")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "DebugBreak")
+do:
+  del start[0]

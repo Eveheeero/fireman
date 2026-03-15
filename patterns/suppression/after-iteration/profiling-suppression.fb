@@ -1,0 +1,22 @@
+# Suppress coverage and profiling calls.
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__llvm_gcov")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__gcov_flush")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__gcov_merge")
+do:
+  del start[0]

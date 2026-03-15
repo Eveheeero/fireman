@@ -47,7 +47,8 @@ impl Pe {
                     e
                 );
                 // If this looks like an unparsed control-flow instruction, stop safely.
-                if Self::looks_like_control_flow_text(inst) {
+                if Self::control_flow_relation_type(inst).is_some() {
+                    last_instruction_address = Some(address);
                     break;
                 }
                 if inst_len == 0 {
@@ -56,7 +57,7 @@ impl Pe {
                 address += inst_len;
                 continue;
             }
-            if inst.is_jcc() || inst.is_jmp() || inst.is_call() || inst.is_ret() {
+            if Self::control_flow_relation_type(inst).is_some() {
                 last_instruction_address = Some(address);
                 break;
             }
@@ -72,9 +73,10 @@ impl Pe {
                 last_instruction_address - &start_address
                     + inst.bytes.as_ref().unwrap().len() as u64,
             );
-            if inst.is_jcc() || inst.is_call() {
+            let relation_type = Self::control_flow_relation_type(inst);
+            if matches!(relation_type, Some(RelationType::Jcc | RelationType::Call)) {
                 // false branch or halt
-                let relation_type = if inst.is_jcc() {
+                let relation_type = if matches!(relation_type, Some(RelationType::Jcc)) {
                     RelationType::Continued
                 } else {
                     RelationType::Halt
@@ -111,13 +113,7 @@ impl Pe {
         ip: &Address,
         inst: &iceball::Instruction,
     ) -> BlockRelationInformation {
-        let relation_type = match () {
-            _ if inst.is_ret() => RelationType::Return,
-            _ if inst.is_jcc() => RelationType::Jcc,
-            _ if inst.is_jmp() => RelationType::Jump,
-            _ if inst.is_call() => RelationType::Call,
-            _ => unreachable!("{:?}", inst),
-        };
+        let relation_type = Self::control_flow_relation_type(inst).unwrap_or_else(|| unreachable!("{:?}", inst));
         if inst.arguments.len() != 1 {
             return BlockRelationInformation {
                 destination: None,
@@ -337,7 +333,32 @@ impl Pe {
         first.inner.statement.is_ok()
     }
 
-    fn looks_like_control_flow_text(inst: &iceball::Instruction) -> bool {
+    fn control_flow_relation_type(inst: &iceball::Instruction) -> Option<RelationType> {
+        if let Some(bytes) = inst.bytes.as_deref() {
+            match bytes {
+                [0x70..=0x7F, ..] | [0x0F, 0x80..=0x8F, ..] | [0xE3, ..] => {
+                    return Some(RelationType::Jcc);
+                }
+                [0xE8, ..] => return Some(RelationType::Call),
+                [0xE9, ..] | [0xEB, ..] | [0xEA, ..] => return Some(RelationType::Jump),
+                [0xC2 | 0xC3 | 0xCA | 0xCB, ..] => return Some(RelationType::Return),
+                _ => {}
+            }
+        }
+
+        if inst.is_ret() {
+            return Some(RelationType::Return);
+        }
+        if inst.is_jcc() {
+            return Some(RelationType::Jcc);
+        }
+        if inst.is_jmp() {
+            return Some(RelationType::Jump);
+        }
+        if inst.is_call() {
+            return Some(RelationType::Call);
+        }
+
         let text = inst.to_string().to_ascii_lowercase();
         let mut parts = text.split_whitespace();
         let first = parts.next().unwrap_or_default();
@@ -345,6 +366,12 @@ impl Pe {
             "lock" | "rep" | "repe" | "repz" | "repne" | "repnz" => parts.next().unwrap_or(first),
             _ => first,
         };
-        matches!(op, "call" | "jmp" | "ret") || op.starts_with('j')
+        match op {
+            "call" => Some(RelationType::Call),
+            "jmp" => Some(RelationType::Jump),
+            "ret" => Some(RelationType::Return),
+            _ if op.starts_with('j') => Some(RelationType::Jcc),
+            _ => None,
+        }
     }
 }

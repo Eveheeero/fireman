@@ -1,0 +1,355 @@
+# Identity operation simplification: remove no-op arithmetic.
+# Applied iteratively during the main optimization loop.
+# Extracted from bit_trick_recognition::try_simplify_identity_op
+# and constant_folding::fold_identity.
+#
+# Note on NaN/float safety: Same-operand rules (x-x→0, x==x→true, etc.)
+# assume ordered arithmetic. For IEEE-754 floats, NaN != NaN and NaN - NaN = NaN.
+# This is acceptable because this decompiler operates on x86 integer operations;
+# the original Rust implementation had identical behavior with no float guard.
+
+# Rule 1: x + 0 → x  (right zero)
+if:
+  at afterIteration
+  expr BinaryOp(Add, $x, Literal(Int(0)))
+do:
+  replace_expr $x
+
+if:
+  at afterIteration
+  expr BinaryOp(Add, $x, Literal(UInt(0)))
+do:
+  replace_expr $x
+
+# Rule 2: 0 + x → x  (left zero)
+if:
+  at afterIteration
+  expr BinaryOp(Add, Literal(Int(0)), $x)
+do:
+  replace_expr $x
+
+if:
+  at afterIteration
+  expr BinaryOp(Add, Literal(UInt(0)), $x)
+do:
+  replace_expr $x
+
+# Rule 3: x - 0 → x
+if:
+  at afterIteration
+  expr BinaryOp(Sub, $x, Literal(Int(0)))
+do:
+  replace_expr $x
+
+if:
+  at afterIteration
+  expr BinaryOp(Sub, $x, Literal(UInt(0)))
+do:
+  replace_expr $x
+
+# Rule 4: x ^ 0 → x  (right zero)
+if:
+  at afterIteration
+  expr BinaryOp(BitXor, $x, Literal(Int(0)))
+do:
+  replace_expr $x
+
+if:
+  at afterIteration
+  expr BinaryOp(BitXor, $x, Literal(UInt(0)))
+do:
+  replace_expr $x
+
+# Rule 5: 0 ^ x → x  (left zero)
+if:
+  at afterIteration
+  expr BinaryOp(BitXor, Literal(Int(0)), $x)
+do:
+  replace_expr $x
+
+if:
+  at afterIteration
+  expr BinaryOp(BitXor, Literal(UInt(0)), $x)
+do:
+  replace_expr $x
+
+# Rule 6: x | 0 → x  (right zero)
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, $x, Literal(Int(0)))
+do:
+  replace_expr $x
+
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, $x, Literal(UInt(0)))
+do:
+  replace_expr $x
+
+# Rule 7: 0 | x → x  (left zero)
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, Literal(Int(0)), $x)
+do:
+  replace_expr $x
+
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, Literal(UInt(0)), $x)
+do:
+  replace_expr $x
+
+# Rule 8: x * 1 → x
+if:
+  at afterIteration
+  expr BinaryOp(Mul, $x, Literal(Int(1)))
+do:
+  replace_expr $x
+
+if:
+  at afterIteration
+  expr BinaryOp(Mul, $x, Literal(UInt(1)))
+do:
+  replace_expr $x
+
+# Rule 9: 1 * x → x
+if:
+  at afterIteration
+  expr BinaryOp(Mul, Literal(Int(1)), $x)
+do:
+  replace_expr $x
+
+if:
+  at afterIteration
+  expr BinaryOp(Mul, Literal(UInt(1)), $x)
+do:
+  replace_expr $x
+
+# Rule 10: x / 1 → x
+if:
+  at afterIteration
+  expr BinaryOp(Div, $x, Literal(Int(1)))
+do:
+  replace_expr $x
+
+if:
+  at afterIteration
+  expr BinaryOp(Div, $x, Literal(UInt(1)))
+do:
+  replace_expr $x
+
+# Rule 11: x && true → x
+if:
+  at afterIteration
+  expr BinaryOp(LogicAnd, $x, Literal(Bool(true)))
+do:
+  replace_expr $x
+
+# Rule 12: true && x → x
+if:
+  at afterIteration
+  expr BinaryOp(LogicAnd, Literal(Bool(true)), $x)
+do:
+  replace_expr $x
+
+# Rule 13: x || false → x
+if:
+  at afterIteration
+  expr BinaryOp(LogicOr, $x, Literal(Bool(false)))
+do:
+  replace_expr $x
+
+# Rule 14: false || x → x
+if:
+  at afterIteration
+  expr BinaryOp(LogicOr, Literal(Bool(false)), $x)
+do:
+  replace_expr $x
+
+# Rule 15: Double-unary cancellation — ~~x → x, --x → x
+# (!!x → x is already in operator-canonicalization.fb)
+if:
+  at afterIteration
+  expr UnaryOp(BitNot, UnaryOp(BitNot, $x))
+do:
+  replace_expr $x
+
+if:
+  at afterIteration
+  expr UnaryOp(Negate, UnaryOp(Negate, $x))
+do:
+  replace_expr $x
+
+# ── Absorbing elements (requires purity guard on discarded operand) ──
+
+# Rule 16: x * 0 → 0  (if x is pure)
+if:
+  at afterIteration
+  expr BinaryOp(Mul, $x, Literal(Int(0)))
+  where is_pure($x)
+do:
+  replace_expr Literal(Int(0))
+
+if:
+  at afterIteration
+  expr BinaryOp(Mul, $x, Literal(UInt(0)))
+  where is_pure($x)
+do:
+  replace_expr Literal(UInt(0))
+
+# Rule 17: 0 * x → 0  (if x is pure)
+if:
+  at afterIteration
+  expr BinaryOp(Mul, Literal(Int(0)), $x)
+  where is_pure($x)
+do:
+  replace_expr Literal(Int(0))
+
+if:
+  at afterIteration
+  expr BinaryOp(Mul, Literal(UInt(0)), $x)
+  where is_pure($x)
+do:
+  replace_expr Literal(UInt(0))
+
+# Rule 18: x & 0 → 0  (if x is pure)
+if:
+  at afterIteration
+  expr BinaryOp(BitAnd, $x, Literal(Int(0)))
+  where is_pure($x)
+do:
+  replace_expr Literal(Int(0))
+
+if:
+  at afterIteration
+  expr BinaryOp(BitAnd, $x, Literal(UInt(0)))
+  where is_pure($x)
+do:
+  replace_expr Literal(UInt(0))
+
+# Rule 19: 0 & x → 0  (if x is pure)
+if:
+  at afterIteration
+  expr BinaryOp(BitAnd, Literal(Int(0)), $x)
+  where is_pure($x)
+do:
+  replace_expr Literal(Int(0))
+
+if:
+  at afterIteration
+  expr BinaryOp(BitAnd, Literal(UInt(0)), $x)
+  where is_pure($x)
+do:
+  replace_expr Literal(UInt(0))
+
+# Rule 20: false && x → false  (if x is pure)
+if:
+  at afterIteration
+  expr BinaryOp(LogicAnd, Literal(Bool(false)), $x)
+  where is_pure($x)
+do:
+  replace_expr Literal(Bool(false))
+
+# Rule 21: true || x → true  (if x is pure)
+if:
+  at afterIteration
+  expr BinaryOp(LogicOr, Literal(Bool(true)), $x)
+  where is_pure($x)
+do:
+  replace_expr Literal(Bool(true))
+
+# ── Same-operand simplifications (requires purity + structural equality) ──
+
+# Rule 22: x & x → x  (if both pure)
+if:
+  at afterIteration
+  expr BinaryOp(BitAnd, $x, $y)
+  where structurally_equal($x, $y)
+  where is_pure($x)
+do:
+  replace_expr $x
+
+# Rule 23: x | x → x  (if both pure)
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, $x, $y)
+  where structurally_equal($x, $y)
+  where is_pure($x)
+do:
+  replace_expr $x
+
+# Rule 24: x ^ x → 0  (if both pure)
+if:
+  at afterIteration
+  expr BinaryOp(BitXor, $x, $y)
+  where structurally_equal($x, $y)
+  where is_pure($x)
+do:
+  replace_expr Literal(Int(0))
+
+# Rule 25: x - x → 0  (if both pure)
+if:
+  at afterIteration
+  expr BinaryOp(Sub, $x, $y)
+  where structurally_equal($x, $y)
+  where is_pure($x)
+do:
+  replace_expr Literal(Int(0))
+
+# Rule 26: x == x → true  (if both pure)
+if:
+  at afterIteration
+  expr BinaryOp(Equal, $x, $y)
+  where structurally_equal($x, $y)
+  where is_pure($x)
+do:
+  replace_expr Literal(Bool(true))
+
+# Rule 27: x <= x → true  (if both pure)
+if:
+  at afterIteration
+  expr BinaryOp(LessEqual, $x, $y)
+  where structurally_equal($x, $y)
+  where is_pure($x)
+do:
+  replace_expr Literal(Bool(true))
+
+# Rule 28: x >= x → true  (if both pure)
+if:
+  at afterIteration
+  expr BinaryOp(GreaterEqual, $x, $y)
+  where structurally_equal($x, $y)
+  where is_pure($x)
+do:
+  replace_expr Literal(Bool(true))
+
+# Rule 29: x != x → false  (if both pure)
+if:
+  at afterIteration
+  expr BinaryOp(NotEqual, $x, $y)
+  where structurally_equal($x, $y)
+  where is_pure($x)
+do:
+  replace_expr Literal(Bool(false))
+
+# Rule 30: x < x → false  (if both pure)
+if:
+  at afterIteration
+  expr BinaryOp(Less, $x, $y)
+  where structurally_equal($x, $y)
+  where is_pure($x)
+do:
+  replace_expr Literal(Bool(false))
+
+# Rule 31: x > x → false  (if both pure)
+if:
+  at afterIteration
+  expr BinaryOp(Greater, $x, $y)
+  where structurally_equal($x, $y)
+  where is_pure($x)
+do:
+  replace_expr Literal(Bool(false))
+
+# Note: x & MASK rules (0xFF, 0xFFFF, etc.) are NOT included here because
+# they require proven bit-width/range constraints to be correct identities.
+# Those belong in a separate analysis-backed pass.

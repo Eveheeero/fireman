@@ -1,0 +1,7 @@
+# Replace error cleanup handler labels with descriptive comments.
+
+if:
+  at afterOptimization
+  ast Label(cleanup)
+do:
+  ast comment error cleanup handler

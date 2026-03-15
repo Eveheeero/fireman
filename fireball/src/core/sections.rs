@@ -73,6 +73,16 @@ impl Sections {
         None
     }
 
+    /// Return a detached snapshot of all known sections.
+    pub(crate) fn all(&self) -> Vec<Section> {
+        self.data
+            .read()
+            .unwrap()
+            .iter()
+            .map(|section| section.as_ref().clone())
+            .collect()
+    }
+
     /// Function that return section by file offset.
     /// It calcs section's from and to offset, and return section if file offset is in range.
     #[allow(clippy::wrong_self_convention)]

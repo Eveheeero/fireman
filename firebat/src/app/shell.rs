@@ -21,7 +21,7 @@ pub(crate) struct FirebatApp {
 
 impl Default for FirebatApp {
     fn default() -> Self {
-        let mut dock_state = DockState::new(vec![PanelTab::Sections]);
+        let mut dock_state = DockState::new(vec![PanelTab::Sections, PanelTab::Optimization]);
         {
             let surface = dock_state.main_surface_mut();
             let [left, right] =

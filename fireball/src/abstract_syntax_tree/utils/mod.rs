@@ -25,6 +25,8 @@ pub fn get_first_arg_undetectable_statement_index<'a>(
             | AstStatement::Assignment(_, _)
             | AstStatement::Label(_)
             | AstStatement::Comment(_)
+            | AstStatement::Break
+            | AstStatement::Continue
             | AstStatement::Empty => continue,
 
             AstStatement::If(_cond, branch_true, branch_false) => {
@@ -39,9 +41,24 @@ pub fn get_first_arg_undetectable_statement_index<'a>(
                     }
                 }
             }
-            AstStatement::While(_cond, stmts) => {
+            AstStatement::While(_cond, stmts) | AstStatement::DoWhile(_cond, stmts) => {
                 if get_first_arg_undetectable_statement_index(stmts.iter().rev()).is_some() {
                     return Some(i);
+                }
+            }
+            AstStatement::Switch(_discrim, cases, default) => {
+                for (_lit, case_body) in cases {
+                    if get_first_arg_undetectable_statement_index(case_body.iter().rev()).is_some()
+                    {
+                        return Some(i);
+                    }
+                }
+                if let Some(default_body) = default {
+                    if get_first_arg_undetectable_statement_index(default_body.iter().rev())
+                        .is_some()
+                    {
+                        return Some(i);
+                    }
                 }
             }
             AstStatement::For(_init, _cond, _update, stmts) => {

@@ -1,0 +1,8 @@
+# Power-of-two test: (x & (x - 1)) == 0 → is_power_of_2(x).
+
+if:
+  at afterIteration
+  expr BinaryOp(Equal, BinaryOp(BitAnd, $x, BinaryOp(Sub, $x2, Literal(Int(1)))), Literal(Int(0)))
+  where structurally_equal($x, $x2)
+do:
+  replace_expr Call("is_power_of_2", [$x])

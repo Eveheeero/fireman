@@ -39,7 +39,7 @@ impl Pe {
 
             /* IR generation */
             let statements =
-                crate::arch::x86_64::instruction_analyze::create_ir_statement(&instruction);
+                crate::arch::create_ir_statement(self.architecture(), &instruction);
             if statements.is_none() {
                 warn!("Instruction conversion failed: {}", instruction);
             };

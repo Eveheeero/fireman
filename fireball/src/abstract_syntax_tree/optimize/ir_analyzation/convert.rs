@@ -1,9 +1,9 @@
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstBinaryOperator, AstBuiltinFunction, AstBuiltinFunctionArgument, AstCall,
-        AstDescriptor, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget, AstLiteral,
-        AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue, AstValueOrigin,
-        AstVariableId, PrintWithConfig, Wrapped, WrappedAstStatement,
+        ArcAstVariableMap, Ast, AstBinaryOperator, AstBuiltinFunction, AstBuiltinFunctionArgument,
+        AstCall, AstDescriptor, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget,
+        AstLiteral, AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue, AstValueOrigin,
+        AstValueType, AstVariableId, PrintWithConfig, Wrapped, WrappedAstStatement,
     },
     core::Address,
     ir::{
@@ -39,6 +39,47 @@ pub(super) fn wdn<T>(item: T) -> Wrapped<T> {
         item,
         origin: AstValueOrigin::Unknown,
         comment: None,
+    }
+}
+
+fn expr_constant_address(expr: &AstExpression) -> Option<u64> {
+    match expr {
+        AstExpression::Literal(AstLiteral::Int(value)) if *value >= 0 => Some(*value as u64),
+        AstExpression::Literal(AstLiteral::UInt(value)) => Some(*value),
+        AstExpression::Cast(_, inner) => expr_constant_address(inner.as_ref()),
+        AstExpression::Variable(var_map, var_id) => variable_constant_address(var_map, *var_id),
+        _ => None,
+    }
+}
+
+fn variable_constant_address(var_map: &ArcAstVariableMap, var_id: AstVariableId) -> Option<u64> {
+    let vars = var_map.read().ok()?;
+    let var = vars.get(&var_id)?;
+    let const_value = var.const_value.as_ref()?;
+    ast_value_constant_address(&const_value.item)
+}
+
+fn ast_value_constant_address(value: &AstValue) -> Option<u64> {
+    match value {
+        AstValue::Pointer(inner) => ast_value_constant_address(inner.as_ref()),
+        AstValue::Num(num) => {
+            let (sign, digits) = num.to_u64_digits();
+            if sign == num_bigint::Sign::Minus {
+                None
+            } else {
+                Some(*digits.first().unwrap_or(&0))
+            }
+        }
+        _ => None,
+    }
+}
+
+fn resolve_function_id_by_address(ast: &Ast, addr: u64) -> Option<AstFunctionId> {
+    let exact = AstFunctionId { address: addr };
+    if ast.functions.read().ok()?.contains_key(&exact) {
+        Some(exact)
+    } else {
+        None
     }
 }
 
@@ -307,27 +348,39 @@ pub(super) fn convert_stmt(
     instruction_args: &[iceball::Argument],
 ) -> Result<WrappedAstStatement, DecompileError> {
     let result = match stmt {
-        IrStatement::Assignment { from, to, .. } => {
+        IrStatement::Assignment { from, to, size } => {
             let from = &resolve_operand(from, instruction_args);
             let to = &resolve_operand(to, instruction_args);
-            AstStatement::Assignment(
-                convert_expr(
-                    ast,
-                    function_id,
-                    function_version,
-                    root_expr.unwrap_or(to),
-                    to,
-                    var_map,
-                )?,
-                convert_expr(
-                    ast,
-                    function_id,
-                    function_version,
-                    root_expr.unwrap_or(to),
-                    from,
-                    var_map,
-                )?,
-            )
+            let lhs = convert_expr(
+                ast,
+                function_id,
+                function_version,
+                root_expr.unwrap_or(to),
+                to,
+                var_map,
+            )?;
+            let mut rhs = convert_expr(
+                ast,
+                function_id,
+                function_version,
+                root_expr.unwrap_or(to),
+                from,
+                var_map,
+            )?;
+            // Refine unsized CastSigned/CastUnsigned into explicit typed casts
+            // using the assignment's target size.
+            refine_extend_cast(&mut rhs, size, instruction_args);
+            // Reject assignments to non-assignable LHS (e.g. literal targets
+            // from unresolved IR data). Emit as a comment instead of producing
+            // malformed AST like `0x0 = v31`.
+            if is_assignable_lhs(&lhs.item) {
+                AstStatement::Assignment(lhs, rhs)
+            } else {
+                use crate::abstract_syntax_tree::PrintWithConfig;
+                let lhs_str = lhs.to_string_with_config(None);
+                let rhs_str = rhs.to_string_with_config(None);
+                AstStatement::Comment(format!("invalid assignment: {} = {}", lhs_str, rhs_str))
+            }
         }
         IrStatement::JumpByCall { target } => {
             let target = &resolve_operand(target, instruction_args);
@@ -339,14 +392,22 @@ pub(super) fn convert_stmt(
                 target,
                 var_map,
             )?;
-            match e.as_ref() {
-                AstExpression::Variable(vars, id) => AstStatement::Call(AstCall::Variable {
-                    scope: function_id,
-                    var_map: vars.clone(),
-                    var_id: *id,
+            let exact_target = expr_constant_address(e.as_ref())
+                .and_then(|addr| resolve_function_id_by_address(ast, addr));
+            match (e.as_ref(), exact_target) {
+                (_, Some(target)) => AstStatement::Call(AstCall::Function {
+                    target,
                     args: Vec::new(),
                 }),
-                _ => {
+                (AstExpression::Variable(vars, id), None) => {
+                    AstStatement::Call(AstCall::Variable {
+                        scope: function_id,
+                        var_map: vars.clone(),
+                        var_id: *id,
+                        args: Vec::new(),
+                    })
+                }
+                (_, None) => {
                     warn!("Uncovered call target");
                     let name = e.to_string_with_config(None);
                     AstStatement::Call(AstCall::Unknown(name, Vec::new()))
@@ -363,13 +424,18 @@ pub(super) fn convert_stmt(
                 target,
                 var_map,
             )?;
-            match e.as_ref() {
-                AstExpression::Variable(vars, id) => AstStatement::Goto(AstJumpTarget::Variable {
-                    scope: function_id,
-                    var_map: vars.clone(),
-                    var_id: *id,
-                }),
-                _ => {
+            let exact_target = expr_constant_address(e.as_ref())
+                .and_then(|addr| resolve_function_id_by_address(ast, addr));
+            match (e.as_ref(), exact_target) {
+                (_, Some(target)) => AstStatement::Goto(AstJumpTarget::Function { target }),
+                (AstExpression::Variable(vars, id), None) => {
+                    AstStatement::Goto(AstJumpTarget::Variable {
+                        scope: function_id,
+                        var_map: vars.clone(),
+                        var_id: *id,
+                    })
+                }
+                (_, None) => {
                     warn!("Uncovered jump target");
                     let label = e.to_string_with_config(None);
                     AstStatement::Goto(AstJumpTarget::Unknown(label))
@@ -382,7 +448,7 @@ pub(super) fn convert_stmt(
             false_branch,
         } => {
             let condition = &resolve_operand(condition, instruction_args);
-            let cond = convert_expr(
+            let mut cond = convert_expr(
                 ast,
                 function_id,
                 function_version,
@@ -390,6 +456,10 @@ pub(super) fn convert_stmt(
                 condition,
                 var_map,
             )?;
+            // Evaluate OperandExists at conversion time since we have instruction arg count
+            try_fold_operand_exists(&mut cond, instruction_args.len() as u8);
+            // If the condition resolved to a variable with a boolean const_value, use it
+            try_fold_bool_const_var(ast, function_id, function_version, &mut cond);
             let then_b = true_branch
                 .iter()
                 .map(|s| {
@@ -959,4 +1029,137 @@ pub(super) fn resolve_constant(
         IrData::Operand(..) => None,
     };
     Ok(result.map(w))
+}
+
+/// If the expression is a variable whose const_value is a boolean, fold it to a literal.
+fn try_fold_bool_const_var(
+    ast: &Ast,
+    function_id: AstFunctionId,
+    function_version: AstFunctionVersion,
+    expr: &mut Wrapped<AstExpression>,
+) {
+    if let AstExpression::Variable(_, var_id) = &expr.item {
+        let Ok(vars) = ast.get_variables(&function_id, &function_version) else {
+            return;
+        };
+        let vars = vars.read().unwrap();
+        if let Some(var) = vars.get(var_id) {
+            if let Some(const_val) = &var.const_value {
+                if let AstValue::Bool(b) = &const_val.item {
+                    expr.item = AstExpression::Literal(AstLiteral::Bool(*b));
+                }
+            }
+        }
+    }
+}
+
+/// Check whether an expression is a valid assignment target.
+fn is_assignable_lhs(expr: &AstExpression) -> bool {
+    matches!(
+        expr,
+        AstExpression::Variable(_, _)
+            | AstExpression::Deref(_)
+            | AstExpression::ArrayAccess(_, _)
+            | AstExpression::MemberAccess(_, _)
+            | AstExpression::Unknown
+    )
+}
+
+/// If the expression is `operand_exists(N)`, evaluate it to a bool literal
+/// using the known instruction argument count.
+fn try_fold_operand_exists(expr: &mut Wrapped<AstExpression>, instruction_arg_count: u8) {
+    if let AstExpression::Call(AstCall::Builtin(
+        crate::abstract_syntax_tree::AstBuiltinFunction::OperandExists,
+        args,
+    )) = &expr.item
+    {
+        if let AstBuiltinFunctionArgument::OperandExists(arg) = args.as_ref() {
+            if let AstExpression::Literal(AstLiteral::UInt(n)) = &arg.item {
+                // operand_exists(n): true if instruction has at least n operands
+                // n is 1-based operand index
+                let exists = n
+                    .checked_sub(1)
+                    .is_some_and(|idx| idx < instruction_arg_count as u64);
+                expr.item = AstExpression::Literal(AstLiteral::Bool(exists));
+            }
+        }
+    }
+}
+
+/// Resolve an `IrAccessSize` to a concrete byte count when possible.
+fn resolve_size_bytes(
+    size: &IrAccessSize,
+    instruction_args: &[iceball::Argument],
+) -> Option<usize> {
+    use crate::ir::analyze::variables::resolve_ir_operand_of_access_size;
+    let resolved = resolve_ir_operand_of_access_size(size, instruction_args);
+    match &resolved {
+        IrAccessSize::ResultOfByte(data) => match data.as_ref() {
+            IrData::Constant(n) => Some(*n),
+            _ => None,
+        },
+        IrAccessSize::ResultOfBit(data) => match data.as_ref() {
+            IrData::Constant(n) => {
+                if *n % 8 == 0 {
+                    Some(*n / 8)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// Convert a byte count to the corresponding signed `AstValueType`.
+fn bytes_to_signed_type(bytes: usize) -> Option<AstValueType> {
+    match bytes {
+        1 => Some(AstValueType::Int8),
+        2 => Some(AstValueType::Int16),
+        4 => Some(AstValueType::Int32),
+        8 => Some(AstValueType::Int64),
+        _ => None,
+    }
+}
+
+/// Convert a byte count to the corresponding unsigned `AstValueType`.
+fn bytes_to_unsigned_type(bytes: usize) -> Option<AstValueType> {
+    match bytes {
+        1 => Some(AstValueType::UInt8),
+        2 => Some(AstValueType::UInt16),
+        4 => Some(AstValueType::UInt32),
+        8 => Some(AstValueType::UInt64),
+        _ => None,
+    }
+}
+
+/// Refine `CastSigned(x)` / `CastUnsigned(x)` into `Cast(sized_type, x)`
+/// using the assignment's target size to determine the appropriate C type.
+fn refine_extend_cast(
+    rhs: &mut Wrapped<AstExpression>,
+    size: &IrAccessSize,
+    instruction_args: &[iceball::Argument],
+) {
+    let AstExpression::UnaryOp(op, inner) = &rhs.item else {
+        return;
+    };
+    let target_type = match op {
+        AstUnaryOperator::CastSigned => {
+            let Some(bytes) = resolve_size_bytes(size, instruction_args) else {
+                return;
+            };
+            bytes_to_signed_type(bytes)
+        }
+        AstUnaryOperator::CastUnsigned => {
+            let Some(bytes) = resolve_size_bytes(size, instruction_args) else {
+                return;
+            };
+            bytes_to_unsigned_type(bytes)
+        }
+        _ => return,
+    };
+    if let Some(ty) = target_type {
+        rhs.item = AstExpression::Cast(ty, inner.clone());
+    }
 }

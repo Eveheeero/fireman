@@ -1,0 +1,7 @@
+# Remove empty Block([]) nodes from the AST after optimization.
+
+if:
+  at afterOptimization
+  ast Block([])
+do:
+  del start[0]

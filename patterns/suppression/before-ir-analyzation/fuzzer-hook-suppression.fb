@@ -1,0 +1,14 @@
+# Suppress fuzzer instrumentation hooks (AFL, libFuzzer).
+# Deletes the specific asm statement containing the matched symbol.
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __afl_
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __sanitizer_cov
+do:
+  del start[0]

@@ -1,0 +1,29 @@
+# RAII shape recovery via Rhai script.
+# Detects constructor-at-entry + destructor-at-all-exits pattern.
+
+if:
+  at afterIteration
+  script `
+    let has_ctor = false;
+    let has_dtor = false;
+    if ast_stmts.len() >= 2 {
+      let first = ast_stmts[0];
+      let last = ast_stmts[ast_stmts.len() - 1];
+      if first.is_call() {
+        let n = first.call_name();
+        if n.contains("construct") || n.contains("ctor") || n.contains("init") {
+          has_ctor = true;
+        }
+      }
+      if last.is_call() {
+        let n = last.call_name();
+        if n.contains("destruct") || n.contains("dtor") || n.contains("cleanup") || n.contains("dispose") {
+          has_dtor = true;
+        }
+      }
+    }
+    has_ctor && has_dtor
+  `
+do:
+  info("RAII pattern detected")
+  del start[0]

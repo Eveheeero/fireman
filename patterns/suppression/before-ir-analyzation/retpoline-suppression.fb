@@ -1,0 +1,8 @@
+# Suppress retpoline mitigation sequences.
+# del start[0] deletes the specific asm statement that matched, not the first statement.
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __x86_indirect_thunk
+do:
+  del start[0]

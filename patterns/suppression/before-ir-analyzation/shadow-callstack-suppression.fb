@@ -1,0 +1,8 @@
+# Suppress shadow call stack instrumentation.
+# del start[0] targets the matched asm statement (not a fixed index).
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __shadow_call_stack
+do:
+  del start[0]

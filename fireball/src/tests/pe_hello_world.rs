@@ -19,6 +19,38 @@ fn pe_hello_world() {
 }
 
 #[test]
+fn pe_hello_world_exposes_pe_analysis_diagnostics() {
+    let subscriber = test_log_subscriber_with_file("logs/fireball_pe_hello_world_diagnostics.log");
+
+    tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
+        let binary = hello_world_binary();
+        let pe = Pe::from_binary(binary.to_vec()).unwrap();
+
+        assert!(!pe.section_entropies().is_empty());
+        assert!(
+            pe.section_entropies()
+                .iter()
+                .all(|entry| { !entry.name.is_empty() && (0.0..=8.0).contains(&entry.entropy) })
+        );
+        assert!(
+            pe.wide_strings()
+                .iter()
+                .all(|entry| !entry.value.is_empty())
+        );
+        assert!(
+            pe.forwarded_exports()
+                .iter()
+                .all(|entry| !entry.name.is_empty() && !entry.forward_dll.is_empty())
+        );
+        assert!(
+            pe.code_relocations()
+                .iter()
+                .all(|entry| !entry.section_name.is_empty())
+        );
+    });
+}
+
+#[test]
 fn pe_hello_world_entry() {
     let subscriber = test_log_subscriber_with_file("logs/fireball_pe_hello_world_entry.log");
 
@@ -173,6 +205,37 @@ fn pe_hello_world_block_relation() {
                 .unwrap(),
             37216
         );
+    });
+}
+
+#[test]
+fn pe_hello_world_block_relation_jcc() {
+    let subscriber =
+        test_log_subscriber_with_file("logs/fireball_pe_hello_world_block_relation_jcc.log");
+
+    tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
+        let binary = hello_world_binary();
+        let pe = Pe::from_binary(binary.to_vec()).unwrap();
+
+        /* Validate parsing and relation creation */
+        let addr = Address::from_virtual_address(pe.get_sections().as_ref(), 0x1188);
+        pe.generate_block_from_address(&addr);
+        let blocks = pe.get_blocks();
+        let block = blocks.get_by_start_address(&addr);
+        assert!(block.is_some());
+        let block = block.unwrap();
+        let connected_to = block.get_connected_to();
+        assert_eq!(connected_to.len(), 2);
+        for connected_to in connected_to.iter() {
+            assert!(
+                matches!(
+                    connected_to.relation_type(),
+                    &RelationType::Jcc | &RelationType::Continued
+                ),
+                "{:?}",
+                connected_to.relation_type()
+            );
+        }
     });
 }
 

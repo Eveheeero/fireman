@@ -1,0 +1,18 @@
+# Constant folding: evaluate binary and unary operations on literal operands.
+# Replaces BinaryOp(op, Literal(a), Literal(b)) with eval_binop result,
+# and UnaryOp(op, Literal(a)) with eval_unary result.
+# These use builtin functions that delegate to opt_utils::eval_binary/eval_unary.
+
+# Rule 1: Binary op on two literals → folded literal
+if:
+  at afterIteration
+  expr BinaryOp($op, Literal($a), Literal($b))
+do:
+  replace_expr_fn eval_binop($op, $a, $b)
+
+# Rule 2: Unary op on a literal → folded literal
+if:
+  at afterIteration
+  expr UnaryOp($op, Literal($a))
+do:
+  replace_expr_fn eval_unary($op, $a)

@@ -1,0 +1,34 @@
+# Reverse strength reduction: recover multiply from shift+add/sub patterns.
+#   (x << N) + x        →  x * (2^N + 1)
+#   (x << N) - x        →  x * (2^N - 1)
+#   (x << N) + (x << M) →  x * (2^N + 2^M)
+
+if:
+  at afterIteration
+  expr BinaryOp(Add, BinaryOp(LeftShift, $x, $n), $x2)
+  where structurally_equal($x, $x2)
+  where is_literal($n)
+do:
+  replace_expr_fn eval_strength_reduce_add($x, $n)
+if:
+  at afterIteration
+  expr BinaryOp(Add, $x2, BinaryOp(LeftShift, $x, $n))
+  where structurally_equal($x, $x2)
+  where is_literal($n)
+do:
+  replace_expr_fn eval_strength_reduce_add($x, $n)
+if:
+  at afterIteration
+  expr BinaryOp(Sub, BinaryOp(LeftShift, $x, $n), $x2)
+  where structurally_equal($x, $x2)
+  where is_literal($n)
+do:
+  replace_expr_fn eval_strength_reduce_sub($x, $n)
+if:
+  at afterIteration
+  expr BinaryOp(Add, BinaryOp(LeftShift, $x, $n), BinaryOp(LeftShift, $x2, $m))
+  where structurally_equal($x, $x2)
+  where is_literal($n)
+  where is_literal($m)
+do:
+  replace_expr_fn eval_strength_reduce_dual($x, $n, $m)

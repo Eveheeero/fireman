@@ -20,6 +20,11 @@ pub enum AstExpression {
     AddressOf(Box<Wrapped<AstExpression>>),
     ArrayAccess(Box<Wrapped<AstExpression>>, Box<Wrapped<AstExpression>>),
     MemberAccess(Box<Wrapped<AstExpression>>, String),
+    Ternary(
+        Box<Wrapped<AstExpression>>,
+        Box<Wrapped<AstExpression>>,
+        Box<Wrapped<AstExpression>>,
+    ),
 }
 
 impl AstExpression {
@@ -91,6 +96,12 @@ impl AstExpression {
                 result
             }
             AstExpression::MemberAccess(expr, _) => expr.get_related_variables(),
+            AstExpression::Ternary(cond, true_expr, false_expr) => {
+                let mut result = cond.get_related_variables();
+                result.extend(true_expr.get_related_variables());
+                result.extend(false_expr.get_related_variables());
+                result
+            }
 
             AstExpression::Literal(_)
             | AstExpression::Unknown

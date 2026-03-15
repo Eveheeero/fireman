@@ -208,6 +208,7 @@ impl From<&iceball::Argument> for Aos<IrData> {
         use iceball::{AddressingOperator, Argument, Memory, Register, RelativeAddressingArgument};
         match value {
             Argument::Constant(c) => IrData::Constant((*c).try_into().unwrap()).into(),
+            Argument::Register(Register::Arm(_)) => IrData::Intrinsic(IrIntrinsic::Unknown).into(),
             Argument::Memory(Memory::AbsoluteAddressing(v)) => {
                 IrData::Dereference(IrData::Constant((*v).try_into().unwrap()).into()).into()
             }
@@ -223,6 +224,7 @@ impl From<&iceball::Argument> for Aos<IrData> {
                     match arg {
                         RelativeAddressingArgument::Register(reg) => match reg {
                             Register::X64(x64_reg) => Some(x64_reg_to_ir_reg(*x64_reg)),
+                            Register::Arm(_) => None,
                         },
                         RelativeAddressingArgument::Constant(c) => {
                             if *c >= 0 {

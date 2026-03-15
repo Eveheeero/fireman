@@ -1,0 +1,25 @@
+# Boolean AND chain recovery (depth-2):
+#   if (a) { if (b) { v = true } else { v = false } } else { v = false }
+#   => v = a && b
+#
+# Applied iteratively: deeper chains reduce one level per pass.
+
+if:
+  at afterIteration
+  stmt If($c1, [If($c2, [Assignment(Variable($_, $v1), Literal(Bool(true)))], Some([Assignment(Variable($_, $v2), Literal(Bool(false)))]))], Some([Assignment(Variable($_, $v3), Literal(Bool(false)))]))
+  where eq($v1, $v2)
+  where eq($v1, $v3)
+do:
+  emit Assignment(Variable($_, $v1), BinaryOp(LogicAnd, $c1, $c2))
+
+# Boolean OR chain recovery (depth-2):
+#   if (a) { v = true } else { if (b) { v = true } else { v = false } }
+#   => v = a || b
+
+if:
+  at afterIteration
+  stmt If($c1, [Assignment(Variable($_, $v1), Literal(Bool(true)))], Some([If($c2, [Assignment(Variable($_, $v2), Literal(Bool(true)))], Some([Assignment(Variable($_, $v3), Literal(Bool(false)))]))]))
+  where eq($v1, $v2)
+  where eq($v1, $v3)
+do:
+  emit Assignment(Variable($_, $v1), BinaryOp(LogicOr, $c1, $c2))

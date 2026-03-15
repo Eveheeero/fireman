@@ -1,0 +1,15 @@
+# Clamp Recovery:
+#   min(max(x, low), high) → clamp(x, low, high)
+#   max(min(x, high), low) → clamp(x, low, high)
+
+if:
+  at afterIteration
+  expr Call("min", [Call("max", [$x, $low]), $high])
+do:
+  replace_expr Call("clamp", [$x, $low, $high])
+
+if:
+  at afterIteration
+  expr Call("max", [Call("min", [$x, $high]), $low])
+do:
+  replace_expr Call("clamp", [$x, $low, $high])

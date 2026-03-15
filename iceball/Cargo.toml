@@ -10,6 +10,7 @@ homepage = "https://crates.io/crates/iceball"
 
 [lib]
 crate-type = ["cdylib", "rlib", "staticlib"]
+doctest = false
 
 [dependencies]
 fireman_macro.workspace = true

@@ -1,7 +1,9 @@
+//! Simplify control flow: dead branches, tail-call merge, branch inversion.
+
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstStatement, ProcessedOptimization,
-        WrappedAstStatement,
+        Ast, AstCall, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral, AstStatement,
+        AstUnaryOperator, AstValueOrigin, ProcessedOptimization, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -31,6 +33,10 @@ pub(super) fn cleanup_control_flow(
     }
 
     cleanup_statement_list(&mut body, &noreturn_targets);
+    prune_constant_condition_branches(&mut body);
+    factor_common_tails(&mut body);
+    invert_negated_branches(&mut body);
+    merge_consecutive_same_condition_ifs(&mut body);
 
     {
         let mut functions = ast.functions.write().unwrap();
@@ -58,6 +64,62 @@ fn cleanup_statement_list(
     if let Some((index, _outcome)) = first_terminal_index(stmts, noreturn_targets) {
         stmts.truncate(index + 1);
     }
+
+    // Tail-call detection: merge trailing Call + Return(None) into Return(Some(Call(...))).
+    merge_trailing_call_return(stmts);
+}
+
+/// Merge a trailing `Call(c); Return(None)` pair into `Return(Some(Call(c)))`,
+/// making the tail-call explicit in the AST.
+fn merge_trailing_call_return(stmts: &mut Vec<WrappedAstStatement>) {
+    // Find the indices of the last two meaningful (non-comment, non-empty) statements.
+    let meaningful: Vec<usize> = stmts
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| !matches!(&s.statement, AstStatement::Comment(_) | AstStatement::Empty))
+        .map(|(i, _)| i)
+        .collect();
+
+    if meaningful.len() < 2 {
+        return;
+    }
+
+    let call_idx = meaningful[meaningful.len() - 2];
+    let ret_idx = meaningful[meaningful.len() - 1];
+
+    let is_call = matches!(&stmts[call_idx].statement, AstStatement::Call(_));
+    let is_return_none = matches!(&stmts[ret_idx].statement, AstStatement::Return(None));
+
+    if is_call && is_return_none {
+        // Remove the Return(None) first (higher index), then the Call.
+        stmts.remove(ret_idx);
+        let removed_call = stmts.remove(call_idx);
+
+        if let AstStatement::Call(call) = removed_call.statement {
+            let return_stmt = WrappedAstStatement {
+                statement: AstStatement::Return(Some(Wrapped {
+                    item: AstExpression::Call(call),
+                    origin: AstValueOrigin::Unknown,
+                    comment: None,
+                })),
+                origin: removed_call.origin,
+                comment: removed_call.comment,
+            };
+            stmts.insert(call_idx, return_stmt);
+        }
+    }
+}
+
+fn meaningful_statement_count(stmts: &[WrappedAstStatement]) -> usize {
+    stmts
+        .iter()
+        .filter(|stmt| {
+            !matches!(
+                &stmt.statement,
+                AstStatement::Comment(_) | AstStatement::Empty
+            )
+        })
+        .count()
 }
 
 fn cleanup_statement(stmt: &mut WrappedAstStatement, noreturn_targets: &HashSet<AstFunctionId>) {
@@ -68,11 +130,21 @@ fn cleanup_statement(stmt: &mut WrappedAstStatement, noreturn_targets: &HashSet<
                 cleanup_statement_list(branch_false, noreturn_targets);
             }
         }
-        AstStatement::While(_, body) => cleanup_statement_list(body, noreturn_targets),
+        AstStatement::While(_, body) | AstStatement::DoWhile(_, body) => {
+            cleanup_statement_list(body, noreturn_targets)
+        }
         AstStatement::For(init, _, update, body) => {
             cleanup_statement(init, noreturn_targets);
             cleanup_statement(update, noreturn_targets);
             cleanup_statement_list(body, noreturn_targets);
+        }
+        AstStatement::Switch(_, cases, default) => {
+            for (_lit, case_body) in cases.iter_mut() {
+                cleanup_statement_list(case_body, noreturn_targets);
+            }
+            if let Some(default_body) = default {
+                cleanup_statement_list(default_body, noreturn_targets);
+            }
         }
         AstStatement::Block(body) => cleanup_statement_list(body, noreturn_targets),
         AstStatement::Declaration(_, _)
@@ -86,6 +158,8 @@ fn cleanup_statement(stmt: &mut WrappedAstStatement, noreturn_targets: &HashSet<
         | AstStatement::Exception(_)
         | AstStatement::Comment(_)
         | AstStatement::Ir(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => {}
     }
 }
@@ -130,10 +204,36 @@ fn statement_outcome(
             statement_list_outcome(branch_true, noreturn_targets),
             statement_list_outcome(branch_false, noreturn_targets),
         ),
+        AstStatement::Switch(_, cases, default) => {
+            // Switch terminates only if every case AND default all terminate
+            if let Some(default_body) = default {
+                let mut all_terminate = true;
+                let mut combined = statement_list_outcome(default_body, noreturn_targets);
+                if combined == TerminationOutcome::NoTerminate {
+                    all_terminate = false;
+                }
+                for (_lit, case_body) in cases.iter() {
+                    let case_outcome = statement_list_outcome(case_body, noreturn_targets);
+                    if case_outcome == TerminationOutcome::NoTerminate {
+                        all_terminate = false;
+                        break;
+                    }
+                    combined = combine_branch_outcomes(combined, case_outcome);
+                }
+                if all_terminate {
+                    combined
+                } else {
+                    TerminationOutcome::NoTerminate
+                }
+            } else {
+                TerminationOutcome::NoTerminate
+            }
+        }
         AstStatement::Declaration(_, _)
         | AstStatement::Assignment(_, _)
         | AstStatement::If(_, _, None)
         | AstStatement::While(_, _)
+        | AstStatement::DoWhile(_, _)
         | AstStatement::For(_, _, _, _)
         | AstStatement::Label(_)
         | AstStatement::Goto(_)
@@ -141,6 +241,10 @@ fn statement_outcome(
         | AstStatement::Comment(_)
         | AstStatement::Ir(_)
         | AstStatement::Empty => TerminationOutcome::NoTerminate,
+        // Break/Continue transfer control within a loop/switch but do not
+        // cause a function-level return or noreturn, so for this analysis
+        // (which tracks function-level termination) they are non-terminating.
+        AstStatement::Break | AstStatement::Continue => TerminationOutcome::NoTerminate,
     }
 }
 
@@ -248,3 +352,270 @@ fn is_noreturn_token(token: &str) -> bool {
             | "__assert_fail"
     )
 }
+
+/// Prune branches with constant integer conditions that the constant folder missed.
+/// `if(0) { A } else { B }` → B (or empty if no else).
+/// `if(nonzero_int) { A } else { B }` → A.
+fn constant_condition_truth(expr: &AstExpression) -> Option<bool> {
+    match expr {
+        AstExpression::Literal(AstLiteral::Int(value)) => Some(*value != 0),
+        AstExpression::Literal(AstLiteral::UInt(value)) => Some(*value != 0),
+        AstExpression::Literal(AstLiteral::Bool(value)) => Some(*value),
+        AstExpression::UnaryOp(AstUnaryOperator::Not, inner) => {
+            constant_condition_truth(&inner.item).map(|value| !value)
+        }
+        _ => None,
+    }
+}
+
+fn prune_constant_condition_branches(stmts: &mut Vec<WrappedAstStatement>) {
+    for stmt in stmts.iter_mut() {
+        match &mut stmt.statement {
+            AstStatement::If(cond, bt, bf) => {
+                prune_constant_condition_branches(bt);
+                if let Some(bf) = bf {
+                    prune_constant_condition_branches(bf);
+                }
+                let const_truth = constant_condition_truth(&cond.item);
+                if let Some(is_true) = const_truth {
+                    if is_true {
+                        let body = std::mem::take(bt);
+                        stmt.statement = AstStatement::Block(body);
+                    } else if let Some(else_body) = bf.take() {
+                        stmt.statement = AstStatement::Block(else_body);
+                    } else {
+                        stmt.statement = AstStatement::Empty;
+                    }
+                }
+            }
+            AstStatement::While(_, body) | AstStatement::Block(body) => {
+                prune_constant_condition_branches(body);
+            }
+            AstStatement::For(_, _, _, body) => prune_constant_condition_branches(body),
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases.iter_mut() {
+                    prune_constant_condition_branches(case_body);
+                }
+                if let Some(default_body) = default {
+                    prune_constant_condition_branches(default_body);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Merge consecutive if-statements that test the same pure condition:
+/// `if(cond) { A } if(cond) { B }` → `if(cond) { A; B }`
+///
+/// Only merges when the condition is side-effect-free (pure) and the first if has no else branch.
+fn merge_consecutive_same_condition_ifs(stmts: &mut Vec<WrappedAstStatement>) {
+    // Recurse into nested structures first.
+    for stmt in stmts.iter_mut() {
+        match &mut stmt.statement {
+            AstStatement::If(_, bt, bf) => {
+                merge_consecutive_same_condition_ifs(bt);
+                if let Some(bf) = bf {
+                    merge_consecutive_same_condition_ifs(bf);
+                }
+            }
+            AstStatement::While(_, body) | AstStatement::Block(body) => {
+                merge_consecutive_same_condition_ifs(body);
+            }
+            AstStatement::For(_, _, _, body) => merge_consecutive_same_condition_ifs(body),
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases.iter_mut() {
+                    merge_consecutive_same_condition_ifs(case_body);
+                }
+                if let Some(default_body) = default {
+                    merge_consecutive_same_condition_ifs(default_body);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Merge at this level.
+    let mut i = 0;
+    while i + 1 < stmts.len() {
+        let should_merge = {
+            let (first, rest) = stmts.split_at(i + 1);
+            let first_stmt = &first[i].statement;
+            let next_stmt = &rest[0].statement;
+            match (first_stmt, next_stmt) {
+                (AstStatement::If(cond1, _, None), AstStatement::If(cond2, _, _)) => {
+                    conditions_are_equivalent(cond1, cond2)
+                }
+                _ => false,
+            }
+        };
+
+        if should_merge {
+            let removed = stmts.remove(i + 1);
+            if let AstStatement::If(_, mut body2, else2) = removed.statement {
+                if let AstStatement::If(_, body1, else1) = &mut stmts[i].statement {
+                    body1.append(&mut body2);
+                    // If the second if had an else branch, adopt it.
+                    if else2.is_some() && else1.is_none() {
+                        *else1 = else2;
+                    }
+                }
+            }
+            // Don't increment — check for more consecutive matches.
+        } else {
+            i += 1;
+        }
+    }
+}
+
+fn conditions_are_equivalent(
+    cond1: &Wrapped<AstExpression>,
+    cond2: &Wrapped<AstExpression>,
+) -> bool {
+    if !super::opt_utils::is_pure_expression(&cond1.item)
+        || !super::opt_utils::is_pure_expression(&cond2.item)
+    {
+        return false;
+    }
+
+    if super::opt_utils::expr_structurally_equal(&cond1.item, &cond2.item) {
+        return true;
+    }
+
+    let mut normalized_cond1 = cond1.clone();
+    let mut normalized_cond2 = cond2.clone();
+    super::operator_canonicalization::canonicalize_condition_expression(&mut normalized_cond1);
+    super::operator_canonicalization::canonicalize_condition_expression(&mut normalized_cond2);
+    super::opt_utils::expr_structurally_equal(&normalized_cond1.item, &normalized_cond2.item)
+}
+
+/// Invert `if(!cond) { A } else { B }` → `if(cond) { B } else { A }` when doing
+/// so keeps the larger branch on the positive path and improves readability.
+fn invert_negated_branches(stmts: &mut Vec<WrappedAstStatement>) {
+    for stmt in stmts.iter_mut() {
+        match &mut stmt.statement {
+            AstStatement::If(cond, bt, bf) => {
+                invert_negated_branches(bt);
+                if let Some(bf) = bf {
+                    invert_negated_branches(bf);
+                }
+                // Only invert when both branches exist and condition is `!expr`.
+                if let Some(bf) = bf {
+                    if let AstExpression::UnaryOp(AstUnaryOperator::Not, inner) = &cond.item {
+                        let true_branch_size = meaningful_statement_count(bt);
+                        let false_branch_size = meaningful_statement_count(bf);
+
+                        if false_branch_size > true_branch_size {
+                            // Unwrap the negation only when the positive path stays dominant.
+                            cond.item = inner.item.clone();
+                            std::mem::swap(bt, bf);
+                        }
+                    }
+                }
+            }
+            AstStatement::While(_, body) | AstStatement::Block(body) => {
+                invert_negated_branches(body);
+            }
+            AstStatement::For(_, _, _, body) => invert_negated_branches(body),
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases.iter_mut() {
+                    invert_negated_branches(case_body);
+                }
+                if let Some(default_body) = default {
+                    invert_negated_branches(default_body);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Factor identical trailing statements out of if/else branches.
+/// `if(c) { A; T; } else { B; T; }` → `if(c) { A; } else { B; } T;`
+///
+/// Recurses into nested structures first, then rewrites at each list level.
+fn factor_common_tails(stmts: &mut Vec<WrappedAstStatement>) {
+    // Recurse into nested structures first.
+    for stmt in stmts.iter_mut() {
+        match &mut stmt.statement {
+            AstStatement::If(_, bt, bf) => {
+                factor_common_tails(bt);
+                if let Some(bf) = bf {
+                    factor_common_tails(bf);
+                }
+            }
+            AstStatement::While(_, body) | AstStatement::Block(body) => {
+                factor_common_tails(body);
+            }
+            AstStatement::For(_, _, _, body) => factor_common_tails(body),
+            AstStatement::Switch(_, cases, default) => {
+                for (_, case_body) in cases.iter_mut() {
+                    factor_common_tails(case_body);
+                }
+                if let Some(default_body) = default {
+                    factor_common_tails(default_body);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // Now look for if/else with common tails at this level and splice them out.
+    let mut insertions: Vec<(usize, Vec<WrappedAstStatement>)> = Vec::new();
+    for (idx, stmt) in stmts.iter_mut().enumerate() {
+        let AstStatement::If(_, bt, Some(bf)) = &mut stmt.statement else {
+            continue;
+        };
+        let common = count_common_tail(bt, bf);
+        if common == 0 {
+            continue;
+        }
+        let tail: Vec<WrappedAstStatement> = bt.drain(bt.len() - common..).collect();
+        bf.truncate(bf.len() - common);
+        insertions.push((idx, tail));
+    }
+
+    // Insert extracted tails after their respective if/else (in reverse to keep indices stable).
+    for (idx, tail) in insertions.into_iter().rev() {
+        let insert_at = idx + 1;
+        for (j, s) in tail.into_iter().enumerate() {
+            stmts.insert(insert_at + j, s);
+        }
+    }
+}
+
+/// Count how many trailing statements are structurally identical between two lists.
+/// Uses full 256-bit blake3 structural hashing for comparison.
+fn count_common_tail(a: &[WrappedAstStatement], b: &[WrappedAstStatement]) -> usize {
+    use super::pattern_matching::{Blake3StdHasher, hash_statement_list};
+
+    let mut count = 0;
+    let min_len = a.len().min(b.len());
+    // Don't factor out ALL statements — leave at least 1 in each branch.
+    let max_factor = if min_len > 0 { min_len - 1 } else { 0 };
+
+    for i in 0..max_factor {
+        let ai = a.len() - 1 - i;
+        let bi = b.len() - 1 - i;
+        let a_slice = &a[ai..=ai];
+        let b_slice = &b[bi..=bi];
+
+        let mut ha = Blake3StdHasher::new();
+        hash_statement_list(&mut ha, a_slice);
+        let da = ha.finish_bytes();
+
+        let mut hb = Blake3StdHasher::new();
+        hash_statement_list(&mut hb, b_slice);
+        let db = hb.finish_bytes();
+
+        if da != db {
+            break;
+        }
+        count += 1;
+    }
+    count
+}
+
+// ---------------------------------------------------------------------------
+// Register spill/reload detection (L252)
+// ---------------------------------------------------------------------------

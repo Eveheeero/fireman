@@ -1,0 +1,9 @@
+# Checked arithmetic recovery: overflow check pattern → checked_add.
+# Pattern: if(a + b < a) { ... } → checked addition detected.
+
+if:
+  at afterIteration
+  stmt If(BinaryOp(Less, BinaryOp(Add, $a, $b), $a2), $then, $else)
+  where structurally_equal($a, $a2)
+do:
+  emit Call("checked_add", [$a, $b])

@@ -9,6 +9,7 @@ mod analyze_from_virtual_address;
 use super::Pe;
 use crate::{
     core::{Address, Block, Blocks, Fire, FireRaw, PreDefinedOffsets, Relations, Sections},
+    ir::analyze::global_recovery::recover_globals,
     prelude::DecompileError,
 };
 use std::sync::Arc;
@@ -23,39 +24,80 @@ impl Fire for Pe {
     }
 
     fn decompile_all(&self) -> Result<String, DecompileError> {
-        Ok(crate::ir::analyze::generate_ast_with_pre_defined_symbols(
-            self.analyze_all()?,
-            self.get_defined(),
-        )?
-        .optimize(None)?
-        .print(None))
+        let blocks = self.analyze_all()?;
+        self.seed_recovered_globals(&blocks);
+        Ok(
+            crate::ir::analyze::generate_ast_with_pre_defined_symbols(blocks, self.get_defined())?
+                .optimize(None)?
+                .print(None),
+        )
     }
 
     fn decompile_from_entry(&self) -> Result<String, DecompileError> {
-        Ok(crate::ir::analyze::generate_ast_with_pre_defined_symbols(
-            [self.analyze_from_entry()?],
-            self.get_defined(),
-        )?
-        .optimize(None)?
-        .print(None))
+        let block = self.analyze_from_entry()?;
+        self.seed_recovered_globals(std::slice::from_ref(&block));
+        Ok(
+            crate::ir::analyze::generate_ast_with_pre_defined_symbols([block], self.get_defined())?
+                .optimize(None)?
+                .print(None),
+        )
     }
 
     fn decompile_from_file_offset(&self, address: u64) -> Result<String, DecompileError> {
-        Ok(crate::ir::analyze::generate_ast_with_pre_defined_symbols(
-            [self.analyze_from_file_offset(address)?],
-            self.get_defined(),
-        )?
-        .optimize(None)?
-        .print(None))
+        let block = self.analyze_from_file_offset(address)?;
+        self.seed_recovered_globals(std::slice::from_ref(&block));
+        Ok(
+            crate::ir::analyze::generate_ast_with_pre_defined_symbols([block], self.get_defined())?
+                .optimize(None)?
+                .print(None),
+        )
     }
 
     fn decompile_from_virtual_address(&self, address: u64) -> Result<String, DecompileError> {
-        Ok(crate::ir::analyze::generate_ast_with_pre_defined_symbols(
-            [self.analyze_from_virtual_address(address)?],
-            self.get_defined(),
-        )?
-        .optimize(None)?
-        .print(None))
+        let block = self.analyze_from_virtual_address(address)?;
+        self.seed_recovered_globals(std::slice::from_ref(&block));
+        Ok(
+            crate::ir::analyze::generate_ast_with_pre_defined_symbols([block], self.get_defined())?
+                .optimize(None)?
+                .print(None),
+        )
+    }
+}
+
+impl Pe {
+    fn seed_recovered_globals(&self, blocks: &[Arc<Block>]) {
+        let globals = recover_globals(blocks, self.sections.as_ref());
+        if globals.is_empty() {
+            return;
+        }
+
+        let existing_addrs = {
+            let reader = self.defined.get_reader();
+            reader
+                .iter()
+                .map(|item| item.address.get_virtual_address())
+                .collect::<std::collections::HashSet<_>>()
+        };
+
+        let mut inserted = 0usize;
+        for global in globals {
+            if existing_addrs.contains(&global.address) {
+                continue;
+            }
+
+            self.defined.insert(crate::core::PreDefinedOffset {
+                address: Address::from_virtual_address(self.sections.as_ref(), global.address),
+                name: format!("global_{:X}", global.address),
+            });
+            inserted += 1;
+        }
+
+        if inserted > 0 {
+            tracing::debug!(
+                inserted,
+                "Recovered global variable names seeded into predefined offsets"
+            );
+        }
     }
 }
 impl FireRaw for Pe {

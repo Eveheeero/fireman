@@ -1,0 +1,21 @@
+# Magic division recovery: (x * magic) >> shift → x / divisor
+#
+# Compilers encode unsigned division by a constant as a multiply-then-shift.
+# This pattern detects both operand orderings and delegates to the
+# eval_magic_division builtin which tries small divisors 2..=1024.
+
+# Unsigned: (x * magic) >> shift → x / divisor
+if:
+  at afterIteration
+  expr BinaryOp(RightShift, BinaryOp(Mul, $x, Literal($magic)), Literal($shift))
+  where is_nonzero($shift)
+do:
+  replace_expr_fn eval_magic_division($x, $magic, $shift)
+
+# Commutative: (magic * x) >> shift
+if:
+  at afterIteration
+  expr BinaryOp(RightShift, BinaryOp(Mul, Literal($magic), $x), Literal($shift))
+  where is_nonzero($shift)
+do:
+  replace_expr_fn eval_magic_division($x, $magic, $shift)

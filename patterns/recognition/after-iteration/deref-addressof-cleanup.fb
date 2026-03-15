@@ -1,0 +1,13 @@
+# Deref/AddressOf cancellation: *(&x) → x and &(*x) → x.
+
+if:
+  at afterIteration
+  expr Deref(AddressOf($x))
+do:
+  replace_expr $x
+
+if:
+  at afterIteration
+  expr AddressOf(Deref($x))
+do:
+  replace_expr $x

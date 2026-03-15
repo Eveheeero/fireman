@@ -1,0 +1,13 @@
+# Suppress trampoline and hook stub patterns.
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __x86_indirect_thunk
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __x86_return_thunk
+do:
+  del start[0]

@@ -1,0 +1,14 @@
+# Suppress stack canary check/setup boilerplate (__stack_chk_fail, __stack_chk_guard).
+
+if:
+  at afterIteration
+  asm_contains __stack_chk_fail
+do:
+  ast comment // stack canary check
+  del start[0]
+if:
+  at afterIteration
+  asm_contains __stack_chk_guard
+do:
+  ast comment // stack canary setup
+  del start[0]

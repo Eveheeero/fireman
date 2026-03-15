@@ -1,0 +1,10 @@
+# Remove NOP padding and equivalent xchg eax,eax instructions.
+
+if:
+  at beforeIrAnalyzation
+  asm nop
+if:
+  at beforeIrAnalyzation
+  asm `xchg eax, eax`
+do:
+  del start[0]

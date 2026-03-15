@@ -1,0 +1,25 @@
+# Redundant Loop-Control Cleanup:
+#   while (cond) { body... continue; }  →  while (cond) { body... }
+#   for (init; cond; up) { body... continue; }  →  for (init; cond; up) { body... }
+#   do { body... continue; } while (cond)  →  do { body... } while (cond)
+
+if:
+  at afterIteration
+  stmt While($cond, $body)
+  where ends_with_continue($body)
+do:
+  del end[-1]
+
+if:
+  at afterIteration
+  stmt For($init, $cond, $up, $body)
+  where ends_with_continue($body)
+do:
+  del end[-1]
+
+if:
+  at afterIteration
+  stmt DoWhile($cond, $body)
+  where ends_with_continue($body)
+do:
+  del end[-1]

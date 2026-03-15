@@ -1,7 +1,9 @@
+//! Remove assignments to variables that are never subsequently read.
+
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement,
-        ProcessedOptimization, WrappedAstStatement,
+        GetRelatedVariables, ProcessedOptimization, WrappedAstStatement,
     },
     ir::data::IrData,
     prelude::{DecompileError, *},
@@ -31,6 +33,17 @@ pub(super) fn collapse_unused_variables(
     let mut overwritten_locations: HashSet<Aos<IrData>> = HashSet::new();
     let mut new_body: Vec<WrappedAstStatement> = Vec::new();
     for mut stmt in body.into_iter().rev() {
+        if let AstStatement::Call(_) = &stmt.statement {
+            for (_, var_id) in stmt.statement.get_related_variables() {
+                if let Some(location) = super::utils::var_id_to_access_location(&variables, var_id)
+                {
+                    overwritten_locations.remove(&location);
+                }
+            }
+            new_body.push(stmt);
+            continue;
+        }
+
         match &mut stmt.statement {
             /* removable */
             AstStatement::Declaration(lhs, _rhs) => {
@@ -112,7 +125,7 @@ pub(super) fn collapse_unused_variables(
 
                 continue;
             }
-            AstStatement::While(_cond, stmts) => {
+            AstStatement::While(_cond, stmts) | AstStatement::DoWhile(_cond, stmts) => {
                 let mut loop_overwritten_locations: HashSet<Aos<IrData>> = HashSet::new();
                 collapse(&variables, &mut loop_overwritten_locations, stmts);
                 // Loop iteration effects are hard to prove backwards safely.
@@ -128,6 +141,34 @@ pub(super) fn collapse_unused_variables(
                 new_body.push(stmt);
                 continue;
             }
+            AstStatement::Switch(_discrim, cases, default) => {
+                if cases.is_empty() && default.is_none() {
+                    new_body.push(stmt);
+                    continue;
+                }
+                let mut branch_overwritten: Vec<HashSet<Aos<IrData>>> = Vec::new();
+                for (_lit, case_body) in cases.iter_mut() {
+                    let mut case_overwritten = overwritten_locations.clone();
+                    collapse(&variables, &mut case_overwritten, case_body);
+                    branch_overwritten.push(case_overwritten);
+                }
+                if let Some(default_body) = default {
+                    let mut default_overwritten = overwritten_locations.clone();
+                    collapse(&variables, &mut default_overwritten, default_body);
+                    branch_overwritten.push(default_overwritten);
+                }
+                if branch_overwritten.is_empty() {
+                    overwritten_locations.clear();
+                } else {
+                    let mut result = branch_overwritten[0].clone();
+                    for other in &branch_overwritten[1..] {
+                        result = result.intersection(other).cloned().collect();
+                    }
+                    overwritten_locations = result;
+                }
+                new_body.push(stmt);
+                continue;
+            }
             AstStatement::Block(stmts) => {
                 collapse(&variables, &mut overwritten_locations, stmts);
                 new_body.push(stmt);
@@ -135,14 +176,21 @@ pub(super) fn collapse_unused_variables(
             }
 
             /* etc */
-            AstStatement::Label(_) | AstStatement::Comment(_) | AstStatement::Empty => {
+            AstStatement::Label(_)
+            | AstStatement::Comment(_)
+            | AstStatement::Break
+            | AstStatement::Continue
+            | AstStatement::Empty => {
                 new_body.push(stmt);
+                continue;
+            }
+            AstStatement::Call(_) => {
+                // handled above
                 continue;
             }
 
             /* next statements undetectable */
-            AstStatement::Call(_)
-            | AstStatement::Goto(_)
+            AstStatement::Goto(_)
             | AstStatement::Assembly(_)
             | AstStatement::Ir(_)
             | AstStatement::Return(_)
@@ -181,6 +229,15 @@ fn collapse(
         i -= 1;
         let mut drop_needed = false;
         let stmt = &mut stmts[i];
+
+        if let AstStatement::Call(_) = &stmt.statement {
+            for (_, var_id) in stmt.statement.get_related_variables() {
+                if let Some(location) = super::utils::var_id_to_access_location(variables, var_id) {
+                    overwritten_locations.remove(&location);
+                }
+            }
+            continue;
+        }
 
         'inner: {
             match &mut stmt.statement {
@@ -258,7 +315,7 @@ fn collapse(
                         collapse(&variables, overwritten_locations, branch_true);
                     }
                 }
-                AstStatement::While(_cond, stmts) => {
+                AstStatement::While(_cond, stmts) | AstStatement::DoWhile(_cond, stmts) => {
                     let mut loop_overwritten_locations: HashSet<Aos<IrData>> = HashSet::new();
                     collapse(variables, &mut loop_overwritten_locations, stmts);
                     overwritten_locations.clear();
@@ -268,6 +325,32 @@ fn collapse(
                     collapse(variables, &mut loop_overwritten_locations, stmts);
                     overwritten_locations.clear();
                 }
+                AstStatement::Switch(_discrim, cases, default) => {
+                    if cases.is_empty() && default.is_none() {
+                        // nothing to do
+                    } else {
+                        let mut branch_overwritten: Vec<HashSet<Aos<IrData>>> = Vec::new();
+                        for (_lit, case_body) in cases.iter_mut() {
+                            let mut case_overwritten = overwritten_locations.clone();
+                            collapse(variables, &mut case_overwritten, case_body);
+                            branch_overwritten.push(case_overwritten);
+                        }
+                        if let Some(default_body) = default {
+                            let mut default_overwritten = overwritten_locations.clone();
+                            collapse(variables, &mut default_overwritten, default_body);
+                            branch_overwritten.push(default_overwritten);
+                        }
+                        if branch_overwritten.is_empty() {
+                            overwritten_locations.clear();
+                        } else {
+                            let mut result = branch_overwritten[0].clone();
+                            for other in &branch_overwritten[1..] {
+                                result = result.intersection(other).cloned().collect();
+                            }
+                            *overwritten_locations = result;
+                        }
+                    }
+                }
                 AstStatement::Block(stmts) => {
                     collapse(variables, overwritten_locations, stmts);
                     if stmts.is_empty() {
@@ -276,11 +359,17 @@ fn collapse(
                 }
 
                 /* etc */
-                AstStatement::Label(_) | AstStatement::Comment(_) | AstStatement::Empty => {}
+                AstStatement::Label(_)
+                | AstStatement::Comment(_)
+                | AstStatement::Break
+                | AstStatement::Continue
+                | AstStatement::Empty => {}
+                AstStatement::Call(_) => {
+                    // handled above
+                }
 
                 /* next statements undetectable */
-                AstStatement::Call(_)
-                | AstStatement::Goto(_)
+                AstStatement::Goto(_)
                 | AstStatement::Assembly(_)
                 | AstStatement::Ir(_)
                 | AstStatement::Return(_)

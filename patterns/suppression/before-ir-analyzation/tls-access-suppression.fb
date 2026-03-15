@@ -1,0 +1,13 @@
+# Suppress TLS access scaffolding.
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __tls_get_addr
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains _tls_index
+do:
+  del start[0]

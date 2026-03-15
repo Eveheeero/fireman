@@ -1,0 +1,22 @@
+# Suppress anti-debug calls at AST level.
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "IsDebuggerPresent")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "CheckRemoteDebuggerPresent")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "NtQueryInformationProcess")
+do:
+  del start[0]

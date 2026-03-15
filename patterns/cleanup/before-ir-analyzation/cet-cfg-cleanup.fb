@@ -1,0 +1,10 @@
+# Remove Intel CET control-flow enforcement endbr32/endbr64 instructions.
+
+if:
+  at beforeIrAnalyzation
+  asm endbr64
+if:
+  at beforeIrAnalyzation
+  asm endbr32
+do:
+  del start[0]

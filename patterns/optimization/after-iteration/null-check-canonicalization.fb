@@ -1,0 +1,135 @@
+# Null-check canonicalization: simplify comparisons with zero in boolean contexts.
+# Only applies inside if/while conditions where the result is used as a boolean.
+#
+# if(x != 0) → if(x)        if(0 != x) → if(x)
+# if(x == 0) → if(!x)       if(0 == x) → if(!x)
+# while(x != 0) → while(x)  while(0 != x) → while(x)
+# while(x == 0) → while(!x) while(0 == x) → while(!x)
+
+# ── if(x != 0) → if(x) ──
+
+if:
+  at afterIteration
+  stmt If(BinaryOp(NotEqual, $x, Literal(Int(0))), $then, $else)
+  where is_variable($x)
+do:
+  emit If($x, $then, $else)
+
+if:
+  at afterIteration
+  stmt If(BinaryOp(NotEqual, $x, Literal(UInt(0))), $then, $else)
+  where is_variable($x)
+do:
+  emit If($x, $then, $else)
+
+# ── if(0 != x) → if(x) ──
+
+if:
+  at afterIteration
+  stmt If(BinaryOp(NotEqual, Literal(Int(0)), $x), $then, $else)
+  where is_variable($x)
+do:
+  emit If($x, $then, $else)
+
+if:
+  at afterIteration
+  stmt If(BinaryOp(NotEqual, Literal(UInt(0)), $x), $then, $else)
+  where is_variable($x)
+do:
+  emit If($x, $then, $else)
+
+# ── if(x == 0) → if(!x) ──
+
+if:
+  at afterIteration
+  stmt If(BinaryOp(Equal, $x, Literal(Int(0))), $then, $else)
+  where is_variable($x)
+do:
+  emit If(UnaryOp(Not, $x), $then, $else)
+
+if:
+  at afterIteration
+  stmt If(BinaryOp(Equal, $x, Literal(UInt(0))), $then, $else)
+  where is_variable($x)
+do:
+  emit If(UnaryOp(Not, $x), $then, $else)
+
+# ── if(0 == x) → if(!x) ──
+
+if:
+  at afterIteration
+  stmt If(BinaryOp(Equal, Literal(Int(0)), $x), $then, $else)
+  where is_variable($x)
+do:
+  emit If(UnaryOp(Not, $x), $then, $else)
+
+if:
+  at afterIteration
+  stmt If(BinaryOp(Equal, Literal(UInt(0)), $x), $then, $else)
+  where is_variable($x)
+do:
+  emit If(UnaryOp(Not, $x), $then, $else)
+
+# ── while(x != 0) → while(x) ──
+
+if:
+  at afterIteration
+  stmt While(BinaryOp(NotEqual, $x, Literal(Int(0))), $body)
+  where is_variable($x)
+do:
+  emit While($x, $body)
+
+if:
+  at afterIteration
+  stmt While(BinaryOp(NotEqual, $x, Literal(UInt(0))), $body)
+  where is_variable($x)
+do:
+  emit While($x, $body)
+
+# ── while(0 != x) → while(x) ──
+
+if:
+  at afterIteration
+  stmt While(BinaryOp(NotEqual, Literal(Int(0)), $x), $body)
+  where is_variable($x)
+do:
+  emit While($x, $body)
+
+if:
+  at afterIteration
+  stmt While(BinaryOp(NotEqual, Literal(UInt(0)), $x), $body)
+  where is_variable($x)
+do:
+  emit While($x, $body)
+
+# ── while(x == 0) → while(!x) ──
+
+if:
+  at afterIteration
+  stmt While(BinaryOp(Equal, $x, Literal(Int(0))), $body)
+  where is_variable($x)
+do:
+  emit While(UnaryOp(Not, $x), $body)
+
+if:
+  at afterIteration
+  stmt While(BinaryOp(Equal, $x, Literal(UInt(0))), $body)
+  where is_variable($x)
+do:
+  emit While(UnaryOp(Not, $x), $body)
+
+# ── while(0 == x) → while(!x) ──
+
+if:
+  at afterIteration
+  stmt While(BinaryOp(Equal, Literal(Int(0)), $x), $body)
+  where is_variable($x)
+do:
+  emit While(UnaryOp(Not, $x), $body)
+
+if:
+  at afterIteration
+  stmt While(BinaryOp(Equal, Literal(UInt(0)), $x), $body)
+  where is_variable($x)
+do:
+  emit While(UnaryOp(Not, $x), $body)

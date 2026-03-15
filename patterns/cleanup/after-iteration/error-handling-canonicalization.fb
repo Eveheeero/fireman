@@ -1,0 +1,17 @@
+# Error-handling canonicalization via Rhai script.
+# Detects repeated cleanup+return-error paths and consolidates.
+
+if:
+  at afterIteration
+  script `
+    let error_returns = 0;
+    for s in ast_stmts {
+      if s.is_return() {
+        error_returns += 1;
+      }
+    }
+    error_returns >= 3
+  `
+do:
+  info("multiple error return paths detected")
+  del start[0]

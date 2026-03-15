@@ -1,0 +1,7 @@
+# Merge trailing Call+Return(None) into Return(Some(Call)).
+
+if:
+  at afterIteration
+  stmt_seq [Call($f), Return(None)]
+do:
+  emit Return(Some(Call($f)))

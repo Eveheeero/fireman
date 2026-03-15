@@ -1,0 +1,9 @@
+# Alignment rounding: (x + mask) & ~mask → ALIGN_UP(x, alignment).
+# Uses (x + (align-1)) & ~(align-1) pattern.
+
+if:
+  at afterIteration
+  expr BinaryOp(BitAnd, BinaryOp(Add, $x, $mask), UnaryOp(BitNot, $mask2))
+  where structurally_equal($mask, $mask2)
+do:
+  replace_expr Call("ALIGN_UP", [$x, $mask])

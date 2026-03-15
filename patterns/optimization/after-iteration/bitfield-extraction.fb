@@ -1,0 +1,7 @@
+# Bitfield extraction: (x >> n) & mask → BITFIELD_GET(x, n, mask).
+
+if:
+  at afterIteration
+  expr BinaryOp(BitAnd, BinaryOp(RightShift, $x, $n), $mask)
+do:
+  replace_expr Call("BITFIELD_GET", [$x, $n, $mask])

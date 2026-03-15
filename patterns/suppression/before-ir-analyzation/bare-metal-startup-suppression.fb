@@ -1,0 +1,19 @@
+# Suppress bare-metal and CRT startup scaffolding.
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __libc_start_main
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __do_global_ctors
+do:
+  del start[0]
+
+if:
+  at beforeIrAnalyzation
+  asm_contains __do_global_dtors
+do:
+  del start[0]

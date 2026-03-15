@@ -1,0 +1,15 @@
+# Bounds check synthesis: if(idx >= len) { abort(); } → assert_bounds(idx, len).
+
+if:
+  at afterIteration
+  stmt If(BinaryOp(GreaterEqual, $idx, $len), [Call($f)], None)
+  where call_name_matches($f, "abort")
+do:
+  emit Call("assert_bounds", [$idx, $len])
+
+if:
+  at afterIteration
+  stmt If(BinaryOp(GreaterEqual, $idx, $len), [Call($f)], None)
+  where call_name_matches($f, "__assert_fail")
+do:
+  emit Call("assert_bounds", [$idx, $len])

@@ -1,5 +1,0 @@
-if:
-  at afterOptimization
-  ast Some([])
-do:
-  prune-empty-else

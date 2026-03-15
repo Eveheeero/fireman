@@ -1,0 +1,15 @@
+# Suppress atexit registration calls.
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__cxa_atexit")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "atexit")
+do:
+  del start[0]

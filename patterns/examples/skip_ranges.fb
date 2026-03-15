@@ -1,0 +1,6 @@
+if:
+  at afterIteration
+  asm push rbp
+  skip 0..8
+do:
+  ast comment replaced-from-02

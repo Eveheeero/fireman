@@ -1,9 +1,14 @@
+//! Recover function call arguments from register and stack locations.
+
+mod external_imports;
+mod register_maps;
+
 use crate::{
     abstract_syntax_tree::{
-        ArcAstVariableMap, Ast, AstCall, AstExpression, AstFunction, AstFunctionId,
-        AstFunctionVersion, AstParameter, AstParameterLocation, AstStatement, AstStatementOrigin,
-        AstValueOrigin, AstValueType, AstVariableId, ProcessedOptimization, Wrapped,
-        WrappedAstStatement,
+        ArcAstVariableMap, Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunction,
+        AstFunctionId, AstFunctionVersion, AstJumpTarget, AstParameter, AstParameterLocation,
+        AstStatement, AstStatementOrigin, AstValueOrigin, AstValueType, AstVariable, AstVariableId,
+        ProcessedOptimization, Wrapped, WrappedAstStatement,
     },
     ir::{
         Architecture, Register, VirtualMachine,
@@ -13,44 +18,24 @@ use crate::{
         statements::IrStatement,
         x86_64::X64Range,
     },
+    pe::api_prototypes::lookup_api,
     prelude::{DecompileError, *},
     utils::version_map::VersionMap,
 };
 use either::Either;
+use external_imports::{
+    apply_external_import_thunk_names, collect_external_import_thunks,
+    external_slot_address_from_unknown_target, external_symbol_identifier,
+    external_symbol_name_from_slot, infer_external_import_symbol_from_body,
+    rewrite_external_import_calls_recursive,
+};
 use hashbrown::{HashMap, HashSet};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct RegKey {
-    architecture: Architecture,
-    bit_start: usize,
-}
-
-impl RegKey {
-    #[inline]
-    fn from_register(reg: &Register) -> Self {
-        Self {
-            architecture: reg.architecture(),
-            bit_start: reg.bit_range().start,
-        }
-    }
-
-    #[inline]
-    fn sort_key(&self) -> (u8, usize) {
-        (architecture_sort_key(self.architecture), self.bit_start)
-    }
-}
-
-#[inline]
-const fn architecture_sort_key(architecture: Architecture) -> u8 {
-    match architecture {
-        Architecture::X64 => 0,
-    }
-}
-
-type RegName = RegKey;
-type RegNameToVarMap = HashMap<RegName, AstVariableId>;
-type RegNameExprMap = HashMap<RegName, Wrapped<AstExpression>>;
-type RegNameSet = HashSet<RegName>;
+use register_maps::{
+    RegKey, RegNameExprMap, RegNameSet, RegNameToVarMap, build_data_location_to_var_map,
+    build_register_name_to_var_map, build_rsp_offset_to_var_map, build_var_id_to_register_name_map,
+    build_var_id_to_rsp_offset_map, get_function_parameters, ir_register, is_unknown_expr,
+    rsp_offset_from_location, wrap_unknown_expr, wrap_var_expr,
+};
 
 pub(super) fn analyze_call_arguments(
     ast: &mut Ast,
@@ -125,6 +110,16 @@ pub(super) fn analyze_call_arguments(
     // propagate that information back into callee signatures when they are missing.
     propagate_observed_call_args_to_callee_parameters(ast, &body);
 
+    merge_single_non_recursive_callees(ast, function_id, &variables, &mut body);
+    // Merging can introduce fresh goto-only tails from inlined callees.
+    // Re-run goto->call rewriting so nested inlined branches are normalized too.
+    rebuild_goto_as_call_if_possible(ast, function_id, &mut body);
+    // The rewrite above can expose new zero-arg direct calls created from nested gotos.
+    // Run merge once more so single-use non-recursive callees created by that rewrite
+    // are still folded back into the caller.
+    merge_single_non_recursive_callees(ast, function_id, &variables, &mut body);
+    rebuild_goto_as_call_if_possible(ast, function_id, &mut body);
+
     if let Some(main_target) = detect_real_main_target_from_startup(ast, &body) {
         apply_real_main_special_case(ast, function_id, main_target, &mut body);
     }
@@ -149,7 +144,11 @@ pub(super) fn analyze_call_arguments(
         function.body = body;
     }
 
-    if let Some((target_addr, tail_body)) = split_tail {
+    if let Some((target_addr, mut tail_body)) = split_tail {
+        let tail_scope = AstFunctionId {
+            address: target_addr,
+        };
+        rebuild_goto_as_call_if_possible(ast, tail_scope, &mut tail_body);
         materialize_split_tail_function(
             ast,
             target_addr,
@@ -198,152 +197,6 @@ fn log_read_locations_for_call_arg_analysis(
                 );
             }
         }
-    }
-}
-
-fn external_symbol_identifier(name: &str) -> String {
-    let mut out = String::from("ext_");
-    for ch in name.chars() {
-        if ch.is_ascii_alphanumeric() || ch == '_' {
-            out.push(ch);
-        } else {
-            out.push('_');
-        }
-    }
-    if out.len() <= 4 {
-        out.push_str("unknown");
-    }
-    out
-}
-
-fn external_symbol_name_from_slot(ast: &Ast, slot: u64) -> Option<String> {
-    ast.pre_defined_symbols.get(&slot).cloned()
-}
-
-fn external_slot_address_from_unknown_target(raw: &str) -> Option<u64> {
-    let target = raw.trim();
-    let target = target.strip_prefix('*').unwrap_or(target).trim();
-    if let Some(hex) = target
-        .strip_prefix("0x")
-        .or_else(|| target.strip_prefix("0X"))
-    {
-        u64::from_str_radix(hex, 16).ok()
-    } else {
-        target.parse::<u64>().ok()
-    }
-}
-
-fn external_slot_address_from_jump_target(
-    jump: &crate::abstract_syntax_tree::AstJumpTarget,
-) -> Option<u64> {
-    match jump {
-        crate::abstract_syntax_tree::AstJumpTarget::Unknown(raw) => {
-            external_slot_address_from_unknown_target(raw)
-        }
-        crate::abstract_syntax_tree::AstJumpTarget::Variable {
-            var_map, var_id, ..
-        } => variable_constant_address(var_map, *var_id),
-        _ => None,
-    }
-}
-
-fn meaningful_statements<'a>(body: &'a [WrappedAstStatement]) -> Vec<&'a WrappedAstStatement> {
-    body.iter()
-        .filter(|stmt| {
-            !matches!(
-                stmt.statement,
-                AstStatement::Comment(_) | AstStatement::Empty | AstStatement::Label(_)
-            )
-        })
-        .collect()
-}
-
-fn infer_external_import_symbol_from_body(
-    ast: &Ast,
-    body: &[WrappedAstStatement],
-) -> Option<String> {
-    let meaningful = meaningful_statements(body);
-    if meaningful.len() != 1 {
-        return None;
-    }
-    let AstStatement::Goto(jump) = &meaningful[0].statement else {
-        return None;
-    };
-    let slot = external_slot_address_from_jump_target(jump)?;
-    Some(external_symbol_name_from_slot(ast, slot).unwrap_or_else(|| format!("0x{:X}", slot)))
-}
-
-fn collect_external_import_thunks(ast: &Ast) -> HashMap<AstFunctionId, String> {
-    let mut out: HashMap<AstFunctionId, String> = HashMap::new();
-    let functions = ast.functions.read().unwrap();
-    let mut function_ids: Vec<_> = ast.function_versions.keys().copied().collect();
-    function_ids.sort_unstable_by_key(|id| id.address);
-    for function_id in function_ids {
-        let Some(version) = ast.function_versions.get(&function_id).copied() else {
-            continue;
-        };
-        let Some(function) = functions.get(&function_id).and_then(|m| m.get(&version)) else {
-            continue;
-        };
-        if let Some(name) = infer_external_import_symbol_from_body(ast, &function.body) {
-            out.insert(function_id, name);
-        }
-    }
-    out
-}
-
-fn rewrite_external_import_calls_recursive(
-    body: &mut [WrappedAstStatement],
-    external_thunks: &HashMap<AstFunctionId, String>,
-) {
-    for stmt in body.iter_mut() {
-        match &mut stmt.statement {
-            AstStatement::If(_, true_branch, false_branch) => {
-                rewrite_external_import_calls_recursive(true_branch, external_thunks);
-                if let Some(false_branch) = false_branch {
-                    rewrite_external_import_calls_recursive(false_branch, external_thunks);
-                }
-            }
-            AstStatement::While(_, block) | AstStatement::Block(block) => {
-                rewrite_external_import_calls_recursive(block, external_thunks);
-            }
-            AstStatement::For(_, _, _, block) => {
-                rewrite_external_import_calls_recursive(block, external_thunks);
-            }
-            AstStatement::Call(AstCall::Function { target, args }) => {
-                if let Some(symbol) = external_thunks.get(target) {
-                    let args = std::mem::take(args);
-                    stmt.statement = AstStatement::Call(AstCall::Unknown(
-                        external_symbol_identifier(symbol),
-                        args,
-                    ));
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
-fn apply_external_import_thunk_names(ast: &Ast, external_thunks: &HashMap<AstFunctionId, String>) {
-    if external_thunks.is_empty() {
-        return;
-    }
-    let mut entries: Vec<_> = external_thunks.iter().collect();
-    entries.sort_unstable_by_key(|(function_id, _)| function_id.address);
-
-    let mut functions = ast.functions.write().unwrap();
-    for (function_id, symbol) in entries {
-        let Some(version) = ast.function_versions.get(function_id).copied() else {
-            continue;
-        };
-        let Some(function) = functions
-            .get_mut(function_id)
-            .and_then(|m| m.get_mut(&version))
-        else {
-            continue;
-        };
-        function.name = Some(external_symbol_identifier(symbol));
-        function.parameters.clear();
     }
 }
 
@@ -406,44 +259,42 @@ fn detect_real_main_target_from_startup(
         return None;
     }
 
-    let last_termination_call = body.iter().rposition(|stmt| {
-        let AstStatement::Call(call) = &stmt.statement else {
-            return false;
-        };
+    let mut ordered_calls = Vec::new();
+    collect_calls_in_order(body, &mut ordered_calls);
+    let termination_boundary = ordered_calls.iter().rposition(|call| {
         call_matches_symbol(ast, call, is_termination_symbol)
-    })?;
+            || call_matches_symbol(ast, call, is_amsg_exit_symbol)
+    });
+    let search_end = termination_boundary.unwrap_or(ordered_calls.len());
+    let last_initterm_call = ordered_calls[..search_end]
+        .iter()
+        .rposition(|call| call_matches_symbol(ast, call, is_initterm_symbol))?;
 
-    for stmt in body[..last_termination_call].iter().rev() {
-        let AstStatement::Call(call) = &stmt.statement else {
+    let mut fallback_target = None;
+    for call in ordered_calls[last_initterm_call + 1..search_end]
+        .iter()
+        .rev()
+    {
+        let Some((target, argc)) = resolve_call_target_and_arity(ast, call) else {
             continue;
         };
-        match call {
-            AstCall::Function { target, args } => {
-                if args.len() >= 3 {
-                    return Some(*target);
-                }
-            }
-            AstCall::Unknown(name, args) => {
-                if args.len() < 3 {
-                    continue;
-                }
-                let Some(addr) = parse_default_function_name(name) else {
-                    continue;
-                };
-                if let Some(target) = resolve_function_id_by_address(ast, addr) {
-                    return Some(target);
-                }
-            }
-            _ => {}
+        if is_runtime_startup_helper_target(ast, target) {
+            continue;
+        }
+        if argc >= 3 {
+            return Some(target);
+        }
+        if fallback_target.is_none() {
+            fallback_target = Some(target);
         }
     }
 
-    None
+    fallback_target
 }
 
 fn has_crt_startup_markers(ast: &Ast, body: &[WrappedAstStatement]) -> bool {
     let mut has_initterm = false;
-    let mut has_termination = false;
+    let mut has_local_termination = false;
     visit_calls_recursive(body, &mut |call| {
         if call_matches_symbol(ast, call, is_initterm_symbol) {
             has_initterm = true;
@@ -451,10 +302,14 @@ fn has_crt_startup_markers(ast: &Ast, body: &[WrappedAstStatement]) -> bool {
         if call_matches_symbol(ast, call, is_termination_symbol)
             || call_matches_symbol(ast, call, is_amsg_exit_symbol)
         {
-            has_termination = true;
+            has_local_termination = true;
         }
     });
-    has_initterm && has_termination
+    let has_global_termination = ast
+        .pre_defined_symbols
+        .values()
+        .any(|name| is_termination_symbol(name) || is_amsg_exit_symbol(name));
+    has_initterm && (has_local_termination || has_global_termination)
 }
 
 fn visit_calls_recursive(body: &[WrappedAstStatement], visitor: &mut impl FnMut(&AstCall)) {
@@ -476,6 +331,640 @@ fn visit_calls_recursive(body: &[WrappedAstStatement], visitor: &mut impl FnMut(
             _ => {}
         }
     }
+}
+
+fn collect_calls_in_order<'a>(body: &'a [WrappedAstStatement], out: &mut Vec<&'a AstCall>) {
+    for stmt in body.iter() {
+        match &stmt.statement {
+            AstStatement::Call(call) => out.push(call),
+            AstStatement::If(_, true_branch, false_branch) => {
+                collect_calls_in_order(true_branch, out);
+                if let Some(false_branch) = false_branch {
+                    collect_calls_in_order(false_branch, out);
+                }
+            }
+            AstStatement::While(_, block) | AstStatement::Block(block) => {
+                collect_calls_in_order(block, out);
+            }
+            AstStatement::For(_, _, _, block) => {
+                collect_calls_in_order(block, out);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn resolve_call_target_and_arity(ast: &Ast, call: &AstCall) -> Option<(AstFunctionId, usize)> {
+    match call {
+        AstCall::Function { target, args } => Some((*target, args.len())),
+        AstCall::Unknown(name, args) => {
+            let addr = parse_default_function_name(name)?;
+            let target = resolve_function_id_by_address(ast, addr)?;
+            Some((target, args.len()))
+        }
+        _ => None,
+    }
+}
+
+fn is_runtime_startup_helper_target(ast: &Ast, target: AstFunctionId) -> bool {
+    let Some(name) = function_symbol_hint(ast, target) else {
+        return false;
+    };
+    let lower = name.to_ascii_lowercase();
+    lower.starts_with("ext_")
+        || is_initterm_symbol(&lower)
+        || is_termination_symbol(&lower)
+        || is_amsg_exit_symbol(&lower)
+}
+
+fn merge_single_non_recursive_callees(
+    ast: &mut Ast,
+    caller_id: AstFunctionId,
+    caller_variables: &ArcAstVariableMap,
+    caller_body: &mut Vec<WrappedAstStatement>,
+) {
+    let mut active_function_ids: Vec<_> = ast.function_versions.keys().copied().collect();
+    if active_function_ids.is_empty() {
+        return;
+    }
+    active_function_ids.sort_unstable_by_key(|id| id.address);
+
+    let caller_targets = collect_called_function_ids(caller_body);
+    if caller_targets.is_empty() {
+        return;
+    }
+
+    let mut function_bodies: HashMap<AstFunctionId, Vec<WrappedAstStatement>> = HashMap::new();
+    {
+        let functions = ast.functions.read().unwrap();
+        for function_id in active_function_ids.iter().copied() {
+            if function_id == caller_id {
+                function_bodies.insert(function_id, caller_body.clone());
+                continue;
+            }
+            let Some(version) = ast.function_versions.get(&function_id).copied() else {
+                continue;
+            };
+            let Some(function) = functions.get(&function_id).and_then(|m| m.get(&version)) else {
+                continue;
+            };
+            function_bodies.insert(function_id, function.body.clone());
+        }
+    }
+
+    let active_function_set: HashSet<AstFunctionId> = active_function_ids.iter().copied().collect();
+    let mut call_counts: HashMap<AstFunctionId, usize> = HashMap::new();
+    let mut call_graph: HashMap<AstFunctionId, HashSet<AstFunctionId>> = HashMap::new();
+    for function_id in active_function_ids.iter().copied() {
+        let edges = call_graph.entry(function_id).or_default();
+        let Some(body) = function_bodies.get(&function_id) else {
+            continue;
+        };
+
+        let mut called_ids = Vec::new();
+        collect_called_function_ids_recursive(body, &mut called_ids);
+        for callee_id in called_ids.iter().copied() {
+            *call_counts.entry(callee_id).or_insert(0) += 1;
+            if active_function_set.contains(&callee_id) {
+                edges.insert(callee_id);
+            }
+        }
+    }
+
+    let recursive_functions = detect_recursive_functions(&call_graph);
+    let mut replacements: HashMap<AstFunctionId, Vec<WrappedAstStatement>> = HashMap::new();
+    let mut callee_variable_maps: HashMap<AstFunctionId, ArcAstVariableMap> = HashMap::new();
+    {
+        let functions = ast.functions.read().unwrap();
+        for target in caller_targets {
+            if target == caller_id {
+                continue;
+            }
+            if call_counts.get(&target).copied().unwrap_or(0) != 1 {
+                continue;
+            }
+            if recursive_functions.contains(&target) {
+                continue;
+            }
+
+            let Some(version) = ast.function_versions.get(&target).copied() else {
+                continue;
+            };
+            let Some(callee) = functions.get(&target).and_then(|m| m.get(&version)) else {
+                continue;
+            };
+            if !callee.parameters.is_empty() {
+                continue;
+            }
+            if infer_external_import_symbol_from_body(ast, &callee.body).is_some() {
+                continue;
+            }
+            replacements.insert(target, strip_trailing_void_return(callee.body.clone()));
+            callee_variable_maps.insert(target, callee.variables.clone());
+        }
+    }
+
+    if replacements.is_empty() {
+        return;
+    }
+
+    let inlined_callees = inline_single_call_callees_recursive(caller_body, &replacements);
+    if inlined_callees.is_empty() {
+        return;
+    }
+
+    let mut merged_vars = Vec::new();
+    for callee_id in inlined_callees.iter().copied() {
+        let Some(callee_var_map) = callee_variable_maps.get(&callee_id) else {
+            continue;
+        };
+        let callee_vars = callee_var_map.read().unwrap();
+        merged_vars.extend(
+            callee_vars
+                .iter()
+                .map(|(var_id, var)| (*var_id, var.clone())),
+        );
+    }
+    {
+        let mut caller_vars = caller_variables.write().unwrap();
+        for (var_id, var) in merged_vars {
+            caller_vars.entry(var_id).or_insert(var);
+        }
+        rename_merged_default_variables_by_scope(&mut caller_vars, caller_id);
+        deduplicate_variable_names_in_scope(&mut caller_vars, caller_id);
+    }
+    rebind_statement_variable_maps(caller_body, &caller_variables);
+    {
+        let caller_vars = caller_variables.read().unwrap();
+        synchronize_declaration_variable_names(caller_body, &caller_vars);
+    }
+
+    {
+        let mut functions = ast.functions.write().unwrap();
+        for callee_id in inlined_callees.iter().copied() {
+            functions.remove(&callee_id);
+        }
+    }
+    for callee_id in inlined_callees {
+        ast.function_versions.remove(&callee_id);
+    }
+}
+
+fn deduplicate_variable_names_in_scope(
+    vars: &mut HashMap<AstVariableId, AstVariable>,
+    caller_id: AstFunctionId,
+) {
+    let mut ids: Vec<_> = vars.keys().copied().collect();
+    ids.sort_unstable_by_key(|id| {
+        let caller_priority = if id.parent == Some(caller_id) {
+            0u8
+        } else {
+            1u8
+        };
+        (
+            caller_priority,
+            id.index,
+            id.parent.map(|x| x.address).unwrap_or(0),
+        )
+    });
+
+    let mut used_names: HashSet<String> = HashSet::new();
+    for id in ids {
+        let Some(var) = vars.get_mut(&id) else {
+            continue;
+        };
+        let base = var
+            .name
+            .clone()
+            .unwrap_or_else(|| var.id.get_default_name());
+        if used_names.insert(base.clone()) {
+            continue;
+        }
+
+        let mut suffix = 2usize;
+        let mut candidate = format!("{}_{}", base, suffix);
+        while used_names.contains(&candidate) {
+            suffix += 1;
+            candidate = format!("{}_{}", base, suffix);
+        }
+        var.name = Some(candidate.clone());
+        used_names.insert(candidate);
+    }
+}
+
+fn rename_merged_default_variables_by_scope(
+    vars: &mut HashMap<AstVariableId, AstVariable>,
+    caller_id: AstFunctionId,
+) {
+    let mut callee_scopes: Vec<_> = vars
+        .keys()
+        .filter_map(|id| {
+            if id.parent.is_some() && id.parent != Some(caller_id) {
+                id.parent
+            } else {
+                None
+            }
+        })
+        .collect();
+    callee_scopes.sort_unstable_by_key(|scope| scope.address);
+    callee_scopes.dedup();
+    if callee_scopes.is_empty() {
+        return;
+    }
+
+    let scope_suffix_map: HashMap<AstFunctionId, usize> = callee_scopes
+        .into_iter()
+        .enumerate()
+        .map(|(idx, scope)| (scope, idx + 1))
+        .collect();
+
+    let mut used_names: HashSet<String> = vars.values().map(|var| var.name()).collect();
+    let mut callee_ids: Vec<_> = vars
+        .keys()
+        .copied()
+        .filter(|id| id.parent.is_some() && id.parent != Some(caller_id))
+        .collect();
+    callee_ids.sort_unstable_by_key(|id| {
+        let scope_suffix = id
+            .parent
+            .and_then(|scope| scope_suffix_map.get(&scope).copied())
+            .unwrap_or(usize::MAX);
+        (scope_suffix, id.index)
+    });
+
+    for id in callee_ids {
+        let Some(var) = vars.get_mut(&id) else {
+            continue;
+        };
+        let Some(scope) = id.parent else {
+            continue;
+        };
+        let Some(scope_suffix) = scope_suffix_map.get(&scope).copied() else {
+            continue;
+        };
+
+        let default_name = id.get_default_name();
+        let is_default_named = var.name.as_ref().is_none_or(|name| {
+            *name == default_name || is_scope_suffixed_default_name(name, &default_name)
+        });
+        if !is_default_named {
+            continue;
+        }
+
+        let current_name = var.name();
+        used_names.remove(&current_name);
+
+        let base_candidate = format!("{}_{}", default_name, scope_suffix);
+        let mut candidate = base_candidate.clone();
+        let mut extra_suffix = 2usize;
+        while used_names.contains(&candidate) {
+            candidate = format!("{}_{}", base_candidate, extra_suffix);
+            extra_suffix += 1;
+        }
+        var.name = Some(candidate.clone());
+        used_names.insert(candidate);
+    }
+}
+
+fn is_scope_suffixed_default_name(name: &str, default_name: &str) -> bool {
+    let Some(suffix) = name
+        .strip_prefix(default_name)
+        .and_then(|rest| rest.strip_prefix('_'))
+    else {
+        return false;
+    };
+    !suffix.is_empty() && suffix.chars().all(|ch| ch.is_ascii_digit())
+}
+
+fn synchronize_declaration_variable_names(
+    body: &mut [WrappedAstStatement],
+    vars: &HashMap<AstVariableId, AstVariable>,
+) {
+    for stmt in body.iter_mut() {
+        synchronize_declaration_variable_names_in_statement(&mut stmt.statement, vars);
+    }
+}
+
+fn synchronize_declaration_variable_names_in_statement(
+    statement: &mut AstStatement,
+    vars: &HashMap<AstVariableId, AstVariable>,
+) {
+    match statement {
+        AstStatement::Declaration(var, _) => {
+            if let Some(canonical) = vars.get(&var.id) {
+                var.name = canonical.name.clone();
+            }
+        }
+        AstStatement::If(_, then_body, else_body) => {
+            synchronize_declaration_variable_names(then_body, vars);
+            if let Some(else_body) = else_body {
+                synchronize_declaration_variable_names(else_body, vars);
+            }
+        }
+        AstStatement::While(_, body) | AstStatement::Block(body) => {
+            synchronize_declaration_variable_names(body, vars);
+        }
+        AstStatement::For(init, _, step, body) => {
+            synchronize_declaration_variable_names_in_statement(&mut init.statement, vars);
+            synchronize_declaration_variable_names_in_statement(&mut step.statement, vars);
+            synchronize_declaration_variable_names(body, vars);
+        }
+        _ => {}
+    }
+}
+
+fn rebind_statement_variable_maps(body: &mut [WrappedAstStatement], variables: &ArcAstVariableMap) {
+    for stmt in body.iter_mut() {
+        rebind_statement_variable_maps_in_statement(&mut stmt.statement, variables);
+    }
+}
+
+fn rebind_statement_variable_maps_in_statement(
+    statement: &mut AstStatement,
+    variables: &ArcAstVariableMap,
+) {
+    match statement {
+        AstStatement::Declaration(_, init) => {
+            if let Some(init) = init {
+                rebind_statement_variable_maps_in_expression(init, variables);
+            }
+        }
+        AstStatement::Assignment(lhs, rhs) => {
+            rebind_statement_variable_maps_in_expression(lhs, variables);
+            rebind_statement_variable_maps_in_expression(rhs, variables);
+        }
+        AstStatement::If(cond, then_body, else_body) => {
+            rebind_statement_variable_maps_in_expression(cond, variables);
+            rebind_statement_variable_maps(then_body, variables);
+            if let Some(else_body) = else_body {
+                rebind_statement_variable_maps(else_body, variables);
+            }
+        }
+        AstStatement::While(cond, body) => {
+            rebind_statement_variable_maps_in_expression(cond, variables);
+            rebind_statement_variable_maps(body, variables);
+        }
+        AstStatement::For(init, cond, step, body) => {
+            rebind_statement_variable_maps_in_statement(&mut init.statement, variables);
+            rebind_statement_variable_maps_in_expression(cond, variables);
+            rebind_statement_variable_maps_in_statement(&mut step.statement, variables);
+            rebind_statement_variable_maps(body, variables);
+        }
+        AstStatement::Return(expr) => {
+            if let Some(expr) = expr {
+                rebind_statement_variable_maps_in_expression(expr, variables);
+            }
+        }
+        AstStatement::Call(call) => {
+            rebind_statement_variable_maps_in_call(call, variables);
+        }
+        AstStatement::Goto(AstJumpTarget::Variable { var_map, .. }) => {
+            *var_map = variables.clone();
+        }
+        AstStatement::Block(body) => {
+            rebind_statement_variable_maps(body, variables);
+        }
+        _ => {}
+    }
+}
+
+fn rebind_statement_variable_maps_in_expression(
+    expr: &mut Wrapped<AstExpression>,
+    variables: &ArcAstVariableMap,
+) {
+    match &mut expr.item {
+        AstExpression::Variable(var_map, _) => {
+            *var_map = variables.clone();
+        }
+        AstExpression::UnaryOp(_, arg)
+        | AstExpression::Cast(_, arg)
+        | AstExpression::Deref(arg)
+        | AstExpression::AddressOf(arg)
+        | AstExpression::MemberAccess(arg, _) => {
+            rebind_statement_variable_maps_in_expression(arg, variables);
+        }
+        AstExpression::BinaryOp(_, lhs, rhs) | AstExpression::ArrayAccess(lhs, rhs) => {
+            rebind_statement_variable_maps_in_expression(lhs, variables);
+            rebind_statement_variable_maps_in_expression(rhs, variables);
+        }
+        AstExpression::Ternary(cond, true_expr, false_expr) => {
+            rebind_statement_variable_maps_in_expression(cond, variables);
+            rebind_statement_variable_maps_in_expression(true_expr, variables);
+            rebind_statement_variable_maps_in_expression(false_expr, variables);
+        }
+        AstExpression::Call(call) => {
+            rebind_statement_variable_maps_in_call(call, variables);
+        }
+        AstExpression::Unknown
+        | AstExpression::Undefined
+        | AstExpression::ArchitectureBitSize
+        | AstExpression::ArchitectureByteSize
+        | AstExpression::Literal(_) => {}
+    }
+}
+
+fn rebind_statement_variable_maps_in_call(call: &mut AstCall, variables: &ArcAstVariableMap) {
+    match call {
+        AstCall::Variable { var_map, args, .. } => {
+            *var_map = variables.clone();
+            for arg in args.iter_mut() {
+                rebind_statement_variable_maps_in_expression(arg, variables);
+            }
+        }
+        AstCall::Function { args, .. } | AstCall::Unknown(_, args) => {
+            for arg in args.iter_mut() {
+                rebind_statement_variable_maps_in_expression(arg, variables);
+            }
+        }
+        AstCall::Builtin(_, arg) => match arg.as_mut() {
+            AstBuiltinFunctionArgument::None => {}
+            AstBuiltinFunctionArgument::Print(args) => {
+                for arg in args.iter_mut() {
+                    rebind_statement_variable_maps_in_expression(arg, variables);
+                }
+            }
+            AstBuiltinFunctionArgument::ByteSizeOf(arg)
+            | AstBuiltinFunctionArgument::BitSizeOf(arg)
+            | AstBuiltinFunctionArgument::OperandExists(arg)
+            | AstBuiltinFunctionArgument::SignedMax(arg)
+            | AstBuiltinFunctionArgument::SignedMin(arg)
+            | AstBuiltinFunctionArgument::UnsignedMax(arg)
+            | AstBuiltinFunctionArgument::UnsignedMin(arg)
+            | AstBuiltinFunctionArgument::BitOnes(arg)
+            | AstBuiltinFunctionArgument::BitZeros(arg) => {
+                rebind_statement_variable_maps_in_expression(arg, variables);
+            }
+            AstBuiltinFunctionArgument::Sized(lhs, rhs) => {
+                rebind_statement_variable_maps_in_expression(lhs, variables);
+                rebind_statement_variable_maps_in_expression(rhs, variables);
+            }
+        },
+    }
+}
+
+fn collect_called_function_ids(body: &[WrappedAstStatement]) -> HashSet<AstFunctionId> {
+    let mut called_ids = Vec::new();
+    collect_called_function_ids_recursive(body, &mut called_ids);
+    called_ids.into_iter().collect()
+}
+
+fn collect_called_function_ids_recursive(
+    body: &[WrappedAstStatement],
+    called_ids: &mut Vec<AstFunctionId>,
+) {
+    for stmt in body.iter() {
+        match &stmt.statement {
+            AstStatement::Call(AstCall::Function { target, .. }) => called_ids.push(*target),
+            AstStatement::If(_, branch_true, branch_false) => {
+                collect_called_function_ids_recursive(branch_true, called_ids);
+                if let Some(branch_false) = branch_false {
+                    collect_called_function_ids_recursive(branch_false, called_ids);
+                }
+            }
+            AstStatement::While(_, block) | AstStatement::Block(block) => {
+                collect_called_function_ids_recursive(block, called_ids);
+            }
+            AstStatement::For(_, _, _, block) => {
+                collect_called_function_ids_recursive(block, called_ids);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn detect_recursive_functions(
+    call_graph: &HashMap<AstFunctionId, HashSet<AstFunctionId>>,
+) -> HashSet<AstFunctionId> {
+    let mut recursive_functions = HashSet::new();
+    let mut function_ids: Vec<_> = call_graph.keys().copied().collect();
+    function_ids.sort_unstable_by_key(|id| id.address);
+
+    for function_id in function_ids {
+        if is_function_recursive(function_id, call_graph) {
+            recursive_functions.insert(function_id);
+        }
+    }
+
+    recursive_functions
+}
+
+fn is_function_recursive(
+    start: AstFunctionId,
+    call_graph: &HashMap<AstFunctionId, HashSet<AstFunctionId>>,
+) -> bool {
+    let mut stack: Vec<AstFunctionId> = call_graph
+        .get(&start)
+        .map(|targets| targets.iter().copied().collect())
+        .unwrap_or_default();
+    let mut visited: HashSet<AstFunctionId> = HashSet::new();
+
+    while let Some(current) = stack.pop() {
+        if current == start {
+            return true;
+        }
+        if !visited.insert(current) {
+            continue;
+        }
+        if let Some(next_targets) = call_graph.get(&current) {
+            stack.extend(next_targets.iter().copied());
+        }
+    }
+
+    false
+}
+
+fn inline_single_call_callees_recursive(
+    stmts: &mut Vec<WrappedAstStatement>,
+    replacements: &HashMap<AstFunctionId, Vec<WrappedAstStatement>>,
+) -> HashSet<AstFunctionId> {
+    let mut inlined_callees: HashSet<AstFunctionId> = HashSet::new();
+    let mut rebuilt_body: Vec<WrappedAstStatement> = Vec::with_capacity(stmts.len());
+
+    for mut stmt in std::mem::take(stmts) {
+        match &mut stmt.statement {
+            AstStatement::If(_, branch_true, branch_false) => {
+                inlined_callees.extend(inline_single_call_callees_recursive(
+                    branch_true,
+                    replacements,
+                ));
+                if let Some(branch_false) = branch_false {
+                    inlined_callees.extend(inline_single_call_callees_recursive(
+                        branch_false,
+                        replacements,
+                    ));
+                }
+            }
+            AstStatement::While(_, block) | AstStatement::Block(block) => {
+                inlined_callees.extend(inline_single_call_callees_recursive(block, replacements));
+            }
+            AstStatement::For(_, _, _, block) => {
+                inlined_callees.extend(inline_single_call_callees_recursive(block, replacements));
+            }
+            _ => {}
+        }
+
+        let AstStatement::Call(AstCall::Function { target, args }) = &stmt.statement else {
+            rebuilt_body.push(stmt);
+            continue;
+        };
+        if !args.is_empty() {
+            rebuilt_body.push(stmt);
+            continue;
+        }
+        let Some(replacement) = replacements.get(target) else {
+            rebuilt_body.push(stmt);
+            continue;
+        };
+
+        let mut inlined_body = replacement.clone();
+        if let Some(callsite_comment) = stmt.comment.take() {
+            if let Some(first) = inlined_body.first_mut() {
+                if first.comment.is_none() {
+                    first.comment = Some(callsite_comment);
+                } else {
+                    inlined_body.insert(
+                        0,
+                        WrappedAstStatement {
+                            statement: AstStatement::Comment(callsite_comment),
+                            origin: stmt.origin.clone(),
+                            comment: None,
+                        },
+                    );
+                }
+            } else {
+                inlined_body.push(WrappedAstStatement {
+                    statement: AstStatement::Comment(callsite_comment),
+                    origin: stmt.origin.clone(),
+                    comment: None,
+                });
+            }
+        }
+
+        rebuilt_body.extend(inlined_body.into_iter());
+        inlined_callees.insert(*target);
+    }
+
+    *stmts = rebuilt_body;
+    inlined_callees
+}
+
+fn strip_trailing_void_return(mut body: Vec<WrappedAstStatement>) -> Vec<WrappedAstStatement> {
+    if body
+        .last()
+        .is_some_and(|stmt| matches!(stmt.statement, AstStatement::Return(None)))
+    {
+        let removed = body.pop();
+        if let Some(removed) = removed
+            && let Some(comment) = removed.comment
+        {
+            body.push(WrappedAstStatement {
+                statement: AstStatement::Comment(comment),
+                origin: removed.origin,
+                comment: None,
+            });
+        }
+    }
+    body
 }
 
 fn parse_default_function_name(name: &str) -> Option<u64> {
@@ -531,7 +1020,7 @@ fn apply_real_main_special_case(
     ast: &Ast,
     startup_function_id: AstFunctionId,
     main_target: AstFunctionId,
-    body: &mut [WrappedAstStatement],
+    body: &mut Vec<WrappedAstStatement>,
 ) {
     {
         let mut functions = ast.functions.write().unwrap();
@@ -560,6 +1049,18 @@ fn apply_real_main_special_case(
     }
 
     rewrite_calls_to_named_target(body, main_target, "main");
+    if has_named_call_recursive(body, "main") && !has_top_level_named_call(body, "main") {
+        let inherited_origin =
+            find_named_call_origin_recursive(body, "main").unwrap_or(AstStatementOrigin::Unknown);
+        body.insert(
+            0,
+            WrappedAstStatement {
+                statement: AstStatement::Call(AstCall::Unknown("main".to_string(), Vec::new())),
+                origin: inherited_origin,
+                comment: None,
+            },
+        );
+    }
 }
 
 fn should_apply_special_name(current_name: &Option<String>, default_name: &str) -> bool {
@@ -599,6 +1100,64 @@ fn rewrite_calls_to_named_target(
             _ => {}
         }
     }
+}
+
+fn has_named_call_recursive(body: &[WrappedAstStatement], name: &str) -> bool {
+    let mut found = false;
+    visit_calls_recursive(body, &mut |call| {
+        if let AstCall::Unknown(call_name, _) = call
+            && call_name == name
+        {
+            found = true;
+        }
+    });
+    found
+}
+
+fn find_named_call_origin_recursive(
+    body: &[WrappedAstStatement],
+    name: &str,
+) -> Option<AstStatementOrigin> {
+    for stmt in body.iter() {
+        match &stmt.statement {
+            AstStatement::Call(AstCall::Unknown(call_name, _)) if call_name == name => {
+                return Some(stmt.origin.clone());
+            }
+            AstStatement::If(_, true_branch, false_branch) => {
+                if let Some(origin) = find_named_call_origin_recursive(true_branch, name) {
+                    return Some(origin);
+                }
+
+                if let Some(false_branch) = false_branch
+                    && let Some(origin) = find_named_call_origin_recursive(false_branch, name)
+                {
+                    return Some(origin);
+                }
+            }
+            AstStatement::While(_, block) | AstStatement::Block(block) => {
+                if let Some(origin) = find_named_call_origin_recursive(block, name) {
+                    return Some(origin);
+                }
+            }
+            AstStatement::For(_, _, _, block) => {
+                if let Some(origin) = find_named_call_origin_recursive(block, name) {
+                    return Some(origin);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
+}
+
+fn has_top_level_named_call(body: &[WrappedAstStatement], name: &str) -> bool {
+    body.iter().any(|stmt| {
+        matches!(
+            &stmt.statement,
+            AstStatement::Call(AstCall::Unknown(call_name, _)) if call_name == name
+        )
+    })
 }
 
 fn truncate_after_terminal_control_flow(
@@ -699,18 +1258,29 @@ fn rebuild_goto_as_call_if_possible(
     scope: AstFunctionId,
     body: &mut Vec<WrappedAstStatement>,
 ) {
+    rebuild_goto_as_call_if_possible_inner(ast, scope, body, 0);
+}
+
+fn rebuild_goto_as_call_if_possible_inner(
+    ast: &Ast,
+    scope: AstFunctionId,
+    body: &mut Vec<WrappedAstStatement>,
+    depth: usize,
+) {
     for stmt in body.iter_mut() {
         match &mut stmt.statement {
             AstStatement::If(_, t, f) => {
-                rebuild_goto_as_call_if_possible(ast, scope, t);
+                rebuild_goto_as_call_if_possible_inner(ast, scope, t, depth + 1);
                 if let Some(f) = f {
-                    rebuild_goto_as_call_if_possible(ast, scope, f);
+                    rebuild_goto_as_call_if_possible_inner(ast, scope, f, depth + 1);
                 }
             }
             AstStatement::While(_, b) | AstStatement::Block(b) => {
-                rebuild_goto_as_call_if_possible(ast, scope, b);
+                rebuild_goto_as_call_if_possible_inner(ast, scope, b, depth + 1);
             }
-            AstStatement::For(_, _, _, b) => rebuild_goto_as_call_if_possible(ast, scope, b),
+            AstStatement::For(_, _, _, b) => {
+                rebuild_goto_as_call_if_possible_inner(ast, scope, b, depth + 1)
+            }
             _ => {}
         }
     }
@@ -723,27 +1293,15 @@ fn rebuild_goto_as_call_if_possible(
         let mut should_stop_after = false;
         if let AstStatement::Goto(jump) = &stmt.statement {
             let tail_position = original_suffix_is_non_effectful(&original, idx + 1);
-            let origin_is_unconditional_jump = stmt_origin_is_unconditional_jump(&stmt);
-
-            if let Some(target) = jump_target_to_function_id(ast, jump) {
-                if tail_position && origin_is_unconditional_jump && target != scope {
-                    stmt.statement = AstStatement::Call(AstCall::Function {
-                        target,
-                        args: Vec::new(),
-                    });
-                    should_stop_after = true;
-                }
+            if tail_position && let Some(call) = jump_target_to_call(ast, scope, &stmt, jump) {
+                stmt.statement = AstStatement::Call(call);
+                should_stop_after = true;
             }
         }
 
         rebuilt.push(stmt);
 
         if should_stop_after {
-            rebuilt.push(WrappedAstStatement {
-                statement: AstStatement::Return(None),
-                origin: AstStatementOrigin::Unknown,
-                comment: None,
-            });
             break;
         }
     }
@@ -778,15 +1336,97 @@ fn stmt_origin_is_unconditional_jump(stmt: &WrappedAstStatement) -> bool {
     inst.is_jmp() && !inst.is_jcc() && !inst.is_call()
 }
 
-fn jump_target_to_function_id(
+fn jump_target_to_call(
     ast: &Ast,
+    current_scope: AstFunctionId,
+    stmt: &WrappedAstStatement,
     jump: &crate::abstract_syntax_tree::AstJumpTarget,
-) -> Option<AstFunctionId> {
-    if let Some(addr) = jump_target_constant_address(jump) {
-        resolve_function_id_by_address(ast, addr)
-    } else {
-        None
+) -> Option<AstCall> {
+    match jump {
+        crate::abstract_syntax_tree::AstJumpTarget::Function { target } => {
+            if *target == current_scope {
+                None
+            } else {
+                Some(AstCall::Function {
+                    target: *target,
+                    args: Vec::new(),
+                })
+            }
+        }
+        crate::abstract_syntax_tree::AstJumpTarget::Unknown(raw) => {
+            if let Some(addr) = external_slot_address_from_unknown_target(raw) {
+                call_from_jump_address(ast, current_scope, addr)
+            } else {
+                Some(AstCall::Unknown(raw.clone(), Vec::new()))
+            }
+        }
+        crate::abstract_syntax_tree::AstJumpTarget::Variable {
+            scope: var_scope,
+            var_map,
+            var_id,
+        } => {
+            if let Some(addr) = variable_constant_address(var_map, *var_id) {
+                call_from_jump_address(ast, current_scope, addr)
+            } else if let Some(addr) = stmt_origin_fallthrough_address(stmt) {
+                call_from_jump_address(ast, current_scope, addr).or_else(|| {
+                    Some(AstCall::Variable {
+                        scope: *var_scope,
+                        var_map: var_map.clone(),
+                        var_id: *var_id,
+                        args: Vec::new(),
+                    })
+                })
+            } else {
+                Some(AstCall::Variable {
+                    scope: *var_scope,
+                    var_map: var_map.clone(),
+                    var_id: *var_id,
+                    args: Vec::new(),
+                })
+            }
+        }
+        crate::abstract_syntax_tree::AstJumpTarget::Instruction { .. } => None,
     }
+}
+
+fn call_from_jump_address(ast: &Ast, scope: AstFunctionId, addr: u64) -> Option<AstCall> {
+    if let Some(target) = resolve_function_id_by_address(ast, addr) {
+        if target == scope {
+            return None;
+        }
+        return Some(AstCall::Function {
+            target,
+            args: Vec::new(),
+        });
+    }
+
+    if let Some(symbol) = external_symbol_name_from_slot(ast, addr) {
+        return Some(AstCall::Unknown(
+            external_symbol_identifier(&symbol),
+            Vec::new(),
+        ));
+    }
+
+    Some(AstCall::Unknown(
+        function_like_name_from_address(ast, addr),
+        Vec::new(),
+    ))
+}
+
+fn stmt_origin_fallthrough_address(stmt: &WrappedAstStatement) -> Option<u64> {
+    let AstStatementOrigin::Ir(desc) = &stmt.origin else {
+        return None;
+    };
+    let ir_index = desc.descriptor().ir_index() as usize;
+    let ir = desc.ir().get_ir().get(ir_index)?;
+    let inst = desc.ir().get_instructions().get(ir_index)?;
+    let inst_len = inst
+        .inner
+        .bytes
+        .as_ref()
+        .map(|x| x.len() as u64)
+        .unwrap_or(0);
+    Some(ir.address.get_virtual_address() + inst_len)
 }
 
 fn jump_target_constant_address(jump: &crate::abstract_syntax_tree::AstJumpTarget) -> Option<u64> {
@@ -1441,6 +2081,7 @@ fn infer_call_args(
     var_id_to_rsp_offset: &HashMap<AstVariableId, isize>,
     rsp_offset_to_var: &HashMap<isize, AstVariableId>,
 ) -> Vec<Wrapped<AstExpression>> {
+    let expected_external_arg_count = expected_external_arg_count(call_stmt);
     let callee_params = match &call_stmt.statement {
         AstStatement::Call(AstCall::Function { target, .. }) => {
             get_function_parameters(ast, *target)
@@ -1454,6 +2095,7 @@ fn infer_call_args(
         var_id_to_reg,
         var_id_to_rsp_offset,
     );
+    let fallback_args = cap_inferred_args(fallback_args, expected_external_arg_count);
 
     if let Some(params) = callee_params
         && !params.is_empty()
@@ -1481,6 +2123,28 @@ fn infer_call_args(
     }
 
     fallback_args
+}
+
+fn expected_external_arg_count(call_stmt: &WrappedAstStatement) -> Option<usize> {
+    let AstStatement::Call(AstCall::Unknown(name, _)) = &call_stmt.statement else {
+        return None;
+    };
+
+    lookup_api(normalize_external_call_name(name)).map(|api| api.param_count)
+}
+
+fn normalize_external_call_name(name: &str) -> &str {
+    name.strip_prefix("ext_").unwrap_or(name)
+}
+
+fn cap_inferred_args(
+    mut args: Vec<Wrapped<AstExpression>>,
+    expected_arg_count: Option<usize>,
+) -> Vec<Wrapped<AstExpression>> {
+    if let Some(expected_arg_count) = expected_arg_count {
+        args.truncate(expected_arg_count);
+    }
+    args
 }
 
 fn infer_args_from_callee_params(
@@ -1812,230 +2476,17 @@ fn is_barrier(stmt: &AstStatement) -> bool {
 
         AstStatement::If(_, _, _)
         | AstStatement::While(_, _)
+        | AstStatement::DoWhile(_, _)
         | AstStatement::For(_, _, _, _)
+        | AstStatement::Switch(_, _, _)
         | AstStatement::Block(_) => true,
 
         AstStatement::Declaration(_, _)
         | AstStatement::Assignment(_, _)
         | AstStatement::Label(_)
         | AstStatement::Comment(_)
+        | AstStatement::Break
+        | AstStatement::Continue
         | AstStatement::Empty => false,
     }
-}
-
-fn get_function_parameters(
-    ast: &Ast,
-    function_id: AstFunctionId,
-) -> Option<Vec<crate::abstract_syntax_tree::AstParameter>> {
-    let functions = ast.functions.read().unwrap();
-    let version = *ast.function_versions.get(&function_id)?;
-    let func = functions.get(&function_id)?.get(&version)?;
-    Some(func.parameters.clone())
-}
-
-fn build_register_name_to_var_map(variables: &ArcAstVariableMap) -> RegNameToVarMap {
-    let mut map: RegNameToVarMap = HashMap::new();
-    let vars = variables.read().unwrap();
-    let mut vars_sorted: Vec<_> = vars.iter().collect();
-    vars_sorted.sort_unstable_by_key(|(var_id, _)| var_id.index);
-    for (var_id, var) in vars_sorted {
-        let Some(access_map) = var.data_access_ir.as_ref() else {
-            continue;
-        };
-        let mut access_map_sorted: Vec<_> = access_map.iter().collect();
-        access_map_sorted.sort_unstable_by_key(|(ir_index, _)| {
-            (ir_index.ir_index(), *ir_index.statement_index())
-        });
-        for (_ir_index, accesses) in access_map_sorted {
-            for da in accesses.iter() {
-                let IrData::Register(reg) = da.location().as_ref() else {
-                    continue;
-                };
-                map.entry(RegKey::from_register(reg)).or_insert(*var_id);
-            }
-        }
-    }
-    map
-}
-
-fn build_var_id_to_register_name_map(
-    variables: &ArcAstVariableMap,
-) -> HashMap<AstVariableId, Register> {
-    let vars = variables.read().unwrap();
-    let mut map: HashMap<AstVariableId, Register> = HashMap::new();
-    let mut vars_sorted: Vec<_> = vars.iter().collect();
-    vars_sorted.sort_unstable_by_key(|(var_id, _)| var_id.index);
-    for (var_id, var) in vars_sorted {
-        let Some(access_map) = var.data_access_ir.as_ref() else {
-            continue;
-        };
-        let mut access_map_sorted: Vec<_> = access_map.iter().collect();
-        access_map_sorted.sort_unstable_by_key(|(ir_index, _)| {
-            (ir_index.ir_index(), *ir_index.statement_index())
-        });
-        let mut any_reg: Option<Register> = None;
-        let mut written_reg: Option<Register> = None;
-        for (_ir_index, accesses) in access_map_sorted {
-            for da in accesses.iter() {
-                let IrData::Register(reg) = da.location().as_ref() else {
-                    continue;
-                };
-                if any_reg.is_none() {
-                    any_reg = Some(reg.clone());
-                }
-                if *da.access_type() == IrDataAccessType::Write {
-                    written_reg = Some(reg.clone());
-                    break;
-                }
-            }
-            if written_reg.is_some() {
-                break;
-            }
-        }
-        if let Some(reg) = written_reg.or(any_reg) {
-            map.insert(*var_id, reg);
-        }
-    }
-    map
-}
-
-fn build_data_location_to_var_map(variables: &ArcAstVariableMap) -> HashMap<IrData, AstVariableId> {
-    let vars = variables.read().unwrap();
-    let mut map: HashMap<IrData, AstVariableId> = HashMap::new();
-    let mut vars_sorted: Vec<_> = vars.iter().collect();
-    vars_sorted.sort_unstable_by_key(|(var_id, _)| var_id.index);
-    for (var_id, var) in vars_sorted {
-        let Some(access_map) = var.data_access_ir.as_ref() else {
-            continue;
-        };
-        let mut access_map_sorted: Vec<_> = access_map.iter().collect();
-        access_map_sorted.sort_unstable_by_key(|(ir_index, _)| {
-            (ir_index.ir_index(), *ir_index.statement_index())
-        });
-        for (_ir_index, accesses) in access_map_sorted {
-            for da in accesses.iter() {
-                map.entry(da.location().as_ref().clone()).or_insert(*var_id);
-            }
-        }
-    }
-    map
-}
-
-fn build_var_id_to_rsp_offset_map(variables: &ArcAstVariableMap) -> HashMap<AstVariableId, isize> {
-    let vars = variables.read().unwrap();
-    let mut map: HashMap<AstVariableId, isize> = HashMap::new();
-    let mut vars_sorted: Vec<_> = vars.iter().collect();
-    vars_sorted.sort_unstable_by_key(|(var_id, _)| var_id.index);
-    for (var_id, var) in vars_sorted {
-        let Some(access_map) = var.data_access_ir.as_ref() else {
-            continue;
-        };
-        let mut access_map_sorted: Vec<_> = access_map.iter().collect();
-        access_map_sorted.sort_unstable_by_key(|(ir_index, _)| {
-            (ir_index.ir_index(), *ir_index.statement_index())
-        });
-        for (_ir_index, accesses) in access_map_sorted {
-            let mut found = false;
-            for da in accesses.iter() {
-                let Some(off) = rsp_offset_from_location(da.location().as_ref()) else {
-                    continue;
-                };
-                map.entry(*var_id).or_insert(off);
-                found = true;
-                break;
-            }
-            if found {
-                break;
-            }
-        }
-    }
-    map
-}
-
-fn build_rsp_offset_to_var_map(
-    var_id_to_rsp_offset: &HashMap<AstVariableId, isize>,
-) -> HashMap<isize, AstVariableId> {
-    let mut map: HashMap<isize, AstVariableId> = HashMap::new();
-    let mut entries: Vec<_> = var_id_to_rsp_offset
-        .iter()
-        .map(|(var_id, off)| (*off, *var_id))
-        .collect();
-    entries.sort_unstable_by_key(|(off, var_id)| (*off, var_id.index));
-    for (off, var_id) in entries {
-        map.entry(off).or_insert(var_id);
-    }
-    map
-}
-
-fn rsp_offset_from_location(loc: &IrData) -> Option<isize> {
-    let IrData::Dereference(inner) = loc else {
-        return None;
-    };
-    rsp_offset_from_expr(inner.as_ref())
-}
-
-fn rsp_offset_from_expr(expr: &IrData) -> Option<isize> {
-    fn is_sp_expr(data: &IrData) -> bool {
-        matches!(data, IrData::Register(r) if r.is_sp())
-    }
-    fn signed_const(data: &IrData) -> Option<isize> {
-        match data {
-            IrData::Constant(v) => Some(*v as isize),
-            IrData::Operation(IrDataOperation::Unary {
-                operator: IrUnaryOperator::Negation,
-                arg,
-            }) => arg.constant().map(|v| 0 - v as isize),
-            _ => None,
-        }
-    }
-
-    // [rsp]
-    if is_sp_expr(expr) {
-        return Some(0);
-    }
-
-    // [rsp +/- const]
-    match expr {
-        IrData::Operation(IrDataOperation::Binary {
-            operator: IrBinaryOperator::Add,
-            arg1,
-            arg2,
-        }) if is_sp_expr(arg1.as_ref()) => signed_const(arg2.as_ref()),
-        IrData::Operation(IrDataOperation::Binary {
-            operator: IrBinaryOperator::Sub,
-            arg1,
-            arg2,
-        }) if is_sp_expr(arg1.as_ref()) => signed_const(arg2.as_ref()).map(|v| 0 - v),
-        _ => None,
-    }
-}
-
-// NOTE: previously we tried to selectively keep some statements in the same IR-instruction group.
-// In practice, the call-related groups are almost entirely call mechanics, so we collapse to 1 stmt.
-
-fn ir_register(data: &IrData) -> Option<Register> {
-    match data {
-        IrData::Register(r) => Some(r.clone()),
-        _ => None,
-    }
-}
-
-fn wrap_var_expr(var_map: ArcAstVariableMap, var_id: AstVariableId) -> Wrapped<AstExpression> {
-    Wrapped {
-        item: AstExpression::Variable(var_map, var_id),
-        origin: AstValueOrigin::Unknown,
-        comment: None,
-    }
-}
-
-fn wrap_unknown_expr() -> Wrapped<AstExpression> {
-    Wrapped {
-        item: AstExpression::Unknown,
-        origin: AstValueOrigin::Unknown,
-        comment: None,
-    }
-}
-
-fn is_unknown_expr(expr: &Wrapped<AstExpression>) -> bool {
-    matches!(expr.item, AstExpression::Unknown)
 }

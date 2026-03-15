@@ -1,0 +1,425 @@
+# ══════════════════════════════════════════════════════════════════════
+# .fb DSL — Complete Syntax Reference
+# ══════════════════════════════════════════════════════════════════════
+#
+# Each rule is a pair of if: (conditions) and do: (actions) blocks.
+# Multiple if: blocks can precede a single do: block (multi-clause).
+# Lines starting with # are comments.
+
+# ── Phase targeting (at) ──
+#
+# at <phase> — restricts the rule to a specific optimization phase.
+# Phases: beforeIrAnalyzation, afterIrAnalyzation,
+#         afterParameterAnalyzation, afterCallArgumentAnalyzation,
+#         afterIteration, afterOptimization
+# Multiple at directives in one if: block → match any of them.
+
+if:
+  at beforeIrAnalyzation
+  asm `mov rsp, 8; push rbp`
+  ast comment seed-comment
+  ir undefined
+  script `
+stmt_count >= 5 && asm_count >= 2
+`
+  skip 0..8
+if:
+  at afterIteration
+  asm push rbp
+  script `
+asm_count >= 1
+`
+  skip asm 0..8
+  skip ast 0..8
+  skip ir 0..8
+do:
+  asm mov esp, 8
+  ir halt
+  ast asm push rbp
+  script `
+// Function syntax example: fn works in do-scripts for logic
+// that doesn't need scope variables (stmt_count, asm_count, etc.)
+// Note: scope variables are NOT visible inside fn definitions in Rhai.
+fn should_apply() {
+  true
+}
+should_apply()
+`
+  info("info log from all_syntax")
+  warn("warn log from all_syntax")
+  error("error log from all_syntax")
+  debug("debug log from all_syntax")
+  trace("trace log from all_syntax")
+if:
+  at afterOptimization
+  asm_contains __stack_chk_fail
+do:
+  ast comment multi-clause example
+
+# ── Statement-level pattern matching (stmt) ──
+#
+# Match a single statement by its AST structure.
+# Capture sub-expressions with $name variables.
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, $cond), $then, Some($else))
+  where greater_count($else, $then)
+do:
+  emit If($cond, $else, Some($then))
+
+# ── Expression-level pattern matching (expr) ──
+#
+# Match an expression node (applies recursively to all expressions).
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, BinaryOp(RightShift, $x, Literal(Int($n))), BinaryOp(LeftShift, $x2, Literal(Int($m))))
+  where structurally_equal($x, $x2)
+  where is_nonzero($n)
+  where is_nonzero($m)
+  where sum_equals($n, $m, 32)
+do:
+  replace_expr_fn eval_rotate_right($x, $n)
+
+# ── Statement sequence matching (stmt_seq) ──
+#
+# Match a sequence of consecutive statements using a bracket list.
+# The pattern engine slides a window over the block to find matches.
+if:
+  at afterIteration
+  stmt_seq [Call($f), Return(None)]
+do:
+  emit Return(Some(Call($f)))
+
+# ── Emit-family insertion actions ──
+#
+# emit_before inserts new statements before the matched statement.
+# emit_after inserts new statements after the matched statement.
+# Pure insertion rules should usually guard themselves so they do not keep
+# matching the same anchor statement on later fixed-point iterations.
+if:
+  at afterIteration
+  script `!ast_stmts.some(|s| s.is_comment() && s.comment_text().contains("inserted_before_seed"))`
+  stmt Return
+do:
+  emit_before Comment(inserted_before_seed)
+  emit_after Comment(inserted_after_seed_marker)
+
+# splice-block replaces a matched standalone block with its inner statements.
+if:
+  at afterIteration
+  ast Block(...)
+do:
+  splice-block
+
+# ── Ignore directives ──
+#
+# Ignore directives filter out matching data BEFORE conditions are evaluated.
+# Multiple ignore directives accumulate (all are applied).
+#
+# ignore asm                     — ignore ALL assembly lines
+# ignore asm <pattern>           — ignore asm lines matching pattern
+# ignore ir                      — ignore ALL IR statements
+# ignore ir <pattern>            — ignore IR statements matching pattern
+# ignore ast                     — ignore ALL AST statements
+# ignore ast <pattern>           — ignore AST statements matching pattern
+# ignore comment                 — ignore ALL comments
+# ignore commentstart <text>     — ignore comments starting with text (case-insensitive)
+# ignore commentend <text>       — ignore comments ending with text (case-insensitive)
+# ignore commentcontains <text>  — ignore comments containing text (case-insensitive, memchr)
+#
+# In do: blocks, !ignore clears all ignore state so actions operate on
+# original unfiltered data. Selective clearing is also supported:
+#   !ignore         — clear all ignores
+#   !ignore asm     — clear asm ignores only
+#   !ignore ir      — clear ir ignores only
+#   !ignore ast     — clear ast ignores only
+#   !ignore comment — clear comment ignores only
+
+if:
+  at afterIteration
+  ignore comment
+  ignore asm push rbp
+  stmt Return
+do:
+  emit Comment(matched_without_comments_or_push_rbp)
+
+if:
+  at afterIteration
+  ignore commentcontains seed
+  stmt Return
+do:
+  !ignore comment
+  emit Comment(seed_comments_restored_in_do)
+
+# ── Delete actions ──
+#
+# del <anchor>[<offset>]         — delete a single statement
+# del <anchor>[<start>..<end>]   — delete a range of statements
+# Anchors: start, end (relative to matched range)
+#
+# if:
+#   at afterIteration
+#   stmt_seq [Comment($x), Assignment($lhs, $rhs)]
+# do:
+#   del start[0]
+
+# ── prune-empty-else ──
+#
+# Recursively removes empty else branches from if-statements.
+# if:
+#   at afterOptimization
+#   ast Some([])
+# do:
+#   prune-empty-else
+
+# ── Where predicates ──
+#
+# eq($a, $b)                        — two captures are structurally equal
+# ne($a, $b)                        — two captures are structurally different
+# fits($x, Int32)                   — literal capture fits target integer type
+# structurally_equal($a, $b)     — two captured expressions are identical ASTs
+# same_discriminant($a, $b)      — two captures have the same enum/operator variant
+# is_literal($x)                 — the capture is a literal value
+# not_literal($x)                — the capture is not a literal value
+# is_pure($x)                    — the capture is side-effect free
+# is_variable($x)                — the capture is a variable reference
+# is_zero($x)                    — the capture is a literal zero (Int(0) or UInt(0))
+# is_nonzero($x)                 — the capture is a non-zero literal
+# no_unsafe_stmts($body)         — stmt-list capture contains no Label/Goto/Declaration
+# is_empty_stmt_list($body)      — stmt-list capture is empty
+# is_nonempty_stmt_list($body)   — stmt-list capture is non-empty
+# greater_count($a, $b)          — capture $a has more statements than $b
+# ends_with_continue($body)      — stmt-list capture ends in Continue
+# ends_with_break($body)         — stmt-list capture ends in Break
+# ends_with_return($body)        — stmt-list capture ends in Return(...)
+# is_end_if_not_cond_break($body) — stmt-list ends in if (!cond) break;
+# is_end_if_cond_else_break($body) — stmt-list ends in if (cond) {} else { break; }
+# sum_equals($a, $b, N)          — integer captures $a + $b == N (N can be literal or $capture)
+# call_name_matches($f, "pattern") — captured Call name contains "pattern" (case-insensitive)
+#   Works with AstCall::Unknown and AstCall::Variable (looks up variable name).
+#   Example: call_name_matches($f, "malloc") matches calls to malloc, __libc_malloc, etc.
+
+# ── Call matching and construction ──
+#
+# Call() matches both statement-level calls and expression-level calls.
+# In stmt patterns: Call($f) captures the entire AstCall.
+# In expr patterns: Call($f) captures the call expression.
+# In emit/replace: Call($f) reconstructs from the captured call.
+#
+# Call("name", [args...]) constructs a new AstCall::Unknown with a
+# string name and expression arguments. String literals use "quotes".
+#
+# Examples:
+#   emit Call("assert", [$cond])           — emit assert(cond) call statement
+#   replace_expr Call("min", [$a, $b])     — replace expression with min(a, b)
+#   emit Call("memset", [$ptr, $val, $n])  — emit memset(ptr, val, n)
+
+# ── Builtin evaluation functions (replace_expr_fn) ──
+#
+# replace_expr_fn invokes a built-in Rust function to compute the replacement.
+# Available builtins:
+#   eval_rotate_right($x, $n)              — builds __builtin_rotate_right(x, n)
+#   eval_rotate_left($x, $n)               — builds __builtin_rotate_left(x, n)
+#   eval_strength_reduce_add($x, $n)       — (x<<n)+x → x*(2^n+1)
+#   eval_strength_reduce_sub($x, $n)       — (x<<n)-x → x*(2^n-1)
+#   eval_strength_reduce_dual($x, $n, $m)  — (x<<n)+(x<<m) → x*(2^n+2^m)
+#   eval_magic_division($x, $magic, $shift) — (x*magic)>>shift → x/divisor
+#     Tries small divisors 2..=1024 for the magic multiply-then-shift pattern.
+#     Handles both unsigned and signed (negative magic constant) variants.
+
+# ── Additional statement matching ──
+#
+# Goto($label)    — matches AstStatement::Goto(AstJumpTarget::Unknown(label))
+# Comment($text)  — matches AstStatement::Comment(text)
+# Label($text)    — matches AstStatement::Label(text)
+# All three can be matched AND constructed in emit blocks.
+# String captures use $name and reconstruct via the captured string.
+
+# ── Ternary matching ──
+#
+# Ternary(cond, true_expr, false_expr) matches AstExpression::Ternary.
+# Combined with structurally_equal, this enables MIN/MAX detection:
+#
+# if:
+#   at afterOptimization
+#   stmt Assignment($lhs, Ternary(BinOp(Less, $a, $b), $a2, $b2))
+#   where structurally_equal($a, $a2)
+#   where structurally_equal($b, $b2)
+# do:
+
+# ── Skip ranges ──
+#
+# skip N..M             — skip statement indices [N, M) for all matchers
+# skip asm N..M         — skip for asm matching only
+# skip ast N..M         — skip for ast matching only
+# skip ir N..M          — skip for ir matching only
+
+# ── AST matchers (ast keyword) ──
+#
+# ast empty           — matches AstStatement::Empty
+# ast undefined       — matches AstStatement::Undefined
+# ast return          — matches any AstStatement::Return
+# ast comment <text>  — matches comments containing text (case-insensitive)
+# ast label           — matches any AstStatement::Label
+# ast label <text>    — matches label with specific text
+# ast Block(...)      — matches any block
+# ast Block([])       — matches empty block
+# ast Some([])        — matches if-stmt with empty else branch
+# ast If(...)         — matches any if-statement
+# ast <ir-statement>  — matches AstStatement::Ir with exact IR
+
+# ── IR matchers (ir keyword) ──
+#
+# ir <statement>      — matches exact IrStatement
+# ir if               — matches any IrStatement::Condition
+# ir undefined        — matches any IrStatement (wildcard)
+
+# ── Script variables (available in if: and do: scripts) ──
+#
+# Scalar variables:
+#   source        — pattern source name (file path)
+#   stmt_count    — number of AST statements in current block
+#   asm_count     — number of assembly lines
+#   ir_count      — number of IR statements
+#   comment_count — number of comment statements
+#
+# Structured arrays (PyGhidra/PyIDA style):
+#   ast_stmts     — Array of AstStmt objects
+#   ir_stmts      — Array of IrStmt objects
+#   asm_lines     — Array of AsmLine objects
+#
+# ── AstStmt methods ──
+#   .kind()              — "assignment", "call", "if", "return", "comment", etc.
+#   .to_string()         — debug text representation
+#   .is_call()           — true if Call statement
+#   .is_if()             — true if If statement
+#   .is_return()         — true if Return statement
+#   .is_comment()        — true if Comment
+#   .is_assignment()     — true if Assignment
+#   .is_declaration()    — true if Declaration
+#   .is_while()          — true if While loop
+#   .is_for()            — true if For loop
+#   .is_goto()           — true if Goto
+#   .is_label()          — true if Label
+#   .is_block()          — true if Block
+#   .is_switch()         — true if Switch
+#   .is_break()          — true if Break
+#   .is_continue()       — true if Continue
+#   .is_dowhile()        — true if DoWhile
+#   .is_empty()          — true if Empty
+#   .is_ir()             — true if Ir (lowered)
+#   .is_assembly()       — true if Assembly
+#   .call_name()         — function name (empty if not a call)
+#   .comment_text()      — comment content (empty if not a comment)
+#   .label_text()        — label text (empty if not a label)
+#   .has_else()          — true if If with else branch
+#   .body_count()        — number of statements in body (if/while/for/block)
+#   .else_count()        — number of statements in else branch
+#   .contains_call_to(name) — recursively checks for call containing name
+#   .has_operator(op)    — checks if statement uses operator (e.g. "Add", "BitXor")
+#   .origin()            — statement origin: "user_input", "predefined", "ir(...)", etc.
+#   .wrapper_comment()   — wrapper-level comment (empty if none)
+#   .condition()         — condition expression debug string (If/While/DoWhile)
+#   .body()              — Array of AstStmt for body (If/While/For/Block/DoWhile)
+#   .else_body()         — Array of AstStmt for else branch (If only)
+#   .lhs()               — left-hand side debug string (Assignment: expression, Declaration: variable)
+#   .rhs()               — right-hand side debug string (Assignment/Declaration initializer)
+#   .return_expr()       — return expression debug string (Return with value)
+#   .ir_stmt()           — IrStmt object (Ir statement only, else unit)
+#   .assembly_text()     — assembly text (Assembly statement only)
+#   .goto_target()       — goto target debug string (Goto only)
+#   .exception_text()    — exception text (Exception only)
+#
+# ── IrStmt methods ──
+#   .kind()              — "assignment", "jump", "call", "condition", "halt", etc.
+#   .to_string()         — debug text representation
+#   .is_assignment()     — true if IR assignment
+#   .is_jump()           — true if IR jump
+#   .is_call()           — true if IR call (JumpByCall)
+#   .is_condition()      — true if IR condition
+#   .is_halt()           — true if Halt
+#   .is_special()        — true if Special
+#   .from_data()         — IrData source operand (Assignment only, else unit)
+#   .to_data()           — IrData destination operand (Assignment only, else unit)
+#   .size_str()          — access size debug string (Assignment only)
+#   .target()            — IrData jump/call target (Jump/JumpByCall only, else unit)
+#   .condition_data()    — IrData condition operand (Condition only, else unit)
+#   .true_branch()       — Array of IrStmt (Condition only)
+#   .false_branch()      — Array of IrStmt (Condition only)
+#   .exception_text()    — exception text (Exception only)
+#
+# ── IrData methods ──
+#   .kind()              — "constant", "intrinsic", "register", "dereference", "operation", "operand"
+#   .to_string()         — debug text representation
+#   .is_constant()       — true if Constant
+#   .is_intrinsic()      — true if Intrinsic
+#   .is_register()       — true if Register
+#   .is_dereference()    — true if Dereference (memory access)
+#   .is_operation()      — true if Operation (unary/binary)
+#   .is_operand()        — true if Operand (nth parameter)
+#   .value()             — integer value (Constant: literal, Operand: index, else -1)
+#   .register_name()     — register debug string (Register only)
+#   .intrinsic_name()    — intrinsic name string (Intrinsic only)
+#   .inner()             — IrData inside dereference (Dereference only, else unit)
+#   .operator()          — operator debug string (Operation only)
+#   .is_unary()          — true if unary Operation
+#   .is_binary()         — true if binary Operation
+#   .arg()               — IrData operand (unary Operation only, else unit)
+#   .arg1()              — IrData first operand (binary Operation only, else unit)
+#   .arg2()              — IrData second operand (binary Operation only, else unit)
+#
+# ── AsmLine methods ──
+#   .index()             — line index in function
+#   .line()              — full asm text
+#   .mnemonic()          — instruction mnemonic (e.g. "mov", "call", "push")
+#   .operands()          — operand string after mnemonic
+#   .to_string()         — same as .line()
+#   .contains(needle)    — case-insensitive substring search (memchr)
+#   .is_call()           — true if mnemonic is "call"
+#   .is_jump()           — true if mnemonic starts with "j"
+#   .is_ret()            — true if "ret" or "retn"
+#   .is_nop()            — true if "nop"
+#   .is_push()           — true if "push"
+#   .is_pop()            — true if "pop"
+#   .is_mov()            — true if "mov", "movzx", or "movsx"
+#
+# ── Global analysis functions (in scripts) ──
+#   count_calls(ast_stmts)          — count Call statements
+#   count_assignments(ast_stmts)    — count Assignment statements
+#   count_comments(ast_stmts)       — count Comment statements
+#   find_calls_to(ast_stmts, name)  — filter stmts containing call to name
+#   is_arithmetic_op(op)            — true for Add/Sub/Mul/Div/Mod/Negate
+#   is_comparison_op(op)            — true for Equal/NotEqual/Less/Greater/etc.
+#   is_bitwise_op(op)               — true for BitAnd/BitOr/BitXor/BitNot/shifts
+#   is_logical_op(op)               — true for LogicAnd/LogicOr/Not
+
+# Example: Count calls and conditionally match
+# if:
+#   at afterIteration
+#   script `count_calls(ast_stmts) >= 2`
+# do:
+#   info("function has 2+ calls")
+
+# Example: Iterate asm lines for analysis
+# if:
+#   at beforeIrAnalyzation
+#   script `
+# let has_indirect = false;
+# for line in asm_lines {
+#   if line.is_call() && line.contains("[") {
+#     has_indirect = true;
+#     break;
+#   }
+# }
+# has_indirect
+# `
+# do:
+#   ast comment has-indirect-call
+
+# ── Log actions ──
+#
+# info("message")   — log at INFO level
+# warn("message")   — log at WARN level
+# error("message")  — log at ERROR level
+# debug("message")  — log at DEBUG level
+# trace("message")  — log at TRACE level

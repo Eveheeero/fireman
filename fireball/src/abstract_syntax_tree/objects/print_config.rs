@@ -6,15 +6,17 @@ pub struct AstPrintConfig {
     pub replace_constant: bool,
     pub parameter_usage_comment: bool,
     pub variable_usage_comment: bool,
+    pub hide_unused_declarations: bool,
 }
 impl AstPrintConfig {
     pub const DEFAULT: Self = Self {
-        print_instruction: true,
-        print_ir: true,
+        print_instruction: false,
+        print_ir: false,
         print_empty_statement: false,
         replace_constant: true,
         parameter_usage_comment: true,
         variable_usage_comment: false,
+        hide_unused_declarations: true,
     };
     pub const ALL: Self = Self {
         print_instruction: true,
@@ -23,6 +25,7 @@ impl AstPrintConfig {
         replace_constant: true,
         parameter_usage_comment: true,
         variable_usage_comment: true,
+        hide_unused_declarations: true,
     };
     pub const NONE: Self = Self {
         print_instruction: false,
@@ -31,6 +34,7 @@ impl AstPrintConfig {
         replace_constant: false,
         parameter_usage_comment: false,
         variable_usage_comment: false,
+        hide_unused_declarations: false,
     };
 
     pub fn print_instruction(mut self, value: bool) -> Self {
@@ -55,6 +59,10 @@ impl AstPrintConfig {
     }
     pub fn variable_usage_comment(mut self, value: bool) -> Self {
         self.variable_usage_comment = value;
+        self
+    }
+    pub fn hide_unused_declarations(mut self, value: bool) -> Self {
+        self.hide_unused_declarations = value;
         self
     }
 }

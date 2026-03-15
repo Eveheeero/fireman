@@ -1,5 +1,0 @@
-if:
-  at afterOptimization
-  ast Block([])
-do:
-  del start[0]

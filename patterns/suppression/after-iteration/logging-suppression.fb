@@ -1,0 +1,29 @@
+# Suppress logging and telemetry calls.
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "NSLog")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "syslog")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__android_log_print")
+do:
+  del start[0]
+
+if:
+  at afterIteration
+  stmt Call($f)
+  where call_name_matches($f, "__android_log_write")
+do:
+  del start[0]

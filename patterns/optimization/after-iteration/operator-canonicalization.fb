@@ -1,0 +1,156 @@
+# Operator canonicalization: normalize expressions for consistent form.
+# Applied iteratively during the main optimization loop.
+#
+# Note on NaN/float safety: The comparison negation rules (Rule 2) assume
+# ordered comparisons (integers). For IEEE-754 floats, Not(Less) ≠ GreaterEqual
+# when NaN is involved. This is acceptable because this decompiler operates on
+# x86 integer comparison flags (jl/jge/etc.), not C-level float comparisons.
+# The original Rust implementation had identical behavior with no float guard.
+
+# Rule 1: Double negation elimination — Not(Not(x)) → x
+if:
+  at afterIteration
+  expr UnaryOp(Not, UnaryOp(Not, $x))
+do:
+  replace_expr $x
+
+# Rule 2: Comparison negation simplification — Not(cmp(a,b)) → inv_cmp(a,b)
+
+if:
+  at afterIteration
+  expr UnaryOp(Not, BinaryOp(Equal, $a, $b))
+do:
+  replace_expr BinaryOp(NotEqual, $a, $b)
+
+if:
+  at afterIteration
+  expr UnaryOp(Not, BinaryOp(NotEqual, $a, $b))
+do:
+  replace_expr BinaryOp(Equal, $a, $b)
+
+if:
+  at afterIteration
+  expr UnaryOp(Not, BinaryOp(Less, $a, $b))
+do:
+  replace_expr BinaryOp(GreaterEqual, $a, $b)
+
+if:
+  at afterIteration
+  expr UnaryOp(Not, BinaryOp(LessEqual, $a, $b))
+do:
+  replace_expr BinaryOp(Greater, $a, $b)
+
+if:
+  at afterIteration
+  expr UnaryOp(Not, BinaryOp(Greater, $a, $b))
+do:
+  replace_expr BinaryOp(LessEqual, $a, $b)
+
+if:
+  at afterIteration
+  expr UnaryOp(Not, BinaryOp(GreaterEqual, $a, $b))
+do:
+  replace_expr BinaryOp(Less, $a, $b)
+
+# Rule 3: Commutative literal normalization — move literal to the right.
+# Only fires when the left is a literal and the right is NOT a literal.
+
+if:
+  at afterIteration
+  expr BinaryOp(Add, $l, $r)
+  where is_literal($l)
+  where not_literal($r)
+do:
+  replace_expr BinaryOp(Add, $r, $l)
+
+if:
+  at afterIteration
+  expr BinaryOp(Mul, $l, $r)
+  where is_literal($l)
+  where not_literal($r)
+do:
+  replace_expr BinaryOp(Mul, $r, $l)
+
+if:
+  at afterIteration
+  expr BinaryOp(BitAnd, $l, $r)
+  where is_literal($l)
+  where not_literal($r)
+do:
+  replace_expr BinaryOp(BitAnd, $r, $l)
+
+if:
+  at afterIteration
+  expr BinaryOp(BitOr, $l, $r)
+  where is_literal($l)
+  where not_literal($r)
+do:
+  replace_expr BinaryOp(BitOr, $r, $l)
+
+if:
+  at afterIteration
+  expr BinaryOp(BitXor, $l, $r)
+  where is_literal($l)
+  where not_literal($r)
+do:
+  replace_expr BinaryOp(BitXor, $r, $l)
+
+if:
+  at afterIteration
+  expr BinaryOp(Equal, $l, $r)
+  where is_literal($l)
+  where not_literal($r)
+do:
+  replace_expr BinaryOp(Equal, $r, $l)
+
+if:
+  at afterIteration
+  expr BinaryOp(NotEqual, $l, $r)
+  where is_literal($l)
+  where not_literal($r)
+do:
+  replace_expr BinaryOp(NotEqual, $r, $l)
+
+# Rule 4: Comparison flipping — when literal is on the left of a
+# non-commutative comparison, flip the direction.
+
+if:
+  at afterIteration
+  expr BinaryOp(Less, $l, $r)
+  where is_literal($l)
+  where not_literal($r)
+do:
+  replace_expr BinaryOp(Greater, $r, $l)
+
+if:
+  at afterIteration
+  expr BinaryOp(LessEqual, $l, $r)
+  where is_literal($l)
+  where not_literal($r)
+do:
+  replace_expr BinaryOp(GreaterEqual, $r, $l)
+
+if:
+  at afterIteration
+  expr BinaryOp(Greater, $l, $r)
+  where is_literal($l)
+  where not_literal($r)
+do:
+  replace_expr BinaryOp(Less, $r, $l)
+
+if:
+  at afterIteration
+  expr BinaryOp(GreaterEqual, $l, $r)
+  where is_literal($l)
+  where not_literal($r)
+do:
+  replace_expr BinaryOp(LessEqual, $r, $l)
+
+# Rule 5: If/else inversion — prefer positive conditions.
+# if(!cond) { A } else { B } → if(cond) { B } else { A }
+
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, $c), $true_body, Some($false_body))
+do:
+  emit If($c, $false_body, Some($true_body))

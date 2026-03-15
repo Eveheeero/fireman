@@ -1,0 +1,12 @@
+# Remove trailing void return at end of function body.
+# Only matches when Return(None) is the last statement in the block,
+# so early returns in the middle of a function are preserved.
+
+if:
+  at afterOptimization
+  script `
+let n = ast_stmts.len();
+n > 0 && ast_stmts[n - 1].is_return() && ast_stmts[n - 1].return_expr() == ""
+`
+do:
+  del end[0]

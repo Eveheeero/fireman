@@ -1,0 +1,17 @@
+# Merge consecutive if-statements with the same pure condition:
+#   if(cond) { A } if(cond) { B } → if(cond) { Block(A); Block(B) }
+#
+# The bodies are wrapped in Block() nodes which flatten-blocks will
+# inline on the next iteration pass, yielding if(cond) { A; B }.
+#
+# Only merges when the first if has no else branch and the conditions
+# are structurally identical.  The full Rust pass also canonicalizes
+# conditions before comparing; this pattern covers the common case.
+
+if:
+  at afterIteration
+  stmt_seq [If($cond, $bodyA, None), If($cond2, $bodyB, None)]
+  where structurally_equal($cond, $cond2)
+  where is_pure($cond)
+do:
+  emit If($cond, [Block($bodyA), Block($bodyB)], None)

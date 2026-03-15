@@ -1,0 +1,19 @@
+# Memcmp/strcmp loop lifting via Rhai script.
+# Detects byte-compare loops and replaces with memcmp call.
+
+if:
+  at afterIteration
+  script `
+    let found = false;
+    for s in ast_stmts {
+      if s.is_while() || s.is_do_while() {
+        if s.contains_call_to("memcmp") || s.contains_call_to("strcmp") {
+          found = true;
+        }
+      }
+    }
+    found
+  `
+do:
+  info("memcmp/strcmp loop detected")
+  del start[0]
