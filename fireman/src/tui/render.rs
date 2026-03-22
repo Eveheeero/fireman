@@ -1,12 +1,14 @@
-use super::app::App;
-use super::types::{OptimizationFocus, PromptState, View, OPTIMIZATION_GROUPS};
+use super::{
+    app::App,
+    types::{OPTIMIZATION_GROUPS, OptimizationFocus, PromptState, View},
+};
 use crate::model::{EditorDraft, EditorLayer};
 use ratatui::{
+    Frame,
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Tabs, Wrap},
-    Frame,
 };
 
 impl App {

@@ -1,7 +1,6 @@
+use super::types::OptimizationStoreEnvelope;
 use crate::model::OptimizationStore;
 use std::{fs, path::PathBuf};
-
-use super::types::OptimizationStoreEnvelope;
 
 pub(crate) fn optimization_store_path() -> Result<PathBuf, String> {
     if let Ok(config_home) = std::env::var("XDG_CONFIG_HOME") {

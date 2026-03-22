@@ -1,7 +1,10 @@
-use super::types::{
-    next_position, FileBrowserState, OptimizationFocus, PromptKind, PromptState, View, LOG_LIMIT,
+use super::{
+    StartupConfig,
+    types::{
+        FileBrowserState, LOG_LIMIT, OptimizationFocus, PromptKind, PromptState, View,
+        next_position,
+    },
 };
-use super::StartupConfig;
 use crate::{
     model::{
         AppliedEditResult, AssemblyEditorDraft, AstEditorDraft, DecompileRequest, DecompileResult,

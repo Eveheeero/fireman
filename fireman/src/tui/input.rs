@@ -1,10 +1,14 @@
-use super::app::App;
-use super::prompt;
-use super::types::{
-    all_optimization_fields, optimization_field_count, OptimizationFocus, PromptKind, View,
+use super::{
+    app::App,
+    prompt,
+    types::{
+        OptimizationFocus, PromptKind, View, all_optimization_fields, optimization_field_count,
+    },
 };
-use crate::model::{EditorLayer, OptimizationSettings};
-use crate::worker::WorkerRequest;
+use crate::{
+    model::{EditorLayer, OptimizationSettings},
+    worker::WorkerRequest,
+};
 use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 impl App {
