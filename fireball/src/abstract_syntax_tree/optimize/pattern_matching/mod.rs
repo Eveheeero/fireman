@@ -7,7 +7,7 @@ mod apply;
 pub(crate) mod embedded;
 mod fb_gz;
 mod fb_parser;
-mod fbz;
+pub(crate) mod fbz;
 mod hashing;
 mod ir_parser;
 mod predefined_pattern;
@@ -19,6 +19,7 @@ pub(in crate::abstract_syntax_tree::optimize) use apply::apply_patterns;
 pub use fb_parser::{
     parse_editable_asm_to_ir_statements, parse_editable_ast_statement, parse_editable_ir_statement,
 };
+pub use fbz::{FbzFunction, FbzParameter, FbzSymbol, FbzVariable, encode_functions as encode_fbz_functions};
 pub(super) use hashing::{Blake3StdHasher, hash_statement_list};
 use rhai::AST as RhaiAst;
 use std::{fs, hash::Hash, path::Path};
@@ -137,6 +138,10 @@ impl AstPattern {
 
     pub fn fbz_bytes_from_source(source: &str) -> Result<Vec<u8>, String> {
         fb_parser::encode_pattern_source_to_fbz_bytes(source)
+    }
+
+    pub fn fbz_bytes_from_functions(functions: Vec<FbzFunction>) -> Result<Vec<u8>, String> {
+        fb_parser::encode_pattern_functions_to_fbz_bytes(functions)
     }
 
     pub fn fb_gz_bytes_from_source(source: &str) -> Result<Vec<u8>, String> {

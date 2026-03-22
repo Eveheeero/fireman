@@ -3,7 +3,9 @@ use fireball::{
     Fireball,
     abstract_syntax_tree::{
         AstFunction, AstOptimizationConfig, AstParameterLocation, AstPrintConfig, PrintWithConfig,
-        pattern_matching::AstPattern,
+        pattern_matching::{
+            AstPattern, FbzFunction, FbzParameter, FbzSymbol, FbzVariable, encode_fbz_functions,
+        },
     },
     core::FireRaw,
     ir::analyze::generate_ast_with_pre_defined_symbols,
@@ -17,7 +19,16 @@ use std::{
 };
 
 fn main() {
-    if let Err(err) = run() {
+    // Spawn with a larger stack to handle deeply nested AST trees from large binaries.
+    const STACK_SIZE: usize = 64 * 1024 * 1024; // 64 MiB
+    let result = std::thread::Builder::new()
+        .stack_size(STACK_SIZE)
+        .spawn(run)
+        .expect("failed to spawn worker thread")
+        .join()
+        .expect("worker thread panicked");
+
+    if let Err(err) = result {
         eprintln!("glacier: {err}");
         std::process::exit(1);
     }
@@ -26,7 +37,7 @@ fn main() {
 #[derive(Debug, Parser)]
 #[command(name = "glacier")]
 #[command(
-    about = "Export recovered Fireball analysis as compressed patterns (.fb.gz by default, .fbz optional)"
+    about = "Export recovered Fireball analysis as compressed patterns (.fb.gz by default, .fbz or plain .fb optional)"
 )]
 struct Cli {
     #[arg(value_name = "INPUT")]
@@ -43,6 +54,7 @@ struct Cli {
 enum OutputFormat {
     FbGz,
     Fbz,
+    Fb,
 }
 
 impl OutputFormat {
@@ -50,6 +62,7 @@ impl OutputFormat {
         match self {
             Self::FbGz => "fb.gz",
             Self::Fbz => "fbz",
+            Self::Fb => "fb",
         }
     }
 }
@@ -215,17 +228,19 @@ fn export_fb_inner(
             .unwrap_or_default()
     });
 
-    let rendered_rules = ordered_functions
-        .iter()
-        .map(|function| {
-            render_function_rules(&source_path_string, &ast.pre_defined_symbols, function)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    let output = rendered_rules.join("\n\n");
     let encoded = match request.output_format {
-        OutputFormat::FbGz => AstPattern::fb_gz_bytes_from_source(&output)?,
-        OutputFormat::Fbz => AstPattern::fbz_bytes_from_source(&output)?,
+        OutputFormat::FbGz => {
+            let output = render_all_rules(&source_path_string, &ast.pre_defined_symbols, &ordered_functions)?;
+            AstPattern::fb_gz_bytes_from_source(&output)?
+        }
+        OutputFormat::Fb => {
+            let output = render_all_rules(&source_path_string, &ast.pre_defined_symbols, &ordered_functions)?;
+            output.into_bytes()
+        }
+        OutputFormat::Fbz => {
+            let functions = build_fbz_functions(&ast.pre_defined_symbols, &ordered_functions)?;
+            encode_fbz_functions(functions)?
+        }
     };
     fs::write(&output_path, encoded)
         .map_err(|err| format!("failed to write {}: {err}", output_path.display()))?;
@@ -234,6 +249,131 @@ fn export_fb_inner(
         output_path,
         log_file_path: log_path,
         function_count: ordered_functions.len(),
+    })
+}
+
+fn render_all_rules(
+    source_path: &str,
+    symbols: &hashbrown::HashMap<u64, String>,
+    functions: &[&AstFunction],
+) -> Result<String, String> {
+    let rendered = functions
+        .iter()
+        .map(|f| render_function_rules(source_path, symbols, f))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rendered.join("\n\n"))
+}
+
+fn build_fbz_functions(
+    symbols: &hashbrown::HashMap<u64, String>,
+    functions: &[&AstFunction],
+) -> Result<Vec<FbzFunction>, String> {
+    functions
+        .iter()
+        .map(|f| build_fbz_function(symbols, f))
+        .collect()
+}
+
+fn build_fbz_function(
+    symbols: &hashbrown::HashMap<u64, String>,
+    function: &AstFunction,
+) -> Result<FbzFunction, String> {
+    let entry_ir = function
+        .ir
+        .get_ir()
+        .first()
+        .ok_or_else(|| format!("function {} has no IR", function.name()))?;
+    let entry_va = entry_ir.address.get_virtual_address();
+    let file_offset = entry_ir.address.get_file_offset();
+
+    // Assembly seeds (all instructions)
+    let asm_seeds = function
+        .ir
+        .get_instructions()
+        .iter()
+        .map(|i| i.inner().to_string())
+        .collect::<Vec<_>>();
+
+    // IR seeds (all statements)
+    let ir_seeds = function
+        .ir
+        .get_ir()
+        .iter()
+        .filter_map(|ir| ir.statements)
+        .flat_map(|stmts| stmts.iter().map(ToString::to_string))
+        .collect::<Vec<_>>();
+
+    // Parameters
+    let parameters = function
+        .parameters
+        .iter()
+        .map(|p| FbzParameter {
+            name: p
+                .name(&function.variables)
+                .unwrap_or_else(|_| "unknown".to_string()),
+            location: format_parameter_location(&p.location),
+            value_type: p
+                .read_type(&function.variables)
+                .map(|v| v.to_string_with_config(None))
+                .unwrap_or_else(|_| "unknown".to_string()),
+        })
+        .collect::<Vec<_>>();
+
+    // Variables
+    let variables_guard = function
+        .variables
+        .read()
+        .map_err(|_| format!("failed to read variables for {}", function.name()))?;
+    let mut variables = variables_guard
+        .values()
+        .map(|v| FbzVariable {
+            name: v.name(),
+            value_type: v.var_type.to_string_with_config(None),
+            const_value: v
+                .const_value
+                .as_ref()
+                .map(|cv| cv.to_string_with_config(None)),
+        })
+        .collect::<Vec<_>>();
+    variables.sort_by(|a, b| a.name.cmp(&b.name));
+
+    // Symbols in function range
+    let function_start = entry_va;
+    let function_end = function
+        .ir
+        .get_ir()
+        .last()
+        .map(|ir| ir.address.get_virtual_address())
+        .unwrap_or(entry_va);
+    let mut syms = symbols
+        .iter()
+        .filter(|(addr, _)| **addr >= function_start && **addr <= function_end)
+        .map(|(addr, name)| FbzSymbol {
+            address: *addr,
+            name: name.clone(),
+        })
+        .collect::<Vec<_>>();
+    syms.sort_by_key(|s| s.address);
+
+    // AST text
+    let ast_text = render_function_ast(function).ok();
+
+    // Return type
+    let return_type = Some(function.return_type.to_string_with_config(None));
+
+    Ok(FbzFunction {
+        name: function.name(),
+        default_name: function.id.get_default_name(),
+        entry_va,
+        file_offset,
+        return_type,
+        asm_seeds,
+        ir_seeds,
+        parameters,
+        variables,
+        symbols: syms,
+        ast_text,
+        stmt_count: function.body.len(),
     })
 }
 
@@ -255,7 +395,6 @@ fn render_function_rules(
         .ir
         .get_instructions()
         .iter()
-        .take(4)
         .map(|instruction| instruction.inner().to_string())
         .collect::<Vec<_>>();
 
@@ -265,7 +404,6 @@ fn render_function_rules(
         .iter()
         .filter_map(|ir| ir.statements)
         .flat_map(|statements| statements.iter().map(ToString::to_string))
-        .take(6)
         .collect::<Vec<_>>();
 
     let parameters = function
@@ -347,6 +485,8 @@ fn render_function_rules(
     let ast_rule = render_ast_rule(
         source_path,
         function,
+        &assembly_seeds,
+        &ir_seeds,
         &func_name,
         &func_default_name,
         &entry_va_str,
@@ -451,6 +591,8 @@ fn render_ir_rule(
 fn render_ast_rule(
     _source_path: &str,
     function: &AstFunction,
+    assembly_seeds: &[String],
+    ir_seeds: &[String],
     func_name: &str,
     func_default_name: &str,
     entry_va: &str,
@@ -478,6 +620,23 @@ fn render_ast_rule(
     let mut rule = String::new();
     let _ = writeln!(rule, "if:");
     let _ = writeln!(rule, "  at afterOptimization");
+    // Add IR fingerprint matchers; fall back to asm if no IR seeds available
+    if ir_seeds.is_empty() {
+        for asm in assembly_seeds {
+            let _ = writeln!(rule, "  asm {}", fb_literal(asm));
+        }
+    }
+    for ir in ir_seeds {
+        let _ = writeln!(rule, "  ir {}", fb_literal(ir));
+    }
+    // Add structural script check — stmt_count within ±20% tolerance
+    let stmt_count = function.body.len();
+    let min_stmts = (stmt_count as f64 * 0.8).floor() as usize;
+    let max_stmts = (stmt_count as f64 * 1.2).ceil() as usize;
+    let _ = writeln!(
+        rule,
+        "  script `stmt_count >= {min_stmts} && stmt_count <= {max_stmts}`"
+    );
     let _ = writeln!(rule, "do:");
     let _ = writeln!(rule, "  info({payload_json})");
 

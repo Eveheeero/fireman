@@ -85,6 +85,12 @@ pub(super) fn encode_pattern_source_to_fbz_bytes(source: &str) -> Result<Vec<u8>
     fbz::encode_source(source)
 }
 
+pub(super) fn encode_pattern_functions_to_fbz_bytes(
+    functions: Vec<fbz::FbzFunction>,
+) -> Result<Vec<u8>, String> {
+    fbz::encode_functions(functions)
+}
+
 pub(super) fn encode_pattern_source_to_fb_gz_bytes(source: &str) -> Result<Vec<u8>, String> {
     fb_gz::encode_source(source)
 }

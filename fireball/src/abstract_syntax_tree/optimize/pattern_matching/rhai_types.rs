@@ -686,24 +686,91 @@ impl RhaiAsmLine {
 // ── Utility functions ──
 
 fn stmt_contains_call(stmt: &AstStatement, needle: &str) -> bool {
+    // Check the root statement for non-container matches first.
     match stmt {
-        AstStatement::Call(call) => call_matches(call, needle),
+        AstStatement::Call(call) => return call_matches(call, needle),
+        AstStatement::Assignment(_, rhs) => {
+            if expr_contains_call(&rhs.item, needle) {
+                return true;
+            }
+        }
+        AstStatement::Return(Some(expr)) => {
+            if expr_contains_call(&expr.item, needle) {
+                return true;
+            }
+        }
+        _ => {}
+    }
+
+    // For container statements, use a worklist to search sub-bodies iteratively.
+    let mut worklist: Vec<&[WrappedAstStatement]> = Vec::new();
+    match stmt {
         AstStatement::If(_, body, else_body) => {
-            body.iter()
-                .any(|s| stmt_contains_call(&s.statement, needle))
-                || else_body
-                    .as_ref()
-                    .is_some_and(|e| e.iter().any(|s| stmt_contains_call(&s.statement, needle)))
+            worklist.push(body);
+            if let Some(e) = else_body {
+                worklist.push(e);
+            }
         }
         AstStatement::While(_, body)
         | AstStatement::Block(body)
-        | AstStatement::DoWhile(_, body) => body
-            .iter()
-            .any(|s| stmt_contains_call(&s.statement, needle)),
-        AstStatement::Assignment(_, rhs) => expr_contains_call(&rhs.item, needle),
-        AstStatement::Return(Some(expr)) => expr_contains_call(&expr.item, needle),
-        _ => false,
+        | AstStatement::DoWhile(_, body) => {
+            worklist.push(body);
+        }
+        AstStatement::For(_, _, _, body) => worklist.push(body),
+        AstStatement::Switch(_, cases, default) => {
+            for (_, case_body) in cases {
+                worklist.push(case_body);
+            }
+            if let Some(d) = default {
+                worklist.push(d);
+            }
+        }
+        _ => return false,
     }
+
+    while let Some(list) = worklist.pop() {
+        for s in list {
+            match &s.statement {
+                AstStatement::Call(call) => {
+                    if call_matches(call, needle) {
+                        return true;
+                    }
+                }
+                AstStatement::Assignment(_, rhs) => {
+                    if expr_contains_call(&rhs.item, needle) {
+                        return true;
+                    }
+                }
+                AstStatement::Return(Some(expr)) => {
+                    if expr_contains_call(&expr.item, needle) {
+                        return true;
+                    }
+                }
+                AstStatement::If(_, body, else_body) => {
+                    worklist.push(body);
+                    if let Some(e) = else_body {
+                        worklist.push(e);
+                    }
+                }
+                AstStatement::While(_, body)
+                | AstStatement::Block(body)
+                | AstStatement::DoWhile(_, body) => {
+                    worklist.push(body);
+                }
+                AstStatement::For(_, _, _, body) => worklist.push(body),
+                AstStatement::Switch(_, cases, default) => {
+                    for (_, case_body) in cases {
+                        worklist.push(case_body);
+                    }
+                    if let Some(d) = default {
+                        worklist.push(d);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    false
 }
 
 fn expr_contains_call(expr: &AstExpression, needle: &str) -> bool {
