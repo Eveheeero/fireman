@@ -2,19 +2,22 @@ pub mod register;
 mod register_impl;
 pub mod statements;
 
-pub use register::ArmRegister;
-pub use statements::ArmStatement;
-
 use crate::{
     AddressingOperator, Argument, DisassembleError, Memory, Register, RelativeAddressingArgument,
     Statement, StatementInner,
 };
+pub use register::ArmRegister;
+pub use statements::ArmStatement;
 
 impl StatementInner for ArmStatement {
     fn is_jcc(&self) -> bool {
         matches!(
             *self,
-            ArmStatement::B | ArmStatement::Cbnz | ArmStatement::Cbz | ArmStatement::Tbnz | ArmStatement::Tbz
+            ArmStatement::B
+                | ArmStatement::Cbnz
+                | ArmStatement::Cbz
+                | ArmStatement::Tbnz
+                | ArmStatement::Tbz
         )
     }
 
@@ -89,7 +92,10 @@ fn parse_memory(op: &str) -> Result<Argument, DisassembleError> {
     while let Some(segment) = terms.next() {
         let normalized = segment.trim_end_matches('!');
         if let Some(register) = parse_memory_register(normalized) {
-            push_term(&mut items, RelativeAddressingArgument::Register(Register::Arm(register)));
+            push_term(
+                &mut items,
+                RelativeAddressingArgument::Register(Register::Arm(register)),
+            );
             continue;
         }
 
@@ -100,10 +106,14 @@ fn parse_memory(op: &str) -> Result<Argument, DisassembleError> {
 
         if let Some(shift_operand) = normalized.strip_prefix("lsl ") {
             let shift = parse_shift_amount(shift_operand)?;
-            items.push(RelativeAddressingArgument::Operator(AddressingOperator::Mul));
-            items.push(RelativeAddressingArgument::Constant(
-                i128::from(1_u64.checked_shl(u32::from(shift)).ok_or(DisassembleError::Unknown)?),
+            items.push(RelativeAddressingArgument::Operator(
+                AddressingOperator::Mul,
             ));
+            items.push(RelativeAddressingArgument::Constant(i128::from(
+                1_u64
+                    .checked_shl(u32::from(shift))
+                    .ok_or(DisassembleError::Unknown)?,
+            )));
             continue;
         }
 
@@ -112,10 +122,14 @@ fn parse_memory(op: &str) -> Result<Argument, DisassembleError> {
                 .next()
                 .ok_or(DisassembleError::Unknown)
                 .and_then(parse_shift_amount)?;
-            items.push(RelativeAddressingArgument::Operator(AddressingOperator::Mul));
-            items.push(RelativeAddressingArgument::Constant(
-                i128::from(1_u64.checked_shl(u32::from(shift)).ok_or(DisassembleError::Unknown)?),
+            items.push(RelativeAddressingArgument::Operator(
+                AddressingOperator::Mul,
             ));
+            items.push(RelativeAddressingArgument::Constant(i128::from(
+                1_u64
+                    .checked_shl(u32::from(shift))
+                    .ok_or(DisassembleError::Unknown)?,
+            )));
             continue;
         }
 
@@ -133,7 +147,9 @@ fn push_term(items: &mut Vec<RelativeAddressingArgument>, term: RelativeAddressi
         Some(RelativeAddressingArgument::Register(_))
             | Some(RelativeAddressingArgument::Constant(_))
     ) {
-        items.push(RelativeAddressingArgument::Operator(AddressingOperator::Add));
+        items.push(RelativeAddressingArgument::Operator(
+            AddressingOperator::Add,
+        ));
     }
     items.push(term);
 }
@@ -185,7 +201,9 @@ fn parse_immediate_i128(value: &str) -> Option<Result<i128, DisassembleError>> {
     }
 
     let signed = value.starts_with('-') || value.starts_with('+');
-    let digits_only = value.chars().all(|ch| ch.is_ascii_digit() || matches!(ch, '-' | '+'));
+    let digits_only = value
+        .chars()
+        .all(|ch| ch.is_ascii_digit() || matches!(ch, '-' | '+'));
     (signed || digits_only).then(|| value.parse::<i128>().map_err(|_| DisassembleError::Unknown))
 }
 
@@ -216,7 +234,10 @@ mod tests {
     #[test]
     fn parses_arm_vector_register_operand_with_arrangement() {
         let parsed = parse_argument("v31.16b").unwrap();
-        assert_eq!(parsed, Argument::Register(Register::Arm(ArmRegister::V(31))));
+        assert_eq!(
+            parsed,
+            Argument::Register(Register::Arm(ArmRegister::V(31)))
+        );
     }
 
     #[test]

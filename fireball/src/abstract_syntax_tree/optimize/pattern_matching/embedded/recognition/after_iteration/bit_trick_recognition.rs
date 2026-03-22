@@ -181,10 +181,7 @@ fn push_expr_children_recognize(
 }
 
 /// Push Call arg expressions onto the traversal stack (used by iterative walk).
-fn recognize_in_call_args_push(
-    call: &mut AstCall,
-    stack: &mut Vec<*mut Wrapped<AstExpression>>,
-) {
+fn recognize_in_call_args_push(call: &mut AstCall, stack: &mut Vec<*mut Wrapped<AstExpression>>) {
     match call {
         AstCall::Variable { args, .. }
         | AstCall::Function { args, .. }

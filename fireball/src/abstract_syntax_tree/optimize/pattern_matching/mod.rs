@@ -19,7 +19,9 @@ pub(in crate::abstract_syntax_tree::optimize) use apply::apply_patterns;
 pub use fb_parser::{
     parse_editable_asm_to_ir_statements, parse_editable_ast_statement, parse_editable_ir_statement,
 };
-pub use fbz::{FbzFunction, FbzParameter, FbzSymbol, FbzVariable, encode_functions as encode_fbz_functions};
+pub use fbz::{
+    FbzFunction, FbzParameter, FbzSymbol, FbzVariable, encode_functions as encode_fbz_functions,
+};
 pub(super) use hashing::{Blake3StdHasher, hash_statement_list};
 use rhai::AST as RhaiAst;
 use std::{fs, hash::Hash, path::Path};

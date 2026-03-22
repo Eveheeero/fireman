@@ -2,7 +2,7 @@
 #[str_to_enum_type(crate::DisassembleError)]
 #[str_to_enum_item(crate::DisassembleError::UnknownStatement)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum ArmStatement{
+pub enum ArmStatement {
     /// # ABS
     ///
     /// Absolute value (vector)
@@ -130,7 +130,7 @@ pub enum ArmStatement{
     ///
     /// (result, nzcv) = AddWithCarry(operand1, operand2, PSTATE.C);
     ///
-    /// if setflags then 
+    /// if setflags then
     ///     PSTATE.<N,Z,C,V> = nzcv;
     ///
     /// X[d] = result;
@@ -193,7 +193,7 @@ pub enum ArmStatement{
     ///
     /// (result, nzcv) = AddWithCarry(operand1, operand2, PSTATE.C);
     ///
-    /// if setflags then 
+    /// if setflags then
     ///     PSTATE.<N,Z,C,V> = nzcv;
     ///
     /// X[d] = result;
@@ -267,7 +267,7 @@ pub enum ArmStatement{
     ///
     /// (result, nzcv) = AddWithCarry(operand1, operand2, carry_in);
     ///
-    /// if setflags then 
+    /// if setflags then
     ///     PSTATE.<N,Z,C,V> = nzcv;
     ///
     /// if d == 31 && !setflags then
@@ -581,7 +581,7 @@ pub enum ArmStatement{
     ///
     /// (result, nzcv) = AddWithCarry(operand1, operand2, carry_in);
     ///
-    /// if setflags then 
+    /// if setflags then
     ///     PSTATE.<N,Z,C,V> = nzcv;
     ///
     /// if d == 31 && !setflags then
@@ -2332,7 +2332,7 @@ pub enum ArmStatement{
     ///     when '110x1' operation = ImmediateOp_MVNI;
     ///     when '1110x' operation = ImmediateOp_MOVI;
     ///     when '11110' operation = ImmediateOp_MOVI;
-    ///     when '11111' 
+    ///     when '11111'
     ///         // FMOV Dn,#imm is in main FP instruction set
     ///         if Q == '0' then UNDEFINED;
     ///         operation = ImmediateOp_MOVI;
@@ -2673,9 +2673,9 @@ pub enum ArmStatement{
     /// boolean use_key_a = (M == '0');
     /// boolean source_is_sp = ((Z == '1') && (m == 31));
     ///
-    /// if !pac && m != 0 then 
+    /// if !pac && m != 0 then
     ///     UNDEFINED;
-    /// elsif pac && !HavePACExt() then 
+    /// elsif pac && !HavePACExt() then
     ///     UNDEFINED;
     ///
     /// case op of
@@ -2722,7 +2722,7 @@ pub enum ArmStatement{
     ///             BTypeNext = '01';
     ///     when BranchType_INDCALL         // BLR, BLRAA, BLRAB, BLRAAZ, BLRABZ
     ///         BTypeNext = '10';
-    ///     when BranchType_RET             // RET, RETAA, RETAB 
+    ///     when BranchType_RET             // RET, RETAA, RETAB
     ///         BTypeNext = '00';
     ///
     /// BranchTo(target, branch_type);
@@ -2767,9 +2767,9 @@ pub enum ArmStatement{
     /// boolean use_key_a = (M == '0');
     /// boolean source_is_sp = ((Z == '1') && (m == 31));
     ///
-    /// if !pac && m != 0 then 
+    /// if !pac && m != 0 then
     ///     UNDEFINED;
-    /// elsif pac && !HavePACExt() then 
+    /// elsif pac && !HavePACExt() then
     ///     UNDEFINED;
     ///
     /// case op of
@@ -2816,7 +2816,7 @@ pub enum ArmStatement{
     ///             BTypeNext = '01';
     ///     when BranchType_INDCALL         // BLR, BLRAA, BLRAB, BLRAAZ, BLRABZ
     ///         BTypeNext = '10';
-    ///     when BranchType_RET             // RET, RETAA, RETAB 
+    ///     when BranchType_RET             // RET, RETAA, RETAB
     ///         BTypeNext = '00';
     ///
     /// BranchTo(target, branch_type);
@@ -2853,9 +2853,9 @@ pub enum ArmStatement{
     /// boolean use_key_a = (M == '0');
     /// boolean source_is_sp = ((Z == '1') && (m == 31));
     ///
-    /// if !pac && m != 0 then 
+    /// if !pac && m != 0 then
     ///     UNDEFINED;
-    /// elsif pac && !HavePACExt() then 
+    /// elsif pac && !HavePACExt() then
     ///     UNDEFINED;
     ///
     /// case op of
@@ -2902,7 +2902,7 @@ pub enum ArmStatement{
     ///             BTypeNext = '01';
     ///     when BranchType_INDCALL         // BLR, BLRAA, BLRAB, BLRAAZ, BLRABZ
     ///         BTypeNext = '10';
-    ///     when BranchType_RET             // RET, RETAA, RETAB 
+    ///     when BranchType_RET             // RET, RETAA, RETAB
     ///         BTypeNext = '00';
     ///
     /// BranchTo(target, branch_type);
@@ -2947,9 +2947,9 @@ pub enum ArmStatement{
     /// boolean use_key_a = (M == '0');
     /// boolean source_is_sp = ((Z == '1') && (m == 31));
     ///
-    /// if !pac && m != 0 then 
+    /// if !pac && m != 0 then
     ///     UNDEFINED;
-    /// elsif pac && !HavePACExt() then 
+    /// elsif pac && !HavePACExt() then
     ///     UNDEFINED;
     ///
     /// case op of
@@ -2996,7 +2996,7 @@ pub enum ArmStatement{
     ///             BTypeNext = '01';
     ///     when BranchType_INDCALL         // BLR, BLRAA, BLRAB, BLRAAZ, BLRABZ
     ///         BTypeNext = '10';
-    ///     when BranchType_RET             // RET, RETAA, RETAB 
+    ///     when BranchType_RET             // RET, RETAA, RETAB
     ///         BTypeNext = '00';
     ///
     /// BranchTo(target, branch_type);
@@ -6582,7 +6582,7 @@ pub enum ArmStatement{
     /// ```
     /// case CRm<3:2> of
     ///     when '00' domain = MBReqDomain_OuterShareable;
-    ///     when '01' domain = MBReqDomain_Nonshareable; 
+    ///     when '01' domain = MBReqDomain_Nonshareable;
     ///     when '10' domain = MBReqDomain_InnerShareable;
     ///     when '11' domain = MBReqDomain_FullSystem;
     /// case CRm<1:0> of
@@ -6650,7 +6650,7 @@ pub enum ArmStatement{
     /// ```
     /// case CRm<3:2> of
     ///     when '00' domain = MBReqDomain_OuterShareable;
-    ///     when '01' domain = MBReqDomain_Nonshareable; 
+    ///     when '01' domain = MBReqDomain_Nonshareable;
     ///     when '10' domain = MBReqDomain_InnerShareable;
     ///     when '11' domain = MBReqDomain_FullSystem;
     /// case CRm<1:0> of
@@ -6711,7 +6711,7 @@ pub enum ArmStatement{
     /// if size > 3 then UNDEFINED;
     ///
     /// integer index = UInt(imm5<4:size+1>);
-    /// integer idxdsize = if imm5<4> == '1' then 128 else 64; 
+    /// integer idxdsize = if imm5<4> == '1' then 128 else 64;
     ///
     /// integer esize = 8 << size;
     /// integer datasize = esize;
@@ -6725,7 +6725,7 @@ pub enum ArmStatement{
     /// if size > 3 then UNDEFINED;
     ///
     /// integer index = UInt(imm5<4:size+1>);
-    /// integer idxdsize = if imm5<4> == '1' then 128 else 64; 
+    /// integer idxdsize = if imm5<4> == '1' then 128 else 64;
     ///
     /// if size == 3 && Q == '0' then UNDEFINED;
     /// integer esize = 8 << size;
@@ -7082,7 +7082,7 @@ pub enum ArmStatement{
     /// elsif pac && (!HavePACExt() || op4 != '11111') then
     ///     UNDEFINED;
     ///
-    /// if Rn != '11111' then 
+    /// if Rn != '11111' then
     ///     UNDEFINED;
     /// ```
     ///
@@ -7137,7 +7137,7 @@ pub enum ArmStatement{
     /// elsif pac && (!HavePACExt() || op4 != '11111') then
     ///     UNDEFINED;
     ///
-    /// if Rn != '11111' then 
+    /// if Rn != '11111' then
     ///     UNDEFINED;
     /// ```
     ///
@@ -8238,13 +8238,13 @@ pub enum ArmStatement{
     /// bits(esize) element1;
     /// bits(esize) element3;
     ///
-    /// for e = 0 to (elements DIV 2) -1 
-    ///     case rot of 
+    /// for e = 0 to (elements DIV 2) -1
+    ///     case rot of
     ///         when '0'
-    ///             element1 = FPNeg(Elem[operand2, e*2+1, esize]); 
+    ///             element1 = FPNeg(Elem[operand2, e*2+1, esize]);
     ///             element3 = Elem[operand2, e*2, esize];
     ///         when '1'
-    ///             element1 = Elem[operand2, e*2+1, esize]; 
+    ///             element1 = Elem[operand2, e*2+1, esize];
     ///             element3 = FPNeg(Elem[operand2, e*2, esize]);   
     ///     Elem[result, e*2,   esize] = FPAdd(Elem[operand1, e*2, esize], element1, FPCR);
     ///     Elem[result, e*2+1, esize] = FPAdd(Elem[operand1, e*2+1, esize], element3, FPCR);
@@ -8979,7 +8979,7 @@ pub enum ArmStatement{
     /// if !HaveFP16Ext() && esize == 16 then UNDEFINED;
     /// integer datasize = if Q == '1' then 128 else 64;
     /// integer elements = datasize DIV esize;
-    /// if size == '10' && (L == '1' || Q == '0') then UNDEFINED; 
+    /// if size == '10' && (L == '1' || Q == '0') then UNDEFINED;
     /// if size == '01' && H == '1' && Q=='0' then UNDEFINED;
     /// ```
     ///
@@ -8992,25 +8992,25 @@ pub enum ArmStatement{
     /// bits(datasize) operand3 = V[d];
     /// bits(datasize) result;
     ///
-    /// for e = 0 to (elements DIV 2) -1 
-    ///     case rot of 
+    /// for e = 0 to (elements DIV 2) -1
+    ///     case rot of
     ///         when '00'
-    ///             element1 = Elem[operand2, index*2, esize]; 
+    ///             element1 = Elem[operand2, index*2, esize];
     ///             element2 = Elem[operand1, e*2, esize];
     ///             element3 = Elem[operand2, index*2+1, esize];
     ///             element4 = Elem[operand1, e*2, esize];
     ///         when '01'
-    ///             element1 = FPNeg(Elem[operand2, index*2+1, esize]); 
+    ///             element1 = FPNeg(Elem[operand2, index*2+1, esize]);
     ///             element2 = Elem[operand1, e*2+1, esize];
     ///             element3 = Elem[operand2, index*2, esize];
     ///             element4 = Elem[operand1, e*2+1, esize];
     ///         when '10'
-    ///             element1 = FPNeg(Elem[operand2, index*2,esize]); 
+    ///             element1 = FPNeg(Elem[operand2, index*2,esize]);
     ///             element2 = Elem[operand1, e*2, esize];
     ///             element3 = FPNeg(Elem[operand2, index*2+1, esize]);
     ///             element4 = Elem[operand1, e*2, esize];
     ///         when '11'
-    ///             element1 = Elem[operand2, index*2+1, esize]; 
+    ///             element1 = Elem[operand2, index*2+1, esize];
     ///             element2 = Elem[operand1, e*2+1, esize];
     ///             element3 = FPNeg(Elem[operand2, index*2, esize]);
     ///             element4 = Elem[operand1, e*2+1, esize];
@@ -11020,7 +11020,7 @@ pub enum ArmStatement{
     ///         rounding = FPRounding_ZERO;
     ///         unsigned = (opcode<0> == '1');
     ///         op = FPConvOp_CVT_FtoI_JS;
-    ///     otherwise 
+    ///     otherwise
     ///         UNDEFINED;
     /// ```
     ///
@@ -12106,7 +12106,7 @@ pub enum ArmStatement{
     /// boolean sub_op = (o2 == '1');
     ///
     /// // Scalar, single-precision and double-precision
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi = M;
     /// case sz:L of
@@ -12138,7 +12138,7 @@ pub enum ArmStatement{
     /// boolean sub_op = (o2 == '1');
     ///
     /// // Vector, single-precision and double-precision
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi = M;
     /// case sz:L of
@@ -12215,7 +12215,7 @@ pub enum ArmStatement{
     /// integer n = UInt(Rn);
     /// integer m = UInt('0':Rm);    // Vm can only be in bottom 16 registers.
     /// if sz == '1' then UNDEFINED;
-    /// integer index = UInt(H:L:M); 
+    /// integer index = UInt(H:L:M);
     ///
     /// integer esize = 32;
     /// integer datasize = if Q=='1' then 128 else 64;
@@ -12230,7 +12230,7 @@ pub enum ArmStatement{
     /// integer n = UInt(Rn);
     /// integer m = UInt('0':Rm);    // Vm can only be in bottom 16 registers.
     /// if sz == '1' then UNDEFINED;
-    /// integer index = UInt(H:L:M); 
+    /// integer index = UInt(H:L:M);
     ///
     /// integer esize = 32;
     /// integer datasize = if Q=='1' then 128 else 64;
@@ -12315,7 +12315,7 @@ pub enum ArmStatement{
     /// boolean sub_op = (o2 == '1');
     ///
     /// // Scalar, single-precision and double-precision
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi = M;
     /// case sz:L of
@@ -12347,7 +12347,7 @@ pub enum ArmStatement{
     /// boolean sub_op = (o2 == '1');
     ///
     /// // Vector, single-precision and double-precision
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi = M;
     /// case sz:L of
@@ -12424,7 +12424,7 @@ pub enum ArmStatement{
     /// integer n = UInt(Rn);
     /// integer m = UInt('0':Rm);    // Vm can only be in bottom 16 registers.
     /// if sz == '1' then UNDEFINED;
-    /// integer index = UInt(H:L:M); 
+    /// integer index = UInt(H:L:M);
     ///
     /// integer esize = 32;
     /// integer datasize = if Q=='1' then 128 else 64;
@@ -12439,7 +12439,7 @@ pub enum ArmStatement{
     /// integer n = UInt(Rn);
     /// integer m = UInt('0':Rm);    // Vm can only be in bottom 16 registers.
     /// if sz == '1' then UNDEFINED;
-    /// integer index = UInt(H:L:M); 
+    /// integer index = UInt(H:L:M);
     ///
     /// integer esize = 32;
     /// integer datasize = if Q=='1' then 128 else 64;
@@ -12592,7 +12592,7 @@ pub enum ArmStatement{
     ///     when '110x1' operation = ImmediateOp_MVNI;
     ///     when '1110x' operation = ImmediateOp_MOVI;
     ///     when '11110' operation = ImmediateOp_MOVI;
-    ///     when '11111' 
+    ///     when '11111'
     ///         // FMOV Dn,#imm is in main FP instruction set
     ///         if Q == '0' then UNDEFINED;
     ///         operation = ImmediateOp_MOVI;
@@ -12802,7 +12802,7 @@ pub enum ArmStatement{
     /// boolean mulx_op = (U == '1');
     ///
     /// // Scalar, single-precision and double-precision
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi = M;
     /// case sz:L of
@@ -12834,7 +12834,7 @@ pub enum ArmStatement{
     /// boolean mulx_op = (U == '1');
     ///
     /// // Vector, single-precision and double-precision
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi = M;
     /// case sz:L of
@@ -12931,7 +12931,7 @@ pub enum ArmStatement{
     /// boolean mulx_op = (U == '1');
     ///
     /// // Scalar, single-precision and double-precision
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi = M;
     /// case sz:L of
@@ -12963,7 +12963,7 @@ pub enum ArmStatement{
     /// boolean mulx_op = (U == '1');
     ///
     /// // Vector, single-precision and double-precision
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi = M;
     /// case sz:L of
@@ -13823,7 +13823,7 @@ pub enum ArmStatement{
     /// integer esize = 32 << UInt(sz);
     /// integer datasize = if Q == '1' then 128 else 64;
     /// integer elements = datasize DIV esize;
-    /// integer intsize = if op == '0' then 32 else 64; 
+    /// integer intsize = if op == '0' then 32 else 64;
     /// FPRounding rounding = if U == '0' then FPRounding_ZERO else FPRoundingMode(FPCR);
     /// ```
     ///
@@ -13879,7 +13879,7 @@ pub enum ArmStatement{
     /// integer esize = 32 << UInt(sz);
     /// integer datasize = if Q == '1' then 128 else 64;
     /// integer elements = datasize DIV esize;
-    /// integer intsize = if op == '0' then 32 else 64; 
+    /// integer intsize = if op == '0' then 32 else 64;
     /// FPRounding rounding = if U == '0' then FPRounding_ZERO else FPRoundingMode(FPCR);
     /// ```
     ///
@@ -13935,7 +13935,7 @@ pub enum ArmStatement{
     /// integer esize = 32 << UInt(sz);
     /// integer datasize = if Q == '1' then 128 else 64;
     /// integer elements = datasize DIV esize;
-    /// integer intsize = if op == '0' then 32 else 64; 
+    /// integer intsize = if op == '0' then 32 else 64;
     /// FPRounding rounding = if U == '0' then FPRounding_ZERO else FPRoundingMode(FPCR);
     /// ```
     ///
@@ -13991,7 +13991,7 @@ pub enum ArmStatement{
     /// integer esize = 32 << UInt(sz);
     /// integer datasize = if Q == '1' then 128 else 64;
     /// integer elements = datasize DIV esize;
-    /// integer intsize = if op == '0' then 32 else 64; 
+    /// integer intsize = if op == '0' then 32 else 64;
     /// FPRounding rounding = if U == '0' then FPRounding_ZERO else FPRoundingMode(FPCR);
     /// ```
     ///
@@ -15798,8 +15798,8 @@ pub enum ArmStatement{
     ///
     /// integer dst_index = UInt(imm5<4:size+1>);
     /// integer src_index = UInt(imm4<3:size>);
-    /// integer idxdsize = if imm4<3> == '1' then 128 else 64; 
-    /// // imm4<size-1:0> is IGNORED 
+    /// integer idxdsize = if imm4<3> == '1' then 128 else 64;
+    /// // imm4<size-1:0> is IGNORED
     ///
     /// integer esize = 8 << size;
     /// ```
@@ -16130,7 +16130,7 @@ pub enum ArmStatement{
     /// integer elements = datasize DIV esize;
     ///
     /// integer rpt;    // number of iterations
-    /// integer selem;  // structure elements 
+    /// integer selem;  // structure elements
     ///
     /// case opcode of
     ///     when '0000' rpt = 1; selem = 4;     // LD/ST4 (4 registers)
@@ -17904,7 +17904,7 @@ pub enum ArmStatement{
     /// integer elements = datasize DIV esize;
     ///
     /// integer rpt;    // number of iterations
-    /// integer selem;  // structure elements 
+    /// integer selem;  // structure elements
     ///
     /// case opcode of
     ///     when '0000' rpt = 1; selem = 4;     // LD/ST4 (4 registers)
@@ -18408,7 +18408,7 @@ pub enum ArmStatement{
     /// integer elements = datasize DIV esize;
     ///
     /// integer rpt;    // number of iterations
-    /// integer selem;  // structure elements 
+    /// integer selem;  // structure elements
     ///
     /// case opcode of
     ///     when '0000' rpt = 1; selem = 4;     // LD/ST4 (4 registers)
@@ -18919,7 +18919,7 @@ pub enum ArmStatement{
     /// integer elements = datasize DIV esize;
     ///
     /// integer rpt;    // number of iterations
-    /// integer selem;  // structure elements 
+    /// integer selem;  // structure elements
     ///
     /// case opcode of
     ///     when '0000' rpt = 1; selem = 4;     // LD/ST4 (4 registers)
@@ -22634,7 +22634,7 @@ pub enum ArmStatement{
     /// bits(4) tag;
     ///
     /// if n == 31 then
-    ///     CheckSPAlignment(); 
+    ///     CheckSPAlignment();
     ///     address = SP[];
     /// else
     ///     address = X[n];
@@ -29134,7 +29134,7 @@ pub enum ArmStatement{
     /// ## Decode
     ///
     /// ```
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -29212,7 +29212,7 @@ pub enum ArmStatement{
     /// ## Decode
     ///
     /// ```
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -29319,7 +29319,7 @@ pub enum ArmStatement{
     ///     when '110x1' operation = ImmediateOp_MVNI;
     ///     when '1110x' operation = ImmediateOp_MOVI;
     ///     when '11110' operation = ImmediateOp_MOVI;
-    ///     when '11111' 
+    ///     when '11111'
     ///         // FMOV Dn,#imm is in main FP instruction set
     ///         if Q == '0' then UNDEFINED;
     ///         operation = ImmediateOp_MOVI;
@@ -29929,7 +29929,7 @@ pub enum ArmStatement{
     /// ## Decode
     ///
     /// ```
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -30025,7 +30025,7 @@ pub enum ArmStatement{
     ///     when '110x1' operation = ImmediateOp_MVNI;
     ///     when '1110x' operation = ImmediateOp_MOVI;
     ///     when '11110' operation = ImmediateOp_MOVI;
-    ///     when '11111' 
+    ///     when '11111'
     ///         // FMOV Dn,#imm is in main FP instruction set
     ///         if Q == '0' then UNDEFINED;
     ///         operation = ImmediateOp_MOVI;
@@ -30586,7 +30586,7 @@ pub enum ArmStatement{
     ///     when '110x1' operation = ImmediateOp_MVNI;
     ///     when '1110x' operation = ImmediateOp_MOVI;
     ///     when '11110' operation = ImmediateOp_MOVI;
-    ///     when '11111' 
+    ///     when '11111'
     ///         // FMOV Dn,#imm is in main FP instruction set
     ///         if Q == '0' then UNDEFINED;
     ///         operation = ImmediateOp_MOVI;
@@ -30866,7 +30866,7 @@ pub enum ArmStatement{
     /// boolean source_is_sp = FALSE;
     ///
     /// case CRm:op2 of
-    ///     when '0011 000' // PACIAZ 
+    ///     when '0011 000' // PACIAZ
     ///         d = 30;
     ///         n = 31;
     ///     when '0011 001' // PACIASP
@@ -32343,9 +32343,9 @@ pub enum ArmStatement{
     /// boolean use_key_a = (M == '0');
     /// boolean source_is_sp = ((Z == '1') && (m == 31));
     ///
-    /// if !pac && m != 0 then 
+    /// if !pac && m != 0 then
     ///     UNDEFINED;
-    /// elsif pac && !HavePACExt() then 
+    /// elsif pac && !HavePACExt() then
     ///     UNDEFINED;
     ///
     /// case op of
@@ -32392,7 +32392,7 @@ pub enum ArmStatement{
     ///             BTypeNext = '01';
     ///     when BranchType_INDCALL         // BLR, BLRAA, BLRAB, BLRAAZ, BLRABZ
     ///         BTypeNext = '10';
-    ///     when BranchType_RET             // RET, RETAA, RETAB 
+    ///     when BranchType_RET             // RET, RETAA, RETAB
     ///         BTypeNext = '00';
     ///
     /// BranchTo(target, branch_type);
@@ -32435,9 +32435,9 @@ pub enum ArmStatement{
     /// boolean use_key_a = (M == '0');
     /// boolean source_is_sp = ((Z == '1') && (m == 31));
     ///
-    /// if !pac && m != 0 then 
+    /// if !pac && m != 0 then
     ///     UNDEFINED;
-    /// elsif pac && !HavePACExt() then 
+    /// elsif pac && !HavePACExt() then
     ///     UNDEFINED;
     ///
     /// case op of
@@ -32484,7 +32484,7 @@ pub enum ArmStatement{
     ///             BTypeNext = '01';
     ///     when BranchType_INDCALL         // BLR, BLRAA, BLRAB, BLRAAZ, BLRABZ
     ///         BTypeNext = '10';
-    ///     when BranchType_RET             // RET, RETAA, RETAB 
+    ///     when BranchType_RET             // RET, RETAA, RETAB
     ///         BTypeNext = '00';
     ///
     /// BranchTo(target, branch_type);
@@ -32601,9 +32601,9 @@ pub enum ArmStatement{
     /// integer datasize = if Q == '1' then 128 else 64;
     ///
     /// // op=REVx: 64(0), 32(1), 16(2)
-    /// bits(2) op = o0:U; 
+    /// bits(2) op = o0:U;
     ///
-    /// // => op+size: 
+    /// // => op+size:
     /// //    64+B = 0, 64+H = 1, 64+S = 2, 64+D = X
     /// //    32+B = 1, 32+H = 2, 32+S = X, 32+D = X
     /// //    16+B = 2, 16+H = X, 16+S = X, 16+D = X
@@ -32686,9 +32686,9 @@ pub enum ArmStatement{
     /// integer datasize = if Q == '1' then 128 else 64;
     ///
     /// // op=REVx: 64(0), 32(1), 16(2)
-    /// bits(2) op = o0:U; 
+    /// bits(2) op = o0:U;
     ///
-    /// // => op+size: 
+    /// // => op+size:
     /// //    64+B = 0, 64+H = 1, 64+S = 2, 64+D = X
     /// //    32+B = 1, 32+H = 2, 32+S = X, 32+D = X
     /// //    16+B = 2, 16+H = X, 16+S = X, 16+D = X
@@ -32771,9 +32771,9 @@ pub enum ArmStatement{
     /// integer datasize = if Q == '1' then 128 else 64;
     ///
     /// // op=REVx: 64(0), 32(1), 16(2)
-    /// bits(2) op = o0:U; 
+    /// bits(2) op = o0:U;
     ///
-    /// // => op+size: 
+    /// // => op+size:
     /// //    64+B = 0, 64+H = 1, 64+S = 2, 64+D = X
     /// //    32+B = 1, 32+H = 2, 32+S = X, 32+D = X
     /// //    16+B = 2, 16+H = X, 16+S = X, 16+D = X
@@ -33898,7 +33898,7 @@ pub enum ArmStatement{
     ///
     /// (result, nzcv) = AddWithCarry(operand1, operand2, PSTATE.C);
     ///
-    /// if setflags then 
+    /// if setflags then
     ///     PSTATE.<N,Z,C,V> = nzcv;
     ///
     /// X[d] = result;
@@ -33965,7 +33965,7 @@ pub enum ArmStatement{
     ///
     /// (result, nzcv) = AddWithCarry(operand1, operand2, PSTATE.C);
     ///
-    /// if setflags then 
+    /// if setflags then
     ///     PSTATE.<N,Z,C,V> = nzcv;
     ///
     /// X[d] = result;
@@ -34309,17 +34309,17 @@ pub enum ArmStatement{
     /// bits(datasize) operand1 = V[n];
     /// bits(128) operand2 = V[m];
     /// bits(datasize) result = V[d];
-    /// for e = 0 to elements-1 
+    /// for e = 0 to elements-1
     ///     integer res = 0;
     ///     integer element1, element2;
     ///     for i = 0 to 3
     ///         if signed then  
-    ///             element1 = SInt(Elem[operand1, 4 * e + i, esize DIV 4]); 
+    ///             element1 = SInt(Elem[operand1, 4 * e + i, esize DIV 4]);
     ///             element2 = SInt(Elem[operand2, 4 * index + i, esize DIV 4]);
-    ///         else 
-    ///             element1 = UInt(Elem[operand1, 4 * e + i, esize DIV 4]); 
+    ///         else
+    ///             element1 = UInt(Elem[operand1, 4 * e + i, esize DIV 4]);
     ///             element2 = UInt(Elem[operand2, 4 * index + i, esize DIV 4]);
-    ///         res = res + element1 * element2; 
+    ///         res = res + element1 * element2;
     ///     Elem[result, e, esize] = Elem[result, e, esize] + res;
     /// V[d] = result;
     /// ```
@@ -35424,7 +35424,7 @@ pub enum ArmStatement{
     /// bits(64) sig0;
     /// bits(128) Vtmp;
     /// bits(128) X = V[n];
-    /// bits(128) W = V[d]; 
+    /// bits(128) W = V[d];
     /// sig0 = ROR(W<127:64>, 1) EOR ROR(W<127:64>, 8) EOR ('0000000':W<127:71>);
     /// Vtmp<63:0> = W<63:0> + sig0;
     /// sig0 = ROR(X<63:0>, 1) EOR ROR(X<63:0>, 8) EOR ('0000000':X<63:7>);
@@ -35952,12 +35952,12 @@ pub enum ArmStatement{
     /// bits(128) Vm = V[m];
     /// bits(128) Vn = V[n];
     /// bits(128) Vd = V[d];
-    /// bits(128) result; 
+    /// bits(128) result;
     ///
     /// result<95:0> = (Vd EOR Vn)<95:0> EOR (ROL(Vm<127:96>,15):ROL(Vm<95:64>,15):ROL(Vm<63:32>,15));
     ///
     /// for i = 0 to 3
-    ///     if i == 3 then 
+    ///     if i == 3 then
     ///         result<127:96> = (Vd EOR Vn)<127:96> EOR (ROL(result<31:0>,15));
     ///     result<(32*i)+31:(32*i)> = result<(32*i)+31:(32*i)> EOR ROL(result<(32*i)+31:(32*i)>,15) EOR ROL(result<(32*i)+31:(32*i)>,23);
     /// V[d] = result;
@@ -36010,10 +36010,10 @@ pub enum ArmStatement{
     /// bits(128) Vm = V[m];
     /// bits(128) Vn = V[n];
     /// bits(128) Vd = V[d];
-    /// bits(128) result; 
+    /// bits(128) result;
     /// bits(128) tmp;
     /// bits(32) tmp2;
-    /// tmp<127:0> = Vn EOR (ROL(Vm<127:96>,7):ROL(Vm<95:64>,7):ROL(Vm<63:32>,7):ROL(Vm<31:0>,7)); 
+    /// tmp<127:0> = Vn EOR (ROL(Vm<127:96>,7):ROL(Vm<95:64>,7):ROL(Vm<63:32>,7):ROL(Vm<31:0>,7));
     /// result<127:0> = Vd<127:0> EOR tmp<127:0>;
     /// tmp2 = ROL(tmp<31:0>,15);
     /// tmp2 = tmp2 EOR ROL(tmp2,15) EOR ROL(tmp2,23);
@@ -36129,18 +36129,18 @@ pub enum ArmStatement{
     /// bits(128) Vn = V[n];
     /// bits(128) Vd = V[d];
     /// bits(32) WjPrime;
-    /// bits(128) result; 
+    /// bits(128) result;
     /// bits(32) TT1;
     /// bits(32) SS2;
     ///
     /// WjPrime = Elem[Vm,i,32];
-    /// SS2 = Vn<127:96> EOR ROL(Vd<127:96>,12); 
+    /// SS2 = Vn<127:96> EOR ROL(Vd<127:96>,12);
     /// TT1 = Vd<63:32> EOR (Vd<127:96> EOR Vd<95:64>);
     /// TT1 = (TT1 + Vd<31:0> + SS2 + WjPrime)<31:0>;
     /// result<31:0> = Vd<63:32>;
-    /// result<63:32> = ROL(Vd<95:64>,9); 
-    /// result<95:64> = Vd<127:96>; 
-    /// result<127:96> = TT1; 
+    /// result<63:32> = ROL(Vd<95:64>,9);
+    /// result<95:64> = Vd<127:96>;
+    /// result<127:96> = TT1;
     /// V[d] = result;
     /// ```
     ///
@@ -36196,18 +36196,18 @@ pub enum ArmStatement{
     /// bits(128) Vn = V[n];
     /// bits(128) Vd = V[d];
     /// bits(32) WjPrime;
-    /// bits(128) result; 
+    /// bits(128) result;
     /// bits(32) TT1;
     /// bits(32) SS2;
     ///
     /// WjPrime = Elem[Vm,i,32];
-    /// SS2 = Vn<127:96> EOR ROL(Vd<127:96>,12); 
-    /// TT1 = (Vd<127:96> AND Vd<63:32>) OR (Vd<127:96> AND Vd<95:64>) OR (Vd<63:32> AND Vd<95:64>); 
+    /// SS2 = Vn<127:96> EOR ROL(Vd<127:96>,12);
+    /// TT1 = (Vd<127:96> AND Vd<63:32>) OR (Vd<127:96> AND Vd<95:64>) OR (Vd<63:32> AND Vd<95:64>);
     /// TT1 = (TT1 + Vd<31:0> + SS2 + WjPrime)<31:0>;
     /// result<31:0> = Vd<63:32>;
-    /// result<63:32> = ROL(Vd<95:64>,9); 
-    /// result<95:64> = Vd<127:96>; 
-    /// result<127:96> = TT1; 
+    /// result<63:32> = ROL(Vd<95:64>,9);
+    /// result<95:64> = Vd<127:96>;
+    /// result<127:96> = TT1;
     /// V[d] = result;
     /// ```
     ///
@@ -36263,7 +36263,7 @@ pub enum ArmStatement{
     /// bits(128) Vn = V[n];
     /// bits(128) Vd = V[d];
     /// bits(32) Wj;
-    /// bits(128) result; 
+    /// bits(128) result;
     /// bits(32) TT2;
     ///
     /// Wj = Elem[Vm,i,32];
@@ -36271,9 +36271,9 @@ pub enum ArmStatement{
     /// TT2 = (TT2 + Vd<31:0> + Vn<127:96> + Wj)<31:0>;
     ///
     /// result<31:0> = Vd<63:32>;
-    /// result<63:32> = ROL(Vd<95:64>,19); 
-    /// result<95:64> = Vd<127:96>; 
-    /// result<127:96> = TT2 EOR ROL(TT2,9) EOR ROL(TT2,17); 
+    /// result<63:32> = ROL(Vd<95:64>,19);
+    /// result<95:64> = Vd<127:96>;
+    /// result<127:96> = TT2 EOR ROL(TT2,9) EOR ROL(TT2,17);
     /// V[d] = result;
     /// ```
     ///
@@ -36329,17 +36329,17 @@ pub enum ArmStatement{
     /// bits(128) Vn = V[n];
     /// bits(128) Vd = V[d];
     /// bits(32) Wj;
-    /// bits(128) result; 
+    /// bits(128) result;
     /// bits(32) TT2;
     ///
     /// Wj = Elem[Vm,i,32];
-    /// TT2 = (Vd<127:96> AND Vd<95:64>) OR (NOT(Vd<127:96>) AND Vd<63:32>); 
+    /// TT2 = (Vd<127:96> AND Vd<95:64>) OR (NOT(Vd<127:96>) AND Vd<63:32>);
     /// TT2 = (TT2 + Vd<31:0> + Vn<127:96> + Wj)<31:0>;
     ///
     /// result<31:0> = Vd<63:32>;
-    /// result<63:32> = ROL(Vd<95:64>,19); 
-    /// result<95:64> = Vd<127:96>; 
-    /// result<127:96> = TT2 EOR ROL(TT2,9) EOR ROL(TT2,17); 
+    /// result<63:32> = ROL(Vd<95:64>,19);
+    /// result<95:64> = Vd<127:96>;
+    /// result<127:96> = TT2 EOR ROL(TT2,9) EOR ROL(TT2,17);
     /// V[d] = result;
     /// ```
     ///
@@ -36386,7 +36386,7 @@ pub enum ArmStatement{
     /// AArch64.CheckFPAdvSIMDEnabled();
     ///
     /// bits(128) Vn = V[n];
-    /// bits(32) intval; 
+    /// bits(32) intval;
     /// bits(8) sboxout;
     /// bits(128) roundresult;
     /// bits(32) roundkey;
@@ -36395,18 +36395,18 @@ pub enum ArmStatement{
     /// for index = 0 to 3
     ///     roundkey = Elem[Vn,index,32];
     ///
-    ///     intval = roundresult<127:96> EOR roundresult<95:64> EOR roundresult<63:32> EOR roundkey; 
+    ///     intval = roundresult<127:96> EOR roundresult<95:64> EOR roundresult<63:32> EOR roundkey;
     ///
     ///     for i = 0 to 3  
-    ///         Elem[intval,i,8]  = Sbox(Elem[intval,i,8]); 
+    ///         Elem[intval,i,8]  = Sbox(Elem[intval,i,8]);
     ///
     ///     intval = intval EOR ROL(intval,2) EOR ROL(intval,10) EOR ROL(intval,18) EOR ROL(intval,24);
-    ///     intval = intval EOR roundresult<31:0>; 
+    ///     intval = intval EOR roundresult<31:0>;
     ///
     ///     roundresult<31:0> = roundresult<63:32>;
     ///     roundresult<63:32> = roundresult<95:64>;
     ///     roundresult<95:64> = roundresult<127:96>;
-    ///     roundresult<127:96> = intval; 
+    ///     roundresult<127:96> = intval;
     /// V[d] = roundresult;
     /// ```
     ///
@@ -36455,28 +36455,28 @@ pub enum ArmStatement{
     /// AArch64.CheckFPAdvSIMDEnabled();
     ///
     /// bits(128) Vm = V[m];
-    /// bits(32) intval; 
+    /// bits(32) intval;
     /// bits(8) sboxout;
     /// bits(128) result;
     /// bits(32) const;
     /// bits(128) roundresult;
     ///
     /// roundresult = V[n];
-    /// for index = 0 to 3 
+    /// for index = 0 to 3
     ///     const = Elem[Vm,index,32];
     ///
-    ///     intval = roundresult<127:96> EOR roundresult<95:64> EOR roundresult<63:32> EOR const; 
+    ///     intval = roundresult<127:96> EOR roundresult<95:64> EOR roundresult<63:32> EOR const;
     ///
     ///     for i = 0 to 3  
-    ///         Elem[intval,i,8] = Sbox(Elem[intval,i,8]); 
+    ///         Elem[intval,i,8] = Sbox(Elem[intval,i,8]);
     ///
     ///     intval = intval EOR ROL(intval,13) EOR ROL(intval,23);
-    ///     intval = intval EOR roundresult<31:0>; 
+    ///     intval = intval EOR roundresult<31:0>;
     ///
     ///     roundresult<31:0> = roundresult<63:32>;
     ///     roundresult<63:32> = roundresult<95:64>;
     ///     roundresult<95:64> = roundresult<127:96>;
-    ///     roundresult<127:96> = intval; 
+    ///     roundresult<127:96> = intval;
     /// V[d] = roundresult;
     /// ```
     ///
@@ -37018,7 +37018,7 @@ pub enum ArmStatement{
     /// ## Decode
     ///
     /// ```
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -37102,7 +37102,7 @@ pub enum ArmStatement{
     /// ## Decode
     ///
     /// ```
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -37416,7 +37416,7 @@ pub enum ArmStatement{
     /// ## Decode
     ///
     /// ```
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -37992,7 +37992,7 @@ pub enum ArmStatement{
     ///
     /// ```
     /// // Scalar
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -38012,7 +38012,7 @@ pub enum ArmStatement{
     /// boolean sub_op = (o2 == '1');
     ///
     /// // Vector
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -38101,7 +38101,7 @@ pub enum ArmStatement{
     ///
     /// ```
     /// // Scalar
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -38121,7 +38121,7 @@ pub enum ArmStatement{
     /// boolean sub_op = (o2 == '1');
     ///
     /// // Vector
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -38206,7 +38206,7 @@ pub enum ArmStatement{
     ///
     /// ```
     /// // Scalar
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -38225,7 +38225,7 @@ pub enum ArmStatement{
     /// boolean round = (op == '1');
     ///
     /// // Vector
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -38308,7 +38308,7 @@ pub enum ArmStatement{
     ///
     /// ```
     /// // Scalar
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -38326,7 +38326,7 @@ pub enum ArmStatement{
     /// integer part = 0;
     ///
     /// // Vector
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -38762,7 +38762,7 @@ pub enum ArmStatement{
     /// // Scalar
     /// if !HaveQRDMLAHExt() then UNDEFINED;
     ///
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -38784,7 +38784,7 @@ pub enum ArmStatement{
     /// // Vector
     /// if !HaveQRDMLAHExt() then UNDEFINED;
     ///
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -38871,7 +38871,7 @@ pub enum ArmStatement{
     /// // Scalar
     /// if !HaveQRDMLAHExt() then UNDEFINED;
     ///
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -38893,7 +38893,7 @@ pub enum ArmStatement{
     /// // Vector
     /// if !HaveQRDMLAHExt() then UNDEFINED;
     ///
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -38979,7 +38979,7 @@ pub enum ArmStatement{
     ///
     /// ```
     /// // Scalar
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -38998,7 +38998,7 @@ pub enum ArmStatement{
     /// boolean round = (op == '1');
     ///
     /// // Vector
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -39117,7 +39117,7 @@ pub enum ArmStatement{
     /// for e = 0 to elements-1
     ///     shift = SInt(Elem[operand2, e, esize]<7:0>);
     ///     if rounding then
-    ///         round_const = 1 << (-shift - 1); // 0 for left shift, 2^(n-1) for right shift 
+    ///         round_const = 1 << (-shift - 1); // 0 for left shift, 2^(n-1) for right shift
     ///     element = (Int(Elem[operand1, e, esize], unsigned) + round_const) << shift;
     ///     if saturating then
     ///         (Elem[result, e, esize], sat) = SatQ(element, esize, unsigned);
@@ -40094,7 +40094,7 @@ pub enum ArmStatement{
     /// for e = 0 to elements-1
     ///     shift = SInt(Elem[operand2, e, esize]<7:0>);
     ///     if rounding then
-    ///         round_const = 1 << (-shift - 1); // 0 for left shift, 2^(n-1) for right shift 
+    ///         round_const = 1 << (-shift - 1); // 0 for left shift, 2^(n-1) for right shift
     ///     element = (Int(Elem[operand1, e, esize], unsigned) + round_const) << shift;
     ///     if saturating then
     ///         (Elem[result, e, esize], sat) = SatQ(element, esize, unsigned);
@@ -40372,7 +40372,7 @@ pub enum ArmStatement{
     /// for e = 0 to elements-1
     ///     shift = SInt(Elem[operand2, e, esize]<7:0>);
     ///     if rounding then
-    ///         round_const = 1 << (-shift - 1); // 0 for left shift, 2^(n-1) for right shift 
+    ///         round_const = 1 << (-shift - 1); // 0 for left shift, 2^(n-1) for right shift
     ///     element = (Int(Elem[operand1, e, esize], unsigned) + round_const) << shift;
     ///     if saturating then
     ///         (Elem[result, e, esize], sat) = SatQ(element, esize, unsigned);
@@ -40851,7 +40851,7 @@ pub enum ArmStatement{
     /// integer elements = datasize DIV esize;
     ///
     /// integer rpt;    // number of iterations
-    /// integer selem;  // structure elements 
+    /// integer selem;  // structure elements
     ///
     /// case opcode of
     ///     when '0000' rpt = 1; selem = 4;     // LD/ST4 (4 registers)
@@ -41201,7 +41201,7 @@ pub enum ArmStatement{
     /// integer elements = datasize DIV esize;
     ///
     /// integer rpt;    // number of iterations
-    /// integer selem;  // structure elements 
+    /// integer selem;  // structure elements
     ///
     /// case opcode of
     ///     when '0000' rpt = 1; selem = 4;     // LD/ST4 (4 registers)
@@ -41656,7 +41656,7 @@ pub enum ArmStatement{
     /// integer elements = datasize DIV esize;
     ///
     /// integer rpt;    // number of iterations
-    /// integer selem;  // structure elements 
+    /// integer selem;  // structure elements
     ///
     /// case opcode of
     ///     when '0000' rpt = 1; selem = 4;     // LD/ST4 (4 registers)
@@ -42027,7 +42027,7 @@ pub enum ArmStatement{
     /// integer elements = datasize DIV esize;
     ///
     /// integer rpt;    // number of iterations
-    /// integer selem;  // structure elements 
+    /// integer selem;  // structure elements
     ///
     /// case opcode of
     ///     when '0000' rpt = 1; selem = 4;     // LD/ST4 (4 registers)
@@ -46503,7 +46503,7 @@ pub enum ArmStatement{
     ///
     /// (result, nzcv) = AddWithCarry(operand1, operand2, carry_in);
     ///
-    /// if setflags then 
+    /// if setflags then
     ///     PSTATE.<N,Z,C,V> = nzcv;
     ///
     /// if d == 31 && !setflags then
@@ -46879,7 +46879,7 @@ pub enum ArmStatement{
     ///
     /// (result, nzcv) = AddWithCarry(operand1, operand2, carry_in);
     ///
-    /// if setflags then 
+    /// if setflags then
     ///     PSTATE.<N,Z,C,V> = nzcv;
     ///
     /// if d == 31 && !setflags then
@@ -64935,17 +64935,17 @@ pub enum ArmStatement{
     /// bits(datasize) operand1 = V[n];
     /// bits(128) operand2 = V[m];
     /// bits(datasize) result = V[d];
-    /// for e = 0 to elements-1 
+    /// for e = 0 to elements-1
     ///     integer res = 0;
     ///     integer element1, element2;
     ///     for i = 0 to 3
     ///         if signed then  
-    ///             element1 = SInt(Elem[operand1, 4 * e + i, esize DIV 4]); 
+    ///             element1 = SInt(Elem[operand1, 4 * e + i, esize DIV 4]);
     ///             element2 = SInt(Elem[operand2, 4 * index + i, esize DIV 4]);
-    ///         else 
-    ///             element1 = UInt(Elem[operand1, 4 * e + i, esize DIV 4]); 
+    ///         else
+    ///             element1 = UInt(Elem[operand1, 4 * e + i, esize DIV 4]);
     ///             element2 = UInt(Elem[operand2, 4 * index + i, esize DIV 4]);
-    ///         res = res + element1 * element2; 
+    ///         res = res + element1 * element2;
     ///     Elem[result, e, esize] = Elem[result, e, esize] + res;
     /// V[d] = result;
     /// ```
@@ -65568,7 +65568,7 @@ pub enum ArmStatement{
     /// ## Decode
     ///
     /// ```
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -65652,7 +65652,7 @@ pub enum ArmStatement{
     /// ## Decode
     ///
     /// ```
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -65971,7 +65971,7 @@ pub enum ArmStatement{
     /// ## Decode
     ///
     /// ```
-    /// integer idxdsize = if H == '1' then 128 else 64; 
+    /// integer idxdsize = if H == '1' then 128 else 64;
     /// integer index;
     /// bit Rmhi;
     /// case size of
@@ -66736,7 +66736,7 @@ pub enum ArmStatement{
     /// for e = 0 to elements-1
     ///     shift = SInt(Elem[operand2, e, esize]<7:0>);
     ///     if rounding then
-    ///         round_const = 1 << (-shift - 1); // 0 for left shift, 2^(n-1) for right shift 
+    ///         round_const = 1 << (-shift - 1); // 0 for left shift, 2^(n-1) for right shift
     ///     element = (Int(Elem[operand1, e, esize], unsigned) + round_const) << shift;
     ///     if saturating then
     ///         (Elem[result, e, esize], sat) = SatQ(element, esize, unsigned);
@@ -67350,7 +67350,7 @@ pub enum ArmStatement{
     /// for e = 0 to elements-1
     ///     shift = SInt(Elem[operand2, e, esize]<7:0>);
     ///     if rounding then
-    ///         round_const = 1 << (-shift - 1); // 0 for left shift, 2^(n-1) for right shift 
+    ///         round_const = 1 << (-shift - 1); // 0 for left shift, 2^(n-1) for right shift
     ///     element = (Int(Elem[operand1, e, esize], unsigned) + round_const) << shift;
     ///     if saturating then
     ///         (Elem[result, e, esize], sat) = SatQ(element, esize, unsigned);
@@ -67709,7 +67709,7 @@ pub enum ArmStatement{
     /// for e = 0 to elements-1
     ///     shift = SInt(Elem[operand2, e, esize]<7:0>);
     ///     if rounding then
-    ///         round_const = 1 << (-shift - 1); // 0 for left shift, 2^(n-1) for right shift 
+    ///         round_const = 1 << (-shift - 1); // 0 for left shift, 2^(n-1) for right shift
     ///     element = (Int(Elem[operand1, e, esize], unsigned) + round_const) << shift;
     ///     if saturating then
     ///         (Elem[result, e, esize], sat) = SatQ(element, esize, unsigned);
@@ -69117,7 +69117,7 @@ pub enum ArmStatement{
     /// bits(128) Vm = V[m];
     /// bits(128) Vn = V[n];
     /// bits(128) tmp;
-    /// tmp = Vn EOR Vm; 
+    /// tmp = Vn EOR Vm;
     /// V[d] = ROR(tmp<127:64>, UInt(imm6)):ROR(tmp<63:0>, UInt(imm6));
     /// ```
     ///

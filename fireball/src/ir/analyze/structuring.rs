@@ -7,8 +7,8 @@
 use crate::{
     core::Block,
     ir::analyze::{
-        ControlFlowGraph, DominatorTree, FunctionControlFlowAnalysis, LoopInfo,
-        PostDominatorTree, analyze_function_control_flow, infer_entry_block_id,
+        ControlFlowGraph, DominatorTree, FunctionControlFlowAnalysis, LoopInfo, PostDominatorTree,
+        analyze_function_control_flow, infer_entry_block_id,
     },
     prelude::*,
 };
@@ -640,9 +640,7 @@ enum Work {
     /// Process a region (replaces `structure_region`).
     /// Each block in `rpo` is examined: loops become `ProcessLoop`, branches
     /// become `ProcessBranch`, simple blocks become `Block` leaves.
-    ProcessRegion {
-        rpo: Vec<usize>,
-    },
+    ProcessRegion { rpo: Vec<usize> },
     /// Process a loop body (replaces `structure_loop`).
     ProcessLoop {
         header: usize,
@@ -658,18 +656,11 @@ enum Work {
     /// Assemble N child results into a `Sequence`.
     AssembleSequence(usize),
     /// Assemble an `IfThenElse` from children on the result stack.
-    AssembleIfThenElse {
-        head_block: usize,
-        has_else: bool,
-    },
+    AssembleIfThenElse { head_block: usize, has_else: bool },
     /// Assemble a `While` from the body on the result stack.
-    AssembleWhile {
-        header_block: usize,
-    },
+    AssembleWhile { header_block: usize },
     /// Assemble a `DoWhile` from the body on the result stack.
-    AssembleDoWhile {
-        latch_block: usize,
-    },
+    AssembleDoWhile { latch_block: usize },
 }
 
 fn structure_region_iterative(
@@ -688,9 +679,7 @@ fn structure_region_iterative(
     // Guard set: loop headers currently being structured, prevents re-entry.
     let mut active_loops: HashSet<usize> = HashSet::new();
 
-    work_stack.push(Work::ProcessRegion {
-        rpo: initial_rpo,
-    });
+    work_stack.push(Work::ProcessRegion { rpo: initial_rpo });
 
     while let Some(work) = work_stack.pop() {
         match work {
@@ -798,8 +787,7 @@ fn structure_region_iterative(
                     .iter()
                     .copied()
                     .find(|&latch_id| {
-                        latch_id != header
-                            && cfg.successors_of(latch_id).contains(&header)
+                        latch_id != header && cfg.successors_of(latch_id).contains(&header)
                     })
                     .or_else(|| latch_ids.first().copied())
                     .unwrap_or(header);
@@ -849,9 +837,7 @@ fn structure_region_iterative(
                 } else {
                     // Push assembly, then the body region processing.
                     if is_do_while {
-                        work_stack.push(Work::AssembleDoWhile {
-                            latch_block: latch,
-                        });
+                        work_stack.push(Work::AssembleDoWhile { latch_block: latch });
                     } else {
                         work_stack.push(Work::AssembleWhile {
                             header_block: header,
@@ -882,9 +868,7 @@ fn structure_region_iterative(
                         let preds = cfg.predecessors_of(bid);
                         let belongs = bid == entry
                             || preds.iter().all(|&p| {
-                                p == head
-                                    || branch_rpo.contains(&p)
-                                    || processed.contains(&p)
+                                p == head || branch_rpo.contains(&p) || processed.contains(&p)
                             });
                         if belongs {
                             branch_rpo.push(bid);
@@ -904,8 +888,7 @@ fn structure_region_iterative(
                     result_stack.push(StructuredRegion::Sequence(Vec::new()));
                 } else {
                     let start = result_stack.len().saturating_sub(child_count);
-                    let children: Vec<StructuredRegion> =
-                        result_stack.drain(start..).collect();
+                    let children: Vec<StructuredRegion> = result_stack.drain(start..).collect();
                     if children.len() == 1 {
                         result_stack.extend(children);
                     } else {
@@ -919,12 +902,17 @@ fn structure_region_iterative(
                 has_else,
             } => {
                 let else_region = if has_else {
-                    Some(Box::new(result_stack.pop().unwrap_or(StructuredRegion::Sequence(Vec::new()))))
+                    Some(Box::new(
+                        result_stack
+                            .pop()
+                            .unwrap_or(StructuredRegion::Sequence(Vec::new())),
+                    ))
                 } else {
                     None
                 };
-                let then_region =
-                    result_stack.pop().unwrap_or(StructuredRegion::Sequence(Vec::new()));
+                let then_region = result_stack
+                    .pop()
+                    .unwrap_or(StructuredRegion::Sequence(Vec::new()));
                 result_stack.push(StructuredRegion::IfThenElse {
                     head_block,
                     then_region: Box::new(then_region),
@@ -933,8 +921,9 @@ fn structure_region_iterative(
             }
 
             Work::AssembleWhile { header_block } => {
-                let body =
-                    result_stack.pop().unwrap_or(StructuredRegion::Sequence(Vec::new()));
+                let body = result_stack
+                    .pop()
+                    .unwrap_or(StructuredRegion::Sequence(Vec::new()));
                 active_loops.remove(&header_block);
                 result_stack.push(StructuredRegion::While {
                     header_block,
@@ -943,8 +932,9 @@ fn structure_region_iterative(
             }
 
             Work::AssembleDoWhile { latch_block } => {
-                let body =
-                    result_stack.pop().unwrap_or(StructuredRegion::Sequence(Vec::new()));
+                let body = result_stack
+                    .pop()
+                    .unwrap_or(StructuredRegion::Sequence(Vec::new()));
                 // Find the header for this latch to clear the active_loops guard.
                 // The latch's successor that is in active_loops is the header.
                 let latch_succs = cfg.successors_of(latch_block);
@@ -959,7 +949,9 @@ fn structure_region_iterative(
         }
     }
 
-    result_stack.pop().unwrap_or(StructuredRegion::Sequence(Vec::new()))
+    result_stack
+        .pop()
+        .unwrap_or(StructuredRegion::Sequence(Vec::new()))
 }
 
 /// Run CFG structuring and log results.

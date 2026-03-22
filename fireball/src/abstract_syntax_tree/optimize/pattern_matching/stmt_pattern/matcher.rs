@@ -451,9 +451,10 @@ fn expand_match_expr_node<'a>(
             //
             // Simplest correct approach: push items so that base is evaluated first,
             // then if it succeeds, check the leaf.
-            stack.push(Work::SetResult(
-                pat_is_wildcard_or_capture(&children[1], caps),
-            ));
+            stack.push(Work::SetResult(pat_is_wildcard_or_capture(
+                &children[1],
+                caps,
+            )));
             stack.push(Work::Guard(1));
             stack.push(Work::MatchBoxedWrappedExpr(&children[0], base));
             *result = true;

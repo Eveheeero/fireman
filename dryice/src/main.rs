@@ -230,11 +230,19 @@ fn export_fb_inner(
 
     let encoded = match request.output_format {
         OutputFormat::FbGz => {
-            let output = render_all_rules(&source_path_string, &ast.pre_defined_symbols, &ordered_functions)?;
+            let output = render_all_rules(
+                &source_path_string,
+                &ast.pre_defined_symbols,
+                &ordered_functions,
+            )?;
             AstPattern::fb_gz_bytes_from_source(&output)?
         }
         OutputFormat::Fb => {
-            let output = render_all_rules(&source_path_string, &ast.pre_defined_symbols, &ordered_functions)?;
+            let output = render_all_rules(
+                &source_path_string,
+                &ast.pre_defined_symbols,
+                &ordered_functions,
+            )?;
             output.into_bytes()
         }
         OutputFormat::Fbz => {
