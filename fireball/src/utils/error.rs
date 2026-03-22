@@ -11,8 +11,11 @@ pub enum FireballError {
     DecompileError(decompile_error::DecompileError),
     DisassembleError(disassemble_error::DisassembleError),
     PeParsingFailed(String),
+    ElfParsingFailed(String),
     CapstoneInitializationFailed(String),
     MalformedPe(String),
+    MalformedElf(String),
+    UnsupportedFormat,
 }
 
 impl std::fmt::Display for FireballError {
@@ -23,10 +26,13 @@ impl std::fmt::Display for FireballError {
             Self::DecompileError(err) => write!(f, "Decompile error: {err}"),
             Self::DisassembleError(err) => write!(f, "Disassemble error: {err}"),
             Self::PeParsingFailed(err) => write!(f, "PE parsing failed: {err}"),
+            Self::ElfParsingFailed(err) => write!(f, "ELF parsing failed: {err}"),
             Self::CapstoneInitializationFailed(err) => {
                 write!(f, "Capstone initialization failed: {err}")
             }
             Self::MalformedPe(err) => write!(f, "Malformed PE metadata: {err}"),
+            Self::MalformedElf(err) => write!(f, "Malformed ELF metadata: {err}"),
+            Self::UnsupportedFormat => write!(f, "Unsupported binary format"),
         }
     }
 }

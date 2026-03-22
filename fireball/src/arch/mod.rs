@@ -19,6 +19,17 @@ pub(crate) fn from_pe_machine(machine: u16, is_64: bool) -> MachineArchitecture 
     }
 }
 
+pub(crate) fn from_elf_machine(e_machine: u16, is_64: bool) -> MachineArchitecture {
+    match e_machine {
+        goblin::elf::header::EM_X86_64 => MachineArchitecture::X64,
+        goblin::elf::header::EM_386 => MachineArchitecture::X86,
+        goblin::elf::header::EM_ARM => MachineArchitecture::Arm,
+        goblin::elf::header::EM_AARCH64 => MachineArchitecture::Arm64,
+        _ if is_64 => MachineArchitecture::X64,
+        _ => MachineArchitecture::X86,
+    }
+}
+
 pub(crate) fn build_capstone(
     architecture: MachineArchitecture,
 ) -> Result<Pin<Box<capstone::Capstone>>, capstone::Error> {
