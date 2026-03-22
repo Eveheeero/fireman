@@ -66,7 +66,7 @@ impl Pe {
             BinaryKind::Executable => {
                 vec![self.entry.clone()]
             }
-            BinaryKind::SharedLibrary | BinaryKind::ObjectFile => {
+            BinaryKind::SharedLibrary | BinaryKind::ObjectFile | BinaryKind::DebugInfo => {
                 let mut seeds = Vec::new();
                 let mut seen = HashSet::new();
 

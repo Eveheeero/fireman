@@ -6,6 +6,7 @@ pub mod core;
 pub mod elf;
 pub mod ir;
 pub mod macho;
+pub mod pdb;
 pub mod pe;
 pub mod prelude;
 #[cfg(test)]
@@ -27,6 +28,8 @@ pub enum BinaryKind {
     SharedLibrary,
     /// Relocatable object file (.o ET_REL, .obj COFF)
     ObjectFile,
+    /// Debug information only (.pdb)
+    DebugInfo,
 }
 
 /// Enum storing parsers for all supported binary formats
@@ -38,6 +41,8 @@ pub enum Fireball {
     Elf(elf::Elf),
     /// Parser for Mach-O files
     MachO(macho::MachO),
+    /// Parser for standalone PDB debug info files
+    Pdb(pdb::StandalonePdb),
 }
 
 /// Dispatches a method call to the inner format-specific parser.
@@ -47,6 +52,7 @@ macro_rules! dispatch {
             Fireball::Pe(inner) => inner.$method($($arg),*),
             Fireball::Elf(inner) => inner.$method($($arg),*),
             Fireball::MachO(inner) => inner.$method($($arg),*),
+            Fireball::Pdb(inner) => inner.$method($($arg),*),
         }
     };
 }
@@ -82,7 +88,13 @@ impl Fireball {
             goblin::Object::PE(_) => Ok(Fireball::Pe(pe::Pe::new(path, binary)?)),
             goblin::Object::Elf(_) => Ok(Fireball::Elf(elf::Elf::new(path, binary)?)),
             goblin::Object::Mach(_) => Ok(Fireball::MachO(macho::MachO::new(path, binary)?)),
-            _ => Err(FireballError::UnsupportedFormat),
+            _ => {
+                // Check for standalone PDB (MSF 7.00 magic)
+                if binary.starts_with(b"Microsoft C/C++ MSF 7.00\r\n") {
+                    return Ok(Fireball::Pdb(pdb::StandalonePdb::new(path, binary)?));
+                }
+                Err(FireballError::UnsupportedFormat)
+            }
         }
     }
 
