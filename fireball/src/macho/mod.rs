@@ -6,7 +6,10 @@ mod block;
 mod fire;
 mod fmt;
 
-use crate::core::{Address, Blocks, PreDefinedOffsets, Relations, Sections};
+use crate::{
+    BinaryKind,
+    core::{Address, Blocks, PreDefinedOffsets, Relations, Sections},
+};
 use iceball::MachineArchitecture;
 use std::{
     pin::Pin,
@@ -14,6 +17,8 @@ use std::{
 };
 
 pub struct MachO {
+    /// Classification of the binary (executable vs dylib vs object).
+    kind: BinaryKind,
     /// Entry address
     entry: Address,
     /// File path

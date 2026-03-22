@@ -2,7 +2,7 @@
 
 use super::Elf;
 use crate::{
-    arch,
+    BinaryKind, arch,
     core::{Address, Blocks, PreDefinedOffset, PreDefinedOffsets, Relations, Sections},
     prelude::*,
 };
@@ -26,6 +26,13 @@ impl Elf {
 
         let is_64 = gl.is_64;
         let architecture = arch::from_elf_machine(gl.header.e_machine, is_64);
+
+        // goblin::elf::header: ET_EXEC=2, ET_DYN=3, ET_REL=1
+        let kind = match gl.header.e_type {
+            goblin::elf::header::ET_DYN => BinaryKind::SharedLibrary,
+            goblin::elf::header::ET_REL => BinaryKind::ObjectFile,
+            _ => BinaryKind::Executable,
+        };
 
         // Build section information for the entire binary
         let sections = Sections::new();
@@ -89,6 +96,7 @@ impl Elf {
 
         let relations = Relations::new();
         Ok(Elf {
+            kind,
             entry: Address::from_virtual_address(&sections, gl.entry),
             path,
             binary,
@@ -100,6 +108,10 @@ impl Elf {
             blocks: Blocks::new(relations),
             cancel_token: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         })
+    }
+
+    pub fn kind(&self) -> BinaryKind {
+        self.kind
     }
 
     pub fn entry(&self) -> &Address {

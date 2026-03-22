@@ -12,8 +12,22 @@ pub mod prelude;
 pub mod tests;
 pub mod utils;
 
-pub use crate::{abstract_syntax_tree::pattern_matching, core::Fire};
+pub use crate::{
+    abstract_syntax_tree::pattern_matching, core::Fire,
+    utils::error::decompile_error::DecompileError,
+};
 use crate::{core::FireRaw, prelude::*};
+
+/// Classification of the loaded binary file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BinaryKind {
+    /// Standard executable (PE exe, ELF ET_EXEC, Mach-O MH_EXECUTE)
+    Executable,
+    /// Shared library (DLL, .so ET_DYN, .dylib MH_DYLIB)
+    SharedLibrary,
+    /// Relocatable object file (.o ET_REL, .obj COFF)
+    ObjectFile,
+}
 
 /// Enum storing parsers for all supported binary formats
 #[derive(Debug)]
@@ -38,6 +52,12 @@ macro_rules! dispatch {
 }
 
 impl Fireball {
+    /// Returns the classification of the loaded binary (executable, shared
+    /// library, or object file).
+    pub fn kind(&self) -> BinaryKind {
+        dispatch!(self, kind)
+    }
+
     /// Creates a decompiler object from a file path.
     /// Detects the binary format automatically.
     pub fn from_path(path: &str) -> Result<Self, FireballError> {

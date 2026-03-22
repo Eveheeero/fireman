@@ -2,7 +2,7 @@
 
 use super::MachO;
 use crate::{
-    arch,
+    BinaryKind, arch,
     core::{Address, Blocks, PreDefinedOffset, PreDefinedOffsets, Relations, Sections},
     prelude::*,
 };
@@ -24,7 +24,7 @@ impl MachO {
         // Extract architecture and entry point from the Mach-O header.
         // We parse inside a block so the borrow of `binary` is released
         // before we move `binary` into the struct.
-        let (cputype, entry_addr, symbols_info) = {
+        let (cputype, filetype, entry_addr, symbols_info) = {
             let mach = goblin::mach::Mach::parse(&binary)
                 .map_err(|e| FireballError::MachOParsingFailed(e.to_string()))?;
 
@@ -53,6 +53,15 @@ impl MachO {
 
         let architecture = arch::from_mach_cputype(cputype);
 
+        // goblin::mach::header: MH_EXECUTE=2, MH_DYLIB=6, MH_OBJECT=1, MH_BUNDLE=8
+        let kind = match filetype {
+            goblin::mach::header::MH_DYLIB | goblin::mach::header::MH_BUNDLE => {
+                BinaryKind::SharedLibrary
+            }
+            goblin::mach::header::MH_OBJECT => BinaryKind::ObjectFile,
+            _ => BinaryKind::Executable,
+        };
+
         // Build section information for the entire binary
         let sections = Sections::new();
         sections.build_all(&binary);
@@ -76,6 +85,7 @@ impl MachO {
 
         let relations = Relations::new();
         Ok(MachO {
+            kind,
             entry: Address::from_virtual_address(&sections, entry_addr),
             path,
             binary,
@@ -87,6 +97,10 @@ impl MachO {
             blocks: Blocks::new(relations),
             cancel_token: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         })
+    }
+
+    pub fn kind(&self) -> BinaryKind {
+        self.kind
     }
 
     pub fn entry(&self) -> &Address {
@@ -106,10 +120,11 @@ impl MachO {
     }
 }
 
-/// Extract cpu type, entry address, and symbol info from a parsed MachO.
+/// Extract cpu type, file type, entry address, and symbol info from a parsed MachO.
 /// Returns owned data so the borrow on the binary can be released.
-fn extract_macho_info(macho: &goblin::mach::MachO) -> (u32, u64, Vec<(String, u64)>) {
+fn extract_macho_info(macho: &goblin::mach::MachO) -> (u32, u32, u64, Vec<(String, u64)>) {
     let cputype = macho.header.cputype as u32;
+    let filetype = macho.header.filetype;
     let entry_addr = macho.entry;
 
     let mut symbols_info = Vec::new();
@@ -131,7 +146,7 @@ fn extract_macho_info(macho: &goblin::mach::MachO) -> (u32, u64, Vec<(String, u6
         }
     }
 
-    (cputype, entry_addr, symbols_info)
+    (cputype, filetype, entry_addr, symbols_info)
 }
 
 /// Demangle a symbol name (C++ or Rust), returning the original if

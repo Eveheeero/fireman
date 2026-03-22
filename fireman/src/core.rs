@@ -283,10 +283,11 @@ impl FirebatCore {
 
     fn analyze_section_from_entry(&self) -> Result<Vec<KnownSectionData>, String> {
         let fireball = self.fireball()?;
-        let result = fireball
-            .analyze_from_entry()
-            .map_err(|error| error.to_string())?;
-        Ok(block_to_result([result]))
+        match fireball.analyze_from_entry() {
+            Ok(result) => Ok(block_to_result([result])),
+            Err(fireball::DecompileError::NoEntryPoint) => self.analyze_all_sections(),
+            Err(error) => Err(error.to_string()),
+        }
     }
 
     pub fn decompile_sections(

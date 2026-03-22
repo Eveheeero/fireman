@@ -4,6 +4,8 @@ pub enum DecompileError {
     HeaderParsingFailed,
     DisassembleFailed(super::disassemble_error::DisassembleError),
     EntryNotFound,
+    /// The binary has no meaningful entry point (shared library or object file).
+    NoEntryPoint,
     CASTGenerationFailed(Option<String>),
 }
 
@@ -22,6 +24,10 @@ impl std::fmt::Display for DecompileError {
             Self::HeaderParsingFailed => write!(f, "Header Parsing Failed!"),
             Self::DisassembleFailed(err) => write!(f, "Fail to disassemble block! {}", err),
             Self::EntryNotFound => write!(f, "Entry Not Found!"),
+            Self::NoEntryPoint => write!(
+                f,
+                "Binary has no entry point (shared library or object file)"
+            ),
             Self::CASTGenerationFailed(msg) => write!(
                 f,
                 "C-AST Generation Failed! {}",

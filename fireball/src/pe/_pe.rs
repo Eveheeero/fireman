@@ -2,7 +2,7 @@
 
 use super::{Pe, analysis, cfi_parser, dwarf_parser, pdb_parser, rtti};
 use crate::{
-    arch,
+    BinaryKind, arch,
     core::{Address, Blocks, PreDefinedOffset, PreDefinedOffsets, Relations, Sections},
     prelude::*,
 };
@@ -28,6 +28,14 @@ impl Pe {
         let gl = goblin::pe::PE::parse(&binary)?;
 
         let architecture = arch::from_pe_machine(gl.header.coff_header.machine, gl.is_64);
+
+        // IMAGE_FILE_DLL = 0x2000
+        let kind = if gl.header.coff_header.characteristics & 0x2000 != 0 {
+            BinaryKind::SharedLibrary
+        } else {
+            BinaryKind::Executable
+        };
+
         let forwarded_exports = analysis::resolve_forwarded_exports(&gl);
 
         // Build section information for the entire binary
@@ -204,6 +212,7 @@ impl Pe {
 
         let relations = Relations::new();
         Ok(Pe {
+            kind,
             entry: Address::from_virtual_address(&sections, gl.entry as u64),
             path,
             binary,
@@ -223,6 +232,10 @@ impl Pe {
             unwind_functions,
             rtti_entries,
         })
+    }
+
+    pub fn kind(&self) -> BinaryKind {
+        self.kind
     }
 
     pub fn entry(&self) -> &Address {
