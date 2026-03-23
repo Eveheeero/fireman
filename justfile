@@ -4,9 +4,6 @@
 
 set windows-shell := ["powershell", "-NoProfile", "-Command"]
 
-# Configuration
-workload := "fireball/tests/resources/hello_world.exe"
-
 # ── Bench ────────────────────────────────────────────────────────────
 
 # Run benchmarks and open HTML report
@@ -22,31 +19,21 @@ bench-open:
 
 # ── PGO (cargo-pgo) ─────────────────────────────────────────────────
 
-# Full PGO build: instrument -> profile -> optimize
+# Full PGO build using tests as profiling
 pgo:
-    cargo pgo run -- --bin fireman -- -i "{{workload}}" --print-ir true
+    cargo pgo test
     cargo pgo optimize
 
-# Full PGO+LTO build (slower compile, best runtime perf)
+# Full PGO+LTO build using tests (slower compile, best runtime perf)
 [unix]
 pgo-lto:
-    CARGO_PROFILE_RELEASE_LTO=fat CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1 cargo pgo run -- --bin fireman -- -i "{{workload}}" --print-ir true
+    CARGO_PROFILE_RELEASE_LTO=fat CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1 cargo pgo test
     CARGO_PROFILE_RELEASE_LTO=fat CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1 cargo pgo optimize
 
 [windows]
 pgo-lto:
-    $env:CARGO_PROFILE_RELEASE_LTO = "fat"; $env:CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "1"; cargo pgo run -- --bin fireman -- -i "{{workload}}" --print-ir true
+    $env:CARGO_PROFILE_RELEASE_LTO = "fat"; $env:CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "1"; cargo pgo test
     $env:CARGO_PROFILE_RELEASE_LTO = "fat"; $env:CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "1"; cargo pgo optimize
-
-# PGO using test suite as profiling workload
-pgo-test:
-    cargo pgo test
-    cargo pgo optimize
-
-# PGO using benchmarks as profiling workload
-pgo-bench:
-    cargo pgo bench
-    cargo pgo optimize
 
 # Check PGO/BOLT environment readiness
 pgo-info:
