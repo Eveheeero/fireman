@@ -624,7 +624,7 @@ impl FirebatState {
                             );
                             let response = render_code_row(
                                 ui,
-                                &assembly.data,
+                                RichText::new(&assembly.data).monospace(),
                                 result.colors.get(&assembly.index).copied(),
                                 is_hovered,
                                 is_selected,
@@ -688,7 +688,7 @@ impl FirebatState {
                             );
                             let response = render_code_row(
                                 ui,
-                                &ir.data,
+                                RichText::new(&ir.data).monospace(),
                                 result.colors.get(&ir.parents_assembly_index).copied(),
                                 is_hovered,
                                 is_selected,
@@ -752,7 +752,8 @@ impl FirebatState {
                                     row: selected_row
                                 }) if selected_row == row
                             );
-                            let response = render_code_row(ui, &ast.data, None, false, is_selected);
+                            let is_hovered = self.hovered_assembly_index.is_some();
+                            let response = render_code_row(ui, highlight_ast_line_egui(&ast.data, ui), None, is_hovered, is_selected);
                             if response.clicked() {
                                 clicked_row = Some(row);
                             }
@@ -1048,7 +1049,7 @@ impl FirebatState {
 
 fn render_code_row(
     ui: &mut egui::Ui,
-    text: &str,
+    text: impl Into<egui::WidgetText>,
     accent_color: Option<Color32>,
     is_hovered: bool,
     is_selected: bool,
@@ -1074,10 +1075,63 @@ fn render_code_row(
         .show(ui, |ui| {
             ui.add_sized(
                 [ui.available_width(), 0.0],
-                egui::Button::new(RichText::new(text).monospace()).selected(is_selected),
+                egui::Button::new(text).selected(is_selected),
             )
         })
         .inner
+}
+
+fn highlight_ast_line_egui(text: &str, ui: &egui::Ui) -> egui::text::LayoutJob {
+    use egui::text::{LayoutJob, TextFormat};
+    let mut job = LayoutJob::default();
+    
+    let keywords = [
+        "if", "else", "while", "for", "return", "switch", "case", "default", "goto", "break",
+        "continue", "void", "int", "char", "float", "double", "bool", "struct", "union",
+        "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t",
+    ];
+
+    let mut current_word = String::new();
+    let mut iter = text.chars().peekable();
+    
+    let normal_format = TextFormat::simple(egui::TextStyle::Monospace.resolve(ui.style()), ui.visuals().text_color());
+    let keyword_format = TextFormat::simple(egui::TextStyle::Monospace.resolve(ui.style()), Color32::from_rgb(0, 200, 200));
+    let comment_format = TextFormat::simple(egui::TextStyle::Monospace.resolve(ui.style()), Color32::DARK_GRAY);
+
+    while let Some(c) = iter.next() {
+        if c.is_alphanumeric() || c == '_' {
+            current_word.push(c);
+        } else {
+            if !current_word.is_empty() {
+                if keywords.contains(&current_word.as_str()) {
+                    job.append(&current_word, 0.0, keyword_format.clone());
+                } else {
+                    job.append(&current_word, 0.0, normal_format.clone());
+                }
+                current_word.clear();
+            }
+            if c == '/' && iter.peek() == Some(&'/') {
+                let rest: String = std::iter::once(c).chain(iter).collect();
+                job.append(&rest, 0.0, comment_format.clone());
+                break;
+            } else if c == '/' && iter.peek() == Some(&'*') {
+                let rest: String = std::iter::once(c).chain(iter).collect();
+                job.append(&rest, 0.0, comment_format.clone());
+                break;
+            } else {
+                job.append(&c.to_string(), 0.0, normal_format.clone());
+            }
+        }
+    }
+    if !current_word.is_empty() {
+        if keywords.contains(&current_word.as_str()) {
+            job.append(&current_word, 0.0, keyword_format.clone());
+        } else {
+            job.append(&current_word, 0.0, normal_format.clone());
+        }
+    }
+
+    job
 }
 
 fn render_optimization_toggle(

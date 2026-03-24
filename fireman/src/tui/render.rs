@@ -242,7 +242,7 @@ impl App {
                 outputs
                     .ast
                     .iter()
-                    .map(|row| ListItem::new(row.data.clone()))
+                    .map(|row| ListItem::new(highlight_ast_line(&row.data)))
                     .collect::<Vec<_>>(),
                 self.selection(Some(self.ast_cursor), outputs.ast.len()),
                 outputs
@@ -674,4 +674,57 @@ fn inner_block_area(area: Rect) -> Rect {
         width: area.width.saturating_sub(2),
         height: area.height.saturating_sub(2),
     }
+}
+
+fn highlight_ast_line(line: &str) -> Line<'static> {
+    let mut spans = Vec::new();
+    let keywords = [
+        "if", "else", "while", "for", "return", "switch", "case", "default", "goto", "break",
+        "continue", "void", "int", "char", "float", "double", "bool", "struct", "union",
+        "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t",
+    ];
+
+    let mut current_word = String::new();
+    let mut iter = line.chars().peekable();
+
+    while let Some(c) = iter.next() {
+        if c.is_alphanumeric() || c == '_' {
+            current_word.push(c);
+        } else {
+            if !current_word.is_empty() {
+                if keywords.contains(&current_word.as_str()) {
+                    spans.push(Span::styled(
+                        current_word.clone(),
+                        Style::default().fg(Color::Cyan),
+                    ));
+                } else {
+                    spans.push(Span::raw(current_word.clone()));
+                }
+                current_word.clear();
+            }
+            if c == '/' && iter.peek() == Some(&'/') {
+                let rest: String = std::iter::once(c).chain(iter).collect();
+                spans.push(Span::styled(rest, Style::default().fg(Color::DarkGray)));
+                break;
+            } else if c == '/' && iter.peek() == Some(&'*') {
+                let rest: String = std::iter::once(c).chain(iter).collect();
+                spans.push(Span::styled(rest, Style::default().fg(Color::DarkGray)));
+                break;
+            } else {
+                spans.push(Span::raw(c.to_string()));
+            }
+        }
+    }
+    if !current_word.is_empty() {
+        if keywords.contains(&current_word.as_str()) {
+            spans.push(Span::styled(
+                current_word,
+                Style::default().fg(Color::Cyan),
+            ));
+        } else {
+            spans.push(Span::raw(current_word));
+        }
+    }
+
+    Line::from(spans)
 }

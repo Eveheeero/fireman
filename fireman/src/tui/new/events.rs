@@ -73,7 +73,7 @@ fn handle_char_input(ctx_: &MutexCtx, c: char) {
             .new_context
             .file_tree
             .iter()
-            .position(|item| item.starts_with(">>>"))
+            .position(|item| item.starts_with(">> "))
             .unwrap_or(0);
         ctx.new_context.selected_index = highlighted_index;
     }
@@ -110,12 +110,12 @@ fn handle_tab_completion(ctx_: &MutexCtx) {
     let mut ctx = ctx_.write().unwrap();
     let current_path = PathBuf::from(&ctx.new_context.path);
 
-    // Get all matching items (highlighted ones with >>>)
+    // Get all matching items (highlighted ones with >> )
     let matching_items: Vec<String> = ctx
         .new_context
         .file_tree
         .iter()
-        .filter(|item| item.starts_with(">>>"))
+        .filter(|item| item.starts_with(">> "))
         .cloned()
         .collect();
 
@@ -204,10 +204,9 @@ fn complete_selected_item(
 }
 
 fn extract_item_info(item: &str) -> (bool, &str) {
-    // ">> " 또는 ">>> " 접두사 제거
+    // ">> " 접두사 제거
     let item = item
-        .strip_prefix(">>> ")
-        .or_else(|| item.strip_prefix(">> "))
+        .strip_prefix(">> ")
         .unwrap_or(item);
     let is_dir = item.starts_with("📁 ");
     let clean_name = item
