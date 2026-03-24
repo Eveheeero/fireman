@@ -170,9 +170,9 @@ impl FirebatState {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
                 let controls_enabled = !self.is_busy();
-                ui.add_sized(
-                    [ui.available_width() - 140.0, 26.0],
+                ui.add(
                     egui::TextEdit::singleline(&mut self.analyze_target_address)
+                        .desired_width(f32::INFINITY)
                         .hint_text("Address (empty to use entry point)"),
                 );
                 if ui
@@ -192,7 +192,7 @@ impl FirebatState {
                     self.analyze_all();
                 }
                 if ui
-                    .add_enabled(controls_enabled, egui::Button::new("Select All"))
+                    .add_enabled(controls_enabled, egui::Button::new("Select All Ready"))
                     .clicked()
                 {
                     self.select_all();
@@ -209,6 +209,25 @@ impl FirebatState {
             if self.known_sections.is_empty() {
                 ui.label("No sections loaded yet. Open an executable and analyze an address.");
             } else {
+                let ready_count = self
+                    .known_sections
+                    .iter()
+                    .filter(|section| section.data.analyzed)
+                    .count();
+                let selected_count = self
+                    .known_sections
+                    .iter()
+                    .filter(|section| section.selected && section.data.analyzed)
+                    .count();
+                ui.small(format!(
+                    "{selected_count} ready selected / {ready_count} ready / {} total",
+                    self.known_sections.len()
+                ));
+                ui.small(
+                    "Discovered sections must be analyzed before they can be selected or decompiled.",
+                );
+                ui.add_space(4.0);
+
                 let row_height = ui.text_style_height(&egui::TextStyle::Monospace) + 16.0;
                 egui::ScrollArea::vertical().show_rows(
                     ui,
@@ -217,6 +236,9 @@ impl FirebatState {
                     |ui, row_range| {
                         for row in row_range {
                             let section = &mut self.known_sections[row];
+                            if !section.data.analyzed {
+                                section.selected = false;
+                            }
                             let is_hovered =
                                 hovered_parent_start == Some(section.data.start_address);
                             let fill = if is_hovered {
@@ -236,19 +258,25 @@ impl FirebatState {
                                 ))
                                 .show(ui, |ui| {
                                     ui.horizontal(|ui| {
-                                        ui.checkbox(&mut section.selected, "");
-                                        let state_label = if section.data.analyzed {
-                                            "Ready"
+                                        if section.data.analyzed {
+                                            ui.checkbox(&mut section.selected, "");
                                         } else {
-                                            "Discovered"
-                                        };
-                                        ui.monospace(format!(
-                                            "0x{:X}  {}",
-                                            section.data.start_address, state_label
-                                        ));
+                                            let mut disabled = false;
+                                            ui.add_enabled(
+                                                false,
+                                                egui::Checkbox::new(&mut disabled, ""),
+                                            );
+                                        }
+                                        ui.monospace(format!("0x{:X}", section.data.start_address));
                                         if let Some(end) = section.data.end_address {
                                             ui.label(format!(".. 0x{end:X}"));
                                         }
+                                        ui.add_space(8.0);
+                                        ui.small(if section.data.analyzed {
+                                            "Ready"
+                                        } else {
+                                            "Analyze to enable"
+                                        });
                                     });
                                 });
                         }
@@ -605,6 +633,7 @@ impl FirebatState {
         ui.columns(2, |columns| {
             columns[0].vertical(|ui| {
                 ui.label(RichText::new("Assembly").strong());
+                ui.small("Gutter = assembly row id");
                 ui.add_space(4.0);
                 let row_height = ui.text_style_height(&egui::TextStyle::Monospace) + 12.0;
                 egui::ScrollArea::vertical().show_rows(
@@ -622,9 +651,12 @@ impl FirebatState {
                                     row: selected_row
                                 }) if selected_row == row
                             );
+                            let gutter = format!("{:>5}", assembly.index);
                             let response = render_code_row(
                                 ui,
+                                &gutter,
                                 RichText::new(&assembly.data).monospace(),
+                                Some(&assembly.data),
                                 result.colors.get(&assembly.index).copied(),
                                 is_hovered,
                                 is_selected,
@@ -668,6 +700,7 @@ impl FirebatState {
         ui.columns(2, |columns| {
             columns[0].vertical(|ui| {
                 ui.label(RichText::new("IR").strong());
+                ui.small("Gutter = parent assembly row");
                 ui.add_space(4.0);
                 let row_height = ui.text_style_height(&egui::TextStyle::Monospace) + 12.0;
                 egui::ScrollArea::vertical().show_rows(
@@ -686,9 +719,12 @@ impl FirebatState {
                                     row: selected_row
                                 }) if selected_row == row
                             );
+                            let gutter = format!("a{:>4}", ir.parents_assembly_index);
                             let response = render_code_row(
                                 ui,
+                                &gutter,
                                 RichText::new(&ir.data).monospace(),
+                                Some(&ir.data),
                                 result.colors.get(&ir.parents_assembly_index).copied(),
                                 is_hovered,
                                 is_selected,
@@ -731,6 +767,7 @@ impl FirebatState {
         ui.columns(2, |columns| {
             columns[0].vertical(|ui| {
                 ui.label(RichText::new("AST").strong());
+                ui.small("Gutter = printed AST line number");
                 if let Some(message) = &result.data.ast_sync_message {
                     ui.add_space(4.0);
                     ui.colored_label(Color32::from_rgb(0xCA, 0x50, 0x10), message);
@@ -752,8 +789,16 @@ impl FirebatState {
                                     row: selected_row
                                 }) if selected_row == row
                             );
-                            let is_hovered = self.hovered_assembly_index.is_some();
-                            let response = render_code_row(ui, highlight_ast_line_egui(&ast.data, ui), None, is_hovered, is_selected);
+                            let gutter = format!("{:>5}", ast.row + 1);
+                            let response = render_code_row(
+                                ui,
+                                &gutter,
+                                highlight_ast_line_egui(&ast.data, ui),
+                                Some(&ast.data),
+                                None,
+                                false,
+                                is_selected,
+                            );
                             if response.clicked() {
                                 clicked_row = Some(row);
                             }
@@ -1049,7 +1094,9 @@ impl FirebatState {
 
 fn render_code_row(
     ui: &mut egui::Ui,
+    gutter: &str,
     text: impl Into<egui::WidgetText>,
+    tooltip: Option<&str>,
     accent_color: Option<Color32>,
     is_hovered: bool,
     is_selected: bool,
@@ -1068,35 +1115,66 @@ fn render_code_row(
     } else {
         ui.visuals().widgets.noninteractive.bg_stroke.color
     };
+    let text = text.into();
 
-    egui::Frame::group(ui.style())
+    let response = egui::Frame::group(ui.style())
         .fill(fill)
         .stroke(Stroke::new(1.0, stroke_color))
         .show(ui, |ui| {
-            ui.add_sized(
-                [ui.available_width(), 0.0],
-                egui::Button::new(text).selected(is_selected),
-            )
+            ui.horizontal(|ui| {
+                let gutter_response = ui.add_sized(
+                    [72.0, 0.0],
+                    egui::Label::new(
+                        RichText::new(format!("{gutter:>6} │"))
+                            .monospace()
+                            .color(ui.visuals().weak_text_color()),
+                    )
+                    .truncate(),
+                );
+                let text_response = ui.add_sized(
+                    [ui.available_width(), 0.0],
+                    egui::Label::new(text)
+                        .sense(egui::Sense::click())
+                        .truncate(),
+                );
+                gutter_response.union(text_response)
+            })
+            .inner
         })
-        .inner
+        .inner;
+
+    if let Some(tooltip) = tooltip {
+        response.on_hover_text(tooltip)
+    } else {
+        response
+    }
 }
 
 fn highlight_ast_line_egui(text: &str, ui: &egui::Ui) -> egui::text::LayoutJob {
     use egui::text::{LayoutJob, TextFormat};
     let mut job = LayoutJob::default();
-    
+
     let keywords = [
         "if", "else", "while", "for", "return", "switch", "case", "default", "goto", "break",
-        "continue", "void", "int", "char", "float", "double", "bool", "struct", "union",
-        "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t",
+        "continue", "void", "int", "char", "float", "double", "bool", "struct", "union", "int8_t",
+        "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t",
     ];
 
     let mut current_word = String::new();
     let mut iter = text.chars().peekable();
-    
-    let normal_format = TextFormat::simple(egui::TextStyle::Monospace.resolve(ui.style()), ui.visuals().text_color());
-    let keyword_format = TextFormat::simple(egui::TextStyle::Monospace.resolve(ui.style()), Color32::from_rgb(0, 200, 200));
-    let comment_format = TextFormat::simple(egui::TextStyle::Monospace.resolve(ui.style()), Color32::DARK_GRAY);
+
+    let normal_format = TextFormat::simple(
+        egui::TextStyle::Monospace.resolve(ui.style()),
+        ui.visuals().text_color(),
+    );
+    let keyword_format = TextFormat::simple(
+        egui::TextStyle::Monospace.resolve(ui.style()),
+        Color32::from_rgb(0, 200, 200),
+    );
+    let comment_format = TextFormat::simple(
+        egui::TextStyle::Monospace.resolve(ui.style()),
+        Color32::DARK_GRAY,
+    );
 
     while let Some(c) = iter.next() {
         if c.is_alphanumeric() || c == '_' {

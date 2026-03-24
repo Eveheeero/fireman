@@ -93,35 +93,59 @@ impl App {
             Layout::horizontal([Constraint::Percentage(68), Constraint::Percentage(32)])
                 .areas(area);
 
+        let ready_count = self
+            .known_sections
+            .iter()
+            .filter(|section| section.data.analyzed)
+            .count();
         let selected_count = self
             .known_sections
             .iter()
-            .filter(|section| section.selected)
+            .filter(|section| section.selected && section.data.analyzed)
             .count();
         let total_count = self.known_sections.len();
-        let title = format!("Sections ({selected_count}/{total_count} selected)");
+        let title = format!("Sections ({selected_count}/{ready_count} ready, {total_count} total)");
 
         let items: Vec<ListItem> = if self.known_sections.is_empty() {
-            vec![ListItem::new("No analyzed sections yet. Press `a` or `g`.")]
+            vec![ListItem::new(
+                "No sections yet. Press `a` to analyze an address or `g` to scan everything.",
+            )]
         } else {
             self.known_sections
                 .iter()
                 .map(|section| {
-                    let status = if section.data.analyzed {
-                        "analyzed"
-                    } else {
-                        "pending"
-                    };
-                    let marker = if section.selected { "[x]" } else { "[ ]" };
+                    let is_selected = section.selected && section.data.analyzed;
+                    let marker = if is_selected { "[x]" } else { "[ ]" };
                     let end = section
                         .data
                         .end_address
                         .map(|value| format!("{value:#010x}"))
                         .unwrap_or_else(|| "??????????".to_string());
-                    ListItem::new(format!(
-                        "{marker} {:#010x} - {end}  {status}",
-                        section.data.start_address
-                    ))
+                    let status_style = if section.data.analyzed {
+                        Style::default().fg(Color::Green)
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    };
+                    let item_style = if section.data.analyzed {
+                        Style::default()
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    };
+                    let status = if section.data.analyzed {
+                        "ready"
+                    } else {
+                        "pending"
+                    };
+
+                    ListItem::new(Line::from(vec![
+                        Span::raw(format!("{marker} ")),
+                        Span::raw(format!("{:#010x}", section.data.start_address)),
+                        Span::raw(" - "),
+                        Span::raw(end),
+                        Span::raw("  "),
+                        Span::styled(status, status_style),
+                    ]))
+                    .style(item_style)
                 })
                 .collect()
         };
@@ -137,7 +161,13 @@ impl App {
             .known_sections
             .get(self.section_cursor)
             .map(|section| {
-                vec![
+                let is_selected = section.selected && section.data.analyzed;
+                let state_label = if section.data.analyzed {
+                    "Ready"
+                } else {
+                    "Pending analysis"
+                };
+                let mut lines = vec![
                     Line::from(format!("Start: {:#010x}", section.data.start_address)),
                     Line::from(format!(
                         "End: {}",
@@ -147,16 +177,30 @@ impl App {
                             .map(|value| format!("{value:#010x}"))
                             .unwrap_or_else(|| "Unknown".to_string())
                     )),
-                    Line::from(format!("Analyzed: {}", section.data.analyzed)),
-                    Line::from(format!("Selected: {}", section.selected)),
+                    Line::from(format!("State: {state_label}")),
+                    Line::from(format!(
+                        "Selected: {}",
+                        if is_selected { "Yes" } else { "No" }
+                    )),
                     Line::from(""),
-                    Line::from(format!("Selected sections: {selected_count}")),
-                    Line::from("Space: toggle | s/Ctrl+A: select all | d: decompile"),
-                ]
+                    Line::from(format!("Ready sections: {ready_count}")),
+                    Line::from(format!("Selected ready sections: {selected_count}")),
+                    Line::from(""),
+                ];
+                if section.data.analyzed {
+                    lines.push(Line::from("Space/Enter toggles this section."));
+                } else {
+                    lines.push(Line::from(
+                        "Analyze this section before selecting or decompiling it.",
+                    ));
+                }
+                lines.push(Line::from("s/Ctrl+A toggles all ready sections."));
+                lines.push(Line::from("d decompiles the ready selection."));
+                lines
             })
             .unwrap_or_else(|| {
                 vec![
-                    Line::from("No section is selected."),
+                    Line::from("No section is focused."),
                     Line::from(""),
                     Line::from("`a` Analyze address"),
                     Line::from("`g` Analyze all"),
@@ -172,12 +216,12 @@ impl App {
     }
 
     fn draw_output(&self, frame: &mut Frame, area: Rect, layer: EditorLayer) {
-        let title = match layer {
-            EditorLayer::Assembly => "Assembly",
-            EditorLayer::Ir => "IR",
-            EditorLayer::Ast => "AST",
-        };
         let Some(outputs) = &self.outputs else {
+            let title = match layer {
+                EditorLayer::Assembly => "Assembly",
+                EditorLayer::Ir => "IR",
+                EditorLayer::Ast => "AST",
+            };
             frame.render_widget(
                 Paragraph::new("No decompile result yet. Select sections and press `d`.")
                     .block(self.block(title)),
@@ -188,20 +232,32 @@ impl App {
 
         let hovered_asm = self.hovered_assembly_index;
 
-        let (lines, selected, footer) = match layer {
+        let (title, lines, selected, mut info) = match layer {
             EditorLayer::Assembly => (
+                format!("Assembly ({})", outputs.assembly.len()),
                 outputs
                     .assembly
                     .iter()
                     .map(|row| {
-                        let highlight = hovered_asm.is_some() && hovered_asm == Some(row.index);
-                        let style = if highlight {
+                        let highlight = hovered_asm == Some(row.index);
+                        let gutter_style = if highlight {
+                            Style::default()
+                                .fg(Color::Yellow)
+                                .add_modifier(Modifier::BOLD)
+                        } else {
+                            Style::default().fg(Color::DarkGray)
+                        };
+                        let text_style = if highlight {
                             Style::default().fg(Color::Yellow)
                         } else {
                             Style::default()
                         };
-                        ListItem::new(format!("{:#010x} {}", row.parents_start_address, row.data))
-                            .style(style)
+                        code_list_item(
+                            format!("{:>5}", row.index),
+                            row.data.clone(),
+                            gutter_style,
+                            text_style,
+                        )
                     })
                     .collect::<Vec<_>>(),
                 self.selection(Some(self.assembly_cursor), outputs.assembly.len()),
@@ -209,67 +265,107 @@ impl App {
                     .assembly
                     .get(self.assembly_cursor)
                     .map(|row| {
-                        format!(
-                            "Row {} parent {:#010x}",
-                            row.index, row.parents_start_address
-                        )
+                        vec![
+                            Line::from(format!("Assembly row: {}", row.index)),
+                            Line::from(format!(
+                                "Parent block: {:#010x}",
+                                row.parents_start_address
+                            )),
+                        ]
                     })
-                    .unwrap_or_else(|| "No assembly rows".to_string()),
+                    .unwrap_or_else(|| vec![Line::from("No assembly rows")]),
             ),
             EditorLayer::Ir => (
+                format!("IR ({})", outputs.ir.len()),
                 outputs
                     .ir
                     .iter()
                     .map(|row| {
-                        let highlight = hovered_asm.is_some()
-                            && hovered_asm == Some(row.parents_assembly_index);
-                        let style = if highlight {
+                        let highlight = hovered_asm == Some(row.parents_assembly_index);
+                        let gutter_style = if highlight {
+                            Style::default()
+                                .fg(Color::Yellow)
+                                .add_modifier(Modifier::BOLD)
+                        } else {
+                            Style::default().fg(Color::DarkGray)
+                        };
+                        let text_style = if highlight {
                             Style::default().fg(Color::Yellow)
                         } else {
                             Style::default()
                         };
-                        ListItem::new(row.data.clone()).style(style)
+                        code_list_item(
+                            format!("a{:>4}", row.parents_assembly_index),
+                            row.data.clone(),
+                            gutter_style,
+                            text_style,
+                        )
                     })
                     .collect::<Vec<_>>(),
                 self.selection(Some(self.ir_cursor), outputs.ir.len()),
                 outputs
                     .ir
                     .get(self.ir_cursor)
-                    .map(|row| format!("Parent assembly row {}", row.parents_assembly_index))
-                    .unwrap_or_else(|| "No IR rows".to_string()),
+                    .map(|row| {
+                        vec![
+                            Line::from(format!("IR row: {}", self.ir_cursor)),
+                            Line::from(format!(
+                                "Parent assembly row: {}",
+                                row.parents_assembly_index
+                            )),
+                            Line::from("Gutter: parent assembly row"),
+                        ]
+                    })
+                    .unwrap_or_else(|| vec![Line::from("No IR rows")]),
             ),
-            EditorLayer::Ast => (
-                outputs
-                    .ast
-                    .iter()
-                    .map(|row| ListItem::new(highlight_ast_line(&row.data)))
-                    .collect::<Vec<_>>(),
-                self.selection(Some(self.ast_cursor), outputs.ast.len()),
-                outputs
+            EditorLayer::Ast => {
+                let mut selection_info = outputs
                     .ast
                     .get(self.ast_cursor)
-                    .map(|row| format!("AST row {}", row.row))
-                    .unwrap_or_else(|| "No AST rows".to_string()),
-            ),
+                    .map(|row| vec![Line::from(format!("AST line: {}", row.row + 1))])
+                    .unwrap_or_else(|| vec![Line::from("No AST rows")]);
+                selection_info.push(Line::from("Gutter: printed AST line number"));
+                if let Some(message) = &outputs.ast_sync_message {
+                    selection_info.push(Line::from(""));
+                    selection_info.push(Line::from(Span::styled(
+                        format!("Sync: {message}"),
+                        Style::default().fg(Color::Yellow),
+                    )));
+                }
+                (
+                    format!("AST ({})", outputs.ast.len()),
+                    outputs
+                        .ast
+                        .iter()
+                        .map(|row| {
+                            code_list_item(
+                                format!("{:>5}", row.row + 1),
+                                row.data.clone(),
+                                Style::default().fg(Color::DarkGray),
+                                Style::default(),
+                            )
+                        })
+                        .collect::<Vec<_>>(),
+                    self.selection(Some(self.ast_cursor), outputs.ast.len()),
+                    selection_info,
+                )
+            }
         };
 
         let [list_area, info_area] =
-            Layout::horizontal([Constraint::Percentage(76), Constraint::Percentage(24)])
+            Layout::horizontal([Constraint::Percentage(78), Constraint::Percentage(22)])
                 .areas(area);
         let mut state = ListState::default().with_selected(selected);
         let list = List::new(lines)
-            .block(self.block(title))
+            .block(self.block(&title))
             .highlight_style(Style::default().bg(Color::Blue).fg(Color::White))
             .highlight_symbol("> ");
         frame.render_stateful_widget(list, list_area, &mut state);
 
-        let info = vec![
-            Line::from(footer),
-            Line::from(""),
-            Line::from("Enter: load editor"),
-            Line::from("e: edit line"),
-            Line::from("5: editor view"),
-        ];
+        info.push(Line::from(""));
+        info.push(Line::from("Enter: load editor"));
+        info.push(Line::from("e: edit line"));
+        info.push(Line::from("Home/End/Pg: navigate"));
         frame.render_widget(
             Paragraph::new(info)
                 .block(self.block("Selection"))
@@ -650,6 +746,21 @@ fn cursor_to_visual_index(cursor: usize) -> usize {
     visual.saturating_sub(1)
 }
 
+fn code_list_item(
+    gutter: impl Into<String>,
+    text: impl Into<String>,
+    gutter_style: Style,
+    text_style: Style,
+) -> ListItem<'static> {
+    let gutter = gutter.into();
+    let text = text.into();
+    ListItem::new(Line::from(vec![
+        Span::styled(gutter, gutter_style),
+        Span::styled(" │ ", gutter_style),
+        Span::styled(text, text_style),
+    ]))
+}
+
 fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
     let [outer] = Layout::horizontal([Constraint::Percentage(100)]).areas(area);
     let [_, center_x, _] = Layout::horizontal([
@@ -680,8 +791,8 @@ fn highlight_ast_line(line: &str) -> Line<'static> {
     let mut spans = Vec::new();
     let keywords = [
         "if", "else", "while", "for", "return", "switch", "case", "default", "goto", "break",
-        "continue", "void", "int", "char", "float", "double", "bool", "struct", "union",
-        "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t",
+        "continue", "void", "int", "char", "float", "double", "bool", "struct", "union", "int8_t",
+        "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t",
     ];
 
     let mut current_word = String::new();
@@ -717,10 +828,7 @@ fn highlight_ast_line(line: &str) -> Line<'static> {
     }
     if !current_word.is_empty() {
         if keywords.contains(&current_word.as_str()) {
-            spans.push(Span::styled(
-                current_word,
-                Style::default().fg(Color::Cyan),
-            ));
+            spans.push(Span::styled(current_word, Style::default().fg(Color::Cyan)));
         } else {
             spans.push(Span::raw(current_word));
         }

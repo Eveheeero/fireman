@@ -162,12 +162,20 @@ impl App {
             WorkerResponse::OpenFile(result) => match result {
                 Ok(()) => {
                     self.opened_path = self.pending_open_path.take();
+                    self.pending_analysis_address = None;
                     self.known_sections.clear();
                     self.outputs = None;
                     self.patch_preview = None;
                     self.editor_target = None;
                     self.editor_draft = None;
-                    self.current_view = View::Sections;
+                    self.section_cursor = 0;
+                    self.assembly_cursor = 0;
+                    self.ir_cursor = 0;
+                    self.ast_cursor = 0;
+                    self.patch_scroll = 0;
+                    self.hovered_assembly_index = None;
+                    self.last_decompile_selection.clear();
+                    self.set_view(View::Sections);
                     self.set_status("Opened binary");
                 }
                 Err(error) => self.set_status(error),
@@ -181,7 +189,7 @@ impl App {
                         .unwrap_or(false);
                     self.pending_analysis_address = None;
                     self.merge_sections(data, auto_select);
-                    self.current_view = View::Sections;
+                    self.set_view(View::Sections);
                     self.set_status("Section analysis completed");
                 }
                 Err(error) => self.set_status(error),
@@ -189,7 +197,7 @@ impl App {
             WorkerResponse::AnalyzeAllSections(result) => match result {
                 Ok(data) => {
                     self.merge_sections(data, false);
-                    self.current_view = View::Sections;
+                    self.set_view(View::Sections);
                     self.set_status("Analyzed all sections");
                 }
                 Err(error) => self.set_status(error),
@@ -198,10 +206,10 @@ impl App {
                 Ok(result) => {
                     self.outputs = Some(result);
                     self.patch_preview = None;
-                    self.current_view = View::Assembly;
                     self.assembly_cursor = 0;
                     self.ir_cursor = 0;
                     self.ast_cursor = 0;
+                    self.set_view(View::Assembly);
                     self.reload_editor_from_current_target();
                     self.set_status("Decompile completed");
                 }
@@ -215,7 +223,7 @@ impl App {
                 Ok(json) => {
                     self.patch_preview = Some(json);
                     self.patch_scroll = 0;
-                    self.current_view = View::Patch;
+                    self.set_view(View::Patch);
                     self.set_status("Patch exported");
                 }
                 Err(error) => self.set_status(error),
@@ -287,7 +295,7 @@ impl App {
             }
             PromptKind::EditLine(target) => {
                 self.load_editor_with_text(target, value);
-                self.current_view = View::Editor;
+                self.set_view(View::Editor);
             }
             PromptKind::AddScriptPath => self.add_script_preset(value),
             PromptKind::LoadBufferPath => self.load_buffer_from_path(value),
@@ -310,6 +318,7 @@ impl App {
         }
 
         self.last_decompile_selection = start_addresses.clone();
+        self.patch_preview = None;
         self.send_request(
             WorkerRequest::DecompileSections(DecompileRequest {
                 start_addresses,
@@ -369,7 +378,7 @@ impl App {
         self.editor_target = Some(result.selected_target);
         self.sync_output_cursor(result.selected_target);
         self.reload_editor(result.selected_target);
-        self.current_view = View::Editor;
+        self.set_view(View::Editor);
         self.set_status("Edit applied");
     }
 
@@ -382,13 +391,13 @@ impl App {
                 .iter_mut()
                 .find(|section| section.data.start_address == data.start_address)
             {
-                existing.data = data.clone();
-                if select_new {
-                    existing.selected = true;
-                }
+                let keep_selected = existing.selected;
+                existing.data = data;
+                existing.selected = (keep_selected || select_new) && existing.data.analyzed;
             } else {
+                let analyzed = data.analyzed;
                 self.known_sections.push(KnownSection {
-                    selected: select_new,
+                    selected: select_new && analyzed,
                     data,
                 });
             }
@@ -409,12 +418,34 @@ impl App {
     }
 
     pub(crate) fn toggle_section(&mut self, index: usize) {
-        if let Some(section) = self.known_sections.get_mut(index) {
-            section.selected = !section.selected;
+        let pending_section = match self.known_sections.get_mut(index) {
+            Some(section) if !section.data.analyzed => {
+                section.selected = false;
+                true
+            }
+            Some(section) => {
+                section.selected = !section.selected;
+                false
+            }
+            None => return,
+        };
+
+        if pending_section {
+            self.set_status("Analyze the section before selecting it");
         }
     }
 
     pub(crate) fn toggle_all_sections(&mut self) {
+        let analyzed_count = self
+            .known_sections
+            .iter()
+            .filter(|section| section.data.analyzed)
+            .count();
+        if analyzed_count == 0 {
+            self.set_status("No analyzed sections are available yet");
+            return;
+        }
+
         let all_selected = self
             .known_sections
             .iter()
@@ -465,7 +496,7 @@ impl App {
             return;
         };
         self.reload_editor(target);
-        self.current_view = View::Editor;
+        self.set_view(View::Editor);
     }
 
     pub(crate) fn edit_current_row(&mut self, layer: EditorLayer) {
@@ -516,14 +547,15 @@ impl App {
     }
 
     pub(crate) fn reload_editor(&mut self, target: EditorTarget) {
-        self.editor_target = Some(target);
-        self.editor_draft = self.row_text(target).map(|text| {
+        let draft = self.row_text(target).map(|text| {
             draft_from_text(
                 target.layer,
                 &text,
                 self.current_edit_position(target.layer),
             )
         });
+        self.editor_target = draft.as_ref().map(|_| target);
+        self.editor_draft = draft;
     }
 
     fn load_editor_with_text(&mut self, target: EditorTarget, text: String) {
@@ -557,10 +589,7 @@ impl App {
     fn row_text(&self, target: EditorTarget) -> Option<String> {
         let outputs = self.outputs.as_ref()?;
         match target.layer {
-            EditorLayer::Assembly => outputs
-                .assembly
-                .get(target.row)
-                .map(|row| format!("{:#010x} {}", row.parents_start_address, row.data)),
+            EditorLayer::Assembly => outputs.assembly.get(target.row).map(|row| row.data.clone()),
             EditorLayer::Ir => outputs.ir.get(target.row).map(|row| row.data.clone()),
             EditorLayer::Ast => outputs.ast.get(target.row).map(|row| row.data.clone()),
         }
@@ -572,6 +601,11 @@ impl App {
             EditorLayer::Ir => self.ir_cursor = target.row,
             EditorLayer::Ast => self.ast_cursor = target.row,
         }
+    }
+
+    pub(crate) fn set_view(&mut self, view: View) {
+        self.current_view = view;
+        self.update_hover();
     }
 
     // -- Hover tracking --
@@ -709,6 +743,7 @@ impl App {
         if self.last_decompile_selection.is_empty() || self.busy_label.is_some() {
             return;
         }
+        self.patch_preview = None;
         self.send_request(
             WorkerRequest::DecompileSections(DecompileRequest {
                 start_addresses: self.last_decompile_selection.clone(),

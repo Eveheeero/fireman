@@ -200,16 +200,22 @@ impl FirebatState {
     }
 
     fn merge_known_sections(&mut self, sections: Vec<KnownSectionData>) {
-        self.known_sections.retain(|section| {
-            !sections
-                .iter()
-                .any(|new_section| new_section.start_address == section.data.start_address)
-        });
-        self.known_sections
-            .extend(sections.into_iter().map(|section| KnownSection {
-                selected: false,
-                data: section,
-            }));
+        for section in sections {
+            if let Some(existing) = self
+                .known_sections
+                .iter_mut()
+                .find(|known| known.data.start_address == section.start_address)
+            {
+                let keep_selected = existing.selected;
+                existing.data = section;
+                existing.selected = keep_selected && existing.data.analyzed;
+            } else {
+                self.known_sections.push(KnownSection {
+                    selected: false,
+                    data: section,
+                });
+            }
+        }
         self.known_sections
             .sort_by_key(|section| section.data.start_address);
     }
@@ -262,6 +268,10 @@ impl FirebatState {
             .iter()
             .filter(|section| section.data.analyzed)
             .collect::<Vec<_>>();
+        if analyzed_sections.is_empty() {
+            self.log("No analyzed sections available to select");
+            return;
+        }
         let all_selected = analyzed_sections.iter().all(|section| section.selected);
         for section in &mut self.known_sections {
             if section.data.analyzed {
@@ -271,15 +281,23 @@ impl FirebatState {
     }
 
     pub(super) fn decompile_selected(&mut self) {
+        let has_pending_selection = self
+            .known_sections
+            .iter()
+            .any(|section| section.selected && !section.data.analyzed);
         let selected = self
             .known_sections
             .iter()
-            .filter(|section| section.selected)
+            .filter(|section| section.selected && section.data.analyzed)
             .map(|section| section.data.start_address)
             .collect::<Vec<_>>();
 
         if selected.is_empty() {
-            self.log("No sections selected for decompilation");
+            if has_pending_selection {
+                self.log("Selected sections are not analyzed yet; analyze them before decompiling");
+            } else {
+                self.log("No analyzed sections selected for decompilation");
+            }
             return;
         }
 
@@ -524,6 +542,8 @@ impl FirebatState {
     fn set_decompile_result(&mut self, result: DecompileResult) {
         self.decompile_result = Some(build_decompile_view(result));
         self.exported_patch_json = None;
+        self.hovered_assembly_index = None;
+        self.hover_candidate = None;
         let Some(target) = self.editor_target else {
             self.editor_draft = None;
             return;
