@@ -34,8 +34,15 @@ impl MachO {
                 .inner
                 .bytes
                 .as_ref()
-                .expect("Assembly parsing result always includes byte data")
-                .len();
+                .map(|b| b.len())
+                .unwrap_or(0);
+
+            if instruction_size == 0 {
+                warn!(
+                    "Instruction has no bytes (synthetic instruction): {}",
+                    instruction
+                );
+            }
 
             /* IR generation */
             let statements = crate::arch::create_ir_statement(self.architecture(), &instruction);
@@ -69,12 +76,15 @@ impl MachO {
         // Determine accessed memory areas and specify types according to used instructions
         ir_block.analyze_datatypes();
         // Set block internal variables
-        ir_block.analyze_variables().unwrap();
+        ir_block.analyze_variables().map_err(|e| {
+            error!(?e, "Variable analysis failed");
+            DecompileError::from(e)
+        })?;
         // Check analysis results
-        let validate_result = ir_block.validate();
-        if let Err(e) = validate_result {
+        ir_block.validate().map_err(|e| {
             error!(?e, "IR analyzed data is invalid");
-        }
+            DecompileError::from(e)
+        })?;
         // Save analysis results in the block
         block.set_ir(ir_block);
 

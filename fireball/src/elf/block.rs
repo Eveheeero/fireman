@@ -39,7 +39,14 @@ impl Elf {
             trace!("- {}", inst);
             instructions.push(inst);
             let inst = &instructions.last().unwrap().inner;
-            let inst_len = inst.bytes.as_ref().unwrap().len() as u64;
+            let inst_len = inst.bytes.as_ref().map(|b| b.len() as u64).unwrap_or(0);
+            if inst_len == 0 {
+                warn!(
+                    "Instruction has no bytes (synthetic instruction): {:#x}",
+                    address.get_virtual_address()
+                );
+                break;
+            }
             if let Err(e) = inst.statement {
                 warn!(
                     "Instruction converting failed: {:#x} {:?}; continue block scan",
@@ -49,9 +56,6 @@ impl Elf {
                 // If this looks like an unparsed control-flow instruction, stop safely.
                 if Self::control_flow_relation_type(inst).is_some() {
                     last_instruction_address = Some(address);
-                    break;
-                }
-                if inst_len == 0 {
                     break;
                 }
                 address += inst_len;
@@ -251,6 +255,8 @@ impl Elf {
                 operator_index - 1,
                 iceball::RelativeAddressingArgument::Constant(arg1 * arg2),
             );
+            // Remove the three original elements: left operand, operator, right operand
+            args.remove(operator_index);
             args.remove(operator_index);
             args.remove(operator_index);
         }

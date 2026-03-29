@@ -24,8 +24,22 @@ impl Elf {
             return Err(DisassembleError::TriedToParseOutsideOfSection);
         };
         let virtual_offset = offset.get_virtual_address();
+        // Check bounds to prevent slice overflow
+        let end = file_offset
+            .checked_add(size)
+            .and_then(|e| e.try_into().ok())
+            .filter(|&e: &u64| e <= self.binary.len() as u64);
+        let Some(end) = end else {
+            error!(
+                file_offset,
+                size,
+                binary_len = self.binary.len(),
+                "Slice bounds check failed: file_offset + size exceeds binary length"
+            );
+            return Err(DisassembleError::TriedToParseOutsideOfSection);
+        };
         let insns = match self.capstone.disasm_all(
-            &self.binary[file_offset as usize..(file_offset + size) as usize],
+            &self.binary[file_offset as usize..end as usize],
             virtual_offset as u64,
         ) {
             Ok(insts) => insts,

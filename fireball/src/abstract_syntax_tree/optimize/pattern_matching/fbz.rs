@@ -33,6 +33,9 @@ pub struct FbzFunction {
     pub symbols: Vec<FbzSymbol>,
     pub ast_text: Option<String>,
     pub stmt_count: usize,
+    /// Marker to distinguish true legacy wrapper files from valid v3 files
+    /// that happen to have empty fields.
+    pub is_legacy_wrapper: bool,
 }
 
 #[derive(Debug, Clone, Encode, Decode)]
@@ -94,6 +97,7 @@ pub(super) fn encode_source(source: &str) -> Result<Vec<u8>, String> {
         symbols: Vec::new(),
         ast_text: Some(source.to_string()),
         stmt_count: 0,
+        is_legacy_wrapper: true,
     }];
     encode_functions(functions)
 }
@@ -120,14 +124,8 @@ pub(super) fn decode_source(bytes: &[u8]) -> Result<String, String> {
     // Check if this is a legacy source-text wrapper (single function with only ast_text)
     if payload.functions.len() == 1 {
         let f = &payload.functions[0];
-        if f.name.is_empty()
-            && f.asm_seeds.is_empty()
-            && f.ir_seeds.is_empty()
-            && f.parameters.is_empty()
-        {
-            if let Some(source) = &f.ast_text {
-                return Ok(source.clone());
-            }
+        if f.is_legacy_wrapper && f.ast_text.is_some() {
+            return Ok(f.ast_text.clone().unwrap());
         }
     }
 
@@ -328,11 +326,24 @@ fn build_info_json(
 }
 
 fn escape_json(s: &str) -> String {
-    s.replace('\\', "\\\\")
-        .replace('"', "\\\"")
-        .replace('\n', "\\n")
-        .replace('\r', "\\r")
-        .replace('\t', "\\t")
+    let mut result = String::with_capacity(s.len());
+    for ch in s.chars() {
+        match ch {
+            '\\' => result.push_str("\\\\"),
+            '"' => result.push_str("\\\""),
+            '\n' => result.push_str("\\n"),
+            '\r' => result.push_str("\\r"),
+            '\t' => result.push_str("\\t"),
+            '\u{08}' => result.push_str("\\b"), // backspace
+            '\u{0C}' => result.push_str("\\f"), // form feed
+            c if c <= '\u{001F}' => {
+                // Other control characters: emit \u00XX hex escape
+                result.push_str(&format!("\\u{:04x}", c as u32));
+            }
+            c => result.push(c),
+        }
+    }
+    result
 }
 
 pub(super) fn read_source_from_path(path: &str) -> Result<String, String> {

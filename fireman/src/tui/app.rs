@@ -849,13 +849,5 @@ fn draft_from_text(layer: EditorLayer, text: &str, position: EditPosition) -> Ed
 }
 
 fn format_timestamp() -> String {
-    let now = SystemTime::now();
-    let duration = now
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap_or_default();
-    let total_secs = duration.as_secs();
-    let hours = (total_secs / 3600) % 24;
-    let minutes = (total_secs / 60) % 60;
-    let seconds = total_secs % 60;
-    format!("{hours:02}:{minutes:02}:{seconds:02}")
+    chrono::Local::now().format("%H:%M:%S").to_string()
 }

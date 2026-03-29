@@ -4,9 +4,14 @@ use std::{fs, path::PathBuf};
 
 pub(crate) fn optimization_store_path() -> Result<PathBuf, String> {
     if let Ok(config_home) = std::env::var("XDG_CONFIG_HOME") {
-        return Ok(PathBuf::from(config_home).join("firebat/settings.json"));
+        if !config_home.is_empty() {
+            return Ok(PathBuf::from(config_home).join("firebat/settings.json"));
+        }
     }
     let home = std::env::var("HOME").map_err(|error| error.to_string())?;
+    if home.is_empty() {
+        return Err("HOME environment variable is empty".to_string());
+    }
     Ok(PathBuf::from(home).join(".config/firebat/settings.json"))
 }
 

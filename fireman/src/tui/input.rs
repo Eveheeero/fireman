@@ -9,7 +9,7 @@ use crate::{
     model::{EditorLayer, OptimizationSettings},
     worker::WorkerRequest,
 };
-use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 impl App {
     pub(crate) fn handle_event(&mut self, event: Event) {

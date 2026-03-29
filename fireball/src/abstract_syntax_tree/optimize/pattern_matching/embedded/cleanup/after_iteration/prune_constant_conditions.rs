@@ -24,22 +24,28 @@ pub(crate) fn prune_constant_conditions(
 ) -> Result<(), DecompileError> {
     let mut body;
     {
-        let mut functions = ast.functions.write().unwrap();
+        let mut functions = ast
+            .functions
+            .write()
+            .map_err(|_| DecompileError::LockPoisoned("ast.functions.write()".to_string()))?;
         let function = functions
             .get_mut(&function_id)
             .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+            .ok_or_else(|| DecompileError::FunctionNotFound(function_id, function_version))?;
         body = std::mem::take(&mut function.body);
     }
 
     prune_constant_condition_branches(&mut body);
 
     {
-        let mut functions = ast.functions.write().unwrap();
+        let mut functions = ast
+            .functions
+            .write()
+            .map_err(|_| DecompileError::LockPoisoned("ast.functions.write()".to_string()))?;
         let function = functions
             .get_mut(&function_id)
             .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+            .ok_or_else(|| DecompileError::FunctionNotFound(function_id, function_version))?;
         function.body = body;
         function
             .processed_optimizations
@@ -97,5 +103,174 @@ pub(crate) fn prune_constant_condition_branches(stmts: &mut Vec<WrappedAstStatem
             }
             _ => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::abstract_syntax_tree::{
+        AstExpression, AstFunctionId, AstLiteral, AstStatement,
+        optimize::pattern_matching::embedded::test_utils::test_utils::*,
+    };
+
+    #[test]
+    fn test_prune_constant_condition_if_false_removed() {
+        // Test: if(0) { x = 1 } should be removed entirely
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let if_stmt = AstStatement::If(
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(0))),
+            vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), x)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            ))],
+            None,
+        );
+
+        let body = vec![wrap_statement(if_stmt)];
+        let printed = run_direct_embedded_pass(body, |ast, fid, version| {
+            prune_constant_conditions(ast, fid, version)
+        });
+
+        assert!(
+            !printed.contains("x = 1"),
+            "if(0) branch should be removed, but assignment still present:\n{}",
+            printed
+        );
+        // Empty statement results in function with no body statements
+        assert!(
+            printed.trim() == "int test_fn() {\n}" || !printed.contains("if"),
+            "if(0) should be replaced with Empty (empty body), got:\n{}",
+            printed
+        );
+    }
+
+    #[test]
+    fn test_prune_constant_condition_if_true_inlined() {
+        // Test: if(1) { x = 2 } should be inlined to just x = 2
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let if_stmt = AstStatement::If(
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), x)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+            ))],
+            None,
+        );
+
+        let body = vec![wrap_statement(if_stmt)];
+        let printed = run_direct_embedded_pass(body, |ast, fid, version| {
+            prune_constant_conditions(ast, fid, version)
+        });
+
+        assert!(
+            printed.contains("x = 2"),
+            "if(1) body should be inlined, but assignment not found:\n{}",
+            printed
+        );
+    }
+
+    #[test]
+    fn test_prune_constant_condition_if_false_else_kept() {
+        // Test: if(0) { x = 1 } else { x = 3 } should become x = 3
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let if_stmt = AstStatement::If(
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(0))),
+            vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), x)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            ))],
+            Some(vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), x)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(3))),
+            ))]),
+        );
+
+        let body = vec![wrap_statement(if_stmt)];
+        let printed = run_direct_embedded_pass(body, |ast, fid, version| {
+            prune_constant_conditions(ast, fid, version)
+        });
+
+        assert!(
+            !printed.contains("x = 1"),
+            "if(0) then-branch should be removed:\n{}",
+            printed
+        );
+        assert!(
+            printed.contains("x = 3"),
+            "if(0) else-branch should be kept:\n{}",
+            printed
+        );
+    }
+
+    #[test]
+    fn test_prune_constant_condition_nested() {
+        // Test: if(1) { if(0) { x = 1 } } - outer kept, inner removed
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let inner_if = AstStatement::If(
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(0))),
+            vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), x)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            ))],
+            None,
+        );
+
+        let outer_if = AstStatement::If(
+            wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            vec![wrap_statement(inner_if)],
+            None,
+        );
+
+        let body = vec![wrap_statement(outer_if)];
+        let printed = run_direct_embedded_pass(body, |ast, fid, version| {
+            prune_constant_conditions(ast, fid, version)
+        });
+
+        assert!(
+            !printed.contains("x = 1"),
+            "Nested if(0) branch should be removed:\n{}",
+            printed
+        );
+    }
+
+    #[test]
+    fn test_prune_constant_condition_with_boolean() {
+        // Test: if(false) { x = 1 } should be removed
+        let fid = AstFunctionId { address: 0x9000 };
+        let (ids, vm) = make_var_map(fid, &["x"]);
+        let x = ids[0];
+
+        let if_stmt = AstStatement::If(
+            wrap_expression(AstExpression::Literal(AstLiteral::Bool(false))),
+            vec![wrap_statement(AstStatement::Assignment(
+                wrap_expression(AstExpression::Variable(vm.clone(), x)),
+                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            ))],
+            None,
+        );
+
+        let body = vec![wrap_statement(if_stmt)];
+        let printed = run_direct_embedded_pass(body, |ast, fid, version| {
+            prune_constant_conditions(ast, fid, version)
+        });
+
+        assert!(
+            !printed.contains("x = 1"),
+            "if(false) branch should be removed:\n{}",
+            printed
+        );
     }
 }

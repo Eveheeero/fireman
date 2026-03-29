@@ -251,6 +251,8 @@ impl MachO {
                 operator_index - 1,
                 iceball::RelativeAddressingArgument::Constant(arg1 * arg2),
             );
+            // Remove the three original elements: left operand, operator, right operand
+            args.remove(operator_index);
             args.remove(operator_index);
             args.remove(operator_index);
         }
