@@ -81,10 +81,6 @@ pub(super) fn load_pattern_source_from_fb_gz_bytes(bytes: &[u8]) -> Result<Strin
     fb_gz::decode_source(bytes)
 }
 
-pub(super) fn encode_pattern_source_to_fbz_bytes(source: &str) -> Result<Vec<u8>, String> {
-    fbz::encode_source(source)
-}
-
 pub(super) fn encode_pattern_functions_to_fbz_bytes(
     functions: Vec<fbz::FbzFunction>,
 ) -> Result<Vec<u8>, String> {
@@ -93,13 +89,6 @@ pub(super) fn encode_pattern_functions_to_fbz_bytes(
 
 pub(super) fn encode_pattern_source_to_fb_gz_bytes(source: &str) -> Result<Vec<u8>, String> {
     fb_gz::encode_source(source)
-}
-
-pub(super) fn write_pattern_source_to_fbz_file(
-    path: &std::path::Path,
-    source: &str,
-) -> Result<(), String> {
-    fbz::write_source_to_path(path, source)
 }
 
 pub(super) fn write_pattern_source_to_fb_gz_file(

@@ -8,7 +8,7 @@ use std::{
 };
 
 const FBZ_MAGIC: &str = "fbz";
-const FBZ_VERSION: u32 = 3;
+const FBZ_VERSION: u32 = 1;
 
 #[derive(Debug, Encode, Decode)]
 struct FbzPayload {
@@ -33,9 +33,6 @@ pub struct FbzFunction {
     pub symbols: Vec<FbzSymbol>,
     pub ast_text: Option<String>,
     pub stmt_count: usize,
-    /// Marker to distinguish true legacy wrapper files from valid v3 files
-    /// that happen to have empty fields.
-    pub is_legacy_wrapper: bool,
 }
 
 #[derive(Debug, Clone, Encode, Decode)]
@@ -79,29 +76,6 @@ pub fn encode_functions(functions: Vec<FbzFunction>) -> Result<Vec<u8>, String> 
         .map_err(|err| format!("failed to finish .fbz payload: {err}"))
 }
 
-/// Legacy: encode source text by wrapping it as a single function with ast_text.
-/// Kept for backward compatibility with tests that encode raw source.
-pub(super) fn encode_source(source: &str) -> Result<Vec<u8>, String> {
-    // For source-text encoding, store as a single pseudo-function with the source as ast_text.
-    // This preserves the existing API but uses the v3 payload structure.
-    let functions = vec![FbzFunction {
-        name: String::new(),
-        default_name: String::new(),
-        entry_va: 0,
-        file_offset: None,
-        return_type: None,
-        asm_seeds: Vec::new(),
-        ir_seeds: Vec::new(),
-        parameters: Vec::new(),
-        variables: Vec::new(),
-        symbols: Vec::new(),
-        ast_text: Some(source.to_string()),
-        stmt_count: 0,
-        is_legacy_wrapper: true,
-    }];
-    encode_functions(functions)
-}
-
 /// Decode .fbz bytes → reconstructed .fb source text.
 pub(super) fn decode_source(bytes: &[u8]) -> Result<String, String> {
     let mut decoder = GzDecoder::new(bytes);
@@ -119,14 +93,6 @@ pub(super) fn decode_source(bytes: &[u8]) -> Result<String, String> {
             "unsupported .fbz version `{}` (expected `{FBZ_VERSION}`)",
             payload.version
         ));
-    }
-
-    // Check if this is a legacy source-text wrapper (single function with only ast_text)
-    if payload.functions.len() == 1 {
-        let f = &payload.functions[0];
-        if f.is_legacy_wrapper && f.ast_text.is_some() {
-            return Ok(f.ast_text.clone().unwrap());
-        }
     }
 
     // Reconstruct .fb source from structured data
@@ -357,14 +323,6 @@ pub(super) fn read_source_from_path(path: &str) -> Result<String, String> {
     }
 }
 
-pub(super) fn write_source_to_path(path: &Path, source: &str) -> Result<(), String> {
-    let path_str = path.to_string_lossy();
-    if !is_fbz_path(&path_str) {
-        return Err(format!(
-            "expected an `.fbz` output path, got `{}`",
-            path.display()
-        ));
-    }
-    let bytes = encode_source(source)?;
-    fs::write(path, bytes).map_err(|err| format!("failed to write {}: {err}", path.display()))
+pub(super) fn write_source_to_path(_path: &Path, _source: &str) -> Result<(), String> {
+    Err("Direct source text encoding to .fbz is no longer supported. Use structured function data instead.".to_string())
 }
