@@ -18,7 +18,7 @@ use std::{
     collections::VecDeque,
     fs, io,
     path::{Path, PathBuf},
-    time::{Duration, SystemTime},
+    time::Duration,
 };
 
 pub(crate) struct App {
@@ -276,6 +276,12 @@ impl App {
     }
 
     pub(crate) fn submit_prompt(&mut self) {
+        // Check if worker is busy before consuming the prompt
+        if self.busy_label.is_some() {
+            self.set_status("Background worker is busy");
+            return;
+        }
+
         let Some(prompt) = self.prompt.take() else {
             return;
         };
@@ -284,14 +290,31 @@ impl App {
             PromptKind::OpenFile => {
                 if value.trim().is_empty() {
                     self.set_status("Binary path is required");
-                } else {
-                    self.pending_open_path = Some(value.clone());
-                    self.send_request(WorkerRequest::OpenFile(value), "opening binary");
+                    return;
+                }
+                // Send request first, then commit state on success
+                match self.worker.send(WorkerRequest::OpenFile(value.clone())) {
+                    Ok(()) => {
+                        self.pending_open_path = Some(value);
+                        self.busy_label = Some("opening binary".to_string());
+                        self.set_status("Started opening binary");
+                    }
+                    Err(error) => self.set_status(error),
                 }
             }
             PromptKind::AnalyzeAddress => {
-                self.pending_analysis_address = Some(value.clone());
-                self.send_request(WorkerRequest::AnalyzeSection(value), "analyzing section");
+                // Send request first, then commit state on success
+                match self
+                    .worker
+                    .send(WorkerRequest::AnalyzeSection(value.clone()))
+                {
+                    Ok(()) => {
+                        self.pending_analysis_address = Some(value);
+                        self.busy_label = Some("analyzing section".to_string());
+                        self.set_status("Started analyzing section");
+                    }
+                    Err(error) => self.set_status(error),
+                }
             }
             PromptKind::EditLine(target) => {
                 self.load_editor_with_text(target, value);

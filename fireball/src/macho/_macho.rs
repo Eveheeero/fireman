@@ -31,19 +31,32 @@ impl MachO {
             match mach {
                 goblin::mach::Mach::Binary(ref macho) => extract_macho_info(macho),
                 goblin::mach::Mach::Fat(ref multi) => {
-                    // For fat binaries, extract the first architecture's slice
-                    // and recursively parse it.
+                    // For fat binaries, iterate through all architecture slices
+                    // and try to parse each one until we find a valid one.
                     let arches = multi.arches().map_err(|e| {
                         FireballError::MachOParsingFailed(format!("Failed to read fat arches: {e}"))
                     })?;
-                    if let Some(arch_entry) = arches.first() {
+
+                    // Try each slice in order until one succeeds
+                    for arch_entry in arches {
                         let offset = arch_entry.offset as usize;
                         let size = arch_entry.size as usize;
                         if offset + size <= binary.len() {
                             let slice = binary[offset..offset + size].to_vec();
-                            return MachO::new(path, slice);
+                            // Try to parse this slice
+                            match goblin::mach::MachO::parse(&slice, 0) {
+                                Ok(_) => {
+                                    // This slice is valid, recursively parse it
+                                    return MachO::new(path, slice);
+                                }
+                                Err(_) => {
+                                    // This slice is invalid, try the next one
+                                    continue;
+                                }
+                            }
                         }
                     }
+
                     return Err(FireballError::MachOParsingFailed(
                         "Fat binary contains no usable Mach-O architectures".to_string(),
                     ));

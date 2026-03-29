@@ -14,6 +14,8 @@ pub enum DecompileError {
         crate::abstract_syntax_tree::AstFunctionId,
         crate::abstract_syntax_tree::AstFunctionVersion,
     ),
+    /// IR analysis assertion failure.
+    IrAnalyzeAssertionFailure(super::ir_analyze_assertion_error::IrAnalyzeAssertionFailure),
 }
 
 impl Default for DecompileError {
@@ -43,6 +45,9 @@ impl std::fmt::Display for DecompileError {
             Self::LockPoisoned(context) => write!(f, "Lock poisoned: {}", context),
             Self::FunctionNotFound(id, version) => {
                 write!(f, "Function not found: id={:?}, version={:?}", id, version)
+            }
+            Self::IrAnalyzeAssertionFailure(err) => {
+                write!(f, "IR analysis assertion failed: {:?}", err)
             }
         }
     }
@@ -80,6 +85,6 @@ impl From<super::disassemble_error::DisassembleError> for DecompileError {
 
 impl From<super::ir_analyze_assertion_error::IrAnalyzeAssertionFailure> for DecompileError {
     fn from(err: super::ir_analyze_assertion_error::IrAnalyzeAssertionFailure) -> Self {
-        Self::Unknown(Some(format!("IR analysis assertion failed: {:?}", err)))
+        Self::IrAnalyzeAssertionFailure(err)
     }
 }

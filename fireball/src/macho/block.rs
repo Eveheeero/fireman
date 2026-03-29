@@ -39,23 +39,20 @@ impl MachO {
             trace!("- {}", inst);
             instructions.push(inst);
             let inst = &instructions.last().unwrap().inner;
-            let inst_len = inst.bytes.as_ref().unwrap().len() as u64;
-            if let Err(e) = inst.statement {
+            let inst_len = inst.bytes.as_ref().map(|b| b.len() as u64).unwrap_or(0);
+
+            // Handle synthetic instructions (no bytes) safely
+            if inst_len == 0 {
                 warn!(
-                    "Instruction converting failed: {:#x} {:?}; continue block scan",
-                    address.get_virtual_address(),
-                    e
+                    "Instruction has no bytes (synthetic instruction): {:#x}",
+                    address.get_virtual_address()
                 );
                 // If this looks like an unparsed control-flow instruction, stop safely.
                 if Self::control_flow_relation_type(inst).is_some() {
                     last_instruction_address = Some(address);
                     break;
                 }
-                if inst_len == 0 {
-                    break;
-                }
-                address += inst_len;
-                continue;
+                break;
             }
             if Self::control_flow_relation_type(inst).is_some() {
                 last_instruction_address = Some(address);
@@ -115,6 +112,16 @@ impl MachO {
     ) -> BlockRelationInformation {
         let relation_type =
             Self::control_flow_relation_type(inst).unwrap_or_else(|| unreachable!("{:?}", inst));
+
+        // Return instructions should never have their operands interpreted as static destinations
+        if matches!(relation_type, RelationType::Return) {
+            return BlockRelationInformation {
+                destination: None,
+                destination_type: DestinationType::Dynamic,
+                relation_type,
+            };
+        }
+
         if inst.arguments.len() != 1 {
             return BlockRelationInformation {
                 destination: None,
@@ -130,10 +137,27 @@ impl MachO {
                 relation_type,
             },
             iceball::Argument::Memory(iceball::Memory::AbsoluteAddressing(offset)) => {
-                BlockRelationInformation {
-                    destination: Some(Address::from_virtual_address(&self.sections, *offset)),
-                    destination_type: DestinationType::Static,
-                    relation_type,
+                let slot_addr = Address::from_virtual_address(&self.sections, *offset);
+                if let Some(target) = self.read_u64_at_address(&slot_addr) {
+                    let target_addr = Address::from_virtual_address(&self.sections, target);
+                    if !self.is_likely_code_address(&target_addr) {
+                        return BlockRelationInformation {
+                            destination: None,
+                            destination_type: DestinationType::Dynamic,
+                            relation_type,
+                        };
+                    }
+                    BlockRelationInformation {
+                        destination: Some(target_addr),
+                        destination_type: DestinationType::Static,
+                        relation_type,
+                    }
+                } else {
+                    BlockRelationInformation {
+                        destination: None,
+                        destination_type: DestinationType::Dynamic,
+                        relation_type,
+                    }
                 }
             }
             iceball::Argument::Memory(iceball::Memory::RelativeAddressing(args)) => {

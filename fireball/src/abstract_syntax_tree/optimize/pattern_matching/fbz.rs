@@ -168,6 +168,14 @@ fn reconstruct_function_rules(out: &mut String, func: &FbzFunction) -> Result<()
 
     // Phase 3: afterOptimization (full metadata)
     {
+        // Skip if no seeds and no statements (symbol/PDB-only record)
+        if func.asm_seeds.is_empty() && func.ir_seeds.is_empty() && func.stmt_count == 0 {
+            return Err(format!(
+                "Function {} has no seeds and no statement count - cannot create DSL rule",
+                func.name
+            ));
+        }
+
         let mut rule = String::new();
         let _ = writeln!(rule, "if:");
         let _ = writeln!(rule, "  at afterOptimization");
@@ -266,7 +274,7 @@ fn build_info_json(
             if let Some(cv) = &v.const_value {
                 json.push_str(&format!(",\"const_value\":\"{}\"", escape_json(cv)));
             }
-            json.push_str("}}");
+            json.push_str("}");
         }
         json.push(']');
     }

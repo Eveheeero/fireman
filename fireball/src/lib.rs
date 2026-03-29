@@ -88,6 +88,7 @@ impl Fireball {
             goblin::Object::PE(_) => Ok(Fireball::Pe(pe::Pe::new(path, binary)?)),
             goblin::Object::Elf(_) => Ok(Fireball::Elf(elf::Elf::new(path, binary)?)),
             goblin::Object::Mach(_) => Ok(Fireball::MachO(macho::MachO::new(path, binary)?)),
+            goblin::Object::COFF(_) => Ok(Fireball::Pe(pe::Pe::new(path, binary)?)),
             _ => {
                 // Check for standalone PDB (MSF 7.00 magic)
                 if binary.starts_with(b"Microsoft C/C++ MSF 7.00\r\n") {
