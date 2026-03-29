@@ -12,7 +12,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstStatement, AstValueOrigin, ProcessedOptimization, Wrapped,
+        AstLiteral, AstStatement, AstUnaryOperator, AstValueOrigin, ProcessedOptimization, Wrapped,
         WrappedAstStatement,
     },
     prelude::DecompileError,
@@ -232,6 +232,19 @@ fn recognize_in_expression(expr: &mut Wrapped<AstExpression>) {
         if let Some(replacement) = try_reverse_strength_reduction(node) {
             *node = replacement;
         }
+
+        // Additional pattern recognitions that have .fb pattern equivalents
+        if let Some(replacement) = try_recognize_abs(node) {
+            *node = replacement;
+        }
+
+        if let Some(replacement) = try_recognize_bitfield_extraction(node) {
+            *node = replacement;
+        }
+
+        if let Some(replacement) = try_recognize_sign_bit_extract(node) {
+            *node = replacement;
+        }
     }
 }
 /// Reverse strength reduction: convert shift+add/sub back to multiplication.
@@ -427,6 +440,124 @@ pub(crate) fn to_literal_u64(v: u64) -> AstLiteral {
     } else {
         AstLiteral::UInt(v)
     }
+}
+
+/// Absolute value recovery: (x < 0) ? -x : x → abs(x).
+/// Matches the abs-recovery.fb pattern.
+pub(crate) fn try_recognize_abs(expr: &Wrapped<AstExpression>) -> Option<Wrapped<AstExpression>> {
+    use crate::abstract_syntax_tree::optimize::opt_utils::expr_structurally_equal;
+
+    let AstExpression::Ternary(cond, true_branch, false_branch) = &expr.item else {
+        return None;
+    };
+
+    // Check condition: x < 0
+    let (lt_left, lt_right) = match &cond.item {
+        AstExpression::BinaryOp(AstBinaryOperator::Less, left, right) => (left, right),
+        _ => return None,
+    };
+
+    // Right side should be literal 0
+    if !matches!(&lt_right.item, AstExpression::Literal(AstLiteral::Int(0))) {
+        return None;
+    }
+
+    // Check true branch: -x (Negate)
+    let negated = match &true_branch.item {
+        AstExpression::UnaryOp(AstUnaryOperator::Negate, arg) => arg,
+        _ => return None,
+    };
+
+    // Check that x, -x, and the else branch all reference the same variable
+    if expr_structurally_equal(&lt_left.item, &negated.item)
+        && expr_structurally_equal(&lt_left.item, &false_branch.item)
+    {
+        let x_arg = Wrapped {
+            item: lt_left.item.clone(),
+            origin: lt_left.origin.clone(),
+            comment: None,
+        };
+        let call = AstCall::Unknown("abs".into(), vec![x_arg]);
+        return Some(Wrapped {
+            item: AstExpression::Call(call),
+            origin: expr.origin.clone(),
+            comment: expr.comment.clone(),
+        });
+    }
+
+    None
+}
+
+/// Bitfield extraction: (x >> n) & mask → BITFIELD_GET(x, n, mask).
+/// Matches the bitfield-extraction.fb pattern.
+pub(crate) fn try_recognize_bitfield_extraction(
+    expr: &Wrapped<AstExpression>,
+) -> Option<Wrapped<AstExpression>> {
+    let AstExpression::BinaryOp(AstBinaryOperator::BitAnd, left, mask) = &expr.item else {
+        return None;
+    };
+
+    // Check left side: x >> n
+    let (x, n) = match &left.item {
+        AstExpression::BinaryOp(AstBinaryOperator::RightShift, x, n) => (x, n),
+        _ => return None,
+    };
+
+    // Build BITFIELD_GET(x, n, mask) call
+    let x_arg = Wrapped {
+        item: x.item.clone(),
+        origin: x.origin.clone(),
+        comment: None,
+    };
+    let n_arg = Wrapped {
+        item: n.item.clone(),
+        origin: n.origin.clone(),
+        comment: None,
+    };
+    let mask_arg = Wrapped {
+        item: mask.item.clone(),
+        origin: mask.origin.clone(),
+        comment: None,
+    };
+
+    let call = AstCall::Unknown("BITFIELD_GET".into(), vec![x_arg, n_arg, mask_arg]);
+    Some(Wrapped {
+        item: AstExpression::Call(call),
+        origin: expr.origin.clone(),
+        comment: expr.comment.clone(),
+    })
+}
+
+/// Sign bit extraction: (x >> sign_bit_pos) & 1 → sign_bit(x).
+/// Matches common patterns from sign-bit-extract.fb.
+pub(crate) fn try_recognize_sign_bit_extract(
+    expr: &Wrapped<AstExpression>,
+) -> Option<Wrapped<AstExpression>> {
+    let AstExpression::BinaryOp(AstBinaryOperator::BitAnd, left, right) = &expr.item else {
+        return None;
+    };
+
+    // Right side should be literal 1
+    if !matches!(&right.item, AstExpression::Literal(AstLiteral::Int(1))) {
+        return None;
+    }
+
+    // Check left side: x >> (bit_width - 1) - common for sign bit extraction
+    if let AstExpression::BinaryOp(AstBinaryOperator::RightShift, x, _shift) = &left.item {
+        let x_arg = Wrapped {
+            item: x.item.clone(),
+            origin: x.origin.clone(),
+            comment: None,
+        };
+        let call = AstCall::Unknown("sign_bit".into(), vec![x_arg]);
+        return Some(Wrapped {
+            item: AstExpression::Call(call),
+            origin: expr.origin.clone(),
+            comment: expr.comment.clone(),
+        });
+    }
+
+    None
 }
 
 #[cfg(test)]

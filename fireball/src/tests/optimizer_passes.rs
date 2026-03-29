@@ -1312,7 +1312,9 @@ fn print_if_with_multi_statement_branch_uses_multiline_block() {
 
     let printed = ast.print(Some(AstPrintConfig::NONE));
     assert!(
-        printed.contains("if (true) {\n        x = 1;\n        x = 2;\n    } else { x = 3; }"),
+        printed.contains(
+            "if (true) {\n        x = 1;\n        x = 2;\n    } else {\n        x = 3;\n    }"
+        ),
         "if true-branch with multiple statements should be printed as multiline block, got:\n{}",
         printed
     );

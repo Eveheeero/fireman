@@ -754,7 +754,11 @@ do:
         .expect("label cleanup pattern must parse and execute");
     let body = optimized_function_body(&optimized, function_id);
 
-    assert_eq!(comment_count(&body, "error cleanup handler"), 1);
+    assert_eq!(
+        comment_count(&body, "error cleanup handler"),
+        1,
+        "predefined error-cleanup should rewrite cleanup labels to comments"
+    );
 }
 
 #[test]
@@ -1054,14 +1058,21 @@ fn pattern_matching_predefined_patterns_apply_without_explicit_pattern_list() {
             .any(|stmt| matches!(&stmt.statement, AstStatement::Block(_))),
         "predefined cleanup patterns should leave no standalone top-level block statements in this fixture"
     );
+    // Check that empty else branches are removed.
+    // This can happen via prune-empty-else (removing Some([])) OR
+    // via prune-constant-conditions (replacing if(constant) with then block).
+    let has_if_without_else = body.iter().any(|stmt| {
+        matches!(
+            &stmt.statement,
+            AstStatement::If(_, _, branch_false) if branch_false.is_none()
+        )
+    });
+    let has_then_block_content = body
+        .iter()
+        .any(|stmt| matches!(&stmt.statement, AstStatement::Comment(c) if c == "then"));
     assert!(
-        body.iter().any(|stmt| {
-            matches!(
-                &stmt.statement,
-                AstStatement::If(_, _, branch_false) if branch_false.is_none()
-            )
-        }),
-        "predefined prune-empty-else should remove empty else branches"
+        has_if_without_else || has_then_block_content,
+        "empty else branches should be removed (either via prune-empty-else or prune-constant-conditions)"
     );
     assert_eq!(
         comment_count(&body, "error cleanup handler"),
@@ -1639,6 +1650,76 @@ do:
 }
 
 #[test]
+fn stmt_pattern_if_conversion_reversal_preserves_simple_ternary() {
+    let pattern = AstPattern::new(
+        "if-conversion-reversal",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../patterns/recovery/after-iteration/if-conversion-reversal.fb"
+        )),
+    );
+
+    let function_id = AstFunctionId { address: 0xBF00 };
+    let version = AstFunctionVersion(1);
+    let variable_map: ArcAstVariableMap = Arc::new(RwLock::new(HashMap::new()));
+    let var_id = AstVariableId {
+        index: 7,
+        parent: Some(function_id),
+    };
+
+    // x = c ? 10 : 20  (no nesting — should NOT be expanded)
+    let simple_ternary = AstExpression::Ternary(
+        Box::new(wrap_expression(AstExpression::Variable(
+            variable_map.clone(),
+            AstVariableId {
+                index: 1,
+                parent: Some(function_id),
+            },
+        ))),
+        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(10)))),
+        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(20)))),
+    );
+    let assign = AstStatement::Assignment(
+        wrap_expression(AstExpression::Variable(variable_map.clone(), var_id)),
+        wrap_expression(simple_ternary),
+    );
+
+    let body = vec![wrap_statement(assign)];
+    let function = build_test_function(function_id, "if_conv_preserve", body, variable_map);
+    let mut functions = HashMap::new();
+    functions.insert(function_id, VersionMap::new(version, function));
+    let ast = Ast {
+        function_versions: HashMap::from([(function_id, version)]),
+        functions: Arc::new(RwLock::new(functions)),
+        last_variable_id: HashMap::new(),
+        pre_defined_symbols: HashMap::new(),
+    };
+
+    let optimized = ast
+        .optimize_function(
+            function_id,
+            Some(
+                AstOptimizationConfig::NONE
+                    .pattern_matching_enabled(true)
+                    .pattern_matching(vec![pattern])
+                    .max_pass_iterations(1),
+            ),
+        )
+        .expect("simple ternary should be preserved");
+    let body = optimized_function_body(&optimized, function_id);
+
+    // Simple ternary should NOT be expanded
+    let has_ternary_assign = body.iter().any(|stmt| match &stmt.statement {
+        AstStatement::Assignment(_, rhs) => matches!(rhs.item, AstExpression::Ternary(_, _, _)),
+        _ => false,
+    });
+    assert!(
+        has_ternary_assign,
+        "simple (non-nested) ternary must be preserved — only nested ternaries get expanded"
+    );
+}
+
+#[test]
 fn stmt_pattern_if_conversion_reversal_expands_nested_ternary() {
     let pattern = AstPattern::new(
         "if-conversion-reversal",
@@ -1726,75 +1807,5 @@ fn stmt_pattern_if_conversion_reversal_expands_nested_ternary() {
     assert!(
         !has_ternary_assign,
         "nested ternary assignment should be fully expanded"
-    );
-}
-
-#[test]
-fn stmt_pattern_if_conversion_reversal_preserves_simple_ternary() {
-    let pattern = AstPattern::new(
-        "if-conversion-reversal",
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../patterns/recovery/after-iteration/if-conversion-reversal.fb"
-        )),
-    );
-
-    let function_id = AstFunctionId { address: 0xBF00 };
-    let version = AstFunctionVersion(1);
-    let variable_map: ArcAstVariableMap = Arc::new(RwLock::new(HashMap::new()));
-    let var_id = AstVariableId {
-        index: 7,
-        parent: Some(function_id),
-    };
-
-    // x = c ? 10 : 20  (no nesting — should NOT be expanded)
-    let simple_ternary = AstExpression::Ternary(
-        Box::new(wrap_expression(AstExpression::Variable(
-            variable_map.clone(),
-            AstVariableId {
-                index: 1,
-                parent: Some(function_id),
-            },
-        ))),
-        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(10)))),
-        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(20)))),
-    );
-    let assign = AstStatement::Assignment(
-        wrap_expression(AstExpression::Variable(variable_map.clone(), var_id)),
-        wrap_expression(simple_ternary),
-    );
-
-    let body = vec![wrap_statement(assign)];
-    let function = build_test_function(function_id, "if_conv_preserve", body, variable_map);
-    let mut functions = HashMap::new();
-    functions.insert(function_id, VersionMap::new(version, function));
-    let ast = Ast {
-        function_versions: HashMap::from([(function_id, version)]),
-        functions: Arc::new(RwLock::new(functions)),
-        last_variable_id: HashMap::new(),
-        pre_defined_symbols: HashMap::new(),
-    };
-
-    let optimized = ast
-        .optimize_function(
-            function_id,
-            Some(
-                AstOptimizationConfig::NONE
-                    .pattern_matching_enabled(true)
-                    .pattern_matching(vec![pattern])
-                    .max_pass_iterations(1),
-            ),
-        )
-        .expect("simple ternary should be preserved");
-    let body = optimized_function_body(&optimized, function_id);
-
-    // Simple ternary should NOT be expanded
-    let has_ternary_assign = body.iter().any(|stmt| match &stmt.statement {
-        AstStatement::Assignment(_, rhs) => matches!(rhs.item, AstExpression::Ternary(_, _, _)),
-        _ => false,
-    });
-    assert!(
-        has_ternary_assign,
-        "simple (non-nested) ternary must be preserved — only nested ternaries get expanded"
     );
 }
