@@ -227,11 +227,14 @@ impl FirebatApp {
                     "unicorn-engine/unicorn",
                     "https://github.com/unicorn-engine/unicorn",
                 );
-                ui.label("keystone-engine 0.1.0 — GPL-2.0");
-                ui.hyperlink_to(
-                    "keystone-engine/keystone",
-                    "https://github.com/keystone-engine/keystone",
-                );
+                #[cfg(feature = "keystone")]
+                {
+                    ui.label("keystone-engine 0.1.0 — GPL-2.0");
+                    ui.hyperlink_to(
+                        "keystone-engine/keystone",
+                        "https://github.com/keystone-engine/keystone",
+                    );
+                }
                 ui.add_space(8.0);
                 ui.vertical_centered(|ui| {
                     if ui.button("Close").clicked() {

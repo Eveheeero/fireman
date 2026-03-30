@@ -29,6 +29,7 @@ pub(crate) const THIRD_PARTY_DEPS: &[ThirdPartyDep] = &[
         license: "GPL-2.0",
         url: "https://github.com/unicorn-engine/unicorn",
     },
+    #[cfg(feature = "keystone")]
     ThirdPartyDep {
         name: "keystone-engine",
         version: "0.1.0",

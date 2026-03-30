@@ -21,3 +21,7 @@ tracing = { workspace = true, features = [
 ] }
 crossterm = "0.29"
 chrono = { version = "0.4", features = ["clock"] }
+
+[features]
+default = []
+keystone = ["fireball/keystone"]

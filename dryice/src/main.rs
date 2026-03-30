@@ -34,6 +34,21 @@ fn main() {
     }
 }
 
+#[cfg(not(feature = "keystone"))]
+const LICENSE_TEXT: &str = "\
+Glacier (dryice) — Copyright (C) 2024 Eveheeero <xhve00000@gmail.com>
+Licensed under the GNU General Public License v2.0 (GPL-2.0-only).
+Source: https://github.com/Eveheeero/fireman
+
+Third-party libraries:
+  capstone-rs 0.14.0       — MIT (https://github.com/capstone-rust/capstone-rs)
+  Capstone Engine           — BSD-3-Clause (https://github.com/capstone-engine/capstone)
+  unicorn-engine 2.1.5     — GPL-2.0 (https://github.com/unicorn-engine/unicorn)
+
+See THIRD_PARTY_LICENSES for full license texts.
+";
+
+#[cfg(feature = "keystone")]
 const LICENSE_TEXT: &str = "\
 Glacier (dryice) — Copyright (C) 2024 Eveheeero <xhve00000@gmail.com>
 Licensed under the GNU General Public License v2.0 (GPL-2.0-only).

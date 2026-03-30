@@ -17,3 +17,7 @@ eframe = "0.34"
 egui = "0.34"
 egui_dock = "0.19"
 rfd = "0.17"
+
+[features]
+default = []
+keystone = ["fireball/keystone"]
