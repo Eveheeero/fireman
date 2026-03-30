@@ -13,7 +13,7 @@ fireball.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 chrono = { version = "0.4", default-features = true, features = ["clock"] }
-eframe = "0.33"
-egui = "0.33"
-egui_dock = "0.18"
+eframe = "0.34"
+egui = "0.34"
+egui_dock = "0.19"
 rfd = "0.17"

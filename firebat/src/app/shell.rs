@@ -133,7 +133,7 @@ impl FirebatApp {
 }
 
 impl eframe::App for FirebatApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.sync_system_theme(ctx);
         self.record_frame_timing();
         if ctx.input(|input| input.key_pressed(egui::Key::F12)) {
@@ -144,10 +144,14 @@ impl eframe::App for FirebatApp {
         if self.state.is_busy() {
             ctx.request_repaint_after(Duration::from_millis(16));
         }
+    }
 
-        egui::TopBottomPanel::top("top-nav")
-            .exact_height(50.0)
-            .show(ctx, |ui| {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = ui.ctx().clone();
+
+        egui::Panel::top("top-nav")
+            .exact_size(50.0)
+            .show_inside(ui, |ui| {
                 self.state.render_navigation(
                     ui,
                     &mut self.dock_state,
@@ -157,13 +161,13 @@ impl eframe::App for FirebatApp {
             });
 
         let log_height = if self.state.log_expanded { 220.0 } else { 36.0 };
-        egui::TopBottomPanel::bottom("log-bar")
-            .exact_height(log_height)
-            .show(ctx, |ui| {
+        egui::Panel::bottom("log-bar")
+            .exact_size(log_height)
+            .show_inside(ui, |ui| {
                 self.state.render_log_bar(ui);
             });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             self.state.hover_candidate = None;
             let mut viewer = FirebatTabViewer {
                 state: &mut self.state,
@@ -174,8 +178,8 @@ impl eframe::App for FirebatApp {
             self.state.hovered_assembly_index = self.state.hover_candidate;
         });
 
-        self.render_perf_hud(ctx);
-        self.render_about_window(ctx);
+        self.render_perf_hud(&ctx);
+        self.render_about_window(&ctx);
     }
 }
 

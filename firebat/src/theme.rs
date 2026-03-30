@@ -28,7 +28,7 @@ pub(crate) fn configure_theme(ctx: &egui::Context, is_dark_mode: bool) {
     visuals.selection.stroke = Stroke::new(1.0, Color32::from_rgb(15, 108, 189));
     ctx.set_visuals(visuals);
 
-    let mut style = (*ctx.style()).clone();
+    let mut style = (*ctx.global_style()).clone();
     style.spacing.item_spacing = egui::vec2(8.0, 8.0);
     style.spacing.button_padding = egui::vec2(10.0, 5.0);
     style.text_styles.insert(
@@ -39,5 +39,5 @@ pub(crate) fn configure_theme(ctx: &egui::Context, is_dark_mode: bool) {
         egui::TextStyle::Monospace,
         egui::FontId::new(12.0, egui::FontFamily::Monospace),
     );
-    ctx.set_style(style);
+    ctx.set_global_style(style);
 }
