@@ -222,11 +222,14 @@ impl FirebatApp {
                     "capstone-engine/capstone",
                     "https://github.com/capstone-engine/capstone",
                 );
-                ui.label("unicorn-engine 2.1.5 — GPL-2.0");
-                ui.hyperlink_to(
-                    "unicorn-engine/unicorn",
-                    "https://github.com/unicorn-engine/unicorn",
-                );
+                #[cfg(feature = "unicorn")]
+                {
+                    ui.label("unicorn-engine 2.1.5 — GPL-2.0");
+                    ui.hyperlink_to(
+                        "unicorn-engine/unicorn",
+                        "https://github.com/unicorn-engine/unicorn",
+                    );
+                }
                 #[cfg(feature = "keystone")]
                 {
                     ui.label("keystone-engine 0.1.0 — GPL-2.0");

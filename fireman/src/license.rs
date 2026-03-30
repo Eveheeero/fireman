@@ -23,6 +23,7 @@ pub(crate) const THIRD_PARTY_DEPS: &[ThirdPartyDep] = &[
         license: "BSD-3-Clause",
         url: "https://github.com/capstone-engine/capstone",
     },
+    #[cfg(feature = "unicorn")]
     ThirdPartyDep {
         name: "unicorn-engine",
         version: "2.1.5",

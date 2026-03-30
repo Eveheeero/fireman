@@ -17,7 +17,7 @@ goblin.workspace = true
 cpp_demangle.workspace = true
 rustc-demangle.workspace = true
 capstone.workspace = true
-unicorn-engine.workspace = true
+unicorn-engine = { workspace = true, optional = true }
 keystone-engine = { workspace = true, optional = true }
 pdb.workspace = true
 gimli.workspace = true
@@ -43,6 +43,8 @@ heck.workspace = true
 [features]
 default = []
 keystone = ["keystone-engine"]
+unicorn = ["unicorn-engine"]
+full = ["keystone", "unicorn"]
 
 [dev-dependencies]
 criterion = "0.5"

@@ -27,3 +27,5 @@ tracing.workspace = true
 [features]
 default = []
 keystone = ["fireball/keystone"]
+unicorn = ["fireball/unicorn"]
+full = ["keystone", "unicorn"]

@@ -25,3 +25,5 @@ winres = "0.1"
 [features]
 default = []
 keystone = ["fireball/keystone"]
+unicorn = ["fireball/unicorn"]
+full = ["keystone", "unicorn"]
