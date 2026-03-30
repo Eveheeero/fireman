@@ -68,7 +68,7 @@ impl MachO {
             let inst = &self.parse_assem_count(last_instruction_address, 1).unwrap()[0].inner;
             block_size = Some(
                 last_instruction_address - &start_address
-                    + inst.bytes.as_ref().unwrap().len() as u64,
+                    + inst.bytes.as_ref().map(|b| b.len()).unwrap_or(0) as u64,
             );
             let relation_type = Self::control_flow_relation_type(inst);
             if matches!(relation_type, Some(RelationType::Jcc | RelationType::Call)) {
@@ -138,7 +138,7 @@ impl MachO {
             },
             iceball::Argument::Memory(iceball::Memory::AbsoluteAddressing(offset)) => {
                 let slot_addr = Address::from_virtual_address(&self.sections, *offset);
-                if let Some(target) = self.read_u64_at_address(&slot_addr) {
+                if let Some(target) = self.read_pointer_at_address(&slot_addr) {
                     let target_addr = Address::from_virtual_address(&self.sections, target);
                     if !self.is_likely_code_address(&target_addr) {
                         return BlockRelationInformation {
@@ -180,7 +180,7 @@ impl MachO {
                         self.calc_relative_address_with_ip(ip, args, instruction_len);
 
                     if matches!(relation_type, RelationType::Jump | RelationType::Call) {
-                        if let Some(target) = self.read_u64_at_address(&indirect_slot) {
+                        if let Some(target) = self.read_pointer_at_address(&indirect_slot) {
                             let target_addr = Address::from_virtual_address(&self.sections, target);
                             if !self.is_likely_code_address(&target_addr) {
                                 return BlockRelationInformation {
@@ -329,15 +329,37 @@ impl MachO {
         Address::from_virtual_address(&self.sections, address)
     }
 
-    fn read_u64_at_address(&self, address: &Address) -> Option<u64> {
+    fn read_pointer_at_address(&self, address: &Address) -> Option<u64> {
         let file_offset = address.get_file_offset()? as usize;
-        let end = file_offset.checked_add(8)?;
+        
+        // Determine pointer size based on architecture
+        let ptr_size = match self.architecture {
+            iceball::MachineArchitecture::X86 => 4,
+            iceball::MachineArchitecture::X64 => 8,
+            iceball::MachineArchitecture::Arm => 4,
+            iceball::MachineArchitecture::Arm64 => 8,
+        };
+        
+        let end = file_offset.checked_add(ptr_size)?;
         if end > self.binary.len() {
             return None;
         }
-        let mut raw = [0u8; 8];
-        raw.copy_from_slice(&self.binary[file_offset..end]);
-        Some(u64::from_le_bytes(raw))
+        
+        match ptr_size {
+            4 => {
+                // 32-bit: read 4 bytes and zero-extend to u64
+                let mut raw = [0u8; 4];
+                raw.copy_from_slice(&self.binary[file_offset..end]);
+                Some(u32::from_le_bytes(raw) as u64)
+            }
+            8 => {
+                // 64-bit: read 8 bytes
+                let mut raw = [0u8; 8];
+                raw.copy_from_slice(&self.binary[file_offset..end]);
+                Some(u64::from_le_bytes(raw))
+            }
+            _ => unreachable!(),
+        }
     }
 
     fn is_likely_code_address(&self, address: &Address) -> bool {
@@ -360,15 +382,20 @@ impl MachO {
     }
 
     fn control_flow_relation_type(inst: &iceball::Instruction) -> Option<RelationType> {
-        if let Some(bytes) = inst.bytes.as_deref() {
-            match bytes {
-                [0x70..=0x7F, ..] | [0x0F, 0x80..=0x8F, ..] | [0xE3, ..] => {
-                    return Some(RelationType::Jcc);
+        // Only use byte-pattern fast path for x86/x64 architectures
+        let is_x86 = matches!(&inst.statement, Ok(iceball::Statement::X64(_)));
+        
+        if is_x86 {
+            if let Some(bytes) = inst.bytes.as_deref() {
+                match bytes {
+                    [0x70..=0x7F, ..] | [0x0F, 0x80..=0x8F, ..] | [0xE3, ..] => {
+                        return Some(RelationType::Jcc);
+                    }
+                    [0xE8, ..] => return Some(RelationType::Call),
+                    [0xE9, ..] | [0xEB, ..] | [0xEA, ..] => return Some(RelationType::Jump),
+                    [0xC2 | 0xC3 | 0xCA | 0xCB, ..] => return Some(RelationType::Return),
+                    _ => {}
                 }
-                [0xE8, ..] => return Some(RelationType::Call),
-                [0xE9, ..] | [0xEB, ..] | [0xEA, ..] => return Some(RelationType::Jump),
-                [0xC2 | 0xC3 | 0xCA | 0xCB, ..] => return Some(RelationType::Return),
-                _ => {}
             }
         }
 

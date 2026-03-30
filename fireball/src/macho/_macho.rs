@@ -42,11 +42,16 @@ impl MachO {
                         let offset = arch_entry.offset as usize;
                         let size = arch_entry.size as usize;
                         if offset + size <= binary.len() {
+                            // Check if this architecture is supported
+                            if arch::from_mach_cputype(arch_entry.cputype as u32).is_none() {
+                                // Skip unsupported architectures
+                                continue;
+                            }
                             let slice = binary[offset..offset + size].to_vec();
                             // Try to parse this slice
                             match goblin::mach::MachO::parse(&slice, 0) {
                                 Ok(_) => {
-                                    // This slice is valid, recursively parse it
+                                    // This slice is valid and supported, recursively parse it
                                     return MachO::new(path, slice);
                                 }
                                 Err(_) => {
@@ -64,7 +69,10 @@ impl MachO {
             }
         };
 
-        let architecture = arch::from_mach_cputype(cputype);
+        let architecture = arch::from_mach_cputype(cputype)
+            .ok_or_else(|| FireballError::MachOParsingFailed(
+                format!("Unsupported Mach-O architecture (cputype: {})", cputype)
+            ))?;
 
         // goblin::mach::header: MH_EXECUTE=2, MH_DYLIB=6, MH_OBJECT=1, MH_BUNDLE=8
         let kind = match filetype {

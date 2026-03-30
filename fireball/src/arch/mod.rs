@@ -30,13 +30,13 @@ pub(crate) fn from_elf_machine(e_machine: u16, is_64: bool) -> MachineArchitectu
     }
 }
 
-pub(crate) fn from_mach_cputype(cputype: u32) -> MachineArchitecture {
+pub(crate) fn from_mach_cputype(cputype: u32) -> Option<MachineArchitecture> {
     match cputype {
-        goblin::mach::cputype::CPU_TYPE_X86_64 => MachineArchitecture::X64,
-        goblin::mach::cputype::CPU_TYPE_X86 => MachineArchitecture::X86,
-        goblin::mach::cputype::CPU_TYPE_ARM => MachineArchitecture::Arm,
-        goblin::mach::cputype::CPU_TYPE_ARM64 => MachineArchitecture::Arm64,
-        _ => MachineArchitecture::X64,
+        goblin::mach::cputype::CPU_TYPE_X86_64 => Some(MachineArchitecture::X64),
+        goblin::mach::cputype::CPU_TYPE_X86 => Some(MachineArchitecture::X86),
+        goblin::mach::cputype::CPU_TYPE_ARM => Some(MachineArchitecture::Arm),
+        goblin::mach::cputype::CPU_TYPE_ARM64 => Some(MachineArchitecture::Arm64),
+        _ => None,
     }
 }
 
