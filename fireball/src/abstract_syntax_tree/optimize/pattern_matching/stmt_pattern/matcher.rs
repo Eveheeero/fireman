@@ -8,101 +8,43 @@ use crate::abstract_syntax_tree::{
 };
 
 // ---------------------------------------------------------------------------
-// Structural matcher
+// Structural matcher — iterative with explicit work stack
 // ---------------------------------------------------------------------------
+
+/// Work items for the iterative matcher.
+///
+/// The matcher uses a LIFO work stack and a `result` accumulator. Items are
+/// pushed in *reverse* evaluation order so the first-to-evaluate is on top.
+///
+/// `Guard(n)` implements short-circuit AND: if `result` is false when a Guard
+/// is popped, the next `n` items are skipped (they would have been the
+/// remaining operands of the `&&` chain).
+#[derive(Clone, Copy)]
+enum Work<'a> {
+    /// Match a pattern tree against a statement (dispatches like `match_stmt_inner`).
+    MatchStmt(&'a PatTree, &'a AstStatement),
+    /// Match a pattern tree against a `Wrapped<AstExpression>` (dispatches like `match_wrapped_expr`).
+    MatchWrappedExpr(&'a PatTree, &'a Wrapped<AstExpression>),
+    /// Match a pattern tree against a `Box<Wrapped<AstExpression>>`.
+    MatchBoxedWrappedExpr(&'a PatTree, &'a Box<Wrapped<AstExpression>>),
+    /// Match a pattern tree against a statement list.
+    MatchStmtList(&'a PatTree, &'a Vec<WrappedAstStatement>),
+    /// Match an optional statement list.
+    MatchOptStmtList(&'a PatTree, &'a Option<Vec<WrappedAstStatement>>),
+    /// Match an optional wrapped expression.
+    MatchOptWrappedExpr(&'a PatTree, &'a Option<Wrapped<AstExpression>>),
+    /// Short-circuit guard: if `result` is false, skip the next `n` work items.
+    Guard(usize),
+    /// Set the result to a literal value (AND-ed with current result).
+    SetResult(bool),
+}
 
 pub fn match_statement(pat: &PatTree, stmt: &AstStatement) -> Option<Captures> {
     let mut caps = Captures::new();
-    if match_stmt_inner(pat, stmt, &mut caps) {
+    if match_iterative(Work::MatchStmt(pat, stmt), &mut caps) {
         Some(caps)
     } else {
         None
-    }
-}
-
-fn match_stmt_inner(pat: &PatTree, stmt: &AstStatement, caps: &mut Captures) -> bool {
-    match pat {
-        PatTree::Capture(name) => {
-            caps.insert(name.clone(), Captured::Statement(stmt.clone()));
-            true
-        }
-        PatTree::Wildcard => true,
-        PatTree::Node { name, children } => match_stmt_node(*name, children, stmt, caps),
-        _ => false,
-    }
-}
-
-fn match_stmt_node(
-    name: NodeName,
-    children: &[PatTree],
-    stmt: &AstStatement,
-    caps: &mut Captures,
-) -> bool {
-    match (name, stmt) {
-        (NodeName::Assignment, AstStatement::Assignment(lhs, rhs)) if children.len() == 2 => {
-            match_wrapped_expr(&children[0], lhs, caps)
-                && match_wrapped_expr(&children[1], rhs, caps)
-        }
-        (NodeName::If, AstStatement::If(cond, branch_true, branch_false))
-            if children.len() == 3 =>
-        {
-            match_wrapped_expr(&children[0], cond, caps)
-                && match_stmt_list(&children[1], branch_true, caps)
-                && match_opt_stmt_list(&children[2], branch_false, caps)
-        }
-        (NodeName::While, AstStatement::While(cond, body)) if children.len() == 2 => {
-            match_wrapped_expr(&children[0], cond, caps)
-                && match_stmt_list(&children[1], body, caps)
-        }
-        (NodeName::DoWhile, AstStatement::DoWhile(cond, body)) if children.len() == 2 => {
-            match_wrapped_expr(&children[0], cond, caps)
-                && match_stmt_list(&children[1], body, caps)
-        }
-        (NodeName::For, AstStatement::For(init, cond, update, body)) if children.len() == 4 => {
-            match_stmt_inner(&children[0], &init.statement, caps)
-                && match_wrapped_expr(&children[1], cond, caps)
-                && match_stmt_inner(&children[2], &update.statement, caps)
-                && match_stmt_list(&children[3], body, caps)
-        }
-        (NodeName::Return, AstStatement::Return(opt_expr)) if children.len() == 1 => {
-            match_opt_wrapped_expr(&children[0], opt_expr, caps)
-        }
-        (NodeName::Return, AstStatement::Return(None)) if children.is_empty() => true,
-        (NodeName::Block, AstStatement::Block(body)) if children.len() == 1 => {
-            match_stmt_list(&children[0], body, caps)
-        }
-        (NodeName::Label, AstStatement::Label(s)) if children.len() == 1 => {
-            match_string_pat(&children[0], s, caps)
-        }
-        (NodeName::Comment, AstStatement::Comment(s)) if children.len() == 1 => {
-            match_string_pat(&children[0], s, caps)
-        }
-        (NodeName::Assembly, AstStatement::Assembly(s)) if children.len() == 1 => {
-            match_string_pat(&children[0], s, caps)
-        }
-        (NodeName::Declaration, AstStatement::Declaration(var, opt_init))
-            if children.len() == 2 =>
-        {
-            match_variable_pat(&children[0], var, caps)
-                && match_opt_wrapped_expr(&children[1], opt_init, caps)
-        }
-        (NodeName::Call, AstStatement::Call(call)) if children.len() == 1 => match &children[0] {
-            PatTree::Capture(name) => {
-                caps.insert(name.clone(), Captured::Call(call.clone()));
-                true
-            }
-            PatTree::Wildcard => true,
-            _ => false,
-        },
-        (
-            NodeName::Goto,
-            AstStatement::Goto(crate::abstract_syntax_tree::AstJumpTarget::Unknown(s)),
-        ) if children.len() == 1 => match_string_pat(&children[0], s, caps),
-        (NodeName::Empty, AstStatement::Empty) if children.is_empty() => true,
-        (NodeName::Break, AstStatement::Break) if children.is_empty() => true,
-        (NodeName::Continue, AstStatement::Continue) if children.is_empty() => true,
-        (NodeName::Undefined, AstStatement::Undefined) if children.is_empty() => true,
-        _ => false,
     }
 }
 
@@ -111,15 +53,7 @@ pub(super) fn match_wrapped_expr(
     expr: &Wrapped<AstExpression>,
     caps: &mut Captures,
 ) -> bool {
-    match pat {
-        PatTree::Capture(name) => {
-            caps.insert(name.clone(), Captured::Expression(expr.clone()));
-            true
-        }
-        PatTree::Wildcard => true,
-        PatTree::Node { name, children } => match_expr_node(*name, children, &expr.item, caps),
-        _ => false,
-    }
+    match_iterative(Work::MatchWrappedExpr(pat, expr), caps)
 }
 
 pub(super) fn match_boxed_wrapped_expr(
@@ -127,78 +61,534 @@ pub(super) fn match_boxed_wrapped_expr(
     expr: &Box<Wrapped<AstExpression>>,
     caps: &mut Captures,
 ) -> bool {
-    match pat {
-        PatTree::Capture(name) => {
-            caps.insert(name.clone(), Captured::ExpressionBox(expr.clone()));
-            true
+    match_iterative(Work::MatchBoxedWrappedExpr(pat, expr), caps)
+}
+
+// ---------------------------------------------------------------------------
+// Core iterative engine
+// ---------------------------------------------------------------------------
+
+fn match_iterative(initial: Work<'_>, caps: &mut Captures) -> bool {
+    let mut stack: Vec<Work<'_>> = vec![initial];
+    let mut result = true;
+
+    while let Some(work) = stack.pop() {
+        match work {
+            Work::Guard(n) => {
+                if !result {
+                    // Short-circuit: skip the next n items
+                    let skip = n.min(stack.len());
+                    stack.truncate(stack.len() - skip);
+                }
+                continue;
+            }
+            Work::SetResult(val) => {
+                result = val;
+                continue;
+            }
+            _ => {}
         }
-        PatTree::Wildcard => true,
-        PatTree::Node { name, children } => match_expr_node(*name, children, &expr.item, caps),
-        _ => false,
+
+        // If result is already false, we keep draining until a Guard handles it.
+        // But since every AND chain is preceded by a Guard, and standalone items
+        // just set result, we always evaluate the current item.
+        // Actually — each work item is either the start of a new AND-chain
+        // (with Guards above it on the stack) or a standalone match.
+        // We always evaluate.
+
+        match work {
+            Work::MatchStmt(pat, stmt) => {
+                expand_match_stmt(pat, stmt, &mut stack, &mut result, caps);
+            }
+            Work::MatchWrappedExpr(pat, expr) => {
+                expand_match_wrapped_expr(pat, expr, &mut stack, &mut result, caps);
+            }
+            Work::MatchBoxedWrappedExpr(pat, expr) => {
+                expand_match_boxed_wrapped_expr(pat, expr, &mut stack, &mut result, caps);
+            }
+            Work::MatchStmtList(pat, stmts) => {
+                expand_match_stmt_list(pat, stmts, &mut stack, &mut result, caps);
+            }
+            Work::MatchOptStmtList(pat, opt) => {
+                expand_match_opt_stmt_list(pat, opt, &mut stack, &mut result, caps);
+            }
+            Work::MatchOptWrappedExpr(pat, opt) => {
+                expand_match_opt_wrapped_expr(pat, opt, &mut stack, &mut result, caps);
+            }
+            Work::Guard(_) | Work::SetResult(_) => unreachable!(),
+        }
+    }
+
+    result
+}
+
+// ---------------------------------------------------------------------------
+// Helpers to push AND-chains onto the work stack
+// ---------------------------------------------------------------------------
+
+/// Push an AND-chain of work items onto the stack for left-to-right evaluation
+/// with short-circuit semantics. If any item sets `result` to false, subsequent
+/// items in the chain are skipped via `Guard` entries.
+///
+/// For `[A, B, C]` the stack ends up (top-first): `A, Guard(3), B, Guard(1), C`.
+fn push_and_chain<'a>(stack: &mut Vec<Work<'a>>, items: &[Work<'a>]) {
+    let n = items.len();
+    if n == 0 {
+        return;
+    }
+    // Push in reverse. Between each pair, insert a Guard that skips all remaining.
+    // items[0] && items[1] && ... && items[n-1]
+    // Stack (top first): items[0], Guard(remaining), items[1], Guard(remaining-1), ...
+    // In reverse push order:
+    for i in (0..n).rev() {
+        stack.push(items[i].clone());
+        if i > 0 {
+            // After evaluating items[i-1] (which will be pushed next),
+            // if it fails, skip items[i] plus all guards/items after it.
+            // Number of stack entries for items[i..n-1] = (n-1-i)*2 + 1
+            // (each item + guard pair, except last item has no guard after it)
+            let entries_after = (n - 1 - i) * 2 + 1;
+            stack.push(Work::Guard(entries_after));
+        }
     }
 }
 
-fn match_expr_node(
-    name: NodeName,
-    children: &[PatTree],
-    expr: &AstExpression,
+// ---------------------------------------------------------------------------
+// Expansion functions — one per recursive function
+// ---------------------------------------------------------------------------
+
+fn expand_match_stmt<'a>(
+    pat: &'a PatTree,
+    stmt: &'a AstStatement,
+    stack: &mut Vec<Work<'a>>,
+    result: &mut bool,
     caps: &mut Captures,
-) -> bool {
+) {
+    match pat {
+        PatTree::Capture(name) => {
+            caps.insert(name.clone(), Captured::Statement(stmt.clone()));
+            *result = true;
+        }
+        PatTree::Wildcard => {
+            *result = true;
+        }
+        PatTree::Node { name, children } => {
+            expand_match_stmt_node(*name, children, stmt, stack, result, caps);
+        }
+        _ => {
+            *result = false;
+        }
+    }
+}
+
+fn expand_match_stmt_node<'a>(
+    name: NodeName,
+    children: &'a [PatTree],
+    stmt: &'a AstStatement,
+    stack: &mut Vec<Work<'a>>,
+    result: &mut bool,
+    caps: &mut Captures,
+) {
+    match (name, stmt) {
+        (NodeName::Assignment, AstStatement::Assignment(lhs, rhs)) if children.len() == 2 => {
+            push_and_chain(
+                stack,
+                &[
+                    Work::MatchWrappedExpr(&children[0], lhs),
+                    Work::MatchWrappedExpr(&children[1], rhs),
+                ],
+            );
+            // The first item in the chain will set result; don't set it here.
+            // But we need the chain to start with result=true so the first
+            // item actually executes.
+            *result = true;
+        }
+        (NodeName::If, AstStatement::If(cond, branch_true, branch_false))
+            if children.len() == 3 =>
+        {
+            push_and_chain(
+                stack,
+                &[
+                    Work::MatchWrappedExpr(&children[0], cond),
+                    Work::MatchStmtList(&children[1], branch_true),
+                    Work::MatchOptStmtList(&children[2], branch_false),
+                ],
+            );
+            *result = true;
+        }
+        (NodeName::While, AstStatement::While(cond, body)) if children.len() == 2 => {
+            push_and_chain(
+                stack,
+                &[
+                    Work::MatchWrappedExpr(&children[0], cond),
+                    Work::MatchStmtList(&children[1], body),
+                ],
+            );
+            *result = true;
+        }
+        (NodeName::DoWhile, AstStatement::DoWhile(cond, body)) if children.len() == 2 => {
+            push_and_chain(
+                stack,
+                &[
+                    Work::MatchWrappedExpr(&children[0], cond),
+                    Work::MatchStmtList(&children[1], body),
+                ],
+            );
+            *result = true;
+        }
+        (NodeName::For, AstStatement::For(init, cond, update, body)) if children.len() == 4 => {
+            push_and_chain(
+                stack,
+                &[
+                    Work::MatchStmt(&children[0], &init.statement),
+                    Work::MatchWrappedExpr(&children[1], cond),
+                    Work::MatchStmt(&children[2], &update.statement),
+                    Work::MatchStmtList(&children[3], body),
+                ],
+            );
+            *result = true;
+        }
+        (NodeName::Return, AstStatement::Return(opt_expr)) if children.len() == 1 => {
+            stack.push(Work::MatchOptWrappedExpr(&children[0], opt_expr));
+            *result = true;
+        }
+        (NodeName::Return, AstStatement::Return(None)) if children.is_empty() => {
+            *result = true;
+        }
+        (NodeName::Block, AstStatement::Block(body)) if children.len() == 1 => {
+            stack.push(Work::MatchStmtList(&children[0], body));
+            *result = true;
+        }
+        (NodeName::Label, AstStatement::Label(s)) if children.len() == 1 => {
+            *result = match_string_pat(&children[0], s, caps);
+        }
+        (NodeName::Comment, AstStatement::Comment(s)) if children.len() == 1 => {
+            *result = match_string_pat(&children[0], s, caps);
+        }
+        (NodeName::Assembly, AstStatement::Assembly(s)) if children.len() == 1 => {
+            *result = match_string_pat(&children[0], s, caps);
+        }
+        (NodeName::Declaration, AstStatement::Declaration(var, opt_init))
+            if children.len() == 2 =>
+        {
+            // match_variable_pat is a leaf, evaluate inline; then chain the opt expr
+            let var_ok = match_variable_pat(&children[0], var, caps);
+            if var_ok {
+                stack.push(Work::MatchOptWrappedExpr(&children[1], opt_init));
+            }
+            *result = var_ok;
+        }
+        (NodeName::Call, AstStatement::Call(call)) if children.len() == 1 => {
+            *result = match &children[0] {
+                PatTree::Capture(name) => {
+                    caps.insert(name.clone(), Captured::Call(call.clone()));
+                    true
+                }
+                PatTree::Wildcard => true,
+                _ => false,
+            };
+        }
+        (
+            NodeName::Goto,
+            AstStatement::Goto(crate::abstract_syntax_tree::AstJumpTarget::Unknown(s)),
+        ) if children.len() == 1 => {
+            *result = match_string_pat(&children[0], s, caps);
+        }
+        (NodeName::Empty, AstStatement::Empty) if children.is_empty() => {
+            *result = true;
+        }
+        (NodeName::Break, AstStatement::Break) if children.is_empty() => {
+            *result = true;
+        }
+        (NodeName::Continue, AstStatement::Continue) if children.is_empty() => {
+            *result = true;
+        }
+        (NodeName::Undefined, AstStatement::Undefined) if children.is_empty() => {
+            *result = true;
+        }
+        _ => {
+            *result = false;
+        }
+    }
+}
+
+fn expand_match_wrapped_expr<'a>(
+    pat: &'a PatTree,
+    expr: &'a Wrapped<AstExpression>,
+    stack: &mut Vec<Work<'a>>,
+    result: &mut bool,
+    caps: &mut Captures,
+) {
+    match pat {
+        PatTree::Capture(name) => {
+            caps.insert(name.clone(), Captured::Expression(expr.clone()));
+            *result = true;
+        }
+        PatTree::Wildcard => {
+            *result = true;
+        }
+        PatTree::Node { name, children } => {
+            expand_match_expr_node(*name, children, &expr.item, stack, result, caps);
+        }
+        _ => {
+            *result = false;
+        }
+    }
+}
+
+fn expand_match_boxed_wrapped_expr<'a>(
+    pat: &'a PatTree,
+    expr: &'a Box<Wrapped<AstExpression>>,
+    stack: &mut Vec<Work<'a>>,
+    result: &mut bool,
+    caps: &mut Captures,
+) {
+    match pat {
+        PatTree::Capture(name) => {
+            caps.insert(name.clone(), Captured::ExpressionBox(expr.clone()));
+            *result = true;
+        }
+        PatTree::Wildcard => {
+            *result = true;
+        }
+        PatTree::Node { name, children } => {
+            expand_match_expr_node(*name, children, &expr.item, stack, result, caps);
+        }
+        _ => {
+            *result = false;
+        }
+    }
+}
+
+fn expand_match_expr_node<'a>(
+    name: NodeName,
+    children: &'a [PatTree],
+    expr: &'a AstExpression,
+    stack: &mut Vec<Work<'a>>,
+    result: &mut bool,
+    caps: &mut Captures,
+) {
     match (name, expr) {
         (NodeName::Variable, AstExpression::Variable(map, var_id)) if children.len() == 2 => {
-            match_variable_map_pat(&children[0], map, caps)
-                && match_variable_id_pat(&children[1], var_id, caps)
+            // Both are leaf matchers, but we chain them for short-circuit
+            let map_ok = match_variable_map_pat(&children[0], map, caps);
+            if map_ok {
+                *result = match_variable_id_pat(&children[1], var_id, caps);
+            } else {
+                *result = false;
+            }
         }
         (NodeName::Literal, AstExpression::Literal(lit)) if children.len() == 1 => {
-            match_literal_pat(&children[0], lit, caps)
+            *result = match_literal_pat(&children[0], lit, caps);
         }
         (NodeName::UnaryOp, AstExpression::UnaryOp(op, arg)) if children.len() == 2 => {
-            match_unary_op_pat(&children[0], op, caps)
-                && match_boxed_wrapped_expr(&children[1], arg, caps)
+            let op_ok = match_unary_op_pat(&children[0], op, caps);
+            if op_ok {
+                stack.push(Work::MatchBoxedWrappedExpr(&children[1], arg));
+            }
+            *result = op_ok;
         }
         (NodeName::BinaryOp, AstExpression::BinaryOp(op, lhs, rhs)) if children.len() == 3 => {
-            match_binary_op_pat(&children[0], op, caps)
-                && match_boxed_wrapped_expr(&children[1], lhs, caps)
-                && match_boxed_wrapped_expr(&children[2], rhs, caps)
+            let op_ok = match_binary_op_pat(&children[0], op, caps);
+            if op_ok {
+                push_and_chain(
+                    stack,
+                    &[
+                        Work::MatchBoxedWrappedExpr(&children[1], lhs),
+                        Work::MatchBoxedWrappedExpr(&children[2], rhs),
+                    ],
+                );
+            }
+            *result = op_ok;
         }
         (NodeName::Ternary, AstExpression::Ternary(cond, t, f)) if children.len() == 3 => {
-            match_boxed_wrapped_expr(&children[0], cond, caps)
-                && match_boxed_wrapped_expr(&children[1], t, caps)
-                && match_boxed_wrapped_expr(&children[2], f, caps)
+            push_and_chain(
+                stack,
+                &[
+                    Work::MatchBoxedWrappedExpr(&children[0], cond),
+                    Work::MatchBoxedWrappedExpr(&children[1], t),
+                    Work::MatchBoxedWrappedExpr(&children[2], f),
+                ],
+            );
+            *result = true;
         }
         (NodeName::Cast, AstExpression::Cast(ty, arg)) if children.len() == 2 => {
-            match_value_type_pat(&children[0], ty, caps)
-                && match_boxed_wrapped_expr(&children[1], arg, caps)
+            let ty_ok = match_value_type_pat(&children[0], ty, caps);
+            if ty_ok {
+                stack.push(Work::MatchBoxedWrappedExpr(&children[1], arg));
+            }
+            *result = ty_ok;
         }
         (NodeName::Deref, AstExpression::Deref(arg)) if children.len() == 1 => {
-            match_boxed_wrapped_expr(&children[0], arg, caps)
+            stack.push(Work::MatchBoxedWrappedExpr(&children[0], arg));
+            *result = true;
         }
         (NodeName::AddressOf, AstExpression::AddressOf(arg)) if children.len() == 1 => {
-            match_boxed_wrapped_expr(&children[0], arg, caps)
+            stack.push(Work::MatchBoxedWrappedExpr(&children[0], arg));
+            *result = true;
         }
         (NodeName::ArrayAccess, AstExpression::ArrayAccess(base, idx)) if children.len() == 2 => {
-            match_boxed_wrapped_expr(&children[0], base, caps)
-                && match_boxed_wrapped_expr(&children[1], idx, caps)
+            push_and_chain(
+                stack,
+                &[
+                    Work::MatchBoxedWrappedExpr(&children[0], base),
+                    Work::MatchBoxedWrappedExpr(&children[1], idx),
+                ],
+            );
+            *result = true;
         }
         (NodeName::MemberAccess, AstExpression::MemberAccess(base, _field))
             if children.len() == 2 =>
         {
-            match_boxed_wrapped_expr(&children[0], base, caps)
-                && pat_is_wildcard_or_capture(&children[1], caps)
+            // Original: match_boxed_wrapped_expr(base) && pat_is_wildcard_or_capture(field)
+            // pat_is_wildcard_or_capture is a leaf that never mutates caps (despite
+            // the signature), so we can push the boxed match and evaluate the leaf
+            // after via SetResult. But to preserve exact left-to-right order with
+            // short-circuit, push the boxed match first, then a Guard, then the leaf.
+            // However, the leaf doesn't go on the stack. Instead: push the boxed
+            // match, and when it completes (setting result), the Guard+SetResult
+            // will handle the second operand.
+            //
+            // Simplest correct approach: push items so that base is evaluated first,
+            // then if it succeeds, check the leaf.
+            stack.push(Work::SetResult(pat_is_wildcard_or_capture(
+                &children[1],
+                caps,
+            )));
+            stack.push(Work::Guard(1));
+            stack.push(Work::MatchBoxedWrappedExpr(&children[0], base));
+            *result = true;
         }
-        (NodeName::Call, AstExpression::Call(call)) if children.len() == 1 => match &children[0] {
-            PatTree::Capture(name) => {
-                caps.insert(name.clone(), Captured::Call(call.clone()));
-                true
-            }
-            PatTree::Wildcard => true,
-            _ => false,
-        },
-        (NodeName::Unknown, AstExpression::Unknown) if children.is_empty() => true,
-        (NodeName::Undefined, AstExpression::Undefined) if children.is_empty() => true,
-        _ => false,
+        (NodeName::Call, AstExpression::Call(call)) if children.len() == 1 => {
+            *result = match &children[0] {
+                PatTree::Capture(name) => {
+                    caps.insert(name.clone(), Captured::Call(call.clone()));
+                    true
+                }
+                PatTree::Wildcard => true,
+                _ => false,
+            };
+        }
+        (NodeName::Unknown, AstExpression::Unknown) if children.is_empty() => {
+            *result = true;
+        }
+        (NodeName::Undefined, AstExpression::Undefined) if children.is_empty() => {
+            *result = true;
+        }
+        _ => {
+            *result = false;
+        }
     }
 }
+
+fn expand_match_stmt_list<'a>(
+    pat: &'a PatTree,
+    stmts: &'a Vec<WrappedAstStatement>,
+    stack: &mut Vec<Work<'a>>,
+    result: &mut bool,
+    caps: &mut Captures,
+) {
+    match pat {
+        PatTree::Capture(name) => {
+            caps.insert(name.clone(), Captured::StmtList(stmts.clone()));
+            *result = true;
+        }
+        PatTree::Wildcard => {
+            *result = true;
+        }
+        PatTree::List(pats) => {
+            if pats.len() != stmts.len() {
+                *result = false;
+                return;
+            }
+            if pats.is_empty() {
+                *result = true;
+                return;
+            }
+            // Build AND-chain of MatchStmt for each (pat, stmt) pair
+            let items: Vec<Work<'a>> = pats
+                .iter()
+                .zip(stmts.iter())
+                .map(|(p, s)| Work::MatchStmt(p, &s.statement))
+                .collect();
+            push_and_chain(stack, &items);
+            *result = true;
+        }
+        _ => {
+            *result = false;
+        }
+    }
+}
+
+fn expand_match_opt_stmt_list<'a>(
+    pat: &'a PatTree,
+    opt: &'a Option<Vec<WrappedAstStatement>>,
+    stack: &mut Vec<Work<'a>>,
+    result: &mut bool,
+    caps: &mut Captures,
+) {
+    match pat {
+        PatTree::Capture(name) => {
+            caps.insert(name.clone(), Captured::OptStmtList(opt.clone()));
+            *result = true;
+        }
+        PatTree::Wildcard => {
+            *result = true;
+        }
+        PatTree::OptionNone => {
+            *result = opt.is_none();
+        }
+        PatTree::OptionSome(inner) => match opt {
+            Some(stmts) => {
+                stack.push(Work::MatchStmtList(inner, stmts));
+                *result = true;
+            }
+            None => {
+                *result = false;
+            }
+        },
+        _ => {
+            *result = false;
+        }
+    }
+}
+
+fn expand_match_opt_wrapped_expr<'a>(
+    pat: &'a PatTree,
+    opt: &'a Option<Wrapped<AstExpression>>,
+    stack: &mut Vec<Work<'a>>,
+    result: &mut bool,
+    caps: &mut Captures,
+) {
+    match pat {
+        PatTree::Capture(name) => {
+            caps.insert(name.clone(), Captured::OptExpression(opt.clone()));
+            *result = true;
+        }
+        PatTree::Wildcard => {
+            *result = true;
+        }
+        PatTree::OptionNone => {
+            *result = opt.is_none();
+        }
+        PatTree::OptionSome(inner) => match opt {
+            Some(expr) => {
+                stack.push(Work::MatchWrappedExpr(inner, expr));
+                *result = true;
+            }
+            None => {
+                *result = false;
+            }
+        },
+        _ => {
+            *result = false;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Leaf matchers (no recursion into the cycle — kept as plain functions)
+// ---------------------------------------------------------------------------
 
 fn pat_is_wildcard_or_capture(pat: &PatTree, _caps: &mut Captures) -> bool {
     matches!(pat, PatTree::Wildcard | PatTree::Capture(_))
@@ -391,68 +781,6 @@ fn match_string_pat(pat: &PatTree, s: &str, caps: &mut Captures) -> bool {
             // NodeName variant used as string literal (e.g. Label(Unknown))
             name.as_str() == s
         }
-        _ => false,
-    }
-}
-
-fn match_stmt_list(pat: &PatTree, stmts: &Vec<WrappedAstStatement>, caps: &mut Captures) -> bool {
-    match pat {
-        PatTree::Capture(name) => {
-            caps.insert(name.clone(), Captured::StmtList(stmts.clone()));
-            true
-        }
-        PatTree::Wildcard => true,
-        PatTree::List(pats) => {
-            if pats.len() != stmts.len() {
-                return false;
-            }
-            for (p, s) in pats.iter().zip(stmts.iter()) {
-                if !match_stmt_inner(p, &s.statement, caps) {
-                    return false;
-                }
-            }
-            true
-        }
-        _ => false,
-    }
-}
-
-fn match_opt_stmt_list(
-    pat: &PatTree,
-    opt: &Option<Vec<WrappedAstStatement>>,
-    caps: &mut Captures,
-) -> bool {
-    match pat {
-        PatTree::Capture(name) => {
-            caps.insert(name.clone(), Captured::OptStmtList(opt.clone()));
-            true
-        }
-        PatTree::Wildcard => true,
-        PatTree::OptionNone => opt.is_none(),
-        PatTree::OptionSome(inner) => match opt {
-            Some(stmts) => match_stmt_list(inner, stmts, caps),
-            None => false,
-        },
-        _ => false,
-    }
-}
-
-fn match_opt_wrapped_expr(
-    pat: &PatTree,
-    opt: &Option<Wrapped<AstExpression>>,
-    caps: &mut Captures,
-) -> bool {
-    match pat {
-        PatTree::Capture(name) => {
-            caps.insert(name.clone(), Captured::OptExpression(opt.clone()));
-            true
-        }
-        PatTree::Wildcard => true,
-        PatTree::OptionNone => opt.is_none(),
-        PatTree::OptionSome(inner) => match opt {
-            Some(expr) => match_wrapped_expr(inner, expr, caps),
-            None => false,
-        },
         _ => false,
     }
 }

@@ -50,6 +50,115 @@ impl Sections {
                     }));
                 }
             }
+            goblin::Object::Elf(elf) => {
+                // ELF section flag constants
+                const SHF_WRITE: u64 = 0x1;
+                const SHF_ALLOC: u64 = 0x2;
+                const SHF_EXECINSTR: u64 = 0x4;
+                // PE-compatible characteristic constants for normalization
+                const IMAGE_SCN_MEM_EXECUTE: u32 = 0x2000_0000;
+                const IMAGE_SCN_MEM_READ: u32 = 0x4000_0000;
+                const IMAGE_SCN_MEM_WRITE: u32 = 0x8000_0000;
+
+                for sh in &elf.section_headers {
+                    // Only include sections with SHF_ALLOC (runtime-mapped sections)
+                    if sh.sh_flags & SHF_ALLOC == 0 {
+                        continue;
+                    }
+
+                    let id = section_writer.len();
+                    let name = elf.shdr_strtab.get_at(sh.sh_name).unwrap_or("").to_string();
+
+                    // Normalize ELF section flags to PE-compatible characteristics
+                    let mut characteristics: u32 = 0;
+                    if sh.sh_flags & SHF_EXECINSTR != 0 {
+                        characteristics |= IMAGE_SCN_MEM_EXECUTE;
+                    }
+                    if sh.sh_flags & SHF_WRITE != 0 {
+                        characteristics |= IMAGE_SCN_MEM_WRITE;
+                    }
+                    if sh.sh_flags & SHF_ALLOC != 0 {
+                        characteristics |= IMAGE_SCN_MEM_READ;
+                    }
+
+                    section_writer.insert(Arc::new(Section {
+                        id,
+                        name,
+                        real_name: None,
+                        virtual_address: sh.sh_addr,
+                        virtual_size: sh.sh_size,
+                        file_offset: sh.sh_offset,
+                        size_of_file: sh.sh_size,
+                        characteristics,
+                    }));
+                }
+            }
+            goblin::Object::Mach(mach) => {
+                // Mach-O section attribute constants
+                const S_ATTR_PURE_INSTRUCTIONS: u32 = 0x8000_0000;
+                const S_ATTR_SOME_INSTRUCTIONS: u32 = 0x0000_0400;
+                // PE-compatible characteristic constants for normalization
+                const IMAGE_SCN_MEM_EXECUTE: u32 = 0x2000_0000;
+                const IMAGE_SCN_MEM_READ: u32 = 0x4000_0000;
+                const IMAGE_SCN_MEM_WRITE: u32 = 0x8000_0000;
+
+                let parse_macho = |macho: &goblin::mach::MachO,
+                                    section_writer: &mut std::collections::HashSet<Arc<Section>>| {
+                    for segment in &macho.segments {
+                        let sections = match segment.sections() {
+                            Ok(s) => s,
+                            Err(_) => continue,
+                        };
+                        for (section, _data) in sections {
+                            let id = section_writer.len();
+                            let sectname = std::str::from_utf8(&section.sectname)
+                                .unwrap_or("")
+                                .trim_end_matches('\0');
+                            let segname = std::str::from_utf8(&section.segname)
+                                .unwrap_or("")
+                                .trim_end_matches('\0');
+                            let name = format!("{segname},{sectname}");
+
+                            // Normalize Mach-O section flags to PE-compatible characteristics
+                            let mut characteristics: u32 = IMAGE_SCN_MEM_READ;
+                            if section.flags & S_ATTR_PURE_INSTRUCTIONS != 0
+                                || section.flags & S_ATTR_SOME_INSTRUCTIONS != 0
+                            {
+                                characteristics |= IMAGE_SCN_MEM_EXECUTE;
+                            }
+                            // Mach-O __DATA segment is writable
+                            if segname == "__DATA" || segname == "__DATA_CONST" {
+                                characteristics |= IMAGE_SCN_MEM_WRITE;
+                            }
+
+                            section_writer.insert(Arc::new(Section {
+                                id,
+                                name,
+                                real_name: Some(sectname.to_string()),
+                                virtual_address: section.addr,
+                                virtual_size: section.size,
+                                file_offset: section.offset as u64,
+                                size_of_file: section.size,
+                                characteristics,
+                            }));
+                        }
+                    }
+                };
+
+                match &mach {
+                    goblin::mach::Mach::Binary(macho) => {
+                        parse_macho(macho, section_writer);
+                    }
+                    goblin::mach::Mach::Fat(multi) => {
+                        // For fat binaries, parse the first architecture
+                        if let Some(Ok(goblin::mach::SingleArch::MachO(macho))) =
+                            multi.into_iter().next()
+                        {
+                            parse_macho(&macho, section_writer);
+                        }
+                    }
+                }
+            }
             _ => todo!(),
         }
     }

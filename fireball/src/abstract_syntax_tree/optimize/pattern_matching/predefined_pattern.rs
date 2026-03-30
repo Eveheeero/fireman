@@ -8,6 +8,8 @@ const PREDEFINED_COLLAPSE_EMPTY_BLOCKS_FB: &str =
     include_str!("../../../../../patterns/cleanup/after-optimization/collapse-empty-blocks.fb");
 const PREDEFINED_FLATTEN_BLOCKS_FB: &str =
     include_str!("../../../../../patterns/cleanup/after-iteration/flatten-blocks.fb");
+const PREDEFINED_PRUNE_CONSTANT_CONDITIONS_FB: &str =
+    include_str!("../../../../../patterns/cleanup/after-iteration/prune-constant-conditions.fb");
 const PREDEFINED_ERROR_CLEANUP_FB: &str =
     include_str!("../../../../../patterns/cleanup/after-optimization/error-cleanup.fb");
 const PREDEFINED_EXAMPLE_04_SCRIPT_AND_LOGS_FB: &str =
@@ -112,6 +114,18 @@ const PREDEFINED_ASSERTION_RECOVERY_FB: &str =
     include_str!("../../../../../patterns/optimization/after-iteration/assertion-recovery.fb");
 const PREDEFINED_TERNARY_TO_MINMAX_FB: &str =
     include_str!("../../../../../patterns/optimization/after-iteration/ternary-to-minmax.fb");
+const PREDEFINED_ABS_RECOVERY_FB: &str =
+    include_str!("../../../../../patterns/optimization/after-iteration/abs-recovery.fb");
+const PREDEFINED_BITFIELD_EXTRACTION_FB: &str =
+    include_str!("../../../../../patterns/optimization/after-iteration/bitfield-extraction.fb");
+const PREDEFINED_BOUNDS_CHECK_RECOVERY_FB: &str =
+    include_str!("../../../../../patterns/optimization/after-iteration/bounds-check-recovery.fb");
+const PREDEFINED_SATURATING_ARITHMETIC_FB: &str =
+    include_str!("../../../../../patterns/optimization/after-iteration/saturating-arithmetic.fb");
+const PREDEFINED_SIGN_BIT_EXTRACT_FB: &str =
+    include_str!("../../../../../patterns/optimization/after-iteration/sign-bit-extract.fb");
+const PREDEFINED_POPCOUNT_TEST_RECOVERY_FB: &str =
+    include_str!("../../../../../patterns/optimization/after-iteration/popcount-test-recovery.fb");
 
 // ── New recognition patterns (afterIteration) ──
 const PREDEFINED_DEREF_ADDRESSOF_CLEANUP_FB: &str =
@@ -136,6 +150,10 @@ pub(super) fn predefined_patterns() -> Vec<AstPattern> {
             PREDEFINED_REMOVE_EMPTY_STATEMENTS_FB,
         ),
         AstPattern::from_predefined_include("prune-empty-else.fb", PREDEFINED_PRUNE_EMPTY_ELSE_FB),
+        AstPattern::from_predefined_include(
+            "prune-constant-conditions.fb",
+            PREDEFINED_PRUNE_CONSTANT_CONDITIONS_FB,
+        ),
         AstPattern::from_predefined_include("ternary-recovery.fb", PREDEFINED_TERNARY_RECOVERY_FB),
         AstPattern::from_predefined_include(
             "if-conversion-reversal.fb",
@@ -275,6 +293,24 @@ pub(super) fn predefined_patterns() -> Vec<AstPattern> {
             "ternary-to-minmax.fb",
             PREDEFINED_TERNARY_TO_MINMAX_FB,
         ),
+        AstPattern::from_predefined_include("abs-recovery.fb", PREDEFINED_ABS_RECOVERY_FB),
+        AstPattern::from_predefined_include(
+            "bitfield-extraction.fb",
+            PREDEFINED_BITFIELD_EXTRACTION_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "bounds-check-recovery.fb",
+            PREDEFINED_BOUNDS_CHECK_RECOVERY_FB,
+        ),
+        AstPattern::from_predefined_include(
+            "saturating-arithmetic.fb",
+            PREDEFINED_SATURATING_ARITHMETIC_FB,
+        ),
+        AstPattern::from_predefined_include("sign-bit-extract.fb", PREDEFINED_SIGN_BIT_EXTRACT_FB),
+        AstPattern::from_predefined_include(
+            "popcount-test-recovery.fb",
+            PREDEFINED_POPCOUNT_TEST_RECOVERY_FB,
+        ),
         // ── New recognition patterns ──
         AstPattern::from_predefined_include(
             "deref-addressof-cleanup.fb",
@@ -292,6 +328,10 @@ pub(super) fn predefined_pattern(name: &str) -> Option<AstPattern> {
         "flatten-blocks.fb" => Some(AstPattern::from_predefined_include(
             "flatten-blocks.fb",
             PREDEFINED_FLATTEN_BLOCKS_FB,
+        )),
+        "prune-constant-conditions.fb" => Some(AstPattern::from_predefined_include(
+            "prune-constant-conditions.fb",
+            PREDEFINED_PRUNE_CONSTANT_CONDITIONS_FB,
         )),
         "collapse-empty-blocks.fb" => Some(AstPattern::from_predefined_include(
             "collapse-empty-blocks.fb",
@@ -467,6 +507,30 @@ pub(super) fn predefined_pattern(name: &str) -> Option<AstPattern> {
         "ternary-to-minmax.fb" => Some(AstPattern::from_predefined_include(
             "ternary-to-minmax.fb",
             PREDEFINED_TERNARY_TO_MINMAX_FB,
+        )),
+        "abs-recovery.fb" => Some(AstPattern::from_predefined_include(
+            "abs-recovery.fb",
+            PREDEFINED_ABS_RECOVERY_FB,
+        )),
+        "bitfield-extraction.fb" => Some(AstPattern::from_predefined_include(
+            "bitfield-extraction.fb",
+            PREDEFINED_BITFIELD_EXTRACTION_FB,
+        )),
+        "bounds-check-recovery.fb" => Some(AstPattern::from_predefined_include(
+            "bounds-check-recovery.fb",
+            PREDEFINED_BOUNDS_CHECK_RECOVERY_FB,
+        )),
+        "saturating-arithmetic.fb" => Some(AstPattern::from_predefined_include(
+            "saturating-arithmetic.fb",
+            PREDEFINED_SATURATING_ARITHMETIC_FB,
+        )),
+        "sign-bit-extract.fb" => Some(AstPattern::from_predefined_include(
+            "sign-bit-extract.fb",
+            PREDEFINED_SIGN_BIT_EXTRACT_FB,
+        )),
+        "popcount-test-recovery.fb" => Some(AstPattern::from_predefined_include(
+            "popcount-test-recovery.fb",
+            PREDEFINED_POPCOUNT_TEST_RECOVERY_FB,
         )),
         // ── New recognition patterns ──
         "deref-addressof-cleanup.fb" => Some(AstPattern::from_predefined_include(

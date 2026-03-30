@@ -168,10 +168,14 @@ fn run() -> Result<(), String> {
     let buffer_script = optimization_store.applied_buffer_script.clone();
 
     let fireball = Fireball::from_path(&input_path).map_err(|error| error.to_string())?;
-    let entry = fireball
-        .analyze_from_entry()
-        .map_err(|error| error.to_string())?;
-    let blocks = collect_blocks(&fireball, entry)?;
+    let blocks = match fireball.analyze_from_entry() {
+        Ok(entry) => collect_blocks(&fireball, entry)?,
+        Err(fireball::DecompileError::NoEntryPoint) => {
+            eprintln!("No entry point found — analyzing all exported functions");
+            fireball.analyze_all().map_err(|error| error.to_string())?
+        }
+        Err(error) => return Err(error.to_string()),
+    };
     let optimization_config = build_optimization_config(
         &optimization_store.applied_settings,
         &script_paths,

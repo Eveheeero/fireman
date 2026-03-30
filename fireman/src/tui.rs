@@ -1,4 +1,9 @@
 mod app;
+mod input;
+mod persistence;
+mod prompt;
+mod render;
+mod types;
 
 use crate::{model::OptimizationStore, utils::log::init_log};
 use app::App;

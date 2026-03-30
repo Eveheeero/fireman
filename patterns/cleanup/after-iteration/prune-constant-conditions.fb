@@ -1,0 +1,174 @@
+# prune-constant-conditions.fb
+# Prune branches with constant integer conditions.
+# Applied during the main optimization loop after iteration.
+#
+# Transformations:
+#   if(0) { A }               -> (empty)
+#   if(0) { A } else { B }    -> B
+#   if(1) { A }               -> A
+#   if(1) { A } else { B }    -> A
+#   if(false) { A }           -> (empty)
+#   if(true) { A }            -> A
+#   if(!0) { A }              -> A
+#   if(!1) { A }              -> (empty)
+
+# === Zero literals (falsy) ===
+
+# if(0) { A } -> Empty
+if:
+  at afterIteration
+  stmt If(Literal(Int(0)), $then, None)
+do:
+  emit Empty
+
+# if(0) { A } else { B } -> B
+if:
+  at afterIteration
+  stmt If(Literal(Int(0)), $then, Some($else))
+do:
+  emit Block($else)
+
+# if(0u) { A } -> Empty
+if:
+  at afterIteration
+  stmt If(Literal(UInt(0)), $then, None)
+do:
+  emit Empty
+
+# if(0u) { A } else { B } -> B
+if:
+  at afterIteration
+  stmt If(Literal(UInt(0)), $then, Some($else))
+do:
+  emit Block($else)
+
+# if(false) { A } -> Empty
+if:
+  at afterIteration
+  stmt If(Literal(Bool(false)), $then, None)
+do:
+  emit Empty
+
+# if(false) { A } else { B } -> B
+if:
+  at afterIteration
+  stmt If(Literal(Bool(false)), $then, Some($else))
+do:
+  emit Block($else)
+
+# === Non-zero literals (truthy) ===
+
+# if(nonzero_int) { A } -> A (no else)
+if:
+  at afterIteration
+  stmt If(Literal(Int($n)), $then, None)
+  where is_nonzero($n)
+do:
+  emit Block($then)
+
+# if(nonzero_int) { A } else { B } -> A
+if:
+  at afterIteration
+  stmt If(Literal(Int($n)), $then, Some($else))
+  where is_nonzero($n)
+do:
+  emit Block($then)
+
+# if(nonzero_uint) { A } -> A (no else)
+if:
+  at afterIteration
+  stmt If(Literal(UInt($n)), $then, None)
+  where is_nonzero($n)
+do:
+  emit Block($then)
+
+# if(nonzero_uint) { A } else { B } -> A
+if:
+  at afterIteration
+  stmt If(Literal(UInt($n)), $then, Some($else))
+  where is_nonzero($n)
+do:
+  emit Block($then)
+
+# if(true) { A } -> A (no else)
+if:
+  at afterIteration
+  stmt If(Literal(Bool(true)), $then, None)
+do:
+  emit Block($then)
+
+# if(true) { A } else { B } -> A
+if:
+  at afterIteration
+  stmt If(Literal(Bool(true)), $then, Some($else))
+do:
+  emit Block($then)
+
+# === Negated conditions ===
+
+# if(!0) { A } -> A (not of zero is truthy)
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, Literal(Int(0))), $then, None)
+do:
+  emit Block($then)
+
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, Literal(Int(0))), $then, Some($else))
+do:
+  emit Block($then)
+
+# if(!0u) { A } -> A
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, Literal(UInt(0))), $then, None)
+do:
+  emit Block($then)
+
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, Literal(UInt(0))), $then, Some($else))
+do:
+  emit Block($then)
+
+# if(!false) { A } -> A (!false is true)
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, Literal(Bool(false))), $then, None)
+do:
+  emit Block($then)
+
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, Literal(Bool(false))), $then, Some($else))
+do:
+  emit Block($then)
+
+# if(!nonzero) { A } -> Empty (not of truthy is falsy)
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, Literal(Int($n))), $then, None)
+  where is_nonzero($n)
+do:
+  emit Empty
+
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, Literal(Int($n))), $then, Some($else))
+  where is_nonzero($n)
+do:
+  emit Block($else)
+
+# if(!true) { A } -> Empty (!true is false)
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, Literal(Bool(true))), $then, None)
+do:
+  emit Empty
+
+if:
+  at afterIteration
+  stmt If(UnaryOp(Not, Literal(Bool(true))), $then, Some($else))
+do:
+  emit Block($else)

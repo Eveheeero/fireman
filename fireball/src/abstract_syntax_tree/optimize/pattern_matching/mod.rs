@@ -7,7 +7,7 @@ mod apply;
 pub(crate) mod embedded;
 mod fb_gz;
 mod fb_parser;
-mod fbz;
+pub(crate) mod fbz;
 mod hashing;
 mod ir_parser;
 mod predefined_pattern;
@@ -18,6 +18,9 @@ use crate::{abstract_syntax_tree::AstStatement, ir::statements::IrStatement};
 pub(in crate::abstract_syntax_tree::optimize) use apply::apply_patterns;
 pub use fb_parser::{
     parse_editable_asm_to_ir_statements, parse_editable_ast_statement, parse_editable_ir_statement,
+};
+pub use fbz::{
+    FbzFunction, FbzParameter, FbzSymbol, FbzVariable, encode_functions as encode_fbz_functions,
 };
 pub(super) use hashing::{Blake3StdHasher, hash_statement_list};
 use rhai::AST as RhaiAst;
@@ -135,27 +138,17 @@ impl AstPattern {
         }
     }
 
-    pub fn fbz_bytes_from_source(source: &str) -> Result<Vec<u8>, String> {
-        fb_parser::encode_pattern_source_to_fbz_bytes(source)
+    pub fn fbz_bytes_from_functions(functions: Vec<FbzFunction>) -> Result<Vec<u8>, String> {
+        fb_parser::encode_pattern_functions_to_fbz_bytes(functions)
     }
 
     pub fn fb_gz_bytes_from_source(source: &str) -> Result<Vec<u8>, String> {
         fb_parser::encode_pattern_source_to_fb_gz_bytes(source)
     }
 
-    pub fn to_fbz_bytes(&self) -> Result<Vec<u8>, String> {
-        let source = self.canonical_source_text()?;
-        fb_parser::encode_pattern_source_to_fbz_bytes(&source)
-    }
-
     pub fn to_fb_gz_bytes(&self) -> Result<Vec<u8>, String> {
         let source = self.canonical_source_text()?;
         fb_parser::encode_pattern_source_to_fb_gz_bytes(&source)
-    }
-
-    pub fn write_fbz_file(&self, path: impl AsRef<Path>) -> Result<(), String> {
-        let source = self.canonical_source_text()?;
-        fb_parser::write_pattern_source_to_fbz_file(path.as_ref(), &source)
     }
 
     pub fn write_fb_gz_file(&self, path: impl AsRef<Path>) -> Result<(), String> {
@@ -270,6 +263,7 @@ pub struct AstPatternRule {
     clause_groups: Vec<AstPatternClauseGroup>,
 }
 
+#[allow(private_interfaces)]
 #[derive(Debug, Clone, Default)]
 struct AstPatternClauseGroup {
     in_blocks: Vec<Vec<AstPatternInBlock>>,

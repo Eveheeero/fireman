@@ -100,14 +100,12 @@ fn write_multiline_block_from_body(
 fn write_block_with_style(
     f: &mut impl std::fmt::Write,
     stmts: &[String],
-    multiline: bool,
+    _multiline: bool,
 ) -> std::fmt::Result {
-    if multiline {
-        write_multiline_block_from_body(f, stmts)
-    } else if stmts.is_empty() {
+    if stmts.is_empty() {
         write!(f, "{{ }}")
     } else {
-        write!(f, "{{ {} }}", stmts.join(" "))
+        write_multiline_block_from_body(f, stmts)
     }
 }
 
@@ -119,10 +117,8 @@ fn write_inline_block(
     let body = statement_body(stmts, config);
     if body.is_empty() {
         write!(f, "{{ }}")
-    } else if body.len() > 1 || body.iter().any(|stmt| stmt.contains('\n')) {
-        write_multiline_block_from_body(f, &body)
     } else {
-        write!(f, "{{ {} }}", body.join(" "))
+        write_multiline_block_from_body(f, &body)
     }
 }
 

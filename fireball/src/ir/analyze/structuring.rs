@@ -7,8 +7,8 @@
 use crate::{
     core::Block,
     ir::analyze::{
-        ControlFlowGraph, DominatorTree, FunctionControlFlowAnalysis, LoopInfo, NaturalLoop,
-        PostDominatorTree, analyze_function_control_flow, infer_entry_block_id,
+        ControlFlowGraph, DominatorTree, FunctionControlFlowAnalysis, LoopInfo, PostDominatorTree,
+        analyze_function_control_flow, infer_entry_block_id,
     },
     prelude::*,
 };
@@ -578,8 +578,8 @@ pub fn structure_function(
     // Processed blocks tracker
     let mut processed: HashSet<usize> = HashSet::new();
 
-    structure_region(
-        &rpo,
+    structure_region_iterative(
+        rpo,
         cfg,
         dom_tree,
         postdom_tree,
@@ -631,236 +631,327 @@ pub fn discover_intervals(cfg: &ControlFlowGraph) -> Vec<CfgInterval> {
     intervals
 }
 
-fn structure_region(
-    rpo: &[usize],
+/// Work items for the iterative structuring algorithm.
+///
+/// Replaces the mutually recursive `structure_region`, `build_branch_region`,
+/// and `structure_loop` functions with an explicit work stack to avoid stack
+/// overflow on large/irreducible CFGs.
+enum Work {
+    /// Process a region (replaces `structure_region`).
+    /// Each block in `rpo` is examined: loops become `ProcessLoop`, branches
+    /// become `ProcessBranch`, simple blocks become `Block` leaves.
+    ProcessRegion { rpo: Vec<usize> },
+    /// Process a loop body (replaces `structure_loop`).
+    ProcessLoop {
+        header: usize,
+        loop_body_ids: Vec<usize>,
+        latch_ids: Vec<usize>,
+    },
+    /// Process a branch arm (replaces `build_branch_region`).
+    ProcessBranch {
+        entry: usize,
+        head: usize,
+        parent_rpo: Vec<usize>,
+    },
+    /// Assemble N child results into a `Sequence`.
+    AssembleSequence(usize),
+    /// Assemble an `IfThenElse` from children on the result stack.
+    AssembleIfThenElse { head_block: usize, has_else: bool },
+    /// Assemble a `While` from the body on the result stack.
+    AssembleWhile { header_block: usize },
+    /// Assemble a `DoWhile` from the body on the result stack.
+    AssembleDoWhile { latch_block: usize },
+}
+
+fn structure_region_iterative(
+    initial_rpo: Vec<usize>,
     cfg: &crate::ir::analyze::ControlFlowGraph,
     dom_tree: &DominatorTree,
-    postdom_tree: &PostDominatorTree,
+    _postdom_tree: &PostDominatorTree,
     loops: &LoopInfo,
     loop_headers: &HashSet<usize>,
     chunk_bias: Option<&ChunkBiasMap>,
     processed: &mut HashSet<usize>,
 ) -> StructuredRegion {
-    let mut sequence: Vec<StructuredRegion> = Vec::new();
+    let mut work_stack: Vec<Work> = Vec::new();
+    let mut result_stack: Vec<StructuredRegion> = Vec::new();
 
-    for &block_id in rpo {
-        if processed.contains(&block_id) {
-            continue;
-        }
+    // Guard set: loop headers currently being structured, prevents re-entry.
+    let mut active_loops: HashSet<usize> = HashSet::new();
 
-        if loop_headers.contains(&block_id) {
-            if let Some(natural_loop) = loops.loop_for_header(block_id) {
-                if natural_loop.header_id == block_id {
-                    let region = structure_loop(
-                        block_id,
-                        natural_loop,
-                        cfg,
-                        dom_tree,
-                        postdom_tree,
-                        loops,
-                        loop_headers,
-                        chunk_bias,
-                        processed,
-                    );
-                    sequence.push(region);
-                    continue;
+    work_stack.push(Work::ProcessRegion { rpo: initial_rpo });
+
+    while let Some(work) = work_stack.pop() {
+        match work {
+            Work::ProcessRegion { rpo } => {
+                // Scan the RPO block list and emit work items for each block.
+                // Because the work stack is LIFO, we push items in reverse
+                // order so the first block is processed first.
+                let mut child_count = 0usize;
+
+                // Collect the work items for this region, then push in reverse.
+                let mut region_work: Vec<Work> = Vec::new();
+
+                for &block_id in &rpo {
+                    if processed.contains(&block_id) {
+                        continue;
+                    }
+
+                    if loop_headers.contains(&block_id) && !active_loops.contains(&block_id) {
+                        if let Some(natural_loop) = loops.loop_for_header(block_id) {
+                            if natural_loop.header_id == block_id {
+                                region_work.push(Work::ProcessLoop {
+                                    header: block_id,
+                                    loop_body_ids: natural_loop.body_ids.clone(),
+                                    latch_ids: natural_loop.latch_ids.clone(),
+                                });
+                                child_count += 1;
+                                continue;
+                            }
+                        }
+                    }
+
+                    let successors = cfg.successors_of(block_id);
+                    if successors.len() == 2 && !processed.contains(&block_id) {
+                        processed.insert(block_id);
+                        let then_id = successors[0];
+                        let else_id = successors[1];
+                        let has_else = else_id != then_id;
+
+                        // Push assembly first (will be processed after children).
+                        let assemble = Work::AssembleIfThenElse {
+                            head_block: block_id,
+                            has_else,
+                        };
+
+                        // Branch arms: then first, else second (if present).
+                        // We collect them here and push in the right order below.
+                        let mut branch_items = Vec::new();
+                        branch_items.push(Work::ProcessBranch {
+                            entry: then_id,
+                            head: block_id,
+                            parent_rpo: rpo.clone(),
+                        });
+                        if has_else {
+                            branch_items.push(Work::ProcessBranch {
+                                entry: else_id,
+                                head: block_id,
+                                parent_rpo: rpo.clone(),
+                            });
+                        }
+
+                        // These need to be pushed as a unit: assemble after branches.
+                        // We wrap them in a sub-sequence within region_work.
+                        // Push order: assemble (last), else (if any), then (first).
+                        // Since we'll reverse region_work, we push: assemble, branches...
+                        // Actually, region_work items will be pushed in reverse onto work_stack,
+                        // so within region_work the order should be:
+                        //   [assemble, else_branch?, then_branch]
+                        // After reverse push: then_branch is on top, processed first.
+                        region_work.push(assemble);
+                        if has_else {
+                            region_work.push(branch_items.pop().unwrap()); // else
+                        }
+                        region_work.push(branch_items.pop().unwrap()); // then
+
+                        child_count += 1;
+                    } else {
+                        processed.insert(block_id);
+                        result_stack.push(StructuredRegion::Block(block_id));
+                        child_count += 1;
+                    }
+                }
+
+                // Push the assembly work for combining children into a Sequence.
+                if child_count != 1 {
+                    work_stack.push(Work::AssembleSequence(child_count));
+                }
+                // Push region_work items in reverse so first item runs first.
+                for item in region_work.into_iter().rev() {
+                    work_stack.push(item);
                 }
             }
-        }
 
-        // Check if this is an if-then-else head
-        let successors = cfg.successors_of(block_id);
-        if successors.len() == 2 && !processed.contains(&block_id) {
-            processed.insert(block_id);
-            let then_id = successors[0];
-            let else_id = successors[1];
+            Work::ProcessLoop {
+                header,
+                loop_body_ids,
+                latch_ids,
+            } => {
+                // Guard against re-entry for overlapping/irreducible loops.
+                if active_loops.contains(&header) || processed.contains(&header) {
+                    result_stack.push(StructuredRegion::Goto(header));
+                    continue;
+                }
 
-            // Collect blocks dominated by the head that are reachable
-            // exclusively through then_id or else_id (up to the merge point)
-            let then_region = build_branch_region(
-                then_id,
-                block_id,
-                rpo,
-                cfg,
-                dom_tree,
-                postdom_tree,
-                loops,
-                loop_headers,
-                chunk_bias,
-                processed,
-            );
-            let else_region = if else_id != then_id {
-                Some(Box::new(build_branch_region(
-                    else_id,
-                    block_id,
-                    rpo,
-                    cfg,
-                    dom_tree,
-                    postdom_tree,
-                    loops,
-                    loop_headers,
-                    chunk_bias,
-                    processed,
-                )))
-            } else {
-                None
-            };
-
-            sequence.push(StructuredRegion::IfThenElse {
-                head_block: block_id,
-                then_region: Box::new(then_region),
-                else_region,
-            });
-        } else {
-            // Simple block
-            processed.insert(block_id);
-            sequence.push(StructuredRegion::Block(block_id));
-        }
-    }
-
-    if sequence.len() == 1 {
-        sequence.pop().unwrap()
-    } else {
-        StructuredRegion::Sequence(sequence)
-    }
-}
-
-/// Build a structured region for a branch target, recursively collecting
-/// all blocks dominated by the branch head that haven't been processed.
-fn build_branch_region(
-    entry: usize,
-    head: usize,
-    rpo: &[usize],
-    cfg: &crate::ir::analyze::ControlFlowGraph,
-    dom_tree: &DominatorTree,
-    postdom_tree: &PostDominatorTree,
-    loops: &LoopInfo,
-    loop_headers: &HashSet<usize>,
-    chunk_bias: Option<&ChunkBiasMap>,
-    processed: &mut HashSet<usize>,
-) -> StructuredRegion {
-    if processed.contains(&entry) {
-        return StructuredRegion::Goto(entry);
-    }
-
-    // Collect blocks in this branch: blocks dominated by `head` that are
-    // reachable from `entry` without going through `head` again
-    let mut branch_rpo: Vec<usize> = Vec::new();
-    for &bid in rpo {
-        if processed.contains(&bid) {
-            continue;
-        }
-        // A block belongs to this branch if it's dominated by head
-        // (and thus part of the if-then-else structure)
-        if bid == entry || dom_tree.dominates(head, bid) {
-            // But don't include the merge point (blocks with predecessors
-            // from both branches). Check if all predecessors are in our set
-            // or are the head itself.
-            let preds = cfg.predecessors_of(bid);
-            let belongs = bid == entry
-                || preds
+                let latch = latch_ids
                     .iter()
-                    .all(|&p| p == head || branch_rpo.contains(&p) || processed.contains(&p));
-            if belongs {
-                branch_rpo.push(bid);
+                    .copied()
+                    .find(|&latch_id| {
+                        latch_id != header && cfg.successors_of(latch_id).contains(&header)
+                    })
+                    .or_else(|| latch_ids.first().copied())
+                    .unwrap_or(header);
+
+                let latch_succs = cfg.successors_of(latch);
+                let is_do_while = latch != header && latch_succs.contains(&header);
+
+                let excluded = if is_do_while { latch } else { header };
+
+                // Build body RPO
+                let full_rpo = reverse_postorder(cfg, chunk_bias);
+                let body_rpo: Vec<usize> = full_rpo
+                    .iter()
+                    .copied()
+                    .filter(|&b| loop_body_ids.contains(&b) && b != excluded)
+                    .collect();
+
+                // Mark the loop header and excluded block as processed so the
+                // body structuring won't re-enter them.
+                processed.insert(excluded);
+                processed.insert(header);
+                active_loops.insert(header);
+
+                // Mark all loop blocks as processed in the outer set BEFORE
+                // structuring the body so nested loops/branches see them.
+                for &bid in &loop_body_ids {
+                    processed.insert(bid);
+                }
+
+                if body_rpo.is_empty() {
+                    result_stack.push(StructuredRegion::Block(excluded));
+                    // Assemble directly.
+                    if is_do_while {
+                        let body = result_stack.pop().unwrap();
+                        result_stack.push(StructuredRegion::DoWhile {
+                            body: Box::new(body),
+                            latch_block: latch,
+                        });
+                    } else {
+                        let body = result_stack.pop().unwrap();
+                        result_stack.push(StructuredRegion::While {
+                            header_block: header,
+                            body: Box::new(body),
+                        });
+                    }
+                    active_loops.remove(&header);
+                } else {
+                    // Push assembly, then the body region processing.
+                    if is_do_while {
+                        work_stack.push(Work::AssembleDoWhile { latch_block: latch });
+                    } else {
+                        work_stack.push(Work::AssembleWhile {
+                            header_block: header,
+                        });
+                    }
+                    work_stack.push(Work::ProcessRegion { rpo: body_rpo });
+                }
+            }
+
+            Work::ProcessBranch {
+                entry,
+                head,
+                parent_rpo,
+            } => {
+                if processed.contains(&entry) {
+                    result_stack.push(StructuredRegion::Goto(entry));
+                    continue;
+                }
+
+                // Collect blocks in this branch: dominated by `head`, reachable
+                // from `entry` without going through `head` again.
+                let mut branch_rpo: Vec<usize> = Vec::new();
+                for &bid in &parent_rpo {
+                    if processed.contains(&bid) {
+                        continue;
+                    }
+                    if bid == entry || dom_tree.dominates(head, bid) {
+                        let preds = cfg.predecessors_of(bid);
+                        let belongs = bid == entry
+                            || preds.iter().all(|&p| {
+                                p == head || branch_rpo.contains(&p) || processed.contains(&p)
+                            });
+                        if belongs {
+                            branch_rpo.push(bid);
+                        }
+                    }
+                }
+
+                if branch_rpo.is_empty() {
+                    result_stack.push(StructuredRegion::Goto(entry));
+                } else {
+                    work_stack.push(Work::ProcessRegion { rpo: branch_rpo });
+                }
+            }
+
+            Work::AssembleSequence(child_count) => {
+                if child_count == 0 {
+                    result_stack.push(StructuredRegion::Sequence(Vec::new()));
+                } else {
+                    let start = result_stack.len().saturating_sub(child_count);
+                    let children: Vec<StructuredRegion> = result_stack.drain(start..).collect();
+                    if children.len() == 1 {
+                        result_stack.extend(children);
+                    } else {
+                        result_stack.push(StructuredRegion::Sequence(children));
+                    }
+                }
+            }
+
+            Work::AssembleIfThenElse {
+                head_block,
+                has_else,
+            } => {
+                let else_region = if has_else {
+                    Some(Box::new(
+                        result_stack
+                            .pop()
+                            .unwrap_or(StructuredRegion::Sequence(Vec::new())),
+                    ))
+                } else {
+                    None
+                };
+                let then_region = result_stack
+                    .pop()
+                    .unwrap_or(StructuredRegion::Sequence(Vec::new()));
+                result_stack.push(StructuredRegion::IfThenElse {
+                    head_block,
+                    then_region: Box::new(then_region),
+                    else_region,
+                });
+            }
+
+            Work::AssembleWhile { header_block } => {
+                let body = result_stack
+                    .pop()
+                    .unwrap_or(StructuredRegion::Sequence(Vec::new()));
+                active_loops.remove(&header_block);
+                result_stack.push(StructuredRegion::While {
+                    header_block,
+                    body: Box::new(body),
+                });
+            }
+
+            Work::AssembleDoWhile { latch_block } => {
+                let body = result_stack
+                    .pop()
+                    .unwrap_or(StructuredRegion::Sequence(Vec::new()));
+                // Find the header for this latch to clear the active_loops guard.
+                // The latch's successor that is in active_loops is the header.
+                let latch_succs = cfg.successors_of(latch_block);
+                for &succ in latch_succs {
+                    active_loops.remove(&succ);
+                }
+                result_stack.push(StructuredRegion::DoWhile {
+                    body: Box::new(body),
+                    latch_block,
+                });
             }
         }
     }
 
-    if branch_rpo.is_empty() {
-        return StructuredRegion::Goto(entry);
-    }
-
-    // Recursively structure this sub-region
-    structure_region(
-        &branch_rpo,
-        cfg,
-        dom_tree,
-        postdom_tree,
-        loops,
-        loop_headers,
-        chunk_bias,
-        processed,
-    )
-}
-
-fn structure_loop(
-    header: usize,
-    natural_loop: &NaturalLoop,
-    cfg: &crate::ir::analyze::ControlFlowGraph,
-    dom_tree: &DominatorTree,
-    postdom_tree: &PostDominatorTree,
-    loops: &LoopInfo,
-    loop_headers: &HashSet<usize>,
-    chunk_bias: Option<&ChunkBiasMap>,
-    processed: &mut HashSet<usize>,
-) -> StructuredRegion {
-    let loop_blocks = &natural_loop.body_ids;
-    let latch = natural_loop
-        .latch_ids
-        .iter()
-        .copied()
-        .find(|&latch_id| latch_id != header && cfg.successors_of(latch_id).contains(&header))
-        .or_else(|| natural_loop.latch_ids.first().copied())
-        .unwrap_or(header);
-
-    // Classify: if the latch has a conditional back-edge to header,
-    // it's a do-while; otherwise it's a while loop
-    let latch_succs = cfg.successors_of(latch);
-    let is_do_while = latch != header && latch_succs.contains(&header);
-
-    // The control block is excluded from the body:
-    // - while: header is the condition check, excluded from body
-    // - do-while: latch is the condition check, excluded from body
-    let excluded = if is_do_while { latch } else { header };
-
-    // Build body RPO: all loop blocks except the excluded control block
-    let rpo = reverse_postorder(cfg, chunk_bias);
-    let body_rpo: Vec<usize> = rpo
-        .iter()
-        .copied()
-        .filter(|&b| loop_blocks.contains(&b) && b != excluded)
-        .collect();
-
-    // Use a local processed set for the body, seeded with both the excluded
-    // control block and the header to prevent re-entering the current loop.
-    // Without inserting the header, do-while loops (where excluded == latch)
-    // would see the header in body_rpo and re-enter structure_loop infinitely.
-    let mut body_processed: HashSet<usize> = HashSet::new();
-    body_processed.insert(excluded);
-    body_processed.insert(header);
-
-    let body = if body_rpo.is_empty() {
-        StructuredRegion::Block(excluded)
-    } else {
-        structure_region(
-            &body_rpo,
-            cfg,
-            dom_tree,
-            postdom_tree,
-            loops,
-            loop_headers,
-            chunk_bias,
-            &mut body_processed,
-        )
-    };
-
-    // Mark all loop blocks as processed in the outer set
-    for &bid in loop_blocks {
-        processed.insert(bid);
-    }
-
-    if is_do_while {
-        StructuredRegion::DoWhile {
-            body: Box::new(body),
-            latch_block: latch,
-        }
-    } else {
-        StructuredRegion::While {
-            header_block: header,
-            body: Box::new(body),
-        }
-    }
+    result_stack
+        .pop()
+        .unwrap_or(StructuredRegion::Sequence(Vec::new()))
 }
 
 /// Run CFG structuring and log results.

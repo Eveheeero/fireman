@@ -32,7 +32,11 @@ impl FromStr for ArmRegister {
             .map_err(|_| DisassembleError::UnknownRegister)?;
 
         match prefix {
-            "x" | "w" if number <= 30 => Ok(if prefix == "x" { Self::X(number) } else { Self::W(number) }),
+            "x" | "w" if number <= 30 => Ok(if prefix == "x" {
+                Self::X(number)
+            } else {
+                Self::W(number)
+            }),
             "v" | "q" | "d" | "s" | "h" | "b" | "z" if number <= 31 => Ok(match prefix {
                 "v" => Self::V(number),
                 "q" => Self::Q(number),

@@ -19,3 +19,5 @@ tracing = { workspace = true, features = [
   "max_level_trace",
   "release_max_level_debug",
 ] }
+crossterm = "0.29"
+chrono = { version = "0.4", features = ["clock"] }

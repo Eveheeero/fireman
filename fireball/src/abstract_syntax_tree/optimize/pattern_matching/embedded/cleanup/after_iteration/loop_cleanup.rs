@@ -120,7 +120,7 @@ mod tests {
             embed
         );
         assert!(
-            embed.contains("while (cond) { x = 7; }"),
+            embed.contains("x = 7"),
             "embed should preserve the loop body after cleanup, got:\n{}",
             embed
         );

@@ -1,4 +1,4 @@
-//! Conservative DWARF symbol extraction for PE binaries.
+//! Conservative DWARF symbol extraction for PE and ELF binaries.
 //!
 //! This module intentionally lands a narrow first slice: it looks for embedded
 //! `.debug_*` sections, extracts `DW_TAG_subprogram` names plus `DW_AT_low_pc`,
@@ -28,13 +28,13 @@ pub struct DwarfInfo {
 
 pub fn try_load_dwarf(binary: &[u8]) -> Option<DwarfInfo> {
     let object = goblin::Object::parse(binary).ok()?;
-    let goblin::Object::PE(pe) = object else {
-        return None;
+    let dwarf_sections = match &object {
+        goblin::Object::PE(pe) => collect_dwarf_sections_pe(binary, &pe.sections),
+        goblin::Object::Elf(elf) => collect_dwarf_sections_elf(binary, elf),
+        _ => return None,
     };
-
-    let dwarf_sections = collect_dwarf_sections(binary, &pe.sections);
     if dwarf_sections.is_empty() {
-        debug!("DWARF debug sections not present in PE");
+        debug!("DWARF debug sections not present in binary");
         return None;
     }
 
@@ -125,7 +125,7 @@ pub fn merge_dwarf_symbols(
     debug!("Merged {} DWARF symbols into predefined offsets", merged);
 }
 
-fn collect_dwarf_sections<'a>(
+fn collect_dwarf_sections_pe<'a>(
     binary: &'a [u8],
     sections: &[goblin::pe::section_table::SectionTable],
 ) -> HashMap<String, &'a [u8]> {
@@ -141,6 +141,39 @@ fn collect_dwarf_sections<'a>(
 
         let start = section.pointer_to_raw_data as usize;
         let size = section.size_of_raw_data as usize;
+        let Some(end) = start.checked_add(size) else {
+            continue;
+        };
+        if size == 0 || end > binary.len() {
+            warn!(
+                "Skipping malformed DWARF section {} with file range {}..{}",
+                name, start, end
+            );
+            continue;
+        }
+
+        result.insert(name.to_string(), &binary[start..end]);
+    }
+
+    result
+}
+
+fn collect_dwarf_sections_elf<'a>(
+    binary: &'a [u8],
+    elf: &goblin::elf::Elf,
+) -> HashMap<String, &'a [u8]> {
+    let mut result = HashMap::new();
+
+    for sh in &elf.section_headers {
+        let Some(name) = elf.shdr_strtab.get_at(sh.sh_name) else {
+            continue;
+        };
+        if !name.starts_with(".debug_") {
+            continue;
+        }
+
+        let start = sh.sh_offset as usize;
+        let size = sh.sh_size as usize;
         let Some(end) = start.checked_add(size) else {
             continue;
         };

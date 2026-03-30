@@ -211,10 +211,22 @@ pub(super) fn enqcmds() -> &'static [IrStatement] {
 /// ```
 #[box_to_static_reference]
 pub(super) fn enter() -> &'static [IrStatement] {
-    let push_bp = assign(rbp.clone(), d(b::sub(rsp.clone(), architecture_byte_size())), size_architecture());
-    let set_sp1 = assign(b::sub(rsp.clone(), architecture_byte_size()), rsp.clone(), size_architecture());
+    let push_bp = assign(
+        rbp.clone(),
+        d(b::sub(rsp.clone(), architecture_byte_size())),
+        size_architecture(),
+    );
+    let set_sp1 = assign(
+        b::sub(rsp.clone(), architecture_byte_size()),
+        rsp.clone(),
+        size_architecture(),
+    );
     let set_bp = assign(rsp.clone(), rbp.clone(), size_architecture());
-    let set_sp2 = assign(b::sub(rsp.clone(), u::zero_extend(o1())), rsp.clone(), size_architecture());
+    let set_sp2 = assign(
+        b::sub(rsp.clone(), u::zero_extend(o1())),
+        rsp.clone(),
+        size_architecture(),
+    );
     [push_bp, set_sp1, set_bp, set_sp2].into()
 }
 

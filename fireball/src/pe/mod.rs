@@ -18,7 +18,10 @@ use self::{
     cfi_parser::UnwindFunctionInfo,
     rtti::RttiEntry,
 };
-use crate::core::{Address, Blocks, PreDefinedOffsets, Relations, Sections};
+use crate::{
+    BinaryKind,
+    core::{Address, Blocks, PreDefinedOffsets, Relations, Sections},
+};
 use iceball::MachineArchitecture;
 use std::{
     pin::Pin,
@@ -26,6 +29,8 @@ use std::{
 };
 
 pub struct Pe {
+    /// Classification of the binary (executable vs DLL vs object).
+    kind: BinaryKind,
     /// Entry address
     entry: Address,
     /// File path

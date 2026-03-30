@@ -373,6 +373,38 @@ impl Ast {
                         )?;
                     }
 
+                    // Prune constant condition branches: remove dead code from
+                    // if(0) { A } else { B } -> B, if(1) { A } -> A, etc.
+                    if config.use_embedded_passes {
+                        for (function_id, to_version) in versions.iter().copied() {
+                            if !has_function_version(&ast, function_id, to_version) {
+                                continue;
+                            }
+                            pattern_matching::embedded::cleanup::after_iteration::prune_constant_conditions::prune_constant_conditions(
+                                &mut ast,
+                                function_id,
+                                to_version,
+                            )?;
+                        }
+                    } else {
+                        let prune_pat = pattern_matching::AstPattern::predefined_pattern(
+                            "prune-constant-conditions.fb",
+                        )
+                        .unwrap();
+                        for (function_id, to_version) in versions.iter().copied() {
+                            if !has_function_version(&ast, function_id, to_version) {
+                                continue;
+                            }
+                            pattern_matching::apply_patterns(
+                                &mut ast,
+                                function_id,
+                                to_version,
+                                std::slice::from_ref(&prune_pat),
+                                pattern_matching::AstPatternApplyPhase::AfterIteration,
+                            )?;
+                        }
+                    }
+
                     if !config.pattern_matching_enabled {
                         let flatten_blocks =
                             pattern_matching::AstPattern::predefined_pattern("flatten-blocks.fb")
@@ -768,7 +800,37 @@ impl Ast {
                     let strength_pat =
                         pattern_matching::AstPattern::predefined_pattern("strength-reduction.fb")
                             .unwrap();
-                    let recognition_patterns = vec![rotation_pat, strength_pat];
+                    let abs_pat =
+                        pattern_matching::AstPattern::predefined_pattern("abs-recovery.fb")
+                            .unwrap();
+                    let bitfield_pat =
+                        pattern_matching::AstPattern::predefined_pattern("bitfield-extraction.fb")
+                            .unwrap();
+                    let bounds_pat = pattern_matching::AstPattern::predefined_pattern(
+                        "bounds-check-recovery.fb",
+                    )
+                    .unwrap();
+                    let saturating_pat = pattern_matching::AstPattern::predefined_pattern(
+                        "saturating-arithmetic.fb",
+                    )
+                    .unwrap();
+                    let sign_bit_pat =
+                        pattern_matching::AstPattern::predefined_pattern("sign-bit-extract.fb")
+                            .unwrap();
+                    let popcount_pat = pattern_matching::AstPattern::predefined_pattern(
+                        "popcount-test-recovery.fb",
+                    )
+                    .unwrap();
+                    let recognition_patterns = vec![
+                        rotation_pat,
+                        strength_pat,
+                        abs_pat,
+                        bitfield_pat,
+                        bounds_pat,
+                        saturating_pat,
+                        sign_bit_pat,
+                        popcount_pat,
+                    ];
                     for (function_id, to_version) in versions.iter().copied() {
                         if !has_function_version(&ast, function_id, to_version) {
                             continue;

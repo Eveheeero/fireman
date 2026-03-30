@@ -113,7 +113,8 @@ impl Pe {
         ip: &Address,
         inst: &iceball::Instruction,
     ) -> BlockRelationInformation {
-        let relation_type = Self::control_flow_relation_type(inst).unwrap_or_else(|| unreachable!("{:?}", inst));
+        let relation_type =
+            Self::control_flow_relation_type(inst).unwrap_or_else(|| unreachable!("{:?}", inst));
         if inst.arguments.len() != 1 {
             return BlockRelationInformation {
                 destination: None,

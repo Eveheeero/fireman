@@ -12,7 +12,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstStatement, AstValueOrigin, ProcessedOptimization, Wrapped,
+        AstLiteral, AstStatement, AstUnaryOperator, AstValueOrigin, ProcessedOptimization, Wrapped,
         WrappedAstStatement,
     },
     prelude::DecompileError,
@@ -53,73 +53,149 @@ pub(crate) fn recognize_rotation_and_strength_reduction(
 }
 
 fn recognize_in_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
+    // Iterative worklist: collect all statements (including nested) and process
+    // their expressions.  Statement nesting is traversed via an explicit stack.
+    let mut worklist: Vec<*mut WrappedAstStatement> = Vec::new();
     for stmt in stmts.iter_mut() {
-        recognize_in_statement(stmt);
+        worklist.push(stmt as *mut _);
     }
-}
 
-fn recognize_in_statement(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
-        AstStatement::Declaration(_lhs, rhs) => {
-            if let Some(rhs) = rhs {
+    while let Some(stmt_ptr) = worklist.pop() {
+        // SAFETY: each pointer is derived from a unique &mut element and is
+        // visited exactly once.
+        let stmt = unsafe { &mut *stmt_ptr };
+        match &mut stmt.statement {
+            AstStatement::Declaration(_lhs, rhs) => {
+                if let Some(rhs) = rhs {
+                    recognize_in_expression(rhs);
+                }
+            }
+            AstStatement::Assignment(lhs, rhs) => {
+                recognize_in_expression(lhs);
                 recognize_in_expression(rhs);
             }
-        }
-        AstStatement::Assignment(lhs, rhs) => {
-            recognize_in_expression(lhs);
-            recognize_in_expression(rhs);
-        }
-        AstStatement::If(cond, branch_true, branch_false) => {
-            recognize_in_expression(cond);
-            recognize_in_statement_list(branch_true);
-            if let Some(branch_false) = branch_false {
-                recognize_in_statement_list(branch_false);
+            AstStatement::If(cond, branch_true, branch_false) => {
+                recognize_in_expression(cond);
+                if let Some(branch_false) = branch_false {
+                    for s in branch_false.iter_mut().rev() {
+                        worklist.push(s as *mut _);
+                    }
+                }
+                for s in branch_true.iter_mut().rev() {
+                    worklist.push(s as *mut _);
+                }
             }
-        }
-        AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
-            recognize_in_expression(cond);
-            recognize_in_statement_list(body);
-        }
-        AstStatement::For(init, cond, update, body) => {
-            recognize_in_statement(init);
-            recognize_in_expression(cond);
-            recognize_in_statement(update);
-            recognize_in_statement_list(body);
-        }
-        AstStatement::Switch(discrim, cases, default) => {
-            recognize_in_expression(discrim);
-            for (_lit, case_body) in cases.iter_mut() {
-                recognize_in_statement_list(case_body);
+            AstStatement::While(cond, body) | AstStatement::DoWhile(cond, body) => {
+                recognize_in_expression(cond);
+                for s in body.iter_mut().rev() {
+                    worklist.push(s as *mut _);
+                }
             }
-            if let Some(default_body) = default {
-                recognize_in_statement_list(default_body);
+            AstStatement::For(init, cond, update, body) => {
+                for s in body.iter_mut().rev() {
+                    worklist.push(s as *mut _);
+                }
+                worklist.push(&mut **update as *mut _);
+                recognize_in_expression(cond);
+                worklist.push(&mut **init as *mut _);
             }
-        }
-        AstStatement::Block(body) => {
-            recognize_in_statement_list(body);
-        }
-        AstStatement::Return(expr) => {
-            if let Some(expr) = expr {
-                recognize_in_expression(expr);
+            AstStatement::Switch(discrim, cases, default) => {
+                recognize_in_expression(discrim);
+                if let Some(default_body) = default {
+                    for s in default_body.iter_mut().rev() {
+                        worklist.push(s as *mut _);
+                    }
+                }
+                for (_lit, case_body) in cases.iter_mut().rev() {
+                    for s in case_body.iter_mut().rev() {
+                        worklist.push(s as *mut _);
+                    }
+                }
             }
+            AstStatement::Block(body) => {
+                for s in body.iter_mut().rev() {
+                    worklist.push(s as *mut _);
+                }
+            }
+            AstStatement::Return(expr) => {
+                if let Some(expr) = expr {
+                    recognize_in_expression(expr);
+                }
+            }
+            AstStatement::Call(call) => {
+                recognize_in_call_args(call);
+            }
+            AstStatement::Goto(_)
+            | AstStatement::Assembly(_)
+            | AstStatement::Ir(_)
+            | AstStatement::Undefined
+            | AstStatement::Exception(_)
+            | AstStatement::Label(_)
+            | AstStatement::Comment(_)
+            | AstStatement::Break
+            | AstStatement::Continue
+            | AstStatement::Empty => {}
         }
-        AstStatement::Call(call) => {
-            recognize_in_call(call);
-        }
-        AstStatement::Goto(_)
-        | AstStatement::Assembly(_)
-        | AstStatement::Ir(_)
-        | AstStatement::Undefined
-        | AstStatement::Exception(_)
-        | AstStatement::Label(_)
-        | AstStatement::Comment(_)
-        | AstStatement::Break
-        | AstStatement::Continue
-        | AstStatement::Empty => {}
     }
 }
 
-fn recognize_in_call(call: &mut AstCall) {
+/// Push the mutable children of an expression onto `stack` for pre-order traversal.
+/// Call args are included so the entire expression tree is covered.
+fn push_expr_children_recognize(
+    expr: &mut Wrapped<AstExpression>,
+    stack: &mut Vec<*mut Wrapped<AstExpression>>,
+) {
+    match &mut expr.item {
+        AstExpression::UnaryOp(_, arg) => {
+            stack.push(&mut **arg as *mut _);
+        }
+        AstExpression::BinaryOp(_, left, right) => {
+            stack.push(&mut **right as *mut _);
+            stack.push(&mut **left as *mut _);
+        }
+        AstExpression::Call(call) => {
+            recognize_in_call_args_push(call, stack);
+        }
+        AstExpression::Cast(_, arg)
+        | AstExpression::Deref(arg)
+        | AstExpression::AddressOf(arg)
+        | AstExpression::MemberAccess(arg, _) => {
+            stack.push(&mut **arg as *mut _);
+        }
+        AstExpression::ArrayAccess(base, idx) => {
+            stack.push(&mut **idx as *mut _);
+            stack.push(&mut **base as *mut _);
+        }
+        AstExpression::Ternary(cond, true_expr, false_expr) => {
+            stack.push(&mut **false_expr as *mut _);
+            stack.push(&mut **true_expr as *mut _);
+            stack.push(&mut **cond as *mut _);
+        }
+        AstExpression::Variable(_, _)
+        | AstExpression::Unknown
+        | AstExpression::Undefined
+        | AstExpression::ArchitectureBitSize
+        | AstExpression::ArchitectureByteSize
+        | AstExpression::Literal(_) => {}
+    }
+}
+
+/// Push Call arg expressions onto the traversal stack (used by iterative walk).
+fn recognize_in_call_args_push(call: &mut AstCall, stack: &mut Vec<*mut Wrapped<AstExpression>>) {
+    match call {
+        AstCall::Variable { args, .. }
+        | AstCall::Function { args, .. }
+        | AstCall::Unknown(_, args) => {
+            for arg in args.iter_mut().rev() {
+                stack.push(arg as *mut _);
+            }
+        }
+        AstCall::Builtin(_, _) => {}
+    }
+}
+
+/// Fold Call arg expressions via the iterative expression walker.
+fn recognize_in_call_args(call: &mut AstCall) {
     match call {
         AstCall::Variable { args, .. }
         | AstCall::Function { args, .. }
@@ -133,49 +209,42 @@ fn recognize_in_call(call: &mut AstCall) {
 }
 
 fn recognize_in_expression(expr: &mut Wrapped<AstExpression>) {
-    // Recurse into sub-expressions first (bottom-up)
-    match &mut expr.item {
-        AstExpression::UnaryOp(_, arg) => {
-            recognize_in_expression(arg);
-        }
-        AstExpression::BinaryOp(_, left, right) => {
-            recognize_in_expression(left);
-            recognize_in_expression(right);
-        }
-        AstExpression::Call(call) => {
-            recognize_in_call(call);
-        }
-        AstExpression::Cast(_, arg)
-        | AstExpression::Deref(arg)
-        | AstExpression::AddressOf(arg)
-        | AstExpression::MemberAccess(arg, _) => {
-            recognize_in_expression(arg);
-        }
-        AstExpression::ArrayAccess(base, idx) => {
-            recognize_in_expression(base);
-            recognize_in_expression(idx);
-        }
-        AstExpression::Ternary(cond, true_expr, false_expr) => {
-            recognize_in_expression(cond);
-            recognize_in_expression(true_expr);
-            recognize_in_expression(false_expr);
-        }
-        AstExpression::Variable(_, _)
-        | AstExpression::Unknown
-        | AstExpression::Undefined
-        | AstExpression::ArchitectureBitSize
-        | AstExpression::ArchitectureByteSize
-        | AstExpression::Literal(_) => {}
+    // Phase 1: Collect all expression nodes in pre-order using raw pointers.
+    let mut pre_order: Vec<*mut Wrapped<AstExpression>> = Vec::new();
+    let mut visit_stack: Vec<*mut Wrapped<AstExpression>> = vec![expr as *mut _];
+
+    while let Some(ptr) = visit_stack.pop() {
+        pre_order.push(ptr);
+        // SAFETY: We hold exclusive access to the entire tree via `expr: &mut`.
+        // Each node is visited exactly once, and no two pointers in the stack alias.
+        let node = unsafe { &mut *ptr };
+        push_expr_children_recognize(node, &mut visit_stack);
     }
 
-    // After recursing, try to recognize rotation at this node
-    if let Some(replacement) = try_recognize_rotation(expr) {
-        *expr = replacement;
-    }
+    // Phase 2: Process in post-order (reverse of pre-order) — children before parents.
+    for ptr in pre_order.into_iter().rev() {
+        let node = unsafe { &mut *ptr };
 
-    // Strength-reduction reversal: (x << N) + x -> x * (2^N + 1), etc.
-    if let Some(replacement) = try_reverse_strength_reduction(expr) {
-        *expr = replacement;
+        if let Some(replacement) = try_recognize_rotation(node) {
+            *node = replacement;
+        }
+
+        if let Some(replacement) = try_reverse_strength_reduction(node) {
+            *node = replacement;
+        }
+
+        // Additional pattern recognitions that have .fb pattern equivalents
+        if let Some(replacement) = try_recognize_abs(node) {
+            *node = replacement;
+        }
+
+        if let Some(replacement) = try_recognize_bitfield_extraction(node) {
+            *node = replacement;
+        }
+
+        if let Some(replacement) = try_recognize_sign_bit_extract(node) {
+            *node = replacement;
+        }
     }
 }
 /// Reverse strength reduction: convert shift+add/sub back to multiplication.
@@ -371,6 +440,124 @@ pub(crate) fn to_literal_u64(v: u64) -> AstLiteral {
     } else {
         AstLiteral::UInt(v)
     }
+}
+
+/// Absolute value recovery: (x < 0) ? -x : x → abs(x).
+/// Matches the abs-recovery.fb pattern.
+pub(crate) fn try_recognize_abs(expr: &Wrapped<AstExpression>) -> Option<Wrapped<AstExpression>> {
+    use crate::abstract_syntax_tree::optimize::opt_utils::expr_structurally_equal;
+
+    let AstExpression::Ternary(cond, true_branch, false_branch) = &expr.item else {
+        return None;
+    };
+
+    // Check condition: x < 0
+    let (lt_left, lt_right) = match &cond.item {
+        AstExpression::BinaryOp(AstBinaryOperator::Less, left, right) => (left, right),
+        _ => return None,
+    };
+
+    // Right side should be literal 0
+    if !matches!(&lt_right.item, AstExpression::Literal(AstLiteral::Int(0))) {
+        return None;
+    }
+
+    // Check true branch: -x (Negate)
+    let negated = match &true_branch.item {
+        AstExpression::UnaryOp(AstUnaryOperator::Negate, arg) => arg,
+        _ => return None,
+    };
+
+    // Check that x, -x, and the else branch all reference the same variable
+    if expr_structurally_equal(&lt_left.item, &negated.item)
+        && expr_structurally_equal(&lt_left.item, &false_branch.item)
+    {
+        let x_arg = Wrapped {
+            item: lt_left.item.clone(),
+            origin: lt_left.origin.clone(),
+            comment: None,
+        };
+        let call = AstCall::Unknown("abs".into(), vec![x_arg]);
+        return Some(Wrapped {
+            item: AstExpression::Call(call),
+            origin: expr.origin.clone(),
+            comment: expr.comment.clone(),
+        });
+    }
+
+    None
+}
+
+/// Bitfield extraction: (x >> n) & mask → BITFIELD_GET(x, n, mask).
+/// Matches the bitfield-extraction.fb pattern.
+pub(crate) fn try_recognize_bitfield_extraction(
+    expr: &Wrapped<AstExpression>,
+) -> Option<Wrapped<AstExpression>> {
+    let AstExpression::BinaryOp(AstBinaryOperator::BitAnd, left, mask) = &expr.item else {
+        return None;
+    };
+
+    // Check left side: x >> n
+    let (x, n) = match &left.item {
+        AstExpression::BinaryOp(AstBinaryOperator::RightShift, x, n) => (x, n),
+        _ => return None,
+    };
+
+    // Build BITFIELD_GET(x, n, mask) call
+    let x_arg = Wrapped {
+        item: x.item.clone(),
+        origin: x.origin.clone(),
+        comment: None,
+    };
+    let n_arg = Wrapped {
+        item: n.item.clone(),
+        origin: n.origin.clone(),
+        comment: None,
+    };
+    let mask_arg = Wrapped {
+        item: mask.item.clone(),
+        origin: mask.origin.clone(),
+        comment: None,
+    };
+
+    let call = AstCall::Unknown("BITFIELD_GET".into(), vec![x_arg, n_arg, mask_arg]);
+    Some(Wrapped {
+        item: AstExpression::Call(call),
+        origin: expr.origin.clone(),
+        comment: expr.comment.clone(),
+    })
+}
+
+/// Sign bit extraction: (x >> sign_bit_pos) & 1 → sign_bit(x).
+/// Matches common patterns from sign-bit-extract.fb.
+pub(crate) fn try_recognize_sign_bit_extract(
+    expr: &Wrapped<AstExpression>,
+) -> Option<Wrapped<AstExpression>> {
+    let AstExpression::BinaryOp(AstBinaryOperator::BitAnd, left, right) = &expr.item else {
+        return None;
+    };
+
+    // Right side should be literal 1
+    if !matches!(&right.item, AstExpression::Literal(AstLiteral::Int(1))) {
+        return None;
+    }
+
+    // Check left side: x >> (bit_width - 1) - common for sign bit extraction
+    if let AstExpression::BinaryOp(AstBinaryOperator::RightShift, x, _shift) = &left.item {
+        let x_arg = Wrapped {
+            item: x.item.clone(),
+            origin: x.origin.clone(),
+            comment: None,
+        };
+        let call = AstCall::Unknown("sign_bit".into(), vec![x_arg]);
+        return Some(Wrapped {
+            item: AstExpression::Call(call),
+            origin: expr.origin.clone(),
+            comment: expr.comment.clone(),
+        });
+    }
+
+    None
 }
 
 #[cfg(test)]

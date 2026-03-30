@@ -7,7 +7,13 @@
 pub(crate) mod cleanup {
     pub(crate) mod after_iteration {
         pub(crate) mod control_flow_cleanup;
+        pub(crate) mod flatten_blocks;
         pub(crate) mod loop_cleanup;
+        pub(crate) mod prune_constant_conditions;
+    }
+    pub(crate) mod after_optimization {
+        pub(crate) mod collapse_empty_blocks;
+        pub(crate) mod prune_empty_else;
     }
 }
 
