@@ -49,6 +49,7 @@ pub(crate) struct App {
     pub(crate) patch_scroll: usize,
     pub(crate) log_scroll: usize,
     pub(crate) last_decompile_selection: Vec<u64>,
+    pub(crate) show_license: bool,
 }
 
 impl Default for App {
@@ -91,6 +92,7 @@ impl App {
             patch_scroll: 0,
             log_scroll: 0,
             last_decompile_selection: Vec::new(),
+            show_license: false,
         };
         app.log("TUI initialized");
         if let Some(startup) = startup {

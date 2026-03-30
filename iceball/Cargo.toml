@@ -5,7 +5,7 @@ edition.workspace = true
 authors.workspace = true
 repository.workspace = true
 license.workspace = true
-description = "Disassemble library used in fireball. (Reserved)"
+description = "Assembly library used in fireball."
 homepage = "https://crates.io/crates/iceball"
 
 [lib]

@@ -9,6 +9,7 @@ impl FirebatState {
         ui: &mut egui::Ui,
         dock_state: &mut DockState<PanelTab>,
         show_perf_hud: &mut bool,
+        show_about: &mut bool,
     ) {
         ui.horizontal(|ui| {
             ui.add_space(4.0);
@@ -114,6 +115,13 @@ impl FirebatState {
                     .clicked()
                 {
                     self.reset_editor_draft();
+                    ui.close();
+                }
+            });
+
+            ui.menu_button("Help", |ui| {
+                if ui.button("About").clicked() {
+                    *show_about = true;
                     ui.close();
                 }
             });

@@ -263,7 +263,6 @@ pub struct AstPatternRule {
     clause_groups: Vec<AstPatternClauseGroup>,
 }
 
-#[allow(private_interfaces)]
 #[derive(Debug, Clone, Default)]
 struct AstPatternClauseGroup {
     in_blocks: Vec<Vec<AstPatternInBlock>>,
@@ -869,6 +868,7 @@ mod tests;
 
 #[cfg(test)]
 impl AstPatternRule {
+    #[allow(private_interfaces)]
     pub fn clause_groups(&self) -> &[AstPatternClauseGroup] {
         &self.clause_groups
     }

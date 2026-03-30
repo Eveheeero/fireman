@@ -17,6 +17,8 @@ goblin.workspace = true
 cpp_demangle.workspace = true
 rustc-demangle.workspace = true
 capstone.workspace = true
+unicorn-engine.workspace = true
+keystone-engine.workspace = true
 pdb.workspace = true
 gimli.workspace = true
 tracing = { workspace = true, features = [

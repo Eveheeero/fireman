@@ -1,5 +1,5 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = [
     "fireman",
     "fireball",
@@ -14,7 +14,7 @@ exclude = ["iceball/architecture_doc_extractor"]
 version = "0.0.1"
 authors = ["Eveheeero <xhve00000@gmail.com>"]
 edition = "2024"
-license = "GPL-2.0"
+license = "GPL-2.0-only"
 repository = "https://github.com/Eveheeero/fireman"
 homepage = "https://github.com/Eveheeero/fireman"
 readme = "README.md"
@@ -42,6 +42,8 @@ blake3 = "1"
 # Binary parsing and analysis
 goblin = "0.10"
 capstone = "0.14"
+unicorn-engine = "2.1"
+keystone-engine = "0.1"
 pdb = "0.8"
 gimli = "0.33"
 cpp_demangle = "0.5"

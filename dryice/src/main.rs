@@ -34,14 +34,33 @@ fn main() {
     }
 }
 
+const LICENSE_TEXT: &str = "\
+Glacier (dryice) — Copyright (C) 2024 Eveheeero <xhve00000@gmail.com>
+Licensed under the GNU General Public License v2.0 (GPL-2.0-only).
+Source: https://github.com/Eveheeero/fireman
+
+Third-party libraries:
+  capstone-rs 0.14.0       — MIT (https://github.com/capstone-rust/capstone-rs)
+  Capstone Engine           — BSD-3-Clause (https://github.com/capstone-engine/capstone)
+  unicorn-engine 2.1.5     — GPL-2.0 (https://github.com/unicorn-engine/unicorn)
+  keystone-engine 0.1.0    — GPL-2.0 (https://github.com/keystone-engine/keystone)
+
+See THIRD_PARTY_LICENSES for full license texts.
+";
+
 #[derive(Debug, Parser)]
 #[command(name = "glacier")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
+#[command(author = "Eveheeero <xhve00000@gmail.com>")]
 #[command(
     about = "Export recovered Fireball analysis as compressed patterns (.fb.gz by default, .fbz or plain .fb optional)"
 )]
 struct Cli {
-    #[arg(value_name = "INPUT")]
-    input: PathBuf,
+    /// Print license information and exit
+    #[arg(long)]
+    license: bool,
+    #[arg(value_name = "INPUT", required_unless_present = "license")]
+    input: Option<PathBuf>,
     #[arg(short = 'o', long)]
     output: Option<PathBuf>,
     #[arg(long, value_enum, default_value_t = OutputFormat::FbGz)]
@@ -126,11 +145,18 @@ struct PhasePayload {
 
 fn run() -> Result<(), String> {
     let cli = Cli::parse();
-    let default_output_path = default_output_path(&cli.input, cli.format);
+    if cli.license {
+        print!("{LICENSE_TEXT}");
+        return Ok(());
+    }
+    let input = cli
+        .input
+        .ok_or_else(|| "required argument INPUT is missing".to_string())?;
+    let default_output_path = default_output_path(&input, cli.format);
     let output_path = cli.output.unwrap_or(default_output_path);
     validate_output_path_format(&output_path, cli.format)?;
     let request = ExportRequest {
-        input_path: cli.input,
+        input_path: input,
         output_path,
         output_format: cli.format,
         log_file_path: cli.log,

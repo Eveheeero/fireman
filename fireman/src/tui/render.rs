@@ -2,7 +2,10 @@ use super::{
     app::App,
     types::{OPTIMIZATION_GROUPS, OptimizationFocus, PromptState, View},
 };
-use crate::model::{EditorDraft, EditorLayer};
+use crate::{
+    license::{self, THIRD_PARTY_DEPS},
+    model::{EditorDraft, EditorLayer},
+};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
@@ -26,7 +29,9 @@ impl App {
         self.draw_body(frame, main_area);
         self.draw_status(frame, status_area);
 
-        if let Some(prompt) = &self.prompt {
+        if self.show_license {
+            self.draw_license(frame);
+        } else if let Some(prompt) = &self.prompt {
             self.draw_prompt(frame, prompt);
         }
     }
@@ -646,6 +651,70 @@ impl App {
             );
             frame.render_widget(Paragraph::new(prompt.help.as_str()), help_area);
         }
+    }
+
+    fn draw_license(&self, frame: &mut Frame) {
+        let area = frame.area();
+
+        let mut lines = vec![
+            Line::from(Span::styled(
+                format!("Fireman v{}", env!("CARGO_PKG_VERSION")),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            )),
+            Line::from(license::PROJECT_COPYRIGHT),
+            Line::from(""),
+            Line::from(Span::styled(
+                format!("License: {}", license::PROJECT_LICENSE),
+                Style::default().add_modifier(Modifier::BOLD),
+            )),
+            Line::from(license::PROJECT_URL),
+            Line::from(""),
+            Line::from(Span::styled(
+                "Third-party libraries:",
+                Style::default().add_modifier(Modifier::BOLD),
+            )),
+        ];
+        for dep in THIRD_PARTY_DEPS {
+            let label = if dep.version.is_empty() {
+                dep.name.to_string()
+            } else {
+                format!("{} {}", dep.name, dep.version)
+            };
+            lines.push(Line::from(format!("  {label:<25} — {}", dep.license)));
+        }
+        lines.extend([
+            Line::from(""),
+            Line::from("See THIRD_PARTY_LICENSES for full texts."),
+            Line::from(""),
+            Line::from(Span::styled(
+                "Press any key to close",
+                Style::default().fg(Color::DarkGray),
+            )),
+        ]);
+        // +2 for top/bottom border
+        let popup_height = ((lines.len() as u16) + 2).min(area.height.saturating_sub(4));
+        let popup_width = 68.min(area.width.saturating_sub(4));
+        let x = (area.width.saturating_sub(popup_width)) / 2;
+        let y = (area.height.saturating_sub(popup_height)) / 2;
+        let popup = Rect::new(x, y, popup_width, popup_height);
+
+        frame.render_widget(Clear, popup);
+
+        let text = Text::from(lines);
+
+        frame.render_widget(
+            Paragraph::new(text)
+                .block(
+                    Block::default()
+                        .title(" About / License ")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(Color::Cyan)),
+                )
+                .wrap(Wrap { trim: false }),
+            popup,
+        );
     }
 
     fn draw_file_browser(&self, frame: &mut Frame, area: Rect, prompt: &PromptState) {

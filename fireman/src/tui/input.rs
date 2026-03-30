@@ -26,6 +26,10 @@ impl App {
     }
 
     fn handle_key(&mut self, key: KeyEvent) {
+        if self.show_license {
+            self.show_license = false;
+            return;
+        }
         let handled = match self.current_view {
             View::Sections => self.handle_sections_key(key),
             View::Assembly => self.handle_output_key(key, EditorLayer::Assembly),
@@ -115,6 +119,10 @@ impl App {
             }
             KeyCode::Char('x') => {
                 self.send_request(WorkerRequest::ExportPatch, "exporting patch");
+                true
+            }
+            KeyCode::Char('?') => {
+                self.show_license = true;
                 true
             }
             _ => false,
@@ -671,7 +679,7 @@ impl App {
             };
         }
 
-        let mut keys = vec![("1-8", "views"), ("q", "quit")];
+        let mut keys = vec![("1-8", "views"), ("q", "quit"), ("?", "license")];
         match self.current_view {
             View::Sections => keys.extend([
                 ("o", "open"),

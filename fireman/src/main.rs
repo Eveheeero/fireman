@@ -1,4 +1,5 @@
 pub mod core;
+mod license;
 pub mod model;
 pub mod prelude;
 #[cfg(test)]
@@ -142,6 +143,10 @@ fn main() {
 
 fn run() -> Result<(), String> {
     let args = parse_arg();
+    if args.get_one::<bool>("license").copied().unwrap_or(false) {
+        print!("{}", license::format_license_text("Fireman decompiler"));
+        return Ok(());
+    }
     if let Some(json_sample) = args.get_one::<String>("jsonsample") {
         save_json_sample(Path::new(json_sample))?;
         return Ok(());
@@ -264,9 +269,13 @@ fn build_tui_startup_config(
 fn parse_arg() -> ArgMatches {
     Command::new("fireman")
         .about("Fireman decompiler CLI")
-        .author("Eveheeero, xhve00000@mail.com")
-        .version("0.0.0")
+        .author("Eveheeero, xhve00000@gmail.com")
+        .version(env!("CARGO_PKG_VERSION"))
         .args([
+            Arg::new("license")
+                .long("license")
+                .action(ArgAction::SetTrue)
+                .help("Print license information and exit"),
             Arg::new("tui")
                 .long("tui")
                 .action(ArgAction::SetTrue)
@@ -297,7 +306,7 @@ fn parse_arg() -> ArgMatches {
                 .long("path")
                 .value_name("TARGET")
                 .action(ArgAction::Set)
-                .required_unless_present_any(["tui", "json", "jsonsample"])
+                .required_unless_present_any(["tui", "json", "jsonsample", "license"])
                 .help("Binary to decompile"),
             Arg::new("output-path")
                 .short('o')

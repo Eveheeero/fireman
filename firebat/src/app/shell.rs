@@ -14,6 +14,7 @@ pub(crate) struct FirebatApp {
     dock_state: DockState<PanelTab>,
     state: FirebatState,
     show_perf_hud: bool,
+    show_about: bool,
     applied_dark_mode: Option<bool>,
     last_frame_tick: Option<Instant>,
     frame_samples_ms: VecDeque<f32>,
@@ -34,6 +35,7 @@ impl Default for FirebatApp {
             dock_state,
             state: FirebatState::default(),
             show_perf_hud: false,
+            show_about: false,
             applied_dark_mode: None,
             last_frame_tick: None,
             frame_samples_ms: VecDeque::with_capacity(240),
@@ -146,8 +148,12 @@ impl eframe::App for FirebatApp {
         egui::TopBottomPanel::top("top-nav")
             .exact_height(50.0)
             .show(ctx, |ui| {
-                self.state
-                    .render_navigation(ui, &mut self.dock_state, &mut self.show_perf_hud);
+                self.state.render_navigation(
+                    ui,
+                    &mut self.dock_state,
+                    &mut self.show_perf_hud,
+                    &mut self.show_about,
+                );
             });
 
         let log_height = if self.state.log_expanded { 220.0 } else { 36.0 };
@@ -169,5 +175,65 @@ impl eframe::App for FirebatApp {
         });
 
         self.render_perf_hud(ctx);
+        self.render_about_window(ctx);
+    }
+}
+
+impl FirebatApp {
+    fn render_about_window(&mut self, ctx: &egui::Context) {
+        if !self.show_about {
+            return;
+        }
+
+        egui::Window::new("About Firebat")
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .show(ctx, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.label(RichText::new("Firebat").strong().size(18.0));
+                    ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
+                    ui.add_space(4.0);
+                    ui.label("A GUI decompiler built on the Fireball engine.");
+                    ui.label("Copyright (C) 2024 Eveheeero <xhve00000@gmail.com>");
+                });
+                ui.add_space(8.0);
+                ui.separator();
+                ui.label(RichText::new("License").strong());
+                ui.label("GNU General Public License v2.0 (GPL-2.0-only)");
+                ui.hyperlink_to(
+                    "Source code",
+                    "https://github.com/Eveheeero/fireman",
+                );
+                ui.add_space(8.0);
+                ui.separator();
+                ui.label(RichText::new("Third-party libraries").strong());
+                ui.label("capstone-rs 0.14.0 — MIT");
+                ui.hyperlink_to(
+                    "capstone-rust/capstone-rs",
+                    "https://github.com/capstone-rust/capstone-rs",
+                );
+                ui.label("Capstone Engine — BSD-3-Clause");
+                ui.hyperlink_to(
+                    "capstone-engine/capstone",
+                    "https://github.com/capstone-engine/capstone",
+                );
+                ui.label("unicorn-engine 2.1.5 — GPL-2.0");
+                ui.hyperlink_to(
+                    "unicorn-engine/unicorn",
+                    "https://github.com/unicorn-engine/unicorn",
+                );
+                ui.label("keystone-engine 0.1.0 — GPL-2.0");
+                ui.hyperlink_to(
+                    "keystone-engine/keystone",
+                    "https://github.com/keystone-engine/keystone",
+                );
+                ui.add_space(8.0);
+                ui.vertical_centered(|ui| {
+                    if ui.button("Close").clicked() {
+                        self.show_about = false;
+                    }
+                });
+            });
     }
 }
