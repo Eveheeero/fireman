@@ -331,7 +331,7 @@ impl MachO {
 
     fn read_pointer_at_address(&self, address: &Address) -> Option<u64> {
         let file_offset = address.get_file_offset()? as usize;
-        
+
         // Determine pointer size based on architecture
         let ptr_size = match self.architecture {
             iceball::MachineArchitecture::X86 => 4,
@@ -339,12 +339,12 @@ impl MachO {
             iceball::MachineArchitecture::Arm => 4,
             iceball::MachineArchitecture::Arm64 => 8,
         };
-        
+
         let end = file_offset.checked_add(ptr_size)?;
         if end > self.binary.len() {
             return None;
         }
-        
+
         match ptr_size {
             4 => {
                 // 32-bit: read 4 bytes and zero-extend to u64
@@ -384,7 +384,7 @@ impl MachO {
     fn control_flow_relation_type(inst: &iceball::Instruction) -> Option<RelationType> {
         // Only use byte-pattern fast path for x86/x64 architectures
         let is_x86 = matches!(&inst.statement, Ok(iceball::Statement::X64(_)));
-        
+
         if is_x86 {
             if let Some(bytes) = inst.bytes.as_deref() {
                 match bytes {

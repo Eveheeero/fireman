@@ -69,10 +69,12 @@ impl MachO {
             }
         };
 
-        let architecture = arch::from_mach_cputype(cputype)
-            .ok_or_else(|| FireballError::MachOParsingFailed(
-                format!("Unsupported Mach-O architecture (cputype: {})", cputype)
-            ))?;
+        let architecture = arch::from_mach_cputype(cputype).ok_or_else(|| {
+            FireballError::MachOParsingFailed(format!(
+                "Unsupported Mach-O architecture (cputype: {})",
+                cputype
+            ))
+        })?;
 
         // goblin::mach::header: MH_EXECUTE=2, MH_DYLIB=6, MH_OBJECT=1, MH_BUNDLE=8
         let kind = match filetype {
@@ -154,11 +156,18 @@ fn extract_macho_info(macho: &goblin::mach::MachO) -> (u32, u32, u64, Vec<(Strin
             let Ok((name, nlist)) = symbol_result else {
                 continue;
             };
-            if nlist.n_value == 0 || name.is_empty() {
+            if name.is_empty() {
                 continue;
             }
             // Skip debug stab entries
-            if nlist.n_type & 0xe0 != 0 {
+            if nlist.n_type & goblin::mach::symbols::N_STAB != 0 {
+                continue;
+            }
+            // Require section-defined symbols (N_SECT) with valid section
+            if nlist.n_type & goblin::mach::symbols::N_TYPE != goblin::mach::symbols::N_SECT {
+                continue;
+            }
+            if nlist.n_sect == goblin::mach::symbols::NO_SECT as usize {
                 continue;
             }
 
