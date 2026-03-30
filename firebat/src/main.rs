@@ -10,10 +10,12 @@ use crate::{app::FirebatApp, theme::configure_theme};
 use eframe::egui;
 
 fn main() {
+    let icon_data = load_icon();
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1200.0, 800.0])
-            .with_min_inner_size([960.0, 640.0]),
+            .with_min_inner_size([960.0, 640.0])
+            .with_icon(icon_data),
         ..Default::default()
     };
 
@@ -29,4 +31,17 @@ fn main() {
             Ok(Box::new(FirebatApp::default()))
         }),
     );
+}
+
+fn load_icon() -> egui::IconData {
+    let icon_bytes = include_bytes!("../icons/icon.png");
+    let image = image::load_from_memory(icon_bytes)
+        .expect("Failed to load icon image")
+        .into_rgba8();
+    let (width, height) = image::GenericImageView::dimensions(&image);
+    egui::IconData {
+        rgba: image.into_raw(),
+        width: width as u32,
+        height: height as u32,
+    }
 }
