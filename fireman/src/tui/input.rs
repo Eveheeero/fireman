@@ -211,7 +211,11 @@ impl App {
     }
 
     fn handle_preview_key(&mut self, key: KeyEvent) -> bool {
-        // Preview is read-only — no decompile trigger from here
+        // Allow re-decompile even when preview is empty
+        if matches!(key.code, KeyCode::Char('d')) && key.modifiers.is_empty() {
+            self.start_decompile();
+            return true;
+        }
         let len = self
             .current_preview_state()
             .and_then(|a| a.outputs.as_ref())
@@ -686,6 +690,7 @@ impl App {
                 ("Up/Dn", "move cursor"),
                 ("PgUp/Dn", "fast move"),
                 ("Home/End", "jump"),
+                ("d", "re-decompile"),
             ]),
             Some(TabType::Opt) => {
                 let focus = self

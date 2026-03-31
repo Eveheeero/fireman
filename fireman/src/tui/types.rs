@@ -98,13 +98,6 @@ impl TabManager {
         }
     }
 
-    /// Add a new tab after the current one
-    pub(crate) fn add_tab(&mut self, tab: Tab) -> usize {
-        let insert_idx = (self.current_index + 1).min(self.tabs.len());
-        self.tabs.insert(insert_idx, tab);
-        insert_idx
-    }
-
     /// Remove a tab by index (cannot remove Input or Logs)
     pub(crate) fn remove_tab(&mut self, index: usize) -> bool {
         if let Some(tab) = self.tabs.get(index) {
@@ -122,11 +115,6 @@ impl TabManager {
         true
     }
 
-    /// Remove current tab if closable
-    pub(crate) fn remove_current(&mut self) -> bool {
-        self.remove_tab(self.current_index)
-    }
-
     /// Get tab labels for display
     pub(crate) fn labels(&self) -> Vec<String> {
         self.tabs
@@ -134,18 +122,6 @@ impl TabManager {
             .enumerate()
             .map(|(i, t)| format!("{} {}", i + 1, t.label))
             .collect()
-    }
-
-    /// Add a Preview tab for pipeline step N
-    pub(crate) fn add_preview_tab(&mut self, n: usize) -> usize {
-        let tab = Tab::with_label(TabType::Preview, format!("Preview {}", n));
-        self.add_tab(tab)
-    }
-
-    /// Add an Opt tab for pipeline step N
-    pub(crate) fn add_opt_tab(&mut self, n: usize) -> usize {
-        let tab = Tab::with_label(TabType::Opt, format!("Opt {}", n));
-        self.add_tab(tab)
     }
 
     /// Reset to default tabs
