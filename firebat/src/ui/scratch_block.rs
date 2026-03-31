@@ -84,8 +84,8 @@ impl ScratchBlockRenderer {
                     // Node icon based on type
                     let icon = match node.node_type() {
                         NodeType::Input => "[F]",
-                        NodeType::Optimization(ref pass) => pass.icon(),
-                        NodeType::Output => "[V]",
+                        NodeType::Opt => "[O]",
+                        NodeType::Preview => "[V]",
                     };
 
                     ui.label(
@@ -112,7 +112,7 @@ impl ScratchBlockRenderer {
         let mut output_port_pos = None;
 
         // Input port on the left (for nodes that accept input: Optimization, Output)
-        if matches!(node_type, NodeType::Optimization(_) | NodeType::Output) {
+        if matches!(node_type, NodeType::Opt | NodeType::Preview) {
             let input_pos = Pos2::new(block_rect.min.x - port_offset, center_y);
             input_port_pos = Some(input_pos);
 
@@ -131,7 +131,7 @@ impl ScratchBlockRenderer {
         }
 
         // Output port on the right (for nodes that produce output: Input, Optimization)
-        if matches!(node_type, NodeType::Input | NodeType::Optimization(_)) {
+        if matches!(node_type, NodeType::Input | NodeType::Opt) {
             let output_pos = Pos2::new(block_rect.max.x + port_offset, center_y);
             output_port_pos = Some(output_pos);
 

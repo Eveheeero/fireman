@@ -1,4 +1,5 @@
 use crate::{
+    model::{DecompileResult, OptimizationFocus, OptimizationStore},
     node::{
         Node, NodeColors, NodeContext, NodeError, NodeId, NodePosition, NodeResponse, NodeType,
     },
@@ -9,7 +10,7 @@ use fireball::abstract_syntax_tree::{Ast, AstOptimizationConfig, AstPrintConfig}
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-/// Types of optimization passes available
+/// Types of optimization passes available (kept for backward compat / presets).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum OptimizationPass {
     ConstantFolding,
@@ -119,38 +120,35 @@ impl OptimizationPass {
     }
 }
 
-/// Optimization node that stores before/after AST and applies a specific pass
+/// Optimization node holding full OptimizationStore with cached output.
 #[derive(Clone, Debug)]
-pub struct OptimizationNode {
+pub struct OptNode {
     id: NodeId,
     name: String,
     position: NodePosition,
-    pass_type: OptimizationPass,
-    is_enabled: bool,
     is_expanded: bool,
-    before_ast: Option<Arc<Ast>>,
-    after_ast: Option<Arc<Ast>>,
-    before_code: String,
-    after_code: String,
-    pass_number: usize, // To distinguish multiple instances
+    pub store: OptimizationStore,
+    pub focus: OptimizationFocus,
+    pub setting_cursor: usize,
+    pub script_cursor: usize,
+    /// Cached output after this node's optimization is applied.
+    pub output_ast: Option<Arc<Ast>>,
+    pub output: Option<DecompileResult>,
 }
 
-impl OptimizationNode {
-    pub fn new(pass_type: OptimizationPass, pass_number: usize) -> Self {
-        let name = format!("{} (#{})", pass_type.name(), pass_number);
-
+impl OptNode {
+    pub fn new() -> Self {
         Self {
             id: NodeId::new(),
-            name,
+            name: "Optimization".to_string(),
             position: NodePosition::default(),
-            pass_type,
-            is_enabled: true,
             is_expanded: false,
-            before_ast: None,
-            after_ast: None,
-            before_code: String::new(),
-            after_code: String::new(),
-            pass_number,
+            store: OptimizationStore::default(),
+            focus: OptimizationFocus::Settings,
+            setting_cursor: 0,
+            script_cursor: 0,
+            output_ast: None,
+            output: None,
         }
     }
 
@@ -159,104 +157,19 @@ impl OptimizationNode {
         self
     }
 
-    pub fn pass_type(&self) -> &OptimizationPass {
-        &self.pass_type
-    }
-
-    pub fn pass_number(&self) -> usize {
-        self.pass_number
-    }
-
-    fn apply_optimization(&self, ast: &Ast) -> Result<Ast, NodeError> {
-        let config = self.build_config();
-
-        match ast.optimize(Some(config)) {
-            Ok(optimized) => Ok(optimized),
-            Err(e) => Err(NodeError::ProcessingError(format!(
-                "Optimization failed: {:?}",
-                e
-            ))),
-        }
-    }
-
-    fn build_config(&self) -> AstOptimizationConfig {
-        let mut config = AstOptimizationConfig::default();
-
-        // Enable only the specific pass for this node
-        config.ir_analyzation = false;
-        config.parameter_analyzation = false;
-        config.call_argument_analyzation = false;
-        config.constant_folding = false;
-        config.control_flow_cleanup = false;
-        config.collapse_unused_varaible = false;
-        config.dead_store_elimination = false;
-        config.pattern_matching = Vec::new();
-        config.loop_analyzation = false;
-        config.copy_propagation = false;
-        config.expression_inlining = false;
-        config.ternary_recovery = false;
-        config.boolean_recovery = false;
-        config.switch_reconstruction = false;
-        config.lifetime_scoping = false;
-        config.signedness_inference = false;
-        config.name_recovery = false;
-        config.early_return_normalization = false;
-
-        // Enable only this specific pass
-        match self.pass_type {
-            OptimizationPass::ConstantFolding => config.constant_folding = true,
-            OptimizationPass::ControlFlowCleanup => config.control_flow_cleanup = true,
-            OptimizationPass::CopyPropagation => config.copy_propagation = true,
-            OptimizationPass::DeadStoreElimination => config.dead_store_elimination = true,
-            OptimizationPass::ExpressionInlining => config.expression_inlining = true,
-            OptimizationPass::LoopAnalysis => config.loop_analyzation = true,
-            OptimizationPass::ParameterAnalysis => config.parameter_analyzation = true,
-            OptimizationPass::CallArgumentAnalysis => config.call_argument_analyzation = true,
-            OptimizationPass::PatternMatching(ref patterns) => {
-                // Convert string paths to actual patterns
-                // This will need to be implemented with actual pattern loading
-                config.pattern_matching = Vec::new();
-            }
-            OptimizationPass::BooleanRecovery => config.boolean_recovery = true,
-            OptimizationPass::SwitchReconstruction => config.switch_reconstruction = true,
-            OptimizationPass::LifetimeScoping => config.lifetime_scoping = true,
-            OptimizationPass::SignednessInference => config.signedness_inference = true,
-            OptimizationPass::NameRecovery => config.name_recovery = true,
-            OptimizationPass::EarlyReturnNormalization => config.early_return_normalization = true,
-            OptimizationPass::CollapseUnusedVariable => config.collapse_unused_varaible = true,
-            OptimizationPass::TernaryRecovery => config.ternary_recovery = true,
-            OptimizationPass::OperatorCanonicalization => {
-                config.operator_canonicalization = true
-            }
-            OptimizationPass::MagicDivisionRecovery => config.magic_division_recovery = true,
-            OptimizationPass::IdentitySimplification => config.identity_simplification = true,
-            OptimizationPass::BitTrickRecognition => config.bit_trick_recognition = true,
-            OptimizationPass::CastMinimization => config.cast_minimization = true,
-            OptimizationPass::AssertionRecovery => config.assertion_recovery = true,
-            OptimizationPass::DoWhileRecovery => config.do_while_recovery = true,
-            OptimizationPass::ClampRecovery => config.clamp_recovery = true,
-            OptimizationPass::LoopCleanup => config.loop_cleanup = true,
-            OptimizationPass::IfConversionReversal => config.if_conversion_reversal = true,
-            OptimizationPass::AntiDebugAstSuppression => {
-                config.anti_debug_ast_suppression = true
-            }
-            OptimizationPass::LoggingSuppression => config.logging_suppression = true,
-            OptimizationPass::StaticGuardSuppression => config.static_guard_suppression = true,
-            OptimizationPass::SecurityScaffoldSuppression => {
-                config.security_scaffold_suppression = true
-            }
-        }
-
-        config
-    }
-
-    fn format_ast(ast: &Ast) -> String {
-        let config = AstPrintConfig::default();
-        ast.print(Some(config))
+    pub fn with_store(mut self, store: OptimizationStore) -> Self {
+        self.store = store;
+        self
     }
 }
 
-impl Node for OptimizationNode {
+impl Default for OptNode {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Node for OptNode {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -273,7 +186,7 @@ impl Node for OptimizationNode {
     }
 
     fn node_type(&self) -> NodeType {
-        NodeType::Optimization(self.pass_type.clone())
+        NodeType::Opt
     }
 
     fn color(&self) -> Color32 {
@@ -288,14 +201,6 @@ impl Node for OptimizationNode {
         self.position = pos;
     }
 
-    fn is_enabled(&self) -> bool {
-        self.is_enabled
-    }
-
-    fn set_enabled(&mut self, enabled: bool) {
-        self.is_enabled = enabled;
-    }
-
     fn is_expanded(&self) -> bool {
         self.is_expanded
     }
@@ -305,94 +210,39 @@ impl Node for OptimizationNode {
     }
 
     fn summary(&self) -> String {
-        if let Some(ref after) = self.after_ast {
-            let preview = self
-                .after_code
-                .lines()
-                .find(|l| !l.trim().is_empty())
-                .map(|l| l.trim().to_string())
-                .unwrap_or_default();
-            format!(
-                "[{} {} - {}...]",
-                self.pass_type.icon(),
-                self.pass_type.name(),
-                preview.chars().take(40).collect::<String>()
-            )
+        if self.output_ast.is_some() {
+            "[Opt (cached)]".to_string()
         } else {
-            format!(
-                "[{} {} (not run)]",
-                self.pass_type.icon(),
-                self.pass_type.name()
-            )
+            "[Opt (not run)]".to_string()
         }
     }
 
     fn process(&self, input: PipelineData) -> Result<PipelineData, NodeError> {
-        if !self.is_enabled {
-            return Ok(input);
-        }
-
-        match input {
-            PipelineData::Ast(ast) => {
-                // Apply optimization
-                let after = self.apply_optimization(&ast)?;
-                Ok(PipelineData::Ast(Arc::new(after)))
-            }
-            _ => Err(NodeError::InvalidInput {
-                expected: "AST",
-                got: input.type_name(),
-            }),
+        // OptNode no longer processes synchronously; the async pipeline handles it.
+        // Pass through whatever input we have, or return cached output if available.
+        if let Some(ref ast) = self.output_ast {
+            Ok(PipelineData::Ast(ast.clone()))
+        } else {
+            Ok(input)
         }
     }
 
     fn ui(&mut self, ui: &mut Ui, ctx: &NodeContext) -> NodeResponse {
         let mut response = NodeResponse::None;
 
-        // Header
         ui.horizontal(|ui| {
-            // Enable/disable checkbox
-            let mut enabled = self.is_enabled;
-            if ui.checkbox(&mut enabled, "").changed() {
-                self.set_enabled(enabled);
-                response = NodeResponse::ToggleEnabled;
-            }
-
             ui.label(self.summary());
-
             if ctx.can_delete && ui.button("x").clicked() {
                 response = NodeResponse::Deleted;
             }
         });
 
-        // Expanded content showing before/after (populated when pipeline runs)
         if self.is_expanded {
             ui.separator();
-
-            if self.before_code.is_empty() {
-                ui.label("Run pipeline to see before/after comparison");
-            } else {
-                ui.strong("BEFORE:");
-                egui::Frame::dark_canvas(ui.style()).show(ui, |ui| {
-                    egui::ScrollArea::vertical()
-                        .max_height(150.0)
-                        .show(ui, |ui| {
-                            ui.monospace(&self.before_code);
-                        });
-                });
-
-                ui.add_space(8.0);
-                ui.strong("AFTER:");
-                egui::Frame::dark_canvas(ui.style()).show(ui, |ui| {
-                    egui::ScrollArea::vertical()
-                        .max_height(150.0)
-                        .show(ui, |ui| {
-                            ui.monospace(&self.after_code);
-                        });
-                });
-            }
+            ui.label("Optimization settings are configured per-node.");
+            ui.label(format!("Focus: {:?}", self.focus));
         }
 
-        // Controls
         ui.horizontal(|ui| {
             if ui
                 .button(if self.is_expanded { "^" } else { "v" })
@@ -400,26 +250,6 @@ impl Node for OptimizationNode {
             {
                 self.toggle_expanded();
                 response = NodeResponse::ToggleExpanded;
-            }
-
-            ui.label(if self.is_enabled {
-                "[x] Enabled"
-            } else {
-                "[ ] Disabled"
-            });
-
-            if !self.before_code.is_empty() {
-                let before_lines = self.before_code.lines().count();
-                let after_lines = self.after_code.lines().count();
-                let diff = after_lines as i32 - before_lines as i32;
-                let diff_str = if diff == 0 {
-                    "(no change)".to_string()
-                } else if diff > 0 {
-                    format!("(+{} lines)", diff)
-                } else {
-                    format!("({} lines)", diff)
-                };
-                ui.label(diff_str);
             }
         });
 
@@ -432,13 +262,11 @@ impl Node for OptimizationNode {
 
     fn serialize(&self) -> serde_json::Value {
         serde_json::json!({
-            "type": "OptimizationNode",
+            "type": "OptNode",
             "id": self.id.0.to_string(),
             "position": {"x": self.position.x, "y": self.position.y},
-            "pass_type": serde_json::to_string(&self.pass_type).unwrap_or_default(),
-            "pass_number": self.pass_number,
-            "is_enabled": self.is_enabled,
             "is_expanded": self.is_expanded,
+            "store": serde_json::to_value(&self.store).unwrap_or_default(),
         })
     }
 
@@ -451,15 +279,13 @@ impl Node for OptimizationNode {
                 self.position = NodePosition::new(x as f32, y as f32);
             }
         }
-        if let Some(enabled) = value.get("is_enabled").and_then(|v| v.as_bool()) {
-            self.is_enabled = enabled;
-        }
         if let Some(expanded) = value.get("is_expanded").and_then(|v| v.as_bool()) {
             self.is_expanded = expanded;
         }
-        if let Some(number) = value.get("pass_number").and_then(|v| v.as_u64()) {
-            self.pass_number = number as usize;
-            self.name = format!("{} (#{})", self.pass_type.name(), self.pass_number);
+        if let Some(store_val) = value.get("store") {
+            if let Ok(store) = serde_json::from_value::<OptimizationStore>(store_val.clone()) {
+                self.store = store;
+            }
         }
     }
 }

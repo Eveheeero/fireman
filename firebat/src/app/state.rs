@@ -4,17 +4,20 @@ use crate::{
         AssemblyEditorDraft, AstNodeDraftData, AstNodeEditType, AstNodeEditorDraft,
         DecompileRequest, DecompileResult, DecompileResultView, EditPosition, EditRequest,
         EditorDraft, EditorLayer, EditorTarget, IrEditorDraft, KnownSection, KnownSectionData,
-        OptimizationScriptPreset, OptimizationSettings, OptimizationStore,
+        OptimizationSettings, OptimizationStore,
     },
+    node::NodeId,
     worker::{FirebatWorker, WorkerRequest, WorkerResponse, WorkerTryRecv},
 };
 use chrono::Local;
 use eframe::egui::Color32;
+use fireball::abstract_syntax_tree::Ast;
 use rfd::FileDialog;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     env, fs,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 pub(super) struct FirebatState {
@@ -30,13 +33,6 @@ pub(super) struct FirebatState {
     pub(super) editor_target: Option<EditorTarget>,
     pub(super) editor_draft: Option<EditorDraft>,
     pub(super) exported_patch_json: Option<String>,
-    pub(super) optimization_draft: OptimizationSettings,
-    pub(super) optimization_applied: OptimizationSettings,
-    pub(super) optimization_scripts: Vec<OptimizationScriptPreset>,
-    pub(super) optimization_editor_buffer: String,
-    pub(super) optimization_editor_path: Option<String>,
-    pub(super) optimization_applied_buffer_script: Option<String>,
-    pub(super) optimization_status_message: Option<String>,
     pub(super) last_decompile_selection: Vec<u64>,
     // Floating editor windows
     pub(super) assembly_editor: FloatingEditorWindow,
@@ -46,7 +42,24 @@ pub(super) struct FirebatState {
     pub(super) selected_assembly_row: Option<usize>,
     pub(super) selected_ir_row: Option<usize>,
     pub(super) selected_ast_path: Option<fireball::abstract_syntax_tree::AstNodePath>,
-    pub(super) show_ir_comments: bool, // Toggle for showing IR origin comments in AST
+    pub(super) show_ir_comments: bool,
+    // --- Opt/Preview pipeline fields ---
+    /// Base AST produced by initial decompilation (before any OptNode).
+    pub(super) base_ast: Option<Arc<Ast>>,
+    /// Base decompile output (assembly/ir/ast) from initial decompilation.
+    pub(super) base_output: Option<DecompileResult>,
+    /// Queue of OptNode IDs awaiting async optimization.
+    pub(super) pending_optimize_queue: VecDeque<NodeId>,
+    /// The OptNode currently being processed by the worker.
+    pub(super) pending_target_node: Option<NodeId>,
+    // Legacy flat optimization fields kept for the panels UI (Task 5 will move these into per-node stores)
+    pub(super) optimization_draft: OptimizationSettings,
+    pub(super) optimization_applied: OptimizationSettings,
+    pub(super) optimization_scripts: Vec<crate::model::OptimizationScriptPreset>,
+    pub(super) optimization_editor_buffer: String,
+    pub(super) optimization_editor_path: Option<String>,
+    pub(super) optimization_applied_buffer_script: Option<String>,
+    pub(super) optimization_status_message: Option<String>,
 }
 
 impl Default for FirebatState {
@@ -88,7 +101,11 @@ impl Default for FirebatState {
             selected_assembly_row: None,
             selected_ir_row: None,
             selected_ast_path: None,
-            show_ir_comments: false, // Default to hidden IR comments
+            show_ir_comments: false,
+            base_ast: None,
+            base_output: None,
+            pending_optimize_queue: VecDeque::new(),
+            pending_target_node: None,
         }
     }
 }
@@ -182,6 +199,9 @@ impl FirebatState {
                                     result.ir.len(),
                                     result.ast.len()
                                 ));
+                                // Store base AST/output for pipeline
+                                self.base_ast = result.ast_object.clone();
+                                self.base_output = Some(result.clone());
                                 self.set_decompile_result(result);
                             }
                             Err(error) => self.log(format!("Decompilation failed {error}")),
@@ -210,6 +230,21 @@ impl FirebatState {
                             Err(error) => {
                                 self.log(format!("Patch export failed {error}"));
                                 self.set_draft_status(error);
+                            }
+                        },
+                        WorkerResponse::OptimizeAst(result) => match result {
+                            Ok(opt_result) => {
+                                self.log(format!(
+                                    "OptimizeAst ready: {} lines",
+                                    opt_result.ast_lines.len()
+                                ));
+                                // Store the optimized result in the target node
+                                // (actual node update happens via pending_target_node in shell)
+                                self.pending_target_node = None;
+                            }
+                            Err(error) => {
+                                self.log(format!("OptimizeAst failed {error}"));
+                                self.pending_target_node = None;
                             }
                         },
                     }
@@ -262,6 +297,10 @@ impl FirebatState {
         self.hovered_assembly_index = None;
         self.hover_candidate = None;
         self.last_decompile_selection.clear();
+        self.base_ast = None;
+        self.base_output = None;
+        self.pending_optimize_queue.clear();
+        self.pending_target_node = None;
         self.log(format!("Open fireball with {path}"));
         self.queue_request(WorkerRequest::OpenFile(path));
     }
@@ -563,8 +602,6 @@ impl FirebatState {
                 text: draft.raw_text.clone(),
             },
             EditorDraft::AstNode(draft) => {
-                // Convert node edit to text edit
-                // For now, use the replacement text from the draft
                 let text = match &draft.draft_data {
                     AstNodeDraftData::Statement { replacement, .. } => replacement.clone(),
                     AstNodeDraftData::Variable { new_name, .. } => {
@@ -636,6 +673,7 @@ impl FirebatState {
             editor_buffer: self.optimization_editor_buffer.clone(),
             editor_path: self.optimization_editor_path.clone(),
             applied_buffer_script: self.optimization_applied_buffer_script.clone(),
+            fb_script_enabled: false,
         };
         let json = serde_json::to_string_pretty(&store).map_err(|error| error.to_string())?;
         fs::write(path, json).map_err(|error| error.to_string())
@@ -674,12 +712,13 @@ impl FirebatState {
             preset.name = name;
             return;
         }
-        self.optimization_scripts.push(OptimizationScriptPreset {
-            name,
-            path: path_string,
-            enabled: false,
-            applied_enabled: false,
-        });
+        self.optimization_scripts
+            .push(crate::model::OptimizationScriptPreset {
+                name,
+                path: path_string,
+                enabled: false,
+                applied_enabled: false,
+            });
         self.optimization_scripts
             .sort_by(|left, right| left.name.cmp(&right.name));
     }
@@ -714,10 +753,7 @@ fn build_editor_draft(result: &DecompileResultView, target: EditorTarget) -> Opt
             .get(target.row)
             .map(|ir| EditorDraft::Ir(IrEditorDraft::from_text(&ir.data))),
         EditorLayer::Ast => {
-            // Create new-style AST node editor draft
             result.data.ast.get(target.row).map(|ast| {
-                // For now, create a simple statement editor draft
-                // In the full implementation, we'd parse the AST line and determine the type
                 EditorDraft::AstNode(AstNodeEditorDraft {
                     path: fireball::abstract_syntax_tree::AstNodePath::function(0),
                     edit_type: AstNodeEditType::Statement,
@@ -744,7 +780,7 @@ fn build_decompile_view(result: DecompileResult) -> DecompileResultView {
         colors,
         assembly_parent_by_index,
         data: result.clone(),
-        ast: result.ast_object.clone(), // Clone Arc reference to AST
+        ast: result.ast_object.clone(),
     }
 }
 

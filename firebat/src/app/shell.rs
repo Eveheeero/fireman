@@ -1,8 +1,8 @@
 use super::state::FirebatState;
 use crate::{
     node::{
-        InputNode, Node, NodeGraph, NodeId, NodePosition, NodeResponse, NodeType, OptimizationNode,
-        OptimizationPass, OutputNode,
+        InputNode, Node, NodeGraph, NodeId, NodePosition, NodeResponse, NodeType, OptNode,
+        OptimizationPass, PreviewNode,
     },
     pipeline::PipelineData,
     theme::configure_theme,
@@ -14,7 +14,6 @@ use eframe::{
 };
 use std::{
     collections::VecDeque,
-    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -53,7 +52,7 @@ impl Default for FirebatApp {
         input.set_position(NodePosition::new(50.0, 50.0));
         graph.add_node(Box::new(input));
 
-        let mut output = OutputNode::new();
+        let mut output = PreviewNode::new();
         output.set_position(NodePosition::new(500.0, 50.0));
         graph.add_node(Box::new(output));
 
@@ -322,15 +321,13 @@ impl FirebatApp {
                     });
 
                 if ui.button("Optimization").clicked() {
-                    self.add_node_at_center(NodeType::Optimization(
-                        self.selected_pass_type.clone(),
-                    ));
+                    self.add_node_at_center(NodeType::Opt);
                     self.show_add_node_menu = false;
                 }
 
                 ui.add_space(8.0);
-                if ui.button("Output").clicked() {
-                    self.add_node_at_center(NodeType::Output);
+                if ui.button("Preview").clicked() {
+                    self.add_node_at_center(NodeType::Preview);
                     self.show_add_node_menu = false;
                 }
             });
@@ -344,11 +341,8 @@ impl FirebatApp {
 
         let node: Box<dyn Node> = match node_type {
             NodeType::Input => Box::new(InputNode::with_position(pos.x, pos.y)),
-            NodeType::Optimization(ref pass) => Box::new(
-                OptimizationNode::new(pass.clone(), self.graph.len() + 1)
-                    .with_position(pos.x, pos.y),
-            ),
-            NodeType::Output => Box::new(OutputNode::with_position(pos.x, pos.y)),
+            NodeType::Opt => Box::new(OptNode::new().with_position(pos.x, pos.y)),
+            NodeType::Preview => Box::new(PreviewNode::with_position(pos.x, pos.y)),
         };
 
         let id = node.id();
@@ -360,39 +354,38 @@ impl FirebatApp {
     fn execute_pipeline(&mut self) {
         self.set_status("Executing pipeline...");
 
-        match self.graph.execute() {
-            Ok(data) => match data {
-                PipelineData::Ast(ast) => {
-                    let config = fireball::abstract_syntax_tree::AstPrintConfig::default();
-                    let code = ast.print(Some(config));
-                    let funcs = code
-                        .lines()
-                        .filter(|l| {
-                            l.contains("void ") || l.contains("int ") || l.contains("func ")
-                        })
-                        .count();
-                    self.set_status(format!("Pipeline completed: {} functions", funcs));
+        // Walk the graph: process each node sequentially, passing data through.
+        let mut data = PipelineData::Empty;
+        let mut failed = false;
+        for node in self.graph.nodes_mut() {
+            match node.process(data.clone()) {
+                Ok(next) => data = next,
+                Err(e) => {
+                    self.set_status(format!("Pipeline failed: {}", e));
+                    failed = true;
+                    break;
+                }
+            }
+        }
 
-                    // Set the AST on all Output nodes so they can display it
-                    let ast_arc = Arc::new((*ast).clone());
-                    for node in self.graph.nodes_mut() {
-                        if let Some(output_node) = node.as_any_mut().downcast_mut::<OutputNode>() {
-                            output_node.set_ast(ast_arc.clone());
-                        }
-                    }
-                }
-                PipelineData::Empty => {
-                    self.set_status("Pipeline completed (empty)");
-                    // Clear AST from Output nodes
-                    for node in self.graph.nodes_mut() {
-                        if let Some(output_node) = node.as_any_mut().downcast_mut::<OutputNode>() {
-                            output_node.clear_ast();
-                        }
-                    }
-                }
-            },
-            Err(e) => {
-                self.set_status(format!("Pipeline failed: {}", e));
+        if failed {
+            return;
+        }
+
+        match data {
+            PipelineData::Ast(ref ast) => {
+                let config = fireball::abstract_syntax_tree::AstPrintConfig::default();
+                let code = ast.print(Some(config));
+                let funcs = code
+                    .lines()
+                    .filter(|l| {
+                        l.contains("void ") || l.contains("int ") || l.contains("func ")
+                    })
+                    .count();
+                self.set_status(format!("Pipeline completed: {} functions", funcs));
+            }
+            PipelineData::Empty => {
+                self.set_status("Pipeline completed (empty)");
             }
         }
     }

@@ -18,26 +18,26 @@ pub struct KnownSection {
     pub data: KnownSectionData,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Assembly {
     pub index: usize,
     pub parents_start_address: u64,
     pub data: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Ir {
     pub parents_assembly_index: usize,
     pub data: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AstLine {
     pub row: usize,
     pub data: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DecompileResult {
     pub assembly: Vec<Assembly>,
     pub ir: Vec<Ir>,
@@ -264,6 +264,29 @@ pub struct OptimizationStore {
     pub editor_buffer: String,
     pub editor_path: Option<String>,
     pub applied_buffer_script: Option<String>,
+    #[serde(default)]
+    pub fb_script_enabled: bool,
+}
+
+/// Focus within an OptNode's UI (settings toggles vs script editor).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OptimizationFocus {
+    Settings,
+    Script,
+}
+
+/// Request to optimize an existing AST with a given config.
+pub struct OptimizeAstRequest {
+    pub ast: fireball::abstract_syntax_tree::Ast,
+    pub settings: OptimizationSettings,
+    pub script_paths: Vec<String>,
+    pub buffer_script: Option<String>,
+}
+
+/// Lightweight result carrying the optimized AST and its text lines.
+pub struct OptimizeAstResult {
+    pub ast: Arc<fireball::abstract_syntax_tree::Ast>,
+    pub ast_lines: Vec<AstLine>,
 }
 
 impl Default for OptimizationSettings {

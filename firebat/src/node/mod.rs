@@ -5,8 +5,8 @@ pub mod output;
 use crate::pipeline::PipelineData;
 use egui::{Color32, Pos2, Ui};
 pub use input::InputNode;
-pub use optimization::{OptimizationNode, OptimizationPass};
-pub use output::OutputNode;
+pub use optimization::{OptNode, OptimizationPass};
+pub use output::PreviewNode;
 use serde::{Deserialize, Serialize};
 use std::{
     any::Any,
@@ -71,24 +71,24 @@ pub enum NodeResponse {
 #[derive(Clone, Debug, PartialEq)]
 pub enum NodeType {
     Input,
-    Optimization(OptimizationPass),
-    Output,
+    Opt,
+    Preview,
 }
 
 impl NodeType {
     pub fn name(&self) -> &'static str {
         match self {
             Self::Input => "Input",
-            Self::Optimization(_) => "Optimization",
-            Self::Output => "Output",
+            Self::Opt => "Optimization",
+            Self::Preview => "Preview",
         }
     }
 
     pub fn icon(&self) -> &'static str {
         match self {
             Self::Input => "",
-            Self::Optimization(_) => "",
-            Self::Output => "",
+            Self::Opt => "",
+            Self::Preview => "",
         }
     }
 }
@@ -130,7 +130,7 @@ impl NodeColors {
         Color32::from_rgb(0x03, 0x83, 0x87) // Cyan
     }
 
-    pub fn output() -> Color32 {
+    pub fn preview() -> Color32 {
         Color32::from_rgb(0x0F, 0x7B, 0x0F) // Green
     }
 }
@@ -261,59 +261,13 @@ impl NodeGraph {
         self.connections.retain(|(f, t)| *f != from || *t != to);
     }
 
-    /// Execute the pipeline and return the final PipelineData
-    pub fn execute(&self) -> Result<PipelineData, NodeError> {
-        if self.nodes.is_empty() {
-            return Ok(PipelineData::Empty);
-        }
-
-        // Find input node (should be first or connected from nothing)
-        let input_node = self
-            .nodes
+    /// Collect OptNode IDs in pipeline order (for async queue).
+    pub fn opt_node_ids(&self) -> Vec<NodeId> {
+        self.nodes
             .iter()
-            .find(|n| matches!(n.node_type(), NodeType::Input))
-            .or_else(|| self.nodes.first())
-            .ok_or_else(|| NodeError::MissingData("No nodes in graph"))?;
-
-        // Start with empty data
-        let mut data = PipelineData::Empty;
-
-        // Process nodes in order using connections to determine flow
-        let mut processed_ids = std::collections::HashSet::new();
-        let mut current_ids: Vec<NodeId> = self
-            .nodes
-            .iter()
-            .filter(|n| !self.connections.iter().any(|(_, to)| *to == n.id()))
+            .filter(|n| matches!(n.node_type(), NodeType::Opt))
             .map(|n| n.id())
-            .collect();
-
-        while !current_ids.is_empty() {
-            let mut next_ids = Vec::new();
-
-            for id in current_ids {
-                if processed_ids.contains(&id) {
-                    continue;
-                }
-
-                if let Some(node) = self.get_node(id) {
-                    if node.is_enabled() {
-                        data = node.process(data)?;
-                    }
-                    processed_ids.insert(id);
-
-                    // Find next nodes connected from this one
-                    for (from, to) in &self.connections {
-                        if *from == id && !processed_ids.contains(to) {
-                            next_ids.push(*to);
-                        }
-                    }
-                }
-            }
-
-            current_ids = next_ids;
-        }
-
-        Ok(data)
+            .collect()
     }
 
     /// Clear all nodes and connections
@@ -330,22 +284,6 @@ impl NodeGraph {
     /// Check if graph is empty
     pub fn is_empty(&self) -> bool {
         self.nodes.is_empty()
-    }
-
-    /// Apply an optimization preset by adding/removing nodes
-    pub fn apply_preset(
-        &mut self,
-        preset: &crate::model::OptimizationScriptPreset,
-    ) -> Result<(), String> {
-        // For now, just log that we would apply the preset
-        // In a full implementation, this would add/remove optimization nodes
-        if preset.enabled {
-            // Add an optimization node for this preset
-            let pass = OptimizationPass::PatternMatching(vec![preset.path.clone()]);
-            let node = OptimizationNode::new(pass, self.nodes.len() + 1);
-            self.add_node(Box::new(node));
-        }
-        Ok(())
     }
 
     /// Serialize the graph to JSON
@@ -378,24 +316,11 @@ impl NodeGraph {
                 if let Some(node_type) = node_value.get("type").and_then(|t| t.as_str()) {
                     let mut node: Box<dyn Node> = match node_type {
                         "InputNode" => Box::new(InputNode::new()),
-                        "OptimizationNode" => {
-                            // Parse pass type from JSON
-                            let pass_type = if let Some(pass_str) =
-                                node_value.get("pass_type").and_then(|p| p.as_str())
-                            {
-                                serde_json::from_str::<OptimizationPass>(pass_str)
-                                    .unwrap_or(OptimizationPass::ControlFlowCleanup)
-                            } else {
-                                OptimizationPass::ControlFlowCleanup
-                            };
-                            let pass_number = node_value
-                                .get("pass_number")
-                                .and_then(|n| n.as_u64())
-                                .unwrap_or(1)
-                                as usize;
-                            Box::new(OptimizationNode::new(pass_type, pass_number))
-                        }
-                        "OutputNode" => Box::new(OutputNode::new()),
+                        "OptNode" => Box::new(OptNode::new()),
+                        "PreviewNode" => Box::new(PreviewNode::new()),
+                        // Legacy compat: treat old names as new types
+                        "OptimizationNode" => Box::new(OptNode::new()),
+                        "OutputNode" => Box::new(PreviewNode::new()),
                         _ => continue,
                     };
                     node.deserialize(node_value);
@@ -428,18 +353,4 @@ impl dyn Node {
     pub fn downcast_mut<T: Node>(&mut self) -> Option<&mut T> {
         self.as_any_mut().downcast_mut::<T>()
     }
-}
-
-// Implement as_any methods for each node type
-macro_rules! impl_node_as_any {
-    ($type:ty) => {
-        impl Node for $type {
-            fn as_any(&self) -> &dyn Any {
-                self
-            }
-            fn as_any_mut(&mut self) -> &mut dyn Any {
-                self
-            }
-        }
-    };
 }

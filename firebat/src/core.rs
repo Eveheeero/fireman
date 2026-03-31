@@ -1,7 +1,7 @@
 use crate::model::{
     AppliedEditResult, Assembly, AstLine, DecompileRequest, DecompileResult, EditPosition,
-    EditRequest, EditorLayer, EditorTarget, Ir as DisplayIr, KnownSectionData, PatchOperation,
-    build_optimization_config,
+    EditRequest, EditorLayer, EditorTarget, Ir as DisplayIr, KnownSectionData, OptimizeAstRequest,
+    OptimizeAstResult, PatchOperation, build_optimization_config,
 };
 use fireball::{
     Fireball,
@@ -379,6 +379,29 @@ impl FirebatCore {
             .patch_target(request)
     }
 
+    pub fn optimize_ast(&self, request: OptimizeAstRequest) -> Result<OptimizeAstResult, String> {
+        let config = build_optimization_config(
+            &request.settings,
+            &request.script_paths,
+            request.buffer_script.as_deref(),
+        )?;
+        let optimized = if is_config_none(&config) {
+            request.ast
+        } else {
+            let function_ids: Vec<_> =
+                request.ast.function_versions.keys().cloned().collect();
+            request
+                .ast
+                .optimize_functions(&function_ids, Some(config))
+                .map_err(|error| error.to_string())?
+        };
+        let lines = ast_lines_from_text(&optimized.print(None));
+        Ok(OptimizeAstResult {
+            ast: Arc::new(optimized),
+            ast_lines: lines,
+        })
+    }
+
     fn build_session(
         &self,
         start_addresses: &[u64],
@@ -677,4 +700,39 @@ fn block_to_result(blocks: impl IntoIterator<Item = Arc<Block>>) -> Vec<KnownSec
         }
     }
     result
+}
+
+fn is_config_none(config: &AstOptimizationConfig) -> bool {
+    !config.ir_analyzation
+        && !config.parameter_analyzation
+        && !config.call_argument_analyzation
+        && !config.constant_folding
+        && !config.control_flow_cleanup
+        && !config.collapse_unused_varaible
+        && !config.dead_store_elimination
+        && !config.pattern_matching_enabled
+        && !config.loop_analyzation
+        && !config.copy_propagation
+        && !config.expression_inlining
+        && !config.operator_canonicalization
+        && !config.magic_division_recovery
+        && !config.identity_simplification
+        && !config.bit_trick_recognition
+        && !config.cast_minimization
+        && !config.ternary_recovery
+        && !config.boolean_recovery
+        && !config.assertion_recovery
+        && !config.do_while_recovery
+        && !config.clamp_recovery
+        && !config.loop_cleanup
+        && !config.if_conversion_reversal
+        && !config.switch_reconstruction
+        && !config.lifetime_scoping
+        && !config.signedness_inference
+        && !config.name_recovery
+        && !config.early_return_normalization
+        && !config.anti_debug_ast_suppression
+        && !config.logging_suppression
+        && !config.static_guard_suppression
+        && !config.security_scaffold_suppression
 }
