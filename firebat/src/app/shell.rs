@@ -130,6 +130,42 @@ impl FirebatApp {
         self.status_timer = Some(Instant::now());
     }
 
+    fn execute_pipeline(&mut self) {
+        self.set_status("Executing pipeline...");
+
+        let mut data = PipelineData::Empty;
+        let mut failed = false;
+        for node in self.graph.nodes_mut() {
+            match node.process(data.clone()) {
+                Ok(next) => data = next,
+                Err(e) => {
+                    self.set_status(format!("Pipeline failed: {}", e));
+                    failed = true;
+                    break;
+                }
+            }
+        }
+
+        if failed {
+            return;
+        }
+
+        match data {
+            PipelineData::Ast(ref ast) => {
+                let config = fireball::abstract_syntax_tree::AstPrintConfig::default();
+                let code = ast.print(Some(config));
+                let funcs = code
+                    .lines()
+                    .filter(|l| l.contains("void ") || l.contains("int ") || l.contains("func "))
+                    .count();
+                self.set_status(format!("Pipeline completed: {} functions", funcs));
+            }
+            PipelineData::Empty => {
+                self.set_status("Pipeline completed (empty)");
+            }
+        }
+    }
+
     fn render_toolbar(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.heading("Firebat");
