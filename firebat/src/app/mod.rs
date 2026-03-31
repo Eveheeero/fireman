@@ -1,3 +1,4 @@
+mod editor_window;
 mod panels;
 mod shell;
 mod state;

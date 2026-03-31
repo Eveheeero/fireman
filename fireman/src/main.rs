@@ -26,7 +26,7 @@ use std::{
     sync::Arc,
 };
 
-const OPTIMIZATION_ARG_IDS: [&str; 20] = [
+const OPTIMIZATION_ARG_IDS: [&str; 33] = [
     "ir-analyzation",
     "parameter-analyzation",
     "call-argument-analyzation",
@@ -44,9 +44,22 @@ const OPTIMIZATION_ARG_IDS: [&str; 20] = [
     "lifetime-scoping",
     "signedness-inference",
     "name-recovery",
-    "auto-comment",
     "early-return-normalization",
     "use-embedded-passes",
+    "operator-canonicalization",
+    "magic-division-recovery",
+    "identity-simplification",
+    "bit-trick-recognition",
+    "cast-minimization",
+    "assertion-recovery",
+    "do-while-recovery",
+    "clamp-recovery",
+    "loop-cleanup",
+    "if-conversion-reversal",
+    "anti-debug-ast-suppression",
+    "logging-suppression",
+    "static-guard-suppression",
+    "security-scaffold-suppression",
 ];
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -373,7 +386,7 @@ fn print_args() -> [Arg; 7] {
     ]
 }
 
-fn optimization_args() -> [Arg; 20] {
+fn optimization_args() -> [Arg; 33] {
     [
         Arg::new("ir-analyzation")
             .long("ir-analyzation")
@@ -477,12 +490,6 @@ fn optimization_args() -> [Arg; 20] {
             .value_parser(BoolishValueParser::new())
             .action(ArgAction::Set)
             .help("Toggle name recovery"),
-        Arg::new("auto-comment")
-            .long("auto-comment")
-            .value_name("BOOL")
-            .value_parser(BoolishValueParser::new())
-            .action(ArgAction::Set)
-            .help("Toggle automatic commenting"),
         Arg::new("early-return-normalization")
             .long("early-return-normalization")
             .value_name("BOOL")
@@ -495,6 +502,90 @@ fn optimization_args() -> [Arg; 20] {
             .value_parser(BoolishValueParser::new())
             .action(ArgAction::Set)
             .help("Toggle embedded passes"),
+        Arg::new("operator-canonicalization")
+            .long("operator-canonicalization")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle operator canonicalization"),
+        Arg::new("magic-division-recovery")
+            .long("magic-division-recovery")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle magic division recovery"),
+        Arg::new("identity-simplification")
+            .long("identity-simplification")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle identity simplification"),
+        Arg::new("bit-trick-recognition")
+            .long("bit-trick-recognition")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle bit trick recognition"),
+        Arg::new("cast-minimization")
+            .long("cast-minimization")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle cast minimization"),
+        Arg::new("assertion-recovery")
+            .long("assertion-recovery")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle assertion recovery"),
+        Arg::new("do-while-recovery")
+            .long("do-while-recovery")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle do-while recovery"),
+        Arg::new("clamp-recovery")
+            .long("clamp-recovery")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle clamp recovery"),
+        Arg::new("loop-cleanup")
+            .long("loop-cleanup")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle loop cleanup"),
+        Arg::new("if-conversion-reversal")
+            .long("if-conversion-reversal")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle if-conversion reversal"),
+        Arg::new("anti-debug-ast-suppression")
+            .long("anti-debug-ast-suppression")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle anti-debug AST suppression"),
+        Arg::new("logging-suppression")
+            .long("logging-suppression")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle logging suppression"),
+        Arg::new("static-guard-suppression")
+            .long("static-guard-suppression")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle static guard suppression"),
+        Arg::new("security-scaffold-suppression")
+            .long("security-scaffold-suppression")
+            .value_name("BOOL")
+            .value_parser(BoolishValueParser::new())
+            .action(ArgAction::Set)
+            .help("Toggle security scaffold suppression"),
     ]
 }
 
@@ -544,9 +635,22 @@ fn apply_optimization_overrides(matches: &ArgMatches, settings: &mut Optimizatio
     opt_field!("lifetime-scoping", lifetime_scoping);
     opt_field!("signedness-inference", signedness_inference);
     opt_field!("name-recovery", name_recovery);
-    opt_field!("auto-comment", auto_comment);
     opt_field!("early-return-normalization", early_return_normalization);
     opt_field!("use-embedded-passes", use_embedded_passes);
+    opt_field!("operator-canonicalization", operator_canonicalization);
+    opt_field!("magic-division-recovery", magic_division_recovery);
+    opt_field!("identity-simplification", identity_simplification);
+    opt_field!("bit-trick-recognition", bit_trick_recognition);
+    opt_field!("cast-minimization", cast_minimization);
+    opt_field!("assertion-recovery", assertion_recovery);
+    opt_field!("do-while-recovery", do_while_recovery);
+    opt_field!("clamp-recovery", clamp_recovery);
+    opt_field!("loop-cleanup", loop_cleanup);
+    opt_field!("if-conversion-reversal", if_conversion_reversal);
+    opt_field!("anti-debug-ast-suppression", anti_debug_ast_suppression);
+    opt_field!("logging-suppression", logging_suppression);
+    opt_field!("static-guard-suppression", static_guard_suppression);
+    opt_field!("security-scaffold-suppression", security_scaffold_suppression);
 
     if let Some(value) = matches.get_one::<usize>("max-pass-iterations") {
         settings.max_pass_iterations = *value;

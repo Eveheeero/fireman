@@ -56,16 +56,12 @@ impl TabViewer for FirebatTabViewer<'_> {
             .fill(panel_fill)
             .stroke(Stroke::new(1.0, panel_stroke))
             .show(ui, |ui| {
-                ui.vertical(|ui| {
-                    ui.label(RichText::new(tab.title()).strong());
-                    ui.separator();
-                    match tab {
-                        PanelTab::Sections => self.state.render_section_panel(ui),
-                        PanelTab::Optimization => self.state.render_optimization_panel(ui),
-                        PanelTab::Assembly => self.state.render_assembly_panel(ui),
-                        PanelTab::Ir => self.state.render_ir_panel(ui),
-                        PanelTab::Ast => self.state.render_ast_panel(ui),
-                    }
+                ui.vertical(|ui| match tab {
+                    PanelTab::Sections => self.state.render_section_panel(ui),
+                    PanelTab::Optimization => self.state.render_optimization_panel(ui),
+                    PanelTab::Assembly => self.state.render_assembly_panel(ui),
+                    PanelTab::Ir => self.state.render_ir_panel(ui),
+                    PanelTab::Ast => self.state.render_ast_panel(ui),
                 });
             });
     }

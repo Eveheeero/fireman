@@ -1,7 +1,9 @@
 use eframe::egui::Color32;
-use fireball::abstract_syntax_tree::{AstOptimizationConfig, pattern_matching::AstPattern};
+use fireball::abstract_syntax_tree::{
+    Ast, AstNodeEdit, AstNodePath, AstOptimizationConfig, pattern_matching::AstPattern,
+};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(Clone)]
 pub struct KnownSectionData {
@@ -40,6 +42,7 @@ pub struct DecompileResult {
     pub assembly: Vec<Assembly>,
     pub ir: Vec<Ir>,
     pub ast: Vec<AstLine>,
+    pub ast_object: Option<Arc<Ast>>, // Actual AST for tree rendering
     pub ast_sync_message: Option<String>,
 }
 
@@ -48,6 +51,7 @@ pub struct DecompileResultView {
     pub colors: HashMap<usize, Color32>,
     pub assembly_parent_by_index: HashMap<usize, u64>,
     pub data: DecompileResult,
+    pub ast: Option<Arc<Ast>>, // Reference to AST object for rendering
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
@@ -70,6 +74,18 @@ pub enum EditPosition {
 pub struct EditorTarget {
     pub layer: EditorLayer,
     pub row: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AstNodeTarget {
+    pub layer: EditorLayer,
+    pub path: AstNodePath,
+}
+
+#[derive(Clone, Debug)]
+pub enum EditorTargetV2 {
+    Row { layer: EditorLayer, row: usize },
+    AstNode { path: AstNodePath },
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -105,10 +121,65 @@ pub struct AstEditorDraft {
 }
 
 #[derive(Clone, Debug)]
+pub struct AstNodeEditorDraft {
+    pub path: AstNodePath,
+    pub edit_type: AstNodeEditType,
+    pub draft_data: AstNodeDraftData,
+    pub status_message: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub enum AstNodeEditType {
+    Variable,
+    Literal,
+    UnaryOperator,
+    BinaryOperator,
+    Statement,
+    Function,
+}
+
+#[derive(Clone, Debug)]
+pub enum AstNodeDraftData {
+    Variable {
+        current_name: String,
+        current_type: String,
+        new_name: String,
+        new_type: String,
+    },
+    Literal {
+        current_value: String,
+        current_type: String,
+        new_value: String,
+    },
+    UnaryOperator {
+        current_op: String,
+        new_op: String,
+        operand: String,
+    },
+    BinaryOperator {
+        current_op: String,
+        new_op: String,
+        left: String,
+        right: String,
+    },
+    Statement {
+        statement_type: String,
+        replacement: String,
+    },
+    Function {
+        current_name: String,
+        current_return_type: String,
+        new_name: String,
+        new_return_type: String,
+    },
+}
+
+#[derive(Clone, Debug)]
 pub enum EditorDraft {
     Assembly(AssemblyEditorDraft),
     Ir(IrEditorDraft),
     Ast(AstEditorDraft),
+    AstNode(AstNodeEditorDraft),
 }
 
 #[derive(Clone, Debug)]
@@ -117,6 +188,12 @@ pub struct EditRequest {
     pub row: usize,
     pub position: EditPosition,
     pub text: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct AstNodeEditRequest {
+    pub path: AstNodePath,
+    pub edit: AstNodeEdit,
 }
 
 #[derive(Clone)]
@@ -152,8 +229,21 @@ pub struct OptimizationSettings {
     pub lifetime_scoping: bool,
     pub signedness_inference: bool,
     pub name_recovery: bool,
-    pub auto_comment: bool,
     pub early_return_normalization: bool,
+    pub operator_canonicalization: bool,
+    pub magic_division_recovery: bool,
+    pub identity_simplification: bool,
+    pub bit_trick_recognition: bool,
+    pub cast_minimization: bool,
+    pub assertion_recovery: bool,
+    pub do_while_recovery: bool,
+    pub clamp_recovery: bool,
+    pub loop_cleanup: bool,
+    pub if_conversion_reversal: bool,
+    pub anti_debug_ast_suppression: bool,
+    pub logging_suppression: bool,
+    pub static_guard_suppression: bool,
+    pub security_scaffold_suppression: bool,
     pub max_pass_iterations: usize,
     pub use_embedded_passes: bool,
 }
@@ -197,8 +287,21 @@ impl Default for OptimizationSettings {
             lifetime_scoping: defaults.lifetime_scoping,
             signedness_inference: defaults.signedness_inference,
             name_recovery: defaults.name_recovery,
-            auto_comment: defaults.auto_comment,
             early_return_normalization: defaults.early_return_normalization,
+            operator_canonicalization: defaults.operator_canonicalization,
+            magic_division_recovery: defaults.magic_division_recovery,
+            identity_simplification: defaults.identity_simplification,
+            bit_trick_recognition: defaults.bit_trick_recognition,
+            cast_minimization: defaults.cast_minimization,
+            assertion_recovery: defaults.assertion_recovery,
+            do_while_recovery: defaults.do_while_recovery,
+            clamp_recovery: defaults.clamp_recovery,
+            loop_cleanup: defaults.loop_cleanup,
+            if_conversion_reversal: defaults.if_conversion_reversal,
+            anti_debug_ast_suppression: defaults.anti_debug_ast_suppression,
+            logging_suppression: defaults.logging_suppression,
+            static_guard_suppression: defaults.static_guard_suppression,
+            security_scaffold_suppression: defaults.security_scaffold_suppression,
             max_pass_iterations: defaults.max_pass_iterations,
             use_embedded_passes: defaults.use_embedded_passes,
         }
@@ -230,11 +333,23 @@ pub fn build_optimization_config(
         lifetime_scoping: settings.lifetime_scoping,
         signedness_inference: settings.signedness_inference,
         name_recovery: settings.name_recovery,
-        auto_comment: settings.auto_comment,
         early_return_normalization: settings.early_return_normalization,
+        operator_canonicalization: settings.operator_canonicalization,
+        magic_division_recovery: settings.magic_division_recovery,
+        identity_simplification: settings.identity_simplification,
+        bit_trick_recognition: settings.bit_trick_recognition,
+        cast_minimization: settings.cast_minimization,
+        assertion_recovery: settings.assertion_recovery,
+        do_while_recovery: settings.do_while_recovery,
+        clamp_recovery: settings.clamp_recovery,
+        loop_cleanup: settings.loop_cleanup,
+        if_conversion_reversal: settings.if_conversion_reversal,
+        anti_debug_ast_suppression: settings.anti_debug_ast_suppression,
+        logging_suppression: settings.logging_suppression,
+        static_guard_suppression: settings.static_guard_suppression,
+        security_scaffold_suppression: settings.security_scaffold_suppression,
         max_pass_iterations: settings.max_pass_iterations,
         use_embedded_passes: settings.use_embedded_passes,
-        ..defaults.clone()
     };
 
     if !config.pattern_matching_enabled {
@@ -303,6 +418,121 @@ impl IrEditorDraft {
 
     pub fn compose_line(&self) -> String {
         compose_head_tail(&self.opcode, &self.detail)
+    }
+}
+
+impl AstNodeEditorDraft {
+    pub fn to_edit(&self) -> Option<AstNodeEdit> {
+        match &self.draft_data {
+            AstNodeDraftData::Variable {
+                new_name,
+                new_type,
+                current_name,
+                current_type,
+            } => {
+                if new_name != current_name {
+                    return Some(AstNodeEdit::RenameVariable {
+                        path: self.path.clone(),
+                        new_name: new_name.clone(),
+                    });
+                }
+                if new_type != current_type {
+                    return Some(AstNodeEdit::ChangeVariableType {
+                        path: self.path.clone(),
+                        new_type: new_type.clone(),
+                    });
+                }
+                None
+            }
+            AstNodeDraftData::Literal {
+                new_value,
+                current_value,
+                ..
+            } => {
+                if new_value != current_value {
+                    Some(AstNodeEdit::ChangeLiteral {
+                        path: self.path.clone(),
+                        new_value: new_value.clone(),
+                    })
+                } else {
+                    None
+                }
+            }
+            AstNodeDraftData::UnaryOperator {
+                new_op, current_op, ..
+            } => {
+                if new_op != current_op {
+                    Some(AstNodeEdit::ChangeUnaryOperator {
+                        path: self.path.clone(),
+                        new_op: new_op.clone(),
+                    })
+                } else {
+                    None
+                }
+            }
+            AstNodeDraftData::BinaryOperator {
+                new_op, current_op, ..
+            } => {
+                if new_op != current_op {
+                    Some(AstNodeEdit::ChangeBinaryOperator {
+                        path: self.path.clone(),
+                        new_op: new_op.clone(),
+                    })
+                } else {
+                    None
+                }
+            }
+            AstNodeDraftData::Statement { replacement, .. } => {
+                Some(AstNodeEdit::ReplaceStatement {
+                    path: self.path.clone(),
+                    replacement: replacement.clone(),
+                })
+            }
+            AstNodeDraftData::Function {
+                new_name,
+                new_return_type,
+                current_name,
+                current_return_type,
+            } => {
+                if new_name != current_name {
+                    return Some(AstNodeEdit::RenameVariable {
+                        path: self.path.clone(),
+                        new_name: new_name.clone(),
+                    });
+                }
+                if new_return_type != current_return_type {
+                    return Some(AstNodeEdit::ChangeVariableType {
+                        path: self.path.clone(),
+                        new_type: new_return_type.clone(),
+                    });
+                }
+                None
+            }
+        }
+    }
+
+    pub fn validate(&self) -> Option<String> {
+        match &self.draft_data {
+            AstNodeDraftData::Variable { new_name, .. } => {
+                if new_name.is_empty() {
+                    return Some("Variable name cannot be empty".to_string());
+                }
+                None
+            }
+            AstNodeDraftData::Literal { new_value, .. } => {
+                if new_value.is_empty() {
+                    return Some("Literal value cannot be empty".to_string());
+                }
+                None
+            }
+            AstNodeDraftData::Statement { replacement, .. } => {
+                if replacement.is_empty() {
+                    return Some("Statement cannot be empty".to_string());
+                }
+                None
+            }
+            _ => None,
+        }
     }
 }
 

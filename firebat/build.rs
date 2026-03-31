@@ -16,7 +16,7 @@ fn main() {
             res.compile().expect("Failed to compile Windows resources");
         }
     }
-    
+
     // Re-run if icon files change
     println!("cargo:rerun-if-changed=icons/icon.ico");
     println!("cargo:rerun-if-changed=icons/icon.icns");

@@ -71,6 +71,7 @@ impl EditableSession {
                 assembly: Vec::new(),
                 ir: Vec::new(),
                 ast: Vec::new(),
+                ast_object: None,
                 ast_sync_message: None,
             },
         };
@@ -182,31 +183,44 @@ impl EditableSession {
             }
         }
 
-        let (ast, ast_sync_message) = if let Some(lines) = self.manual_ast_lines.clone() {
+        let (ast, ast_object, ast_sync_message) = if let Some(lines) = self.manual_ast_lines.clone()
+        {
             (
                 lines,
+                None,
                 Some("AST view contains manual statement edits.".to_string()),
             )
         } else {
-            (self.generate_ast_lines()?, None)
+            let (lines, ast_obj) = self.generate_ast()?;
+            (lines, Some(ast_obj), None)
         };
 
         self.rendered = DecompileResult {
             assembly,
             ir: irs,
             ast,
+            ast_object,
             ast_sync_message,
         };
         Ok(())
     }
 
-    fn generate_ast_lines(&self) -> Result<Vec<AstLine>, String> {
+    fn generate_ast(
+        &self,
+    ) -> Result<
+        (
+            Vec<AstLine>,
+            std::sync::Arc<fireball::abstract_syntax_tree::Ast>,
+        ),
+        String,
+    > {
         let ast = fireball::ir::analyze::generate_ast(self.target_blocks.iter().cloned())
             .map_err(|error| error.to_string())?
             .optimize(Some(self.optimization_config.clone()))
-            .map_err(|error| error.to_string())?
-            .print(None);
-        Ok(ast_lines_from_text(&ast))
+            .map_err(|error| error.to_string())?;
+        let ast_text = ast.print(None);
+        let lines = ast_lines_from_text(&ast_text);
+        Ok((lines, std::sync::Arc::new(ast)))
     }
 
     fn resolve_selection(&self, selection: SessionSelection) -> Result<EditorTarget, String> {
@@ -382,6 +396,7 @@ impl FirebatCore {
     }
 }
 
+#[cfg(feature = "keystone")]
 fn apply_assembly_edit(
     session: &mut EditableSession,
     request: &EditRequest,
@@ -417,6 +432,14 @@ fn apply_assembly_edit(
     );
     session.manual_ast_lines = None;
     Ok(SessionSelection::Assembly(row_ref))
+}
+
+#[cfg(not(feature = "keystone"))]
+fn apply_assembly_edit(
+    _session: &mut EditableSession,
+    _request: &EditRequest,
+) -> Result<SessionSelection, String> {
+    Err("Assembly editing requires the 'keystone' feature to be enabled".to_string())
 }
 
 fn apply_ir_edit(
@@ -466,6 +489,7 @@ fn apply_ir_edit(
     })?;
 
     session.manual_ast_lines = None;
+
     Ok(SessionSelection::Ir(IrRowRef {
         statement_index: selected_statement_index,
         ..row_ref

@@ -15,19 +15,6 @@ pub struct KnownSection {
 }
 
 #[derive(Clone)]
-pub struct Assembly {
-    pub index: usize,
-    pub parents_start_address: u64,
-    pub data: String,
-}
-
-#[derive(Clone)]
-pub struct Ir {
-    pub parents_assembly_index: usize,
-    pub data: String,
-}
-
-#[derive(Clone)]
 pub struct AstLine {
     pub row: usize,
     pub data: String,
@@ -35,85 +22,22 @@ pub struct AstLine {
 
 #[derive(Clone)]
 pub struct DecompileResult {
-    pub assembly: Vec<Assembly>,
-    pub ir: Vec<Ir>,
     pub ast: Vec<AstLine>,
     pub ast_sync_message: Option<String>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EditorLayer {
-    Assembly,
-    Ir,
-    Ast,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EditPosition {
-    Replace,
-    Before,
-    After,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct EditorTarget {
-    pub layer: EditorLayer,
-    pub row: usize,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct PatchOperation {
-    pub layer: EditorLayer,
-    pub position: EditPosition,
-    pub target: String,
-    pub text: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct AssemblyEditorDraft {
-    pub raw_text: String,
-    pub mnemonic: String,
-    pub operands: String,
-    pub status_message: Option<String>,
-}
-
-#[derive(Clone, Debug)]
-pub struct IrEditorDraft {
-    pub raw_text: String,
-    pub opcode: String,
-    pub detail: String,
-    pub position: EditPosition,
-    pub status_message: Option<String>,
-}
-
-#[derive(Clone, Debug)]
-pub struct AstEditorDraft {
-    pub raw_text: String,
-    pub position: EditPosition,
-    pub status_message: Option<String>,
-}
-
-#[derive(Clone, Debug)]
-pub enum EditorDraft {
-    Assembly(AssemblyEditorDraft),
-    Ir(IrEditorDraft),
-    Ast(AstEditorDraft),
-}
-
-#[derive(Clone, Debug)]
-pub struct EditRequest {
-    pub layer: EditorLayer,
-    pub row: usize,
-    pub position: EditPosition,
-    pub text: String,
-}
-
-#[derive(Clone)]
-pub struct AppliedEditResult {
+/// Decompile output bundled with the underlying Ast for incremental optimization.
+pub struct DecompileWithAst {
+    pub ast: fireball::abstract_syntax_tree::Ast,
     pub result: DecompileResult,
-    pub selected_target: EditorTarget,
+}
+
+/// Request to optimize an existing Ast with a single-pass config.
+pub struct OptimizeAstRequest {
+    pub ast: fireball::abstract_syntax_tree::Ast,
+    pub settings: OptimizationSettings,
+    pub script_paths: Vec<String>,
+    pub buffer_script: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -143,8 +67,21 @@ pub struct OptimizationSettings {
     pub lifetime_scoping: bool,
     pub signedness_inference: bool,
     pub name_recovery: bool,
-    pub auto_comment: bool,
     pub early_return_normalization: bool,
+    pub operator_canonicalization: bool,
+    pub magic_division_recovery: bool,
+    pub identity_simplification: bool,
+    pub bit_trick_recognition: bool,
+    pub cast_minimization: bool,
+    pub assertion_recovery: bool,
+    pub do_while_recovery: bool,
+    pub clamp_recovery: bool,
+    pub loop_cleanup: bool,
+    pub if_conversion_reversal: bool,
+    pub anti_debug_ast_suppression: bool,
+    pub logging_suppression: bool,
+    pub static_guard_suppression: bool,
+    pub security_scaffold_suppression: bool,
     pub max_pass_iterations: usize,
     pub use_embedded_passes: bool,
 }
@@ -165,33 +102,47 @@ pub struct OptimizationStore {
     pub editor_buffer: String,
     pub editor_path: Option<String>,
     pub applied_buffer_script: Option<String>,
+    pub fb_script_enabled: bool,
 }
 
 impl Default for OptimizationSettings {
     fn default() -> Self {
-        let defaults = AstOptimizationConfig::default();
+        let none = AstOptimizationConfig::NONE;
         Self {
-            ir_analyzation: defaults.ir_analyzation,
-            parameter_analyzation: defaults.parameter_analyzation,
-            call_argument_analyzation: defaults.call_argument_analyzation,
-            constant_folding: defaults.constant_folding,
-            control_flow_cleanup: defaults.control_flow_cleanup,
-            collapse_unused_varaible: defaults.collapse_unused_varaible,
-            dead_store_elimination: defaults.dead_store_elimination,
-            pattern_matching_enabled: defaults.pattern_matching_enabled,
-            loop_analyzation: defaults.loop_analyzation,
-            copy_propagation: defaults.copy_propagation,
-            expression_inlining: defaults.expression_inlining,
-            ternary_recovery: defaults.ternary_recovery,
-            boolean_recovery: defaults.boolean_recovery,
-            switch_reconstruction: defaults.switch_reconstruction,
-            lifetime_scoping: defaults.lifetime_scoping,
-            signedness_inference: defaults.signedness_inference,
-            name_recovery: defaults.name_recovery,
-            auto_comment: defaults.auto_comment,
-            early_return_normalization: defaults.early_return_normalization,
-            max_pass_iterations: defaults.max_pass_iterations,
-            use_embedded_passes: defaults.use_embedded_passes,
+            ir_analyzation: none.ir_analyzation,
+            parameter_analyzation: none.parameter_analyzation,
+            call_argument_analyzation: none.call_argument_analyzation,
+            constant_folding: none.constant_folding,
+            control_flow_cleanup: none.control_flow_cleanup,
+            collapse_unused_varaible: none.collapse_unused_varaible,
+            dead_store_elimination: none.dead_store_elimination,
+            pattern_matching_enabled: none.pattern_matching_enabled,
+            loop_analyzation: none.loop_analyzation,
+            copy_propagation: none.copy_propagation,
+            expression_inlining: none.expression_inlining,
+            ternary_recovery: none.ternary_recovery,
+            boolean_recovery: none.boolean_recovery,
+            switch_reconstruction: none.switch_reconstruction,
+            lifetime_scoping: none.lifetime_scoping,
+            signedness_inference: none.signedness_inference,
+            name_recovery: none.name_recovery,
+            early_return_normalization: none.early_return_normalization,
+            operator_canonicalization: none.operator_canonicalization,
+            magic_division_recovery: none.magic_division_recovery,
+            identity_simplification: none.identity_simplification,
+            bit_trick_recognition: none.bit_trick_recognition,
+            cast_minimization: none.cast_minimization,
+            assertion_recovery: none.assertion_recovery,
+            do_while_recovery: none.do_while_recovery,
+            clamp_recovery: none.clamp_recovery,
+            loop_cleanup: none.loop_cleanup,
+            if_conversion_reversal: none.if_conversion_reversal,
+            anti_debug_ast_suppression: none.anti_debug_ast_suppression,
+            logging_suppression: none.logging_suppression,
+            static_guard_suppression: none.static_guard_suppression,
+            security_scaffold_suppression: none.security_scaffold_suppression,
+            max_pass_iterations: none.max_pass_iterations,
+            use_embedded_passes: none.use_embedded_passes,
         }
     }
 }
@@ -221,11 +172,23 @@ pub fn build_optimization_config(
         lifetime_scoping: settings.lifetime_scoping,
         signedness_inference: settings.signedness_inference,
         name_recovery: settings.name_recovery,
-        auto_comment: settings.auto_comment,
         early_return_normalization: settings.early_return_normalization,
+        operator_canonicalization: settings.operator_canonicalization,
+        magic_division_recovery: settings.magic_division_recovery,
+        identity_simplification: settings.identity_simplification,
+        bit_trick_recognition: settings.bit_trick_recognition,
+        cast_minimization: settings.cast_minimization,
+        assertion_recovery: settings.assertion_recovery,
+        do_while_recovery: settings.do_while_recovery,
+        clamp_recovery: settings.clamp_recovery,
+        loop_cleanup: settings.loop_cleanup,
+        if_conversion_reversal: settings.if_conversion_reversal,
+        anti_debug_ast_suppression: settings.anti_debug_ast_suppression,
+        logging_suppression: settings.logging_suppression,
+        static_guard_suppression: settings.static_guard_suppression,
+        security_scaffold_suppression: settings.security_scaffold_suppression,
         max_pass_iterations: settings.max_pass_iterations,
         use_embedded_passes: settings.use_embedded_passes,
-        ..defaults.clone()
     };
 
     if !config.pattern_matching_enabled {
@@ -251,91 +214,4 @@ pub fn build_optimization_config(
 
     config.pattern_matching = patterns;
     Ok(config)
-}
-
-impl EditPosition {
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::Replace => "Replace",
-            Self::Before => "Insert Before",
-            Self::After => "Insert After",
-        }
-    }
-}
-
-impl AssemblyEditorDraft {
-    pub fn from_display_text(text: &str) -> Self {
-        let normalized = strip_assembly_address(text);
-        let (mnemonic, operands) = split_head_tail(normalized);
-        Self {
-            raw_text: text.to_string(),
-            mnemonic,
-            operands,
-            status_message: None,
-        }
-    }
-
-    pub fn compose_line(&self) -> String {
-        compose_head_tail(&self.mnemonic, &self.operands)
-    }
-}
-
-impl IrEditorDraft {
-    pub fn from_text(text: &str) -> Self {
-        let (opcode, detail) = split_head_tail(text);
-        Self {
-            raw_text: text.to_string(),
-            opcode,
-            detail,
-            position: EditPosition::Replace,
-            status_message: None,
-        }
-    }
-
-    pub fn compose_line(&self) -> String {
-        compose_head_tail(&self.opcode, &self.detail)
-    }
-}
-
-impl AstEditorDraft {
-    pub fn from_text(text: &str) -> Self {
-        Self {
-            raw_text: text.to_string(),
-            position: EditPosition::Replace,
-            status_message: None,
-        }
-    }
-}
-
-fn strip_assembly_address(text: &str) -> &str {
-    let trimmed = text.trim();
-    let Some((head, tail)) = trimmed.split_once(char::is_whitespace) else {
-        return trimmed;
-    };
-    if head.starts_with("0x")
-        && head.len() > 2
-        && head[2..].chars().all(|ch| ch.is_ascii_hexdigit())
-    {
-        tail.trim()
-    } else {
-        trimmed
-    }
-}
-
-fn split_head_tail(text: &str) -> (String, String) {
-    let trimmed = text.trim();
-    let Some((head, tail)) = trimmed.split_once(char::is_whitespace) else {
-        return (trimmed.to_string(), String::new());
-    };
-    (head.trim().to_string(), tail.trim().to_string())
-}
-
-fn compose_head_tail(head: &str, tail: &str) -> String {
-    let head = head.trim();
-    let tail = tail.trim();
-    if tail.is_empty() {
-        head.to_string()
-    } else {
-        format!("{head} {tail}")
-    }
 }

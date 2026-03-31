@@ -1,9 +1,13 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+﻿#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app;
+mod ast_editor;
 mod core;
 mod model;
+mod node;
+mod pipeline;
 mod theme;
+mod ui;
 mod worker;
 
 use crate::{app::FirebatApp, theme::configure_theme};

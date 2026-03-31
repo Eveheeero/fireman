@@ -1,15 +1,14 @@
 use super::{
     StartupConfig,
     types::{
-        FileBrowserState, LOG_LIMIT, OptimizationFocus, PromptKind, PromptState, View,
-        next_position,
+        FileBrowserState, LOG_LIMIT, PickTabState, PipelineEntry, PromptKind, PromptState,
+        ResultTabState, TabManager, TabType,
     },
 };
 use crate::{
     model::{
-        AppliedEditResult, AssemblyEditorDraft, AstEditorDraft, DecompileRequest, DecompileResult,
-        EditPosition, EditRequest, EditorDraft, EditorLayer, EditorTarget, IrEditorDraft,
-        KnownSection, KnownSectionData, OptimizationScriptPreset, OptimizationStore,
+        DecompileRequest, KnownSection, KnownSectionData, OptimizationSettings,
+        OptimizeAstRequest,
     },
     worker::{FirebatWorker, WorkerRequest, WorkerResponse, WorkerTryRecv},
 };
@@ -17,14 +16,14 @@ use ratatui::crossterm::event;
 use std::{
     collections::VecDeque,
     fs, io,
-    path::{Path, PathBuf},
+    path::Path,
     time::Duration,
 };
 
 pub(crate) struct App {
     pub(crate) worker: FirebatWorker,
     pub(crate) running: bool,
-    pub(crate) current_view: View,
+    pub(crate) tabs: TabManager,
     pub(crate) prompt: Option<PromptState>,
     pub(crate) busy_label: Option<String>,
     pub(crate) top_message: String,
@@ -34,21 +33,10 @@ pub(crate) struct App {
     pub(crate) pending_analysis_address: Option<String>,
     pub(crate) known_sections: Vec<KnownSection>,
     pub(crate) section_cursor: usize,
-    pub(crate) outputs: Option<DecompileResult>,
-    pub(crate) assembly_cursor: usize,
-    pub(crate) ir_cursor: usize,
-    pub(crate) ast_cursor: usize,
-    pub(crate) hovered_assembly_index: Option<usize>,
-    pub(crate) editor_target: Option<EditorTarget>,
-    pub(crate) editor_draft: Option<EditorDraft>,
-    pub(crate) optimization: OptimizationStore,
-    pub(crate) optimization_focus: OptimizationFocus,
-    pub(crate) optimization_setting_cursor: usize,
-    pub(crate) optimization_script_cursor: usize,
-    pub(crate) patch_preview: Option<String>,
-    pub(crate) patch_scroll: usize,
+    pub(crate) pipeline: Vec<PipelineEntry>,
     pub(crate) log_scroll: usize,
     pub(crate) last_decompile_selection: Vec<u64>,
+    pub(crate) pending_decompile_target: Option<usize>,
     pub(crate) show_license: bool,
 }
 
@@ -64,10 +52,20 @@ impl App {
             .as_ref()
             .and_then(|config| config.optimization_store.clone())
             .unwrap_or_default();
+
+        // Default pipeline: Result_0 only. If we have optimization config, also add Pick_0.
+        let mut pipeline = vec![PipelineEntry::Result(ResultTabState::new())];
+        let mut tabs = TabManager::default();
+
+        if startup.as_ref().and_then(|c| c.optimization_store.as_ref()).is_some() {
+            pipeline.push(PipelineEntry::Pick(PickTabState::new(optimization)));
+            tabs.tabs.push(super::types::Tab::with_label(TabType::Pick, "Pick 0"));
+        }
+
         let mut app = Self {
             worker: FirebatWorker::spawn(),
             running: true,
-            current_view: View::Sections,
+            tabs,
             prompt: None,
             busy_label: None,
             top_message: "Open a binary to start".to_string(),
@@ -77,21 +75,10 @@ impl App {
             pending_analysis_address: None,
             known_sections: Vec::new(),
             section_cursor: 0,
-            outputs: None,
-            assembly_cursor: 0,
-            ir_cursor: 0,
-            ast_cursor: 0,
-            hovered_assembly_index: None,
-            editor_target: None,
-            editor_draft: None,
-            optimization,
-            optimization_focus: OptimizationFocus::Settings,
-            optimization_setting_cursor: 0,
-            optimization_script_cursor: 0,
-            patch_preview: None,
-            patch_scroll: 0,
+            pipeline,
             log_scroll: 0,
             last_decompile_selection: Vec::new(),
+            pending_decompile_target: None,
             show_license: false,
         };
         app.log("TUI initialized");
@@ -113,20 +100,159 @@ impl App {
         Ok(())
     }
 
-    // -- Startup --
-
     fn apply_startup_config(&mut self, startup: StartupConfig) {
         if startup.optimization_store.is_some() {
             self.set_status("Loaded startup optimization config");
         }
-
         if let Some(path) = startup.input_path {
             self.pending_open_path = Some(path.clone());
             self.send_request(WorkerRequest::OpenFile(path), "opening binary");
         }
     }
 
-    // -- Worker communication --
+    // ── Pipeline helpers ─────────────────────────────────────────────
+
+    /// Get the pipeline index for the current tab (tab_index - 2), or None if Input/Logs
+    pub(crate) fn pipeline_index(&self) -> Option<usize> {
+        let idx = self.tabs.current_index;
+        if idx >= 2 { Some(idx - 2) } else { None }
+    }
+
+    /// Get current Pick state if on a Pick tab
+    pub(crate) fn current_pick_state(&self) -> Option<&PickTabState> {
+        let pi = self.pipeline_index()?;
+        match self.pipeline.get(pi)? {
+            PipelineEntry::Pick(pick) => Some(pick),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn current_pick_state_mut(&mut self) -> Option<&mut PickTabState> {
+        let pi = self.pipeline_index()?;
+        match self.pipeline.get_mut(pi)? {
+            PipelineEntry::Pick(pick) => Some(pick),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn current_result_state(&self) -> Option<&ResultTabState> {
+        let pi = self.pipeline_index()?;
+        match self.pipeline.get(pi)? {
+            PipelineEntry::Result(res) => Some(res),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn current_result_state_mut(&mut self) -> Option<&mut ResultTabState> {
+        let pi = self.pipeline_index()?;
+        match self.pipeline.get_mut(pi)? {
+            PipelineEntry::Result(res) => Some(res),
+            _ => None,
+        }
+    }
+
+    /// Add a new pipeline stage: appends Pick + Result at end
+    pub(crate) fn add_pipeline_stage(&mut self) {
+        let pick_n = self
+            .pipeline
+            .iter()
+            .filter(|e| matches!(e, PipelineEntry::Pick(_)))
+            .count();
+        let result_n = self
+            .pipeline
+            .iter()
+            .filter(|e| matches!(e, PipelineEntry::Result(_)))
+            .count();
+
+        // Add Pick tab at end
+        self.pipeline
+            .push(PipelineEntry::Pick(PickTabState::new(Default::default())));
+        self.tabs
+            .tabs
+            .push(super::types::Tab::with_label(TabType::Pick, format!("Pick {}", pick_n)));
+
+        // Add Result tab at end
+        self.pipeline
+            .push(PipelineEntry::Result(ResultTabState::new()));
+        self.tabs
+            .tabs
+            .push(super::types::Tab::with_label(TabType::Result, format!("Result {}", result_n)));
+
+        // Navigate to the new Pick tab
+        self.tabs.current_index = self.tabs.tabs.len() - 2;
+        self.log(format!(
+            "Added pipeline stage (Pick {}, Result {})",
+            pick_n, result_n
+        ));
+    }
+
+    /// Remove the pipeline entry at the current tab position
+    pub(crate) fn remove_pipeline_entry(&mut self) {
+        let Some(pi) = self.pipeline_index() else {
+            return;
+        };
+        if pi >= self.pipeline.len() {
+            return;
+        }
+        let tab_idx = self.tabs.current_index;
+        self.pipeline.remove(pi);
+        self.tabs.remove_tab(tab_idx);
+        self.log("Removed pipeline entry");
+    }
+
+    /// Cascade invalidation: clear all Result entries after pipeline index `from`
+    pub(crate) fn cascade_invalidate(&mut self, from: usize) {
+        for entry in self.pipeline.iter_mut().skip(from + 1) {
+            if let PipelineEntry::Result(res) = entry {
+                res.ast = None;
+                res.outputs = None;
+                res.cursor = 0;
+            }
+        }
+    }
+
+    /// Navigate to the first tab of the given type
+    pub(crate) fn navigate_to_first(&mut self, target_type: TabType) {
+        if let Some(idx) = self.tabs.tabs.iter().position(|t| t.tab_type == target_type) {
+            self.tabs.current_index = idx;
+        }
+    }
+
+    // ── Optimization settings resolution ─────────────────────────────
+
+    /// Get optimization settings for decompile: from current Pick tab if on one,
+    /// or from the preceding Pick in the pipeline if on a Result tab.
+    fn resolve_opt_settings(&self) -> (OptimizationSettings, Option<String>) {
+        let pi = match self.pipeline_index() {
+            Some(pi) => pi,
+            None => return Default::default(),
+        };
+        // If on a Pick tab, use it; if on Result, walk backward to find preceding Pick
+        let pick_pi = match self.pipeline.get(pi) {
+            Some(PipelineEntry::Pick(_)) => Some(pi),
+            Some(PipelineEntry::Result(_)) => {
+                (0..pi)
+                    .rev()
+                    .find(|&i| matches!(self.pipeline.get(i), Some(PipelineEntry::Pick(_))))
+            }
+            None => None,
+        };
+        pick_pi
+            .and_then(|i| match &self.pipeline[i] {
+                PipelineEntry::Pick(pick) => {
+                    let buf = if pick.store.fb_script_enabled {
+                        pick.store.applied_buffer_script.clone()
+                    } else {
+                        None
+                    };
+                    Some((pick.store.applied_settings.clone(), buf))
+                }
+                _ => None,
+            })
+            .unwrap_or_default()
+    }
+
+    // ── Worker communication ─────────────────────────────────────────
 
     pub(crate) fn send_request(&mut self, request: WorkerRequest, label: &str) {
         if self.busy_label.is_some() {
@@ -166,18 +292,17 @@ impl App {
                     self.opened_path = self.pending_open_path.take();
                     self.pending_analysis_address = None;
                     self.known_sections.clear();
-                    self.outputs = None;
-                    self.patch_preview = None;
-                    self.editor_target = None;
-                    self.editor_draft = None;
+                    // Clear all Result outputs in pipeline
+                    for entry in &mut self.pipeline {
+                        if let PipelineEntry::Result(res) = entry {
+                            res.ast = None;
+                            res.outputs = None;
+                            res.cursor = 0;
+                        }
+                    }
                     self.section_cursor = 0;
-                    self.assembly_cursor = 0;
-                    self.ir_cursor = 0;
-                    self.ast_cursor = 0;
-                    self.patch_scroll = 0;
-                    self.hovered_assembly_index = None;
                     self.last_decompile_selection.clear();
-                    self.set_view(View::Sections);
+                    self.navigate_to_first(TabType::Input);
                     self.set_status("Opened binary");
                 }
                 Err(error) => self.set_status(error),
@@ -191,7 +316,7 @@ impl App {
                         .unwrap_or(false);
                     self.pending_analysis_address = None;
                     self.merge_sections(data, auto_select);
-                    self.set_view(View::Sections);
+                    self.navigate_to_first(TabType::Input);
                     self.set_status("Section analysis completed");
                 }
                 Err(error) => self.set_status(error),
@@ -199,41 +324,43 @@ impl App {
             WorkerResponse::AnalyzeAllSections(result) => match result {
                 Ok(data) => {
                     self.merge_sections(data, false);
-                    self.set_view(View::Sections);
+                    self.navigate_to_first(TabType::Input);
                     self.set_status("Analyzed all sections");
                 }
                 Err(error) => self.set_status(error),
             },
             WorkerResponse::DecompileSections(result) => match result {
-                Ok(result) => {
-                    self.outputs = Some(result);
-                    self.patch_preview = None;
-                    self.assembly_cursor = 0;
-                    self.ir_cursor = 0;
-                    self.ast_cursor = 0;
-                    self.set_view(View::Assembly);
-                    self.reload_editor_from_current_target();
+                Ok(dwa) => {
+                    let target_pi = self.pending_decompile_target.take();
+                    if let Some(pi) = target_pi {
+                        if let Some(PipelineEntry::Result(res)) = self.pipeline.get_mut(pi) {
+                            res.ast = Some(dwa.ast);
+                            res.outputs = Some(dwa.result);
+                            res.cursor = 0;
+                        }
+                    }
                     self.set_status("Decompile completed");
                 }
                 Err(error) => self.set_status(error),
             },
-            WorkerResponse::ApplyEdit(result) => match result {
-                Ok(result) => self.apply_edit_result(result),
-                Err(error) => self.set_status(error),
-            },
-            WorkerResponse::ExportPatch(result) => match result {
-                Ok(json) => {
-                    self.patch_preview = Some(json);
-                    self.patch_scroll = 0;
-                    self.set_view(View::Patch);
-                    self.set_status("Patch exported");
+            WorkerResponse::OptimizeAst(result) => match result {
+                Ok(dwa) => {
+                    let target_pi = self.pending_decompile_target.take();
+                    if let Some(pi) = target_pi {
+                        if let Some(PipelineEntry::Result(res)) = self.pipeline.get_mut(pi) {
+                            res.ast = Some(dwa.ast);
+                            res.outputs = Some(dwa.result);
+                            res.cursor = 0;
+                        }
+                    }
+                    self.set_status("Optimization completed");
                 }
                 Err(error) => self.set_status(error),
             },
         }
     }
 
-    // -- Prompt management --
+    // ── Prompts ──────────────────────────────────────────────────────
 
     pub(crate) fn open_prompt(
         &mut self,
@@ -255,7 +382,6 @@ impl App {
         });
     }
 
-    /// Open a path-related prompt with an integrated file browser.
     pub(crate) fn open_path_prompt(
         &mut self,
         kind: PromptKind,
@@ -278,12 +404,10 @@ impl App {
     }
 
     pub(crate) fn submit_prompt(&mut self) {
-        // Check if worker is busy before consuming the prompt
         if self.busy_label.is_some() {
             self.set_status("Background worker is busy");
             return;
         }
-
         let Some(prompt) = self.prompt.take() else {
             return;
         };
@@ -294,7 +418,6 @@ impl App {
                     self.set_status("Binary path is required");
                     return;
                 }
-                // Send request first, then commit state on success
                 match self.worker.send(WorkerRequest::OpenFile(value.clone())) {
                     Ok(()) => {
                         self.pending_open_path = Some(value);
@@ -305,7 +428,6 @@ impl App {
                 }
             }
             PromptKind::AnalyzeAddress => {
-                // Send request first, then commit state on success
                 match self
                     .worker
                     .send(WorkerRequest::AnalyzeSection(value.clone()))
@@ -318,22 +440,12 @@ impl App {
                     Err(error) => self.set_status(error),
                 }
             }
-            PromptKind::EditLine(target) => {
-                self.load_editor_with_text(target, value);
-                self.set_view(View::Editor);
-            }
-            PromptKind::AddScriptPath => self.add_script_preset(value),
             PromptKind::LoadBufferPath => self.load_buffer_from_path(value),
             PromptKind::SaveBufferPath => self.save_buffer_to_path(value),
-            PromptKind::SavePatchPath => self.save_patch_preview(value),
-            PromptKind::EditBuffer => {
-                self.optimization.editor_buffer = value;
-                self.set_status("Updated optimization buffer");
-            }
         }
     }
 
-    // -- Decompile --
+    // ── Decompile ────────────────────────────────────────────────────
 
     pub(crate) fn start_decompile(&mut self) {
         let start_addresses = self.selected_addresses();
@@ -341,73 +453,70 @@ impl App {
             self.set_status("Select at least one analyzed section before decompiling");
             return;
         }
-
         self.last_decompile_selection = start_addresses.clone();
-        self.patch_preview = None;
-        self.send_request(
-            WorkerRequest::DecompileSections(DecompileRequest {
-                start_addresses,
-                settings: self.optimization.applied_settings.clone(),
-                script_paths: self
-                    .optimization
-                    .script_presets
-                    .iter()
-                    .filter(|preset| preset.applied_enabled)
-                    .map(|preset| preset.path.clone())
-                    .collect(),
-                buffer_script: self.optimization.applied_buffer_script.clone(),
-            }),
-            "decompiling sections",
-        );
-    }
 
-    // -- Edit --
+        let current_type = self.tabs.current_tab_type();
+        let pi = self.pipeline_index();
 
-    pub(crate) fn apply_edit(&mut self) {
-        let Some(target) = self.editor_target else {
-            self.set_status("No editor target selected");
-            return;
+        // Route result to appropriate pipeline Result entry
+        self.pending_decompile_target = match current_type {
+            Some(TabType::Result) => pi,
+            Some(TabType::Pick) => {
+                // Target the next Result after this Pick
+                pi.and_then(|p| {
+                    self.pipeline
+                        .get(p + 1)
+                        .and_then(|e| matches!(e, PipelineEntry::Result(_)).then_some(p + 1))
+                })
+            }
+            _ => {
+                // Input or other: target Result_0 (pipeline index 0)
+                if matches!(self.pipeline.first(), Some(PipelineEntry::Result(_))) {
+                    Some(0)
+                } else {
+                    None
+                }
+            }
         };
-        let Some(request) = self.build_edit_request(target) else {
-            self.set_status("No editor draft is loaded");
-            return;
-        };
-        self.send_request(WorkerRequest::ApplyEdit(request), "applying edit");
-    }
 
-    fn build_edit_request(&self, target: EditorTarget) -> Option<EditRequest> {
-        match self.editor_draft.as_ref()? {
-            EditorDraft::Assembly(draft) => Some(EditRequest {
-                layer: EditorLayer::Assembly,
-                row: target.row,
-                position: EditPosition::Replace,
-                text: draft.compose_line(),
-            }),
-            EditorDraft::Ir(draft) => Some(EditRequest {
-                layer: EditorLayer::Ir,
-                row: target.row,
-                position: draft.position,
-                text: draft.compose_line(),
-            }),
-            EditorDraft::Ast(draft) => Some(EditRequest {
-                layer: EditorLayer::Ast,
-                row: target.row,
-                position: draft.position,
-                text: draft.raw_text.clone(),
-            }),
+        let (settings, buffer_script) = self.resolve_opt_settings();
+
+        // Try incremental: if on a Pick tab, check preceding Result for a stored Ast
+        let preceding_ast = pi.and_then(|p| {
+            if !matches!(self.pipeline.get(p), Some(PipelineEntry::Pick(_))) {
+                return None;
+            }
+            (0..p).rev().find_map(|i| {
+                if let Some(PipelineEntry::Result(res)) = self.pipeline.get(i) {
+                    res.ast.clone()
+                } else {
+                    None
+                }
+            })
+        });
+
+        if let Some(ast) = preceding_ast {
+            self.send_request(
+                WorkerRequest::OptimizeAst(OptimizeAstRequest {
+                    ast,
+                    settings,
+                    script_paths: vec![],
+                    buffer_script,
+                }),
+                "optimizing AST",
+            );
+        } else {
+            self.send_request(
+                WorkerRequest::DecompileSections(DecompileRequest {
+                    start_addresses,
+                    settings,
+                    script_paths: vec![],
+                    buffer_script,
+                }),
+                "decompiling sections",
+            );
         }
     }
-
-    fn apply_edit_result(&mut self, result: AppliedEditResult) {
-        self.outputs = Some(result.result);
-        self.editor_target = Some(result.selected_target);
-        self.sync_output_cursor(result.selected_target);
-        self.reload_editor(result.selected_target);
-        self.set_view(View::Editor);
-        self.set_status("Edit applied");
-    }
-
-    // -- Sections --
 
     fn merge_sections(&mut self, sections: Vec<KnownSectionData>, select_new: bool) {
         for data in sections {
@@ -454,7 +563,6 @@ impl App {
             }
             None => return,
         };
-
         if pending_section {
             self.set_status("Analyze the section before selecting it");
         }
@@ -470,7 +578,6 @@ impl App {
             self.set_status("No analyzed sections are available yet");
             return;
         }
-
         let all_selected = self
             .known_sections
             .iter()
@@ -483,236 +590,27 @@ impl App {
         }
     }
 
-    // -- Output cursor --
-
-    pub(crate) fn output_len(&self, layer: EditorLayer) -> usize {
-        match (layer, self.outputs.as_ref()) {
-            (_, None) => 0,
-            (EditorLayer::Assembly, Some(outputs)) => outputs.assembly.len(),
-            (EditorLayer::Ir, Some(outputs)) => outputs.ir.len(),
-            (EditorLayer::Ast, Some(outputs)) => outputs.ast.len(),
-        }
-    }
-
-    pub(crate) fn output_cursor_mut(&mut self, layer: EditorLayer) -> &mut usize {
-        match layer {
-            EditorLayer::Assembly => &mut self.assembly_cursor,
-            EditorLayer::Ir => &mut self.ir_cursor,
-            EditorLayer::Ast => &mut self.ast_cursor,
-        }
-    }
-
-    fn current_target(&self, layer: EditorLayer) -> Option<EditorTarget> {
-        let row = match layer {
-            EditorLayer::Assembly => {
-                self.selection(Some(self.assembly_cursor), self.output_len(layer))?
-            }
-            EditorLayer::Ir => self.selection(Some(self.ir_cursor), self.output_len(layer))?,
-            EditorLayer::Ast => self.selection(Some(self.ast_cursor), self.output_len(layer))?,
-        };
-        Some(EditorTarget { layer, row })
-    }
-
-    // -- Editor --
-
-    pub(crate) fn load_editor_from_current_row(&mut self, layer: EditorLayer) {
-        let Some(target) = self.current_target(layer) else {
-            self.set_status("No row is selected");
-            return;
-        };
-        self.reload_editor(target);
-        self.set_view(View::Editor);
-    }
-
-    pub(crate) fn edit_current_row(&mut self, layer: EditorLayer) {
-        let Some(target) = self.current_target(layer) else {
-            self.set_status("No row is selected");
-            return;
-        };
-        let Some(text) = self.row_text(target) else {
-            self.set_status("Selected row is unavailable");
-            return;
-        };
-        self.open_prompt(
-            PromptKind::EditLine(target),
-            "Edit Row",
-            text,
-            false,
-            "Edit the line and press Enter. The change is staged in the editor until you press Enter there.",
-        );
-    }
-
-    pub(crate) fn edit_loaded_draft(&mut self) {
-        let Some(target) = self.editor_target else {
-            self.set_status("No editor target selected");
-            return;
-        };
-        let text = match &self.editor_draft {
-            Some(EditorDraft::Assembly(draft)) => draft.compose_line(),
-            Some(EditorDraft::Ir(draft)) => draft.compose_line(),
-            Some(EditorDraft::Ast(draft)) => draft.raw_text.clone(),
-            None => {
-                self.set_status("No draft loaded");
-                return;
-            }
-        };
-        self.open_prompt(
-            PromptKind::EditLine(target),
-            "Edit Draft",
-            text,
-            false,
-            "Edit the staged line and press Enter.",
-        );
-    }
-
-    fn reload_editor_from_current_target(&mut self) {
-        if let Some(target) = self.editor_target {
-            self.reload_editor(target);
-        }
-    }
-
-    pub(crate) fn reload_editor(&mut self, target: EditorTarget) {
-        let draft = self.row_text(target).map(|text| {
-            draft_from_text(
-                target.layer,
-                &text,
-                self.current_edit_position(target.layer),
-            )
-        });
-        self.editor_target = draft.as_ref().map(|_| target);
-        self.editor_draft = draft;
-    }
-
-    fn load_editor_with_text(&mut self, target: EditorTarget, text: String) {
-        let position = self.current_edit_position(target.layer);
-        self.editor_target = Some(target);
-        self.editor_draft = Some(draft_from_text(target.layer, &text, position));
-        self.sync_output_cursor(target);
-    }
-
-    fn current_edit_position(&self, layer: EditorLayer) -> EditPosition {
-        match &self.editor_draft {
-            Some(EditorDraft::Ir(draft)) if layer == EditorLayer::Ir => draft.position,
-            Some(EditorDraft::Ast(draft)) if layer == EditorLayer::Ast => draft.position,
-            _ => EditPosition::Replace,
-        }
-    }
-
-    pub(crate) fn cycle_edit_position(&mut self, forward: bool) {
-        match self.editor_draft.as_mut() {
-            Some(EditorDraft::Ir(draft)) => draft.position = next_position(draft.position, forward),
-            Some(EditorDraft::Ast(draft)) => {
-                draft.position = next_position(draft.position, forward)
-            }
-            Some(EditorDraft::Assembly(_)) => {
-                self.set_status("Assembly edits always replace the current row")
-            }
-            None => self.set_status("No editor draft loaded"),
-        }
-    }
-
-    fn row_text(&self, target: EditorTarget) -> Option<String> {
-        let outputs = self.outputs.as_ref()?;
-        match target.layer {
-            EditorLayer::Assembly => outputs.assembly.get(target.row).map(|row| row.data.clone()),
-            EditorLayer::Ir => outputs.ir.get(target.row).map(|row| row.data.clone()),
-            EditorLayer::Ast => outputs.ast.get(target.row).map(|row| row.data.clone()),
-        }
-    }
-
-    fn sync_output_cursor(&mut self, target: EditorTarget) {
-        match target.layer {
-            EditorLayer::Assembly => self.assembly_cursor = target.row,
-            EditorLayer::Ir => self.ir_cursor = target.row,
-            EditorLayer::Ast => self.ast_cursor = target.row,
-        }
-    }
-
-    pub(crate) fn set_view(&mut self, view: View) {
-        self.current_view = view;
-        self.update_hover();
-    }
-
-    // -- Hover tracking --
-
-    /// Update the hovered assembly index based on the current view and cursor.
-    pub(crate) fn update_hover(&mut self) {
-        self.hovered_assembly_index = match self.current_view {
-            View::Assembly => self
-                .outputs
-                .as_ref()
-                .and_then(|o| o.assembly.get(self.assembly_cursor))
-                .map(|row| row.index),
-            View::Ir => self
-                .outputs
-                .as_ref()
-                .and_then(|o| o.ir.get(self.ir_cursor))
-                .map(|row| row.parents_assembly_index),
-            _ => None,
-        };
-    }
-
-    // -- Optimization --
+    // ── Optimization settings ────────────────────────────────────────
 
     pub(crate) fn apply_optimization_settings(&mut self) {
-        self.optimization.applied_settings = self.optimization.draft_settings.clone();
-        for preset in &mut self.optimization.script_presets {
-            preset.applied_enabled = preset.enabled;
-        }
-        self.set_status("Applied optimization settings and script presets");
-        self.redecompile_last_selection();
-    }
-
-    pub(crate) fn apply_buffer_script(&mut self) {
-        self.optimization.applied_buffer_script =
-            if self.optimization.editor_buffer.trim().is_empty() {
-                None
+        if let Some(pick) = self.current_pick_state_mut() {
+            pick.store.applied_settings = pick.store.draft_settings.clone();
+            if pick.store.fb_script_enabled {
+                pick.store.applied_buffer_script = if pick.store.editor_buffer.trim().is_empty() {
+                    None
+                } else {
+                    Some(pick.store.editor_buffer.clone())
+                };
             } else {
-                Some(self.optimization.editor_buffer.clone())
-            };
-        self.set_status("Applied optimization buffer script");
+                pick.store.applied_buffer_script = None;
+            }
+        }
+        // Cascade invalidation from current pipeline index forward
+        if let Some(pi) = self.pipeline_index() {
+            self.cascade_invalidate(pi);
+        }
+        self.set_status("Applied optimization settings");
         self.redecompile_last_selection();
-    }
-
-    pub(crate) fn clear_applied_buffer_script(&mut self) {
-        self.optimization.applied_buffer_script = None;
-        self.set_status("Cleared applied optimization buffer script");
-        self.redecompile_last_selection();
-    }
-
-    pub(crate) fn add_script_preset(&mut self, path: String) {
-        let path = path.trim();
-        if path.is_empty() {
-            self.set_status("Script path is required");
-            return;
-        }
-        let path_buf = PathBuf::from(path);
-        if !path_buf.exists() {
-            self.set_status("Script path does not exist");
-            return;
-        }
-        self.upsert_script_preset(&path_buf);
-        self.set_status(format!("Registered script {}", path_buf.display()));
-    }
-
-    pub(crate) fn remove_script_preset(&mut self, index: usize) {
-        if index >= self.optimization.script_presets.len() {
-            return;
-        }
-        let removed = self.optimization.script_presets.remove(index);
-        if self.optimization_script_cursor >= self.optimization.script_presets.len() {
-            self.optimization_script_cursor =
-                self.optimization.script_presets.len().saturating_sub(1);
-        }
-        self.set_status(format!("Removed script {}", removed.path));
-    }
-
-    pub(crate) fn load_script_preset_into_buffer(&mut self, index: usize) {
-        let Some(preset) = self.optimization.script_presets.get(index) else {
-            self.set_status("No script preset selected");
-            return;
-        };
-        self.load_buffer_from_path(preset.path.clone());
     }
 
     pub(crate) fn load_buffer_from_path(&mut self, path: String) {
@@ -723,8 +621,10 @@ impl App {
         }
         match fs::read_to_string(path) {
             Ok(buffer) => {
-                self.optimization.editor_buffer = buffer;
-                self.optimization.editor_path = Some(path.to_string());
+                if let Some(pick) = self.current_pick_state_mut() {
+                    pick.store.editor_buffer = buffer;
+                    pick.store.editor_path = Some(path.to_string());
+                }
                 self.upsert_script_preset(Path::new(path));
                 self.set_status(format!("Loaded buffer from {path}"));
             }
@@ -738,9 +638,15 @@ impl App {
             self.set_status("Buffer save path is required");
             return;
         }
-        match fs::write(path, &self.optimization.editor_buffer) {
+        let buffer_content = self
+            .current_pick_state()
+            .map(|pick| pick.store.editor_buffer.clone())
+            .unwrap_or_default();
+        match fs::write(path, &buffer_content) {
             Ok(()) => {
-                self.optimization.editor_path = Some(path.to_string());
+                if let Some(pick) = self.current_pick_state_mut() {
+                    pick.store.editor_path = Some(path.to_string());
+                }
                 self.upsert_script_preset(Path::new(path));
                 self.set_status(format!("Saved buffer to {path}"));
             }
@@ -748,53 +654,82 @@ impl App {
         }
     }
 
-    pub(crate) fn save_patch_preview(&mut self, path: String) {
-        let Some(preview) = &self.patch_preview else {
-            self.set_status("No patch preview to save");
-            return;
-        };
-        let path = path.trim();
-        if path.is_empty() {
-            self.set_status("Patch save path is required");
-            return;
-        }
-        match fs::write(path, preview) {
-            Ok(()) => self.set_status(format!("Saved patch preview to {path}")),
-            Err(error) => self.set_status(error.to_string()),
-        }
-    }
-
-    fn redecompile_last_selection(&mut self) {
+    pub(crate) fn redecompile_last_selection(&mut self) {
         if self.last_decompile_selection.is_empty() || self.busy_label.is_some() {
             return;
         }
-        self.patch_preview = None;
-        self.send_request(
-            WorkerRequest::DecompileSections(DecompileRequest {
-                start_addresses: self.last_decompile_selection.clone(),
-                settings: self.optimization.applied_settings.clone(),
-                script_paths: self
-                    .optimization
-                    .script_presets
-                    .iter()
-                    .filter(|preset| preset.applied_enabled)
-                    .map(|preset| preset.path.clone())
-                    .collect(),
-                buffer_script: self.optimization.applied_buffer_script.clone(),
-            }),
-            "re-decompiling sections",
-        );
+        let current_type = self.tabs.current_tab_type();
+        let pi = self.pipeline_index();
+
+        self.pending_decompile_target = match current_type {
+            Some(TabType::Result) => pi,
+            Some(TabType::Pick) => {
+                pi.and_then(|p| {
+                    self.pipeline
+                        .get(p + 1)
+                        .and_then(|e| matches!(e, PipelineEntry::Result(_)).then_some(p + 1))
+                })
+            }
+            _ => {
+                if matches!(self.pipeline.first(), Some(PipelineEntry::Result(_))) {
+                    Some(0)
+                } else {
+                    None
+                }
+            }
+        };
+
+        let (settings, buffer_script) = self.resolve_opt_settings();
+
+        // Try incremental: if on a Pick tab, check preceding Result for a stored Ast
+        let preceding_ast = pi.and_then(|p| {
+            if !matches!(self.pipeline.get(p), Some(PipelineEntry::Pick(_))) {
+                return None;
+            }
+            (0..p).rev().find_map(|i| {
+                if let Some(PipelineEntry::Result(res)) = self.pipeline.get(i) {
+                    res.ast.clone()
+                } else {
+                    None
+                }
+            })
+        });
+
+        if let Some(ast) = preceding_ast {
+            self.send_request(
+                WorkerRequest::OptimizeAst(OptimizeAstRequest {
+                    ast,
+                    settings,
+                    script_paths: vec![],
+                    buffer_script,
+                }),
+                "re-optimizing AST",
+            );
+        } else {
+            self.send_request(
+                WorkerRequest::DecompileSections(DecompileRequest {
+                    start_addresses: self.last_decompile_selection.clone(),
+                    settings,
+                    script_paths: vec![],
+                    buffer_script,
+                }),
+                "re-decompiling sections",
+            );
+        }
     }
 
     fn upsert_script_preset(&mut self, path: &Path) {
+        let Some(pick) = self.current_pick_state_mut() else {
+            return;
+        };
         let path_string = path.to_string_lossy().to_string();
         let name = path
             .file_name()
             .and_then(|value| value.to_str())
             .unwrap_or(path_string.as_str())
             .to_string();
-        if let Some(existing) = self
-            .optimization
+        if let Some(existing) = pick
+            .store
             .script_presets
             .iter_mut()
             .find(|preset| preset.path == path_string)
@@ -802,9 +737,9 @@ impl App {
             existing.name = name;
             return;
         }
-        self.optimization
+        pick.store
             .script_presets
-            .push(OptimizationScriptPreset {
+            .push(crate::model::OptimizationScriptPreset {
                 name,
                 path: path_string,
                 enabled: false,
@@ -815,13 +750,15 @@ impl App {
     pub(crate) fn load_saved_optimization_store(&mut self) {
         match super::persistence::load_optimization_store() {
             Ok(store) => {
-                self.optimization = store;
-                self.optimization_setting_cursor = self
-                    .optimization_setting_cursor
-                    .min(super::types::optimization_field_count().saturating_sub(1));
-                self.optimization_script_cursor = self
-                    .optimization_script_cursor
-                    .min(self.optimization.script_presets.len().saturating_sub(1));
+                if let Some(pick) = self.current_pick_state_mut() {
+                    pick.store = store;
+                    pick.setting_cursor = pick
+                        .setting_cursor
+                        .min(super::types::optimization_field_count().saturating_sub(1));
+                    pick.script_cursor = pick
+                        .script_cursor
+                        .min(pick.store.script_presets.len().saturating_sub(1));
+                }
                 self.set_status("Loaded optimization settings from disk");
                 self.redecompile_last_selection();
             }
@@ -830,13 +767,17 @@ impl App {
     }
 
     pub(crate) fn save_current_optimization_store(&mut self) {
-        match super::persistence::save_optimization_store(&self.optimization) {
-            Ok(()) => self.set_status("Saved optimization settings to disk"),
-            Err(error) => self.set_status(format!("Optimization save failed: {error}")),
+        let store = self.current_pick_state().map(|pick| pick.store.clone());
+        match store {
+            Some(store) => match super::persistence::save_optimization_store(&store) {
+                Ok(()) => self.set_status("Saved optimization settings to disk"),
+                Err(error) => self.set_status(format!("Optimization save failed: {error}")),
+            },
+            None => self.set_status("No active Pick tab"),
         }
     }
 
-    // -- Status and logging --
+    // ── Logging ──────────────────────────────────────────────────────
 
     pub(crate) fn set_status(&mut self, message: impl Into<String>) {
         let message = message.into();
@@ -852,24 +793,6 @@ impl App {
             self.logs.pop_front();
         }
         self.logs.push_back(entry);
-    }
-}
-
-fn draft_from_text(layer: EditorLayer, text: &str, position: EditPosition) -> EditorDraft {
-    match layer {
-        EditorLayer::Assembly => {
-            EditorDraft::Assembly(AssemblyEditorDraft::from_display_text(text))
-        }
-        EditorLayer::Ir => {
-            let mut draft = IrEditorDraft::from_text(text);
-            draft.position = position;
-            EditorDraft::Ir(draft)
-        }
-        EditorLayer::Ast => {
-            let mut draft = AstEditorDraft::from_text(text);
-            draft.position = position;
-            EditorDraft::Ast(draft)
-        }
     }
 }
 

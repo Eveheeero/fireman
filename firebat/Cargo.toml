@@ -18,6 +18,7 @@ egui = "0.34"
 egui_dock = "0.19"
 rfd = "0.17"
 image = { version = "0.25", default-features = false, features = ["png"] }
+uuid = { version = "1.12", features = ["v4", "serde"] }
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

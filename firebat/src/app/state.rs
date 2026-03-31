@@ -1,8 +1,10 @@
 use crate::{
+    app::editor_window::FloatingEditorWindow,
     model::{
-        AssemblyEditorDraft, DecompileRequest, DecompileResult, DecompileResultView, EditPosition,
-        EditRequest, EditorDraft, EditorLayer, EditorTarget, IrEditorDraft, KnownSection,
-        KnownSectionData, OptimizationScriptPreset, OptimizationSettings, OptimizationStore,
+        AssemblyEditorDraft, AstNodeDraftData, AstNodeEditType, AstNodeEditorDraft,
+        DecompileRequest, DecompileResult, DecompileResultView, EditPosition, EditRequest,
+        EditorDraft, EditorLayer, EditorTarget, IrEditorDraft, KnownSection, KnownSectionData,
+        OptimizationScriptPreset, OptimizationSettings, OptimizationStore,
     },
     worker::{FirebatWorker, WorkerRequest, WorkerResponse, WorkerTryRecv},
 };
@@ -36,11 +38,29 @@ pub(super) struct FirebatState {
     pub(super) optimization_applied_buffer_script: Option<String>,
     pub(super) optimization_status_message: Option<String>,
     pub(super) last_decompile_selection: Vec<u64>,
+    // Floating editor windows
+    pub(super) assembly_editor: FloatingEditorWindow,
+    pub(super) ir_editor: FloatingEditorWindow,
+    pub(super) ast_editor: FloatingEditorWindow,
+    // Track selections for highlighting
+    pub(super) selected_assembly_row: Option<usize>,
+    pub(super) selected_ir_row: Option<usize>,
+    pub(super) selected_ast_path: Option<fireball::abstract_syntax_tree::AstNodePath>,
+    pub(super) show_ir_comments: bool, // Toggle for showing IR origin comments in AST
 }
 
 impl Default for FirebatState {
     fn default() -> Self {
         let optimization_store = load_optimization_store().unwrap_or_default();
+        let mut assembly_editor = FloatingEditorWindow::new("Assembly Editor");
+        let mut ir_editor = FloatingEditorWindow::new("IR Editor");
+        let mut ast_editor = FloatingEditorWindow::new("AST Editor");
+
+        // Position windows cascaded
+        assembly_editor.position = Some(egui::pos2(50.0, 100.0));
+        ir_editor.position = Some(egui::pos2(80.0, 130.0));
+        ast_editor.position = Some(egui::pos2(110.0, 160.0));
+
         Self {
             worker: FirebatWorker::spawn(),
             pending_requests: 0,
@@ -62,6 +82,13 @@ impl Default for FirebatState {
             optimization_applied_buffer_script: optimization_store.applied_buffer_script,
             optimization_status_message: None,
             last_decompile_selection: Vec::new(),
+            assembly_editor,
+            ir_editor,
+            ast_editor,
+            selected_assembly_row: None,
+            selected_ir_row: None,
+            selected_ast_path: None,
+            show_ir_comments: false, // Default to hidden IR comments
         }
     }
 }
@@ -77,7 +104,7 @@ impl FirebatState {
         self.pending_requests > 0
     }
 
-    fn queue_request(&mut self, request: WorkerRequest) {
+    pub(super) fn queue_request(&mut self, request: WorkerRequest) {
         match self.worker.send(request) {
             Ok(()) => {
                 self.pending_requests = self.pending_requests.saturating_add(1);
@@ -535,6 +562,35 @@ impl FirebatState {
                 position: draft.position,
                 text: draft.raw_text.clone(),
             },
+            EditorDraft::AstNode(draft) => {
+                // Convert node edit to text edit
+                // For now, use the replacement text from the draft
+                let text = match &draft.draft_data {
+                    AstNodeDraftData::Statement { replacement, .. } => replacement.clone(),
+                    AstNodeDraftData::Variable { new_name, .. } => {
+                        format!("// rename to {}", new_name)
+                    }
+                    AstNodeDraftData::Literal { new_value, .. } => new_value.clone(),
+                    AstNodeDraftData::UnaryOperator {
+                        new_op, operand, ..
+                    } => format!("{}({})", new_op, operand),
+                    AstNodeDraftData::BinaryOperator {
+                        new_op,
+                        left,
+                        right,
+                        ..
+                    } => format!("{} {} {}", left, new_op, right),
+                    AstNodeDraftData::Function { new_name, .. } => {
+                        format!("// rename function to {}", new_name)
+                    }
+                };
+                EditRequest {
+                    layer: EditorLayer::Ast,
+                    row: target.row,
+                    position: EditPosition::Replace,
+                    text,
+                }
+            }
         };
         Some(request)
     }
@@ -563,6 +619,7 @@ impl FirebatState {
                 EditorDraft::Assembly(draft) => draft.status_message = Some(message),
                 EditorDraft::Ir(draft) => draft.status_message = Some(message),
                 EditorDraft::Ast(draft) => draft.status_message = Some(message),
+                EditorDraft::AstNode(draft) => draft.status_message = Some(message),
             }
         }
     }
@@ -656,11 +713,22 @@ fn build_editor_draft(result: &DecompileResultView, target: EditorTarget) -> Opt
             .ir
             .get(target.row)
             .map(|ir| EditorDraft::Ir(IrEditorDraft::from_text(&ir.data))),
-        EditorLayer::Ast => result
-            .data
-            .ast
-            .get(target.row)
-            .map(|ast| EditorDraft::Ast(crate::model::AstEditorDraft::from_text(&ast.data))),
+        EditorLayer::Ast => {
+            // Create new-style AST node editor draft
+            result.data.ast.get(target.row).map(|ast| {
+                // For now, create a simple statement editor draft
+                // In the full implementation, we'd parse the AST line and determine the type
+                EditorDraft::AstNode(AstNodeEditorDraft {
+                    path: fireball::abstract_syntax_tree::AstNodePath::function(0),
+                    edit_type: AstNodeEditType::Statement,
+                    draft_data: AstNodeDraftData::Statement {
+                        statement_type: "unknown".to_string(),
+                        replacement: ast.data.clone(),
+                    },
+                    status_message: None,
+                })
+            })
+        }
     }
 }
 
@@ -675,7 +743,8 @@ fn build_decompile_view(result: DecompileResult) -> DecompileResultView {
     DecompileResultView {
         colors,
         assembly_parent_by_index,
-        data: result,
+        data: result.clone(),
+        ast: result.ast_object.clone(), // Clone Arc reference to AST
     }
 }
 

@@ -1,17 +1,14 @@
 use super::{
     app::App,
-    types::{OPTIMIZATION_GROUPS, OptimizationFocus, PromptState, View},
+    types::{OptimizationFocus, PromptState, TabType, OPTIMIZATION_FIELDS},
 };
-use crate::{
-    license::{self, THIRD_PARTY_DEPS},
-    model::{EditorDraft, EditorLayer},
-};
+use crate::license::{self, THIRD_PARTY_DEPS};
 use ratatui::{
-    Frame,
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Tabs, Wrap},
+    Frame,
 };
 
 impl App {
@@ -20,7 +17,7 @@ impl App {
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Min(0),
-            Constraint::Length(2),
+            Constraint::Length(3),
         ])
         .areas(frame.area());
 
@@ -59,37 +56,26 @@ impl App {
     }
 
     fn draw_tabs(&self, frame: &mut Frame, area: Rect) {
-        let tabs = Tabs::new([
-            "1 Sections",
-            "2 ASM",
-            "3 IR",
-            "4 AST",
-            "5 Editor",
-            "6 Opt",
-            "7 Patch",
-            "8 Logs",
-        ])
-        .select(self.current_view.index())
-        .style(Style::default().fg(Color::Gray))
-        .highlight_style(
-            Style::default()
-                .fg(Color::Black)
-                .bg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        );
+        let labels = self.tabs.labels();
+        let tabs = Tabs::new(labels)
+            .select(self.tabs.current_index)
+            .style(Style::default().fg(Color::Gray))
+            .highlight_style(
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            );
         frame.render_widget(tabs, area);
     }
 
     fn draw_body(&self, frame: &mut Frame, area: Rect) {
-        match self.current_view {
-            View::Sections => self.draw_sections(frame, area),
-            View::Assembly => self.draw_output(frame, area, EditorLayer::Assembly),
-            View::Ir => self.draw_output(frame, area, EditorLayer::Ir),
-            View::Ast => self.draw_output(frame, area, EditorLayer::Ast),
-            View::Editor => self.draw_editor(frame, area),
-            View::Optimization => self.draw_optimization(frame, area),
-            View::Patch => self.draw_patch(frame, area),
-            View::Logs => self.draw_logs(frame, area),
+        match self.tabs.current_tab_type() {
+            Some(TabType::Input) => self.draw_sections(frame, area),
+            Some(TabType::Logs) => self.draw_logs(frame, area),
+            Some(TabType::Result) => self.draw_result(frame, area),
+            Some(TabType::Pick) => self.draw_pick(frame, area),
+            None => {}
         }
     }
 
@@ -141,7 +127,6 @@ impl App {
                     } else {
                         "pending"
                     };
-
                     ListItem::new(Line::from(vec![
                         Span::raw(format!("{marker} ")),
                         Span::raw(format!("{:#010x}", section.data.start_address)),
@@ -200,7 +185,6 @@ impl App {
                     ));
                 }
                 lines.push(Line::from("s/Ctrl+A toggles all ready sections."));
-                lines.push(Line::from("d decompiles the ready selection."));
                 lines
             })
             .unwrap_or_else(|| {
@@ -220,157 +204,65 @@ impl App {
         );
     }
 
-    fn draw_output(&self, frame: &mut Frame, area: Rect, layer: EditorLayer) {
-        let Some(outputs) = &self.outputs else {
-            let title = match layer {
-                EditorLayer::Assembly => "Assembly",
-                EditorLayer::Ir => "IR",
-                EditorLayer::Ast => "AST",
-            };
+    fn draw_result(&self, frame: &mut Frame, area: Rect) {
+        let Some(result_state) = self.current_result_state() else {
             frame.render_widget(
-                Paragraph::new("No decompile result yet. Select sections and press `d`.")
-                    .block(self.block(title)),
+                Paragraph::new("No result state for this tab.").block(self.block("Result")),
+                area,
+            );
+            return;
+        };
+        let Some(outputs) = &result_state.outputs else {
+            frame.render_widget(
+                Paragraph::new("No decompile result yet. Select sections in the Input tab first.")
+                    .block(self.block("Result")),
                 area,
             );
             return;
         };
 
-        let hovered_asm = self.hovered_assembly_index;
-
-        let (title, lines, selected, mut info) = match layer {
-            EditorLayer::Assembly => (
-                format!("Assembly ({})", outputs.assembly.len()),
-                outputs
-                    .assembly
-                    .iter()
-                    .map(|row| {
-                        let highlight = hovered_asm == Some(row.index);
-                        let gutter_style = if highlight {
-                            Style::default()
-                                .fg(Color::Yellow)
-                                .add_modifier(Modifier::BOLD)
-                        } else {
-                            Style::default().fg(Color::DarkGray)
-                        };
-                        let text_style = if highlight {
-                            Style::default().fg(Color::Yellow)
-                        } else {
-                            Style::default()
-                        };
-                        code_list_item(
-                            format!("{:>5}", row.index),
-                            row.data.clone(),
-                            gutter_style,
-                            text_style,
-                        )
-                    })
-                    .collect::<Vec<_>>(),
-                self.selection(Some(self.assembly_cursor), outputs.assembly.len()),
-                outputs
-                    .assembly
-                    .get(self.assembly_cursor)
-                    .map(|row| {
-                        vec![
-                            Line::from(format!("Assembly row: {}", row.index)),
-                            Line::from(format!(
-                                "Parent block: {:#010x}",
-                                row.parents_start_address
-                            )),
-                        ]
-                    })
-                    .unwrap_or_else(|| vec![Line::from("No assembly rows")]),
-            ),
-            EditorLayer::Ir => (
-                format!("IR ({})", outputs.ir.len()),
-                outputs
-                    .ir
-                    .iter()
-                    .map(|row| {
-                        let highlight = hovered_asm == Some(row.parents_assembly_index);
-                        let gutter_style = if highlight {
-                            Style::default()
-                                .fg(Color::Yellow)
-                                .add_modifier(Modifier::BOLD)
-                        } else {
-                            Style::default().fg(Color::DarkGray)
-                        };
-                        let text_style = if highlight {
-                            Style::default().fg(Color::Yellow)
-                        } else {
-                            Style::default()
-                        };
-                        code_list_item(
-                            format!("a{:>4}", row.parents_assembly_index),
-                            row.data.clone(),
-                            gutter_style,
-                            text_style,
-                        )
-                    })
-                    .collect::<Vec<_>>(),
-                self.selection(Some(self.ir_cursor), outputs.ir.len()),
-                outputs
-                    .ir
-                    .get(self.ir_cursor)
-                    .map(|row| {
-                        vec![
-                            Line::from(format!("IR row: {}", self.ir_cursor)),
-                            Line::from(format!(
-                                "Parent assembly row: {}",
-                                row.parents_assembly_index
-                            )),
-                            Line::from("Gutter: parent assembly row"),
-                        ]
-                    })
-                    .unwrap_or_else(|| vec![Line::from("No IR rows")]),
-            ),
-            EditorLayer::Ast => {
-                let mut selection_info = outputs
-                    .ast
-                    .get(self.ast_cursor)
-                    .map(|row| vec![Line::from(format!("AST line: {}", row.row + 1))])
-                    .unwrap_or_else(|| vec![Line::from("No AST rows")]);
-                selection_info.push(Line::from("Gutter: printed AST line number"));
-                if let Some(message) = &outputs.ast_sync_message {
-                    selection_info.push(Line::from(""));
-                    selection_info.push(Line::from(Span::styled(
-                        format!("Sync: {message}"),
-                        Style::default().fg(Color::Yellow),
-                    )));
-                }
-                (
-                    format!("AST ({})", outputs.ast.len()),
-                    outputs
-                        .ast
-                        .iter()
-                        .map(|row| {
-                            code_list_item(
-                                format!("{:>5}", row.row + 1),
-                                row.data.clone(),
-                                Style::default().fg(Color::DarkGray),
-                                Style::default(),
-                            )
-                        })
-                        .collect::<Vec<_>>(),
-                    self.selection(Some(self.ast_cursor), outputs.ast.len()),
-                    selection_info,
+        let cursor = result_state.cursor;
+        let title = format!("Result ({})", outputs.ast.len());
+        let lines: Vec<ListItem> = outputs
+            .ast
+            .iter()
+            .map(|row| {
+                code_list_item(
+                    format!("{:>5}", row.row + 1),
+                    row.data.clone(),
+                    Style::default().fg(Color::DarkGray),
+                    Style::default(),
                 )
-            }
-        };
+            })
+            .collect();
 
         let [list_area, info_area] =
             Layout::horizontal([Constraint::Percentage(78), Constraint::Percentage(22)])
                 .areas(area);
-        let mut state = ListState::default().with_selected(selected);
+        let mut state =
+            ListState::default().with_selected(self.selection(Some(cursor), outputs.ast.len()));
         let list = List::new(lines)
             .block(self.block(&title))
             .highlight_style(Style::default().bg(Color::Blue).fg(Color::White))
             .highlight_symbol("> ");
         frame.render_stateful_widget(list, list_area, &mut state);
 
+        let mut info = outputs
+            .ast
+            .get(cursor)
+            .map(|row| vec![Line::from(format!("AST line: {}", row.row + 1))])
+            .unwrap_or_else(|| vec![Line::from("No AST rows")]);
+        info.push(Line::from("Gutter: printed AST line number"));
+        if let Some(message) = &outputs.ast_sync_message {
+            info.push(Line::from(""));
+            info.push(Line::from(Span::styled(
+                format!("Sync: {message}"),
+                Style::default().fg(Color::Yellow),
+            )));
+        }
         info.push(Line::from(""));
-        info.push(Line::from("Enter: load editor"));
-        info.push(Line::from("e: edit line"));
         info.push(Line::from("Home/End/Pg: navigate"));
+        info.push(Line::from("d: re-decompile"));
         frame.render_widget(
             Paragraph::new(info)
                 .block(self.block("Selection"))
@@ -379,100 +271,56 @@ impl App {
         );
     }
 
-    fn draw_editor(&self, frame: &mut Frame, area: Rect) {
-        let Some(target) = self.editor_target else {
+    fn draw_pick(&self, frame: &mut Frame, area: Rect) {
+        let Some(pick) = self.current_pick_state() else {
             frame.render_widget(
-                Paragraph::new("Select an ASM, IR, or AST row and press Enter or `e`.")
-                    .block(self.block("Editor")),
+                Paragraph::new("No pick state for this tab.").block(self.block("Pick")),
                 area,
             );
             return;
         };
-        let layer_label = match target.layer {
-            EditorLayer::Assembly => "Assembly",
-            EditorLayer::Ir => "IR",
-            EditorLayer::Ast => "AST",
-        };
-        let body = match &self.editor_draft {
-            Some(EditorDraft::Assembly(draft)) => vec![
-                Line::from(format!("Layer: {layer_label}")),
-                Line::from(format!("Row: {}", target.row)),
-                Line::from(""),
-                Line::from(format!("Mnemonic: {}", draft.mnemonic)),
-                Line::from(format!("Operands: {}", draft.operands)),
-                Line::from(""),
-                Line::from(format!("Composed: {}", draft.compose_line())),
-            ],
-            Some(EditorDraft::Ir(draft)) => vec![
-                Line::from(format!("Layer: {layer_label}")),
-                Line::from(format!("Row: {}", target.row)),
-                Line::from(format!("Position: {}", draft.position.label())),
-                Line::from(""),
-                Line::from(format!("Opcode: {}", draft.opcode)),
-                Line::from(format!("Detail: {}", draft.detail)),
-                Line::from(""),
-                Line::from(format!("Composed: {}", draft.compose_line())),
-            ],
-            Some(EditorDraft::Ast(draft)) => vec![
-                Line::from(format!("Layer: {layer_label}")),
-                Line::from(format!("Row: {}", target.row)),
-                Line::from(format!("Position: {}", draft.position.label())),
-                Line::from(""),
-                Line::from("Text:"),
-                Line::from(draft.raw_text.clone()),
-            ],
-            None => vec![Line::from("No editor draft loaded.")],
-        };
-        frame.render_widget(
-            Paragraph::new(body)
-                .block(self.block("Editor"))
-                .wrap(Wrap { trim: false }),
-            area,
-        );
-    }
 
-    fn draw_optimization(&self, frame: &mut Frame, area: Rect) {
-        let [settings_area, scripts_area, buffer_area] = Layout::horizontal([
-            Constraint::Percentage(34),
-            Constraint::Percentage(28),
-            Constraint::Percentage(38),
+        let [settings_area, script_area] = Layout::horizontal([
+            Constraint::Percentage(40),
+            Constraint::Percentage(60),
         ])
         .areas(area);
 
-        // Grouped settings with descriptions
+        // --- Settings panel (left) ---
         let mut settings_items: Vec<ListItem> = Vec::new();
-        for group in OPTIMIZATION_GROUPS {
-            settings_items.push(
-                ListItem::new(Line::from(Span::styled(
-                    format!("-- {} --", group.label),
-                    Style::default()
-                        .fg(Color::Cyan)
-                        .add_modifier(Modifier::BOLD),
-                )))
-                .style(Style::default()),
-            );
-            for field in group.fields {
-                let enabled = (field.get)(&self.optimization.draft_settings);
-                let applied = (field.get)(&self.optimization.applied_settings);
-                let dirty_marker = if enabled != applied { " *" } else { "" };
-                let checkbox = if enabled { "[x]" } else { "[ ]" };
-                settings_items.push(ListItem::new(vec![
-                    Line::from(format!(" {checkbox} {}{dirty_marker}", field.label)),
-                    Line::from(Span::styled(
-                        format!("     {}", field.description),
-                        Style::default().fg(Color::DarkGray),
-                    )),
-                ]));
-            }
+        for field in OPTIMIZATION_FIELDS {
+            let enabled = (field.get)(&pick.store.draft_settings);
+            let applied = (field.get)(&pick.store.applied_settings);
+            let dirty_marker = if enabled != applied { " *" } else { "" };
+            let radio = if enabled { "(o)" } else { "( )" };
+            settings_items.push(ListItem::new(vec![
+                Line::from(format!(" {radio} {}{dirty_marker}", field.label)),
+                Line::from(Span::styled(
+                    format!("     {}", field.description),
+                    Style::default().fg(Color::DarkGray),
+                )),
+            ]));
+        }
+        // If the buffer has content, add an "Apply .fb script" checkbox entry
+        let has_buffer = !pick.store.editor_buffer.trim().is_empty();
+        if has_buffer {
+            let check = if pick.store.fb_script_enabled {
+                "[x]"
+            } else {
+                "[ ]"
+            };
+            settings_items.push(ListItem::new(vec![
+                Line::from(format!(" {check} Apply .fb script")),
+                Line::from(Span::styled(
+                    "     Run the editor buffer as a .fb pattern script",
+                    Style::default().fg(Color::DarkGray),
+                )),
+            ]));
         }
 
-        // Map cursor to visual index (accounting for group headers)
-        let visual_index = cursor_to_visual_index(self.optimization_setting_cursor);
+        let visual_index = pick.setting_cursor;
         let mut settings_state = ListState::default().with_selected(Some(visual_index));
-        let settings_block = self.focus_block(
-            "Settings",
-            self.optimization_focus == OptimizationFocus::Settings,
-        );
+        let settings_block = self.focus_block("Settings", pick.focus == OptimizationFocus::Settings);
         frame.render_stateful_widget(
             List::new(settings_items)
                 .block(settings_block)
@@ -482,78 +330,42 @@ impl App {
             &mut settings_state,
         );
 
-        let script_items: Vec<ListItem> = if self.optimization.script_presets.is_empty() {
-            vec![ListItem::new("No .fb scripts registered")]
-        } else {
-            self.optimization
-                .script_presets
-                .iter()
-                .map(|preset| {
-                    let draft = if preset.enabled { "x" } else { " " };
-                    let applied = if preset.applied_enabled { "a" } else { " " };
-                    ListItem::new(format!("[{draft}/{applied}] {}", preset.name))
-                })
-                .collect()
-        };
-        let mut script_state = ListState::default().with_selected(self.selection(
-            Some(self.optimization_script_cursor),
-            self.optimization.script_presets.len(),
-        ));
-        frame.render_stateful_widget(
-            List::new(script_items)
-                .block(self.focus_block(
-                    "Scripts",
-                    self.optimization_focus == OptimizationFocus::Scripts,
-                ))
-                .highlight_style(Style::default().bg(Color::Blue).fg(Color::White))
-                .highlight_symbol("> "),
-            scripts_area,
-            &mut script_state,
-        );
-
-        let buffer_path = self
-            .optimization
+        // --- Script panel (right) ---
+        let buffer_path = pick
+            .store
             .editor_path
             .as_deref()
             .unwrap_or("Unsaved buffer");
-        let applied = if self.optimization.applied_buffer_script.is_some() {
+        let applied = if pick.store.applied_buffer_script.is_some() {
             "applied"
         } else {
             "not applied"
         };
-        let buffer_preview = if self.optimization.editor_buffer.is_empty() {
+
+        let buf = &pick.store.editor_buffer;
+        let cursor_pos = pick.script_cursor.min(buf.len());
+        let (before, after) = buf.split_at(cursor_pos);
+        let display_text = if pick.focus == OptimizationFocus::Script {
+            format!("{before}|{after}")
+        } else if buf.is_empty() {
             "Buffer is empty.".to_string()
         } else {
-            self.optimization.editor_buffer.clone()
+            buf.clone()
         };
-        let buffer_text = Text::from(vec![
+
+        let script_text = Text::from(vec![
             Line::from(format!("Path: {buffer_path}")),
             Line::from(format!("Status: {applied}")),
             Line::from(""),
-            Line::from(buffer_preview),
+            Line::from(display_text),
         ]);
         frame.render_widget(
-            Paragraph::new(buffer_text)
-                .block(self.focus_block(
-                    "Buffer",
-                    self.optimization_focus == OptimizationFocus::Buffer,
-                ))
+            Paragraph::new(script_text)
+                .block(
+                    self.focus_block("Script", pick.focus == OptimizationFocus::Script),
+                )
                 .wrap(Wrap { trim: false }),
-            buffer_area,
-        );
-    }
-
-    fn draw_patch(&self, frame: &mut Frame, area: Rect) {
-        let content = self
-            .patch_preview
-            .clone()
-            .unwrap_or_else(|| "No exported patch preview. Press `x` to export.".to_string());
-        frame.render_widget(
-            Paragraph::new(content)
-                .block(self.block("Patch Preview"))
-                .scroll((self.patch_scroll as u16, 0))
-                .wrap(Wrap { trim: false }),
-            area,
+            script_area,
         );
     }
 
@@ -575,15 +387,35 @@ impl App {
     }
 
     fn draw_status(&self, frame: &mut Frame, area: Rect) {
-        let text = self
-            .keybindings()
-            .into_iter()
-            .map(|(key, label)| format!("[{key} {label}]"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        let lines = vec![Line::from(self.top_message.clone()), Line::from(text)];
+        let bindings = self.keybindings();
+
+        let mut spans = vec![];
+        for (i, (key, label)) in bindings.iter().enumerate() {
+            if i > 0 {
+                spans.push(Span::raw("  "));
+            }
+            spans.push(Span::styled(
+                format!("{}", key),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ));
+            spans.push(Span::styled(
+                format!(":{}", label),
+                Style::default().fg(Color::White),
+            ));
+        }
+
+        let text = Text::from(vec![
+            Line::from(Span::styled(
+                self.top_message.clone(),
+                Style::default().fg(Color::Yellow),
+            )),
+            Line::from(spans),
+        ]);
+
         frame.render_widget(
-            Paragraph::new(lines)
+            Paragraph::new(text)
                 .block(Block::default().borders(Borders::TOP))
                 .wrap(Wrap { trim: false }),
             area,
@@ -624,7 +456,6 @@ impl App {
                 Constraint::Length(1),
             ])
             .areas(inner);
-
             self.draw_file_browser(frame, browser_area, prompt);
             self.draw_prompt_input(frame, input_area, prompt);
             frame.render_widget(Paragraph::new(prompt.help.as_str()), help_area);
@@ -636,7 +467,6 @@ impl App {
                 Constraint::Length(1),
             ])
             .areas(inner);
-
             let body = if prompt.multiline {
                 format!("{}\n", prompt.text)
             } else {
@@ -655,7 +485,6 @@ impl App {
 
     fn draw_license(&self, frame: &mut Frame) {
         let area = frame.area();
-
         let mut lines = vec![
             Line::from(Span::styled(
                 format!("Fireman v{}", env!("CARGO_PKG_VERSION")),
@@ -693,17 +522,13 @@ impl App {
                 Style::default().fg(Color::DarkGray),
             )),
         ]);
-        // +2 for top/bottom border
         let popup_height = ((lines.len() as u16) + 2).min(area.height.saturating_sub(4));
         let popup_width = 68.min(area.width.saturating_sub(4));
         let x = (area.width.saturating_sub(popup_width)) / 2;
         let y = (area.height.saturating_sub(popup_height)) / 2;
         let popup = Rect::new(x, y, popup_width, popup_height);
-
         frame.render_widget(Clear, popup);
-
         let text = Text::from(lines);
-
         frame.render_widget(
             Paragraph::new(text)
                 .block(
@@ -721,7 +546,6 @@ impl App {
         let Some(browser) = &prompt.file_browser else {
             return;
         };
-
         let items: Vec<ListItem> = browser
             .entries
             .iter()
@@ -737,13 +561,11 @@ impl App {
                 ListItem::new(format!("{prefix}{}", entry.name)).style(style)
             })
             .collect();
-
         let mut state = ListState::default().with_selected(if browser.entries.is_empty() {
             None
         } else {
             Some(browser.selected_index)
         });
-
         let list = List::new(items)
             .block(Block::default().borders(Borders::BOTTOM).title("Files"))
             .highlight_style(
@@ -797,24 +619,6 @@ impl App {
     }
 }
 
-/// Map a flat optimization field cursor index to a visual list index
-/// that accounts for group header rows.
-fn cursor_to_visual_index(cursor: usize) -> usize {
-    let mut visual = 0;
-    let mut flat = 0;
-    for group in OPTIMIZATION_GROUPS {
-        visual += 1; // group header
-        for _field in group.fields {
-            if flat == cursor {
-                return visual;
-            }
-            visual += 1;
-            flat += 1;
-        }
-    }
-    visual.saturating_sub(1)
-}
-
 fn code_list_item(
     gutter: impl Into<String>,
     text: impl Into<String>,
@@ -825,7 +629,7 @@ fn code_list_item(
     let text = text.into();
     ListItem::new(Line::from(vec![
         Span::styled(gutter, gutter_style),
-        Span::styled(" │ ", gutter_style),
+        Span::styled(" | ", gutter_style),
         Span::styled(text, text_style),
     ]))
 }
@@ -854,54 +658,4 @@ fn inner_block_area(area: Rect) -> Rect {
         width: area.width.saturating_sub(2),
         height: area.height.saturating_sub(2),
     }
-}
-
-fn highlight_ast_line(line: &str) -> Line<'static> {
-    let mut spans = Vec::new();
-    let keywords = [
-        "if", "else", "while", "for", "return", "switch", "case", "default", "goto", "break",
-        "continue", "void", "int", "char", "float", "double", "bool", "struct", "union", "int8_t",
-        "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t",
-    ];
-
-    let mut current_word = String::new();
-    let mut iter = line.chars().peekable();
-
-    while let Some(c) = iter.next() {
-        if c.is_alphanumeric() || c == '_' {
-            current_word.push(c);
-        } else {
-            if !current_word.is_empty() {
-                if keywords.contains(&current_word.as_str()) {
-                    spans.push(Span::styled(
-                        current_word.clone(),
-                        Style::default().fg(Color::Cyan),
-                    ));
-                } else {
-                    spans.push(Span::raw(current_word.clone()));
-                }
-                current_word.clear();
-            }
-            if c == '/' && iter.peek() == Some(&'/') {
-                let rest: String = std::iter::once(c).chain(iter).collect();
-                spans.push(Span::styled(rest, Style::default().fg(Color::DarkGray)));
-                break;
-            } else if c == '/' && iter.peek() == Some(&'*') {
-                let rest: String = std::iter::once(c).chain(iter).collect();
-                spans.push(Span::styled(rest, Style::default().fg(Color::DarkGray)));
-                break;
-            } else {
-                spans.push(Span::raw(c.to_string()));
-            }
-        }
-    }
-    if !current_word.is_empty() {
-        if keywords.contains(&current_word.as_str()) {
-            spans.push(Span::styled(current_word, Style::default().fg(Color::Cyan)));
-        } else {
-            spans.push(Span::raw(current_word));
-        }
-    }
-
-    Line::from(spans)
 }
