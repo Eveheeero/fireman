@@ -7,8 +7,7 @@ use super::{
 };
 use crate::{
     model::{
-        DecompileRequest, KnownSection, KnownSectionData, OptimizationSettings,
-        OptimizeAstRequest,
+        DecompileRequest, KnownSection, KnownSectionData, OptimizeAstRequest,
     },
     worker::{FirebatWorker, WorkerRequest, WorkerResponse, WorkerTryRecv},
 };
@@ -232,9 +231,28 @@ impl App {
         let tab_idx = self.tabs.current_index;
         self.pipeline.remove(pi);
         self.tabs.remove_tab(tab_idx);
-        // If we removed an Opt, cascade invalidation from that point
-        if is_opt && pi < self.pipeline.len() {
-            self.cascade_invalidate(pi.saturating_sub(1));
+        // If we removed an Opt, invalidate from the removed position onward
+        // After remove(pi), entries that were at pi+1.. are now at pi..
+        // We need to invalidate starting from pi (inclusive)
+        if is_opt && !self.pipeline.is_empty() {
+            if pi == 0 {
+                // Invalidate everything including position 0
+                for entry in self.pipeline.iter_mut() {
+                    match entry {
+                        PipelineEntry::Opt(opt) => {
+                            opt.output_ast = None;
+                            opt.output = None;
+                        }
+                        PipelineEntry::Preview(prev) => {
+                            prev.ast = None;
+                            prev.outputs = None;
+                            prev.cursor = 0;
+                        }
+                    }
+                }
+            } else {
+                self.cascade_invalidate(pi.saturating_sub(1));
+            }
         }
         self.log("Removed pipeline entry");
     }
@@ -261,40 +279,6 @@ impl App {
         if let Some(idx) = self.tabs.tabs.iter().position(|t| t.tab_type == target_type) {
             self.tabs.current_index = idx;
         }
-    }
-
-    // ── Optimization settings resolution ─────────────────────────────
-
-    /// Get optimization settings for decompile: from current Opt stage if on one,
-    /// or from the preceding Opt in the pipeline if on a Preview tab.
-    fn resolve_opt_settings(&self) -> (OptimizationSettings, Option<String>) {
-        let pi = match self.pipeline_index() {
-            Some(pi) => pi,
-            None => return Default::default(),
-        };
-        // If on an Opt tab, use it; if on Preview, walk backward to find preceding Opt
-        let opt_pi = match self.pipeline.get(pi) {
-            Some(PipelineEntry::Opt(_)) => Some(pi),
-            Some(PipelineEntry::Preview(_)) => {
-                (0..pi)
-                    .rev()
-                    .find(|&i| matches!(self.pipeline.get(i), Some(PipelineEntry::Opt(_))))
-            }
-            None => None,
-        };
-        opt_pi
-            .and_then(|i| match &self.pipeline[i] {
-                PipelineEntry::Opt(opt) => {
-                    let buf = if opt.store.fb_script_enabled {
-                        opt.store.applied_buffer_script.clone()
-                    } else {
-                        None
-                    };
-                    Some((opt.store.applied_settings.clone(), buf))
-                }
-                _ => None,
-            })
-            .unwrap_or_default()
     }
 
     // ── Worker communication ─────────────────────────────────────────
@@ -603,13 +587,9 @@ impl App {
 
         // Always start with a raw decompile. The response handler will
         // then enqueue Opt stages for sequential processing.
-        let (settings, buffer_script) = if self.pipeline.is_empty() {
-            // No pipeline stages: use default settings
-            Default::default()
-        } else {
-            // Use base settings (no Opt applied) for the raw decompile
-            Default::default()
-        };
+        // Raw decompile always uses default (no optimization) settings
+        let (settings, buffer_script): (crate::model::OptimizationSettings, Option<String>) =
+            Default::default();
 
         self.pending_decompile_target = None;
         self.pending_optimize_queue.clear();
@@ -719,8 +699,12 @@ impl App {
                 opt.store.applied_buffer_script = None;
             }
         }
-        // Cascade invalidation from current pipeline index forward
+        // Clear current Opt stage's cached output and cascade forward
         if let Some(pi) = self.pipeline_index() {
+            if let Some(PipelineEntry::Opt(opt)) = self.pipeline.get_mut(pi) {
+                opt.output_ast = None;
+                opt.output = None;
+            }
             self.cascade_invalidate(pi);
         }
         self.set_status("Applied optimization settings");

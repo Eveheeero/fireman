@@ -109,6 +109,10 @@ impl App {
                 self.add_opt_stage();
                 true
             }
+            KeyCode::Char('p') => {
+                self.add_preview();
+                true
+            }
             KeyCode::Char('r') => {
                 // Reset pipeline and tabs to default
                 self.tabs.reset();
@@ -207,12 +211,13 @@ impl App {
     }
 
     fn handle_preview_key(&mut self, key: KeyEvent) -> bool {
+        // Preview is read-only — no decompile trigger from here
         let len = self
             .current_preview_state()
             .and_then(|a| a.outputs.as_ref())
             .map(|o| o.ast.len())
             .unwrap_or(0);
-        if len == 0 && !matches!(key.code, KeyCode::Char('d')) {
+        if len == 0 {
             return false;
         }
         let Some(prev) = self.current_preview_state_mut() else {
@@ -249,11 +254,6 @@ impl App {
             }
             KeyCode::End => {
                 prev.cursor = len.saturating_sub(1);
-                true
-            }
-            KeyCode::Char('d') if key.modifiers.is_empty() => {
-                let _ = prev;
-                self.start_decompile();
                 true
             }
             _ => false,
@@ -664,6 +664,7 @@ impl App {
             ("t", "next"),
             ("T", "prev"),
             ("n", "+stage"),
+            ("p", "+preview"),
             ("c", "close"),
             ("r", "reset"),
             ("q", "quit"),
@@ -685,7 +686,6 @@ impl App {
                 ("Up/Dn", "move cursor"),
                 ("PgUp/Dn", "fast move"),
                 ("Home/End", "jump"),
-                ("d", "re-decompile"),
             ]),
             Some(TabType::Opt) => {
                 let focus = self

@@ -1,6 +1,6 @@
 use super::{
     app::App,
-    types::{OptimizationFocus, PromptState, TabType, OPTIMIZATION_FIELDS},
+    types::{OptimizationFocus, PipelineEntry, PromptState, TabType, OPTIMIZATION_FIELDS},
 };
 use crate::license::{self, THIRD_PARTY_DEPS};
 use ratatui::{
@@ -260,9 +260,25 @@ impl App {
                 Style::default().fg(Color::Yellow),
             )));
         }
+        // Show pipeline source
+        let source_label = self.pipeline_index().map(|pi| {
+            for i in (0..pi).rev() {
+                if let PipelineEntry::Opt(_) = &self.pipeline[i] {
+                    let n = self.pipeline[..=i]
+                        .iter()
+                        .filter(|e| matches!(e, PipelineEntry::Opt(_)))
+                        .count();
+                    return format!("Source: Opt {}", n - 1);
+                }
+            }
+            "Source: raw decompile".to_string()
+        });
+        if let Some(label) = source_label {
+            info.push(Line::from(""));
+            info.push(Line::from(label));
+        }
         info.push(Line::from(""));
         info.push(Line::from("Home/End/Pg: navigate"));
-        info.push(Line::from("d: re-decompile"));
         frame.render_widget(
             Paragraph::new(info)
                 .block(self.block("Selection"))
@@ -320,7 +336,18 @@ impl App {
 
         let visual_index = opt.setting_cursor;
         let mut settings_state = ListState::default().with_selected(Some(visual_index));
-        let settings_block = self.focus_block("Settings", opt.focus == OptimizationFocus::Settings);
+        let opt_n = self.pipeline_index().map(|pi| {
+            self.pipeline[..=pi]
+                .iter()
+                .filter(|e| matches!(e, PipelineEntry::Opt(_)))
+                .count()
+                .saturating_sub(1)
+        });
+        let settings_title = match opt_n {
+            Some(n) => format!("Settings (Opt {})", n),
+            None => "Settings".to_string(),
+        };
+        let settings_block = self.focus_block(&settings_title, opt.focus == OptimizationFocus::Settings);
         frame.render_stateful_widget(
             List::new(settings_items)
                 .block(settings_block)
