@@ -6,10 +6,10 @@ pub(crate) const LOG_LIMIT: usize = 256;
 /// Types of content that can be displayed in a tab
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum TabType {
-    Input,  // Binary input/file loading
-    Logs,   // Application logs
-    Result, // AST output after applying optimizations
-    Pick,   // Optimization pass selection
+    Input,   // Binary input/file loading
+    Logs,    // Application logs
+    Opt,     // Optimization pass selection (was Pick)
+    Preview, // Read-only AST snapshot (was Result)
 }
 
 impl TabType {
@@ -17,8 +17,8 @@ impl TabType {
         match self {
             TabType::Input => "Input",
             TabType::Logs => "Logs",
-            TabType::Result => "Result",
-            TabType::Pick => "Pick",
+            TabType::Opt => "Opt",
+            TabType::Preview => "Preview",
         }
     }
 }
@@ -61,12 +61,10 @@ pub(crate) struct TabManager {
 
 impl Default for TabManager {
     fn default() -> Self {
-        // Default: Input, Logs, Result₀
         Self {
             tabs: vec![
                 Tab::new(TabType::Input),
                 Tab::new(TabType::Logs),
-                Tab::with_label(TabType::Result, "Result 0"),
             ],
             current_index: 0,
         }
@@ -138,15 +136,15 @@ impl TabManager {
             .collect()
     }
 
-    /// Add a Result tab for pipeline step N
-    pub(crate) fn add_result_tab(&mut self, n: usize) -> usize {
-        let tab = Tab::with_label(TabType::Result, format!("Result {}", n));
+    /// Add a Preview tab for pipeline step N
+    pub(crate) fn add_preview_tab(&mut self, n: usize) -> usize {
+        let tab = Tab::with_label(TabType::Preview, format!("Preview {}", n));
         self.add_tab(tab)
     }
 
-    /// Add a Pick tab for pipeline step N
-    pub(crate) fn add_pick_tab(&mut self, n: usize) -> usize {
-        let tab = Tab::with_label(TabType::Pick, format!("Pick {}", n));
+    /// Add an Opt tab for pipeline step N
+    pub(crate) fn add_opt_tab(&mut self, n: usize) -> usize {
+        let tab = Tab::with_label(TabType::Opt, format!("Opt {}", n));
         self.add_tab(tab)
     }
 
@@ -155,7 +153,6 @@ impl TabManager {
         self.tabs = vec![
             Tab::new(TabType::Input),
             Tab::new(TabType::Logs),
-            Tab::with_label(TabType::Result, "Result 0"),
         ];
         self.current_index = 0;
     }
@@ -183,33 +180,39 @@ impl OptimizationFocus {
     }
 }
 
-/// Per-tab optimization state for a Pick step in the pipeline.
-pub(crate) struct PickTabState {
+/// Per-pipeline optimization stage. Holds settings and cached output.
+pub(crate) struct OptStage {
     pub(crate) store: crate::model::OptimizationStore,
     pub(crate) focus: OptimizationFocus,
     pub(crate) setting_cursor: usize,
     pub(crate) script_cursor: usize,
+    /// Cached output AST after this stage's optimization is applied
+    pub(crate) output_ast: Option<fireball::abstract_syntax_tree::Ast>,
+    pub(crate) output: Option<crate::model::DecompileResult>,
 }
 
-impl PickTabState {
+impl OptStage {
     pub(crate) fn new(store: crate::model::OptimizationStore) -> Self {
         Self {
             store,
             focus: OptimizationFocus::Settings,
             setting_cursor: 0,
             script_cursor: 0,
+            output_ast: None,
+            output: None,
         }
     }
 }
 
-/// Per-tab Result state. Each Result tab holds decompiled output and a cursor.
-pub(crate) struct ResultTabState {
+/// Lightweight read-only snapshot at a pipeline point.
+pub(crate) struct PreviewState {
+    /// Snapshot of AST at this pipeline point (from nearest preceding Opt or raw decompile)
     pub(crate) ast: Option<fireball::abstract_syntax_tree::Ast>,
     pub(crate) outputs: Option<crate::model::DecompileResult>,
     pub(crate) cursor: usize,
 }
 
-impl ResultTabState {
+impl PreviewState {
     pub(crate) fn new() -> Self {
         Self {
             ast: None,
@@ -219,10 +222,10 @@ impl ResultTabState {
     }
 }
 
-/// A single entry in the optimization pipeline (alternating Result/Pick).
+/// A single entry in the optimization pipeline.
 pub(crate) enum PipelineEntry {
-    Result(ResultTabState),
-    Pick(PickTabState),
+    Opt(OptStage),
+    Preview(PreviewState),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

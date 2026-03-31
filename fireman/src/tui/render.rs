@@ -73,8 +73,8 @@ impl App {
         match self.tabs.current_tab_type() {
             Some(TabType::Input) => self.draw_sections(frame, area),
             Some(TabType::Logs) => self.draw_logs(frame, area),
-            Some(TabType::Result) => self.draw_result(frame, area),
-            Some(TabType::Pick) => self.draw_pick(frame, area),
+            Some(TabType::Preview) => self.draw_preview(frame, area),
+            Some(TabType::Opt) => self.draw_opt(frame, area),
             None => {}
         }
     }
@@ -204,25 +204,25 @@ impl App {
         );
     }
 
-    fn draw_result(&self, frame: &mut Frame, area: Rect) {
-        let Some(result_state) = self.current_result_state() else {
+    fn draw_preview(&self, frame: &mut Frame, area: Rect) {
+        let Some(preview_state) = self.current_preview_state() else {
             frame.render_widget(
-                Paragraph::new("No result state for this tab.").block(self.block("Result")),
+                Paragraph::new("No preview state for this tab.").block(self.block("Preview")),
                 area,
             );
             return;
         };
-        let Some(outputs) = &result_state.outputs else {
+        let Some(outputs) = &preview_state.outputs else {
             frame.render_widget(
                 Paragraph::new("No decompile result yet. Select sections in the Input tab first.")
-                    .block(self.block("Result")),
+                    .block(self.block("Preview")),
                 area,
             );
             return;
         };
 
-        let cursor = result_state.cursor;
-        let title = format!("Result ({})", outputs.ast.len());
+        let cursor = preview_state.cursor;
+        let title = format!("Preview ({})", outputs.ast.len());
         let lines: Vec<ListItem> = outputs
             .ast
             .iter()
@@ -271,10 +271,10 @@ impl App {
         );
     }
 
-    fn draw_pick(&self, frame: &mut Frame, area: Rect) {
-        let Some(pick) = self.current_pick_state() else {
+    fn draw_opt(&self, frame: &mut Frame, area: Rect) {
+        let Some(opt) = self.current_opt_stage() else {
             frame.render_widget(
-                Paragraph::new("No pick state for this tab.").block(self.block("Pick")),
+                Paragraph::new("No opt state for this tab.").block(self.block("Opt")),
                 area,
             );
             return;
@@ -289,8 +289,8 @@ impl App {
         // --- Settings panel (left) ---
         let mut settings_items: Vec<ListItem> = Vec::new();
         for field in OPTIMIZATION_FIELDS {
-            let enabled = (field.get)(&pick.store.draft_settings);
-            let applied = (field.get)(&pick.store.applied_settings);
+            let enabled = (field.get)(&opt.store.draft_settings);
+            let applied = (field.get)(&opt.store.applied_settings);
             let dirty_marker = if enabled != applied { " *" } else { "" };
             let radio = if enabled { "(o)" } else { "( )" };
             settings_items.push(ListItem::new(vec![
@@ -302,9 +302,9 @@ impl App {
             ]));
         }
         // If the buffer has content, add an "Apply .fb script" checkbox entry
-        let has_buffer = !pick.store.editor_buffer.trim().is_empty();
+        let has_buffer = !opt.store.editor_buffer.trim().is_empty();
         if has_buffer {
-            let check = if pick.store.fb_script_enabled {
+            let check = if opt.store.fb_script_enabled {
                 "[x]"
             } else {
                 "[ ]"
@@ -318,9 +318,9 @@ impl App {
             ]));
         }
 
-        let visual_index = pick.setting_cursor;
+        let visual_index = opt.setting_cursor;
         let mut settings_state = ListState::default().with_selected(Some(visual_index));
-        let settings_block = self.focus_block("Settings", pick.focus == OptimizationFocus::Settings);
+        let settings_block = self.focus_block("Settings", opt.focus == OptimizationFocus::Settings);
         frame.render_stateful_widget(
             List::new(settings_items)
                 .block(settings_block)
@@ -331,21 +331,21 @@ impl App {
         );
 
         // --- Script panel (right) ---
-        let buffer_path = pick
+        let buffer_path = opt
             .store
             .editor_path
             .as_deref()
             .unwrap_or("Unsaved buffer");
-        let applied = if pick.store.applied_buffer_script.is_some() {
+        let applied = if opt.store.applied_buffer_script.is_some() {
             "applied"
         } else {
             "not applied"
         };
 
-        let buf = &pick.store.editor_buffer;
-        let cursor_pos = pick.script_cursor.min(buf.len());
+        let buf = &opt.store.editor_buffer;
+        let cursor_pos = opt.script_cursor.min(buf.len());
         let (before, after) = buf.split_at(cursor_pos);
-        let display_text = if pick.focus == OptimizationFocus::Script {
+        let display_text = if opt.focus == OptimizationFocus::Script {
             format!("{before}|{after}")
         } else if buf.is_empty() {
             "Buffer is empty.".to_string()
@@ -362,7 +362,7 @@ impl App {
         frame.render_widget(
             Paragraph::new(script_text)
                 .block(
-                    self.focus_block("Script", pick.focus == OptimizationFocus::Script),
+                    self.focus_block("Script", opt.focus == OptimizationFocus::Script),
                 )
                 .wrap(Wrap { trim: false }),
             script_area,

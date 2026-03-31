@@ -29,8 +29,8 @@ impl App {
         }
         let handled = match self.tabs.current_tab_type() {
             Some(TabType::Input) => self.handle_sections_key(key),
-            Some(TabType::Result) => self.handle_result_key(key),
-            Some(TabType::Pick) => self.handle_pick_key(key),
+            Some(TabType::Preview) => self.handle_preview_key(key),
+            Some(TabType::Opt) => self.handle_opt_key(key),
             Some(TabType::Logs) => self.handle_logs_key(key),
             None => false,
         };
@@ -106,15 +106,13 @@ impl App {
                 true
             }
             KeyCode::Char('n') => {
-                self.add_pipeline_stage();
+                self.add_opt_stage();
                 true
             }
             KeyCode::Char('r') => {
                 // Reset pipeline and tabs to default
                 self.tabs.reset();
-                self.pipeline = vec![super::types::PipelineEntry::Result(
-                    super::types::ResultTabState::new(),
-                )];
+                self.pipeline = Vec::new();
                 self.log("Reset tabs to default");
                 true
             }
@@ -208,53 +206,53 @@ impl App {
         }
     }
 
-    fn handle_result_key(&mut self, key: KeyEvent) -> bool {
+    fn handle_preview_key(&mut self, key: KeyEvent) -> bool {
         let len = self
-            .current_result_state()
+            .current_preview_state()
             .and_then(|a| a.outputs.as_ref())
             .map(|o| o.ast.len())
             .unwrap_or(0);
         if len == 0 && !matches!(key.code, KeyCode::Char('d')) {
             return false;
         }
-        let Some(res) = self.current_result_state_mut() else {
+        let Some(prev) = self.current_preview_state_mut() else {
             return false;
         };
         match key.code {
             KeyCode::Up => {
-                move_cursor_up(&mut res.cursor, 1);
+                move_cursor_up(&mut prev.cursor, 1);
                 true
             }
             KeyCode::Char('k') if key.modifiers.is_empty() => {
-                move_cursor_up(&mut res.cursor, 1);
+                move_cursor_up(&mut prev.cursor, 1);
                 true
             }
             KeyCode::Down => {
-                move_cursor_down(&mut res.cursor, 1, len);
+                move_cursor_down(&mut prev.cursor, 1, len);
                 true
             }
             KeyCode::Char('j') if key.modifiers.is_empty() => {
-                move_cursor_down(&mut res.cursor, 1, len);
+                move_cursor_down(&mut prev.cursor, 1, len);
                 true
             }
             KeyCode::PageUp => {
-                move_cursor_up(&mut res.cursor, 10);
+                move_cursor_up(&mut prev.cursor, 10);
                 true
             }
             KeyCode::PageDown => {
-                move_cursor_down(&mut res.cursor, 10, len);
+                move_cursor_down(&mut prev.cursor, 10, len);
                 true
             }
             KeyCode::Home => {
-                res.cursor = 0;
+                prev.cursor = 0;
                 true
             }
             KeyCode::End => {
-                res.cursor = len.saturating_sub(1);
+                prev.cursor = len.saturating_sub(1);
                 true
             }
             KeyCode::Char('d') if key.modifiers.is_empty() => {
-                let _ = res;
+                let _ = prev;
                 self.start_decompile();
                 true
             }
@@ -262,20 +260,20 @@ impl App {
         }
     }
 
-    fn handle_pick_key(&mut self, key: KeyEvent) -> bool {
-        let Some(focus) = self.current_pick_state().map(|o| o.focus) else {
+    fn handle_opt_key(&mut self, key: KeyEvent) -> bool {
+        let Some(focus) = self.current_opt_stage().map(|o| o.focus) else {
             return false;
         };
         match key.code {
             KeyCode::Tab => {
-                if let Some(pick) = self.current_pick_state_mut() {
-                    pick.focus = pick.focus.next();
+                if let Some(opt) = self.current_opt_stage_mut() {
+                    opt.focus = opt.focus.next();
                 }
                 true
             }
             KeyCode::BackTab => {
-                if let Some(pick) = self.current_pick_state_mut() {
-                    pick.focus = pick.focus.previous();
+                if let Some(opt) = self.current_opt_stage_mut() {
+                    opt.focus = opt.focus.previous();
                 }
                 true
             }
@@ -288,16 +286,16 @@ impl App {
                 true
             }
             _ => match focus {
-                OptimizationFocus::Settings => self.handle_pick_settings_key(key),
-                OptimizationFocus::Script => self.handle_pick_script_key(key),
+                OptimizationFocus::Settings => self.handle_opt_settings_key(key),
+                OptimizationFocus::Script => self.handle_opt_script_key(key),
             },
         }
     }
 
-    fn handle_pick_settings_key(&mut self, key: KeyEvent) -> bool {
+    fn handle_opt_settings_key(&mut self, key: KeyEvent) -> bool {
         let base_field_count = optimization_field_count();
         let has_buffer = self
-            .current_pick_state()
+            .current_opt_stage()
             .map(|o| !o.store.editor_buffer.trim().is_empty())
             .unwrap_or(false);
         let field_count = if has_buffer {
@@ -305,81 +303,81 @@ impl App {
         } else {
             base_field_count
         };
-        let Some(pick) = self.current_pick_state_mut() else {
+        let Some(opt) = self.current_opt_stage_mut() else {
             return false;
         };
         match key.code {
             KeyCode::Up => {
-                move_cursor_up(&mut pick.setting_cursor, 1);
+                move_cursor_up(&mut opt.setting_cursor, 1);
                 true
             }
             KeyCode::Char('k') if key.modifiers.is_empty() => {
-                move_cursor_up(&mut pick.setting_cursor, 1);
+                move_cursor_up(&mut opt.setting_cursor, 1);
                 true
             }
             KeyCode::Down => {
-                move_cursor_down(&mut pick.setting_cursor, 1, field_count);
+                move_cursor_down(&mut opt.setting_cursor, 1, field_count);
                 true
             }
             KeyCode::Char('j') if key.modifiers.is_empty() => {
-                move_cursor_down(&mut pick.setting_cursor, 1, field_count);
+                move_cursor_down(&mut opt.setting_cursor, 1, field_count);
                 true
             }
             KeyCode::PageUp => {
-                move_cursor_up(&mut pick.setting_cursor, 10);
+                move_cursor_up(&mut opt.setting_cursor, 10);
                 true
             }
             KeyCode::PageDown => {
-                move_cursor_down(&mut pick.setting_cursor, 10, field_count);
+                move_cursor_down(&mut opt.setting_cursor, 10, field_count);
                 true
             }
             KeyCode::Home => {
-                pick.setting_cursor = 0;
+                opt.setting_cursor = 0;
                 true
             }
             KeyCode::End if field_count > 0 => {
-                pick.setting_cursor = field_count - 1;
+                opt.setting_cursor = field_count - 1;
                 true
             }
             KeyCode::Char(' ') => {
-                let cursor = pick.setting_cursor;
+                let cursor = opt.setting_cursor;
                 let is_script_entry = has_buffer && cursor == base_field_count;
                 if is_script_entry {
-                    pick.store.fb_script_enabled = !pick.store.fb_script_enabled;
-                    if pick.store.fb_script_enabled {
-                        pick.store.applied_buffer_script =
-                            if pick.store.editor_buffer.trim().is_empty() {
+                    opt.store.fb_script_enabled = !opt.store.fb_script_enabled;
+                    if opt.store.fb_script_enabled {
+                        opt.store.applied_buffer_script =
+                            if opt.store.editor_buffer.trim().is_empty() {
                                 None
                             } else {
-                                Some(pick.store.editor_buffer.clone())
+                                Some(opt.store.editor_buffer.clone())
                             };
                     } else {
-                        pick.store.applied_buffer_script = None;
+                        opt.store.applied_buffer_script = None;
                     }
-                    let _ = pick;
+                    let _ = opt;
                     self.redecompile_last_selection();
                 } else if let Some(field) = all_optimization_fields().nth(cursor) {
-                    let current = (field.get)(&pick.store.draft_settings);
+                    let current = (field.get)(&opt.store.draft_settings);
                     if current {
-                        (field.set)(&mut pick.store.draft_settings, false);
+                        (field.set)(&mut opt.store.draft_settings, false);
                     } else {
                         let all_fields: Vec<_> = all_optimization_fields().collect();
                         for f in &all_fields {
-                            (f.set)(&mut pick.store.draft_settings, false);
+                            (f.set)(&mut opt.store.draft_settings, false);
                         }
-                        (field.set)(&mut pick.store.draft_settings, true);
-                        pick.store.editor_buffer.clear();
-                        pick.store.fb_script_enabled = false;
-                        pick.store.applied_buffer_script = None;
+                        (field.set)(&mut opt.store.draft_settings, true);
+                        opt.store.editor_buffer.clear();
+                        opt.store.fb_script_enabled = false;
+                        opt.store.applied_buffer_script = None;
                     }
-                    let _ = pick;
+                    let _ = opt;
                     self.apply_optimization_settings();
                 }
                 true
             }
             KeyCode::Char('r') if key.modifiers.is_empty() => {
-                pick.store.draft_settings = OptimizationSettings::default();
-                let _ = pick;
+                opt.store.draft_settings = OptimizationSettings::default();
+                let _ = opt;
                 self.set_status("Restored optimization draft defaults");
                 true
             }
@@ -387,71 +385,71 @@ impl App {
         }
     }
 
-    fn handle_pick_script_key(&mut self, key: KeyEvent) -> bool {
-        let Some(pick) = self.current_pick_state_mut() else {
+    fn handle_opt_script_key(&mut self, key: KeyEvent) -> bool {
+        let Some(opt) = self.current_opt_stage_mut() else {
             return false;
         };
         match key.code {
             KeyCode::Tab => {
-                pick.focus = OptimizationFocus::Settings;
+                opt.focus = OptimizationFocus::Settings;
                 true
             }
             KeyCode::Char(ch)
                 if key.modifiers.is_empty() || key.modifiers == KeyModifiers::SHIFT =>
             {
-                prompt::insert_char(&mut pick.store.editor_buffer, &mut pick.script_cursor, ch);
+                prompt::insert_char(&mut opt.store.editor_buffer, &mut opt.script_cursor, ch);
                 true
             }
             KeyCode::Enter => {
                 prompt::insert_char(
-                    &mut pick.store.editor_buffer,
-                    &mut pick.script_cursor,
+                    &mut opt.store.editor_buffer,
+                    &mut opt.script_cursor,
                     '\n',
                 );
                 true
             }
             KeyCode::Backspace => {
                 prompt::delete_prev_char(
-                    &mut pick.store.editor_buffer,
-                    &mut pick.script_cursor,
+                    &mut opt.store.editor_buffer,
+                    &mut opt.script_cursor,
                 );
                 true
             }
             KeyCode::Delete => {
                 prompt::delete_next_char(
-                    &mut pick.store.editor_buffer,
-                    &mut pick.script_cursor,
+                    &mut opt.store.editor_buffer,
+                    &mut opt.script_cursor,
                 );
                 true
             }
             KeyCode::Left => {
-                prompt::move_cursor_left(&pick.store.editor_buffer, &mut pick.script_cursor);
+                prompt::move_cursor_left(&opt.store.editor_buffer, &mut opt.script_cursor);
                 true
             }
             KeyCode::Right => {
-                prompt::move_cursor_right(&pick.store.editor_buffer, &mut pick.script_cursor);
+                prompt::move_cursor_right(&opt.store.editor_buffer, &mut opt.script_cursor);
                 true
             }
             KeyCode::Home => {
-                let buf = &pick.store.editor_buffer;
-                let cursor = pick.script_cursor;
+                let buf = &opt.store.editor_buffer;
+                let cursor = opt.script_cursor;
                 let line_start = buf[..cursor].rfind('\n').map(|p| p + 1).unwrap_or(0);
-                pick.script_cursor = line_start;
+                opt.script_cursor = line_start;
                 true
             }
             KeyCode::End => {
-                let buf = &pick.store.editor_buffer;
-                let cursor = pick.script_cursor;
+                let buf = &opt.store.editor_buffer;
+                let cursor = opt.script_cursor;
                 let line_end = buf[cursor..]
                     .find('\n')
                     .map(|p| cursor + p)
                     .unwrap_or(buf.len());
-                pick.script_cursor = line_end;
+                opt.script_cursor = line_end;
                 true
             }
             KeyCode::Up => {
-                let buf = &pick.store.editor_buffer;
-                let cursor = pick.script_cursor;
+                let buf = &opt.store.editor_buffer;
+                let cursor = opt.script_cursor;
                 let line_start = buf[..cursor].rfind('\n').map(|p| p + 1).unwrap_or(0);
                 let col = cursor - line_start;
                 if line_start > 0 {
@@ -461,13 +459,13 @@ impl App {
                         .map(|p| p + 1)
                         .unwrap_or(0);
                     let prev_line_len = prev_line_end - prev_line_start;
-                    pick.script_cursor = prev_line_start + col.min(prev_line_len);
+                    opt.script_cursor = prev_line_start + col.min(prev_line_len);
                 }
                 true
             }
             KeyCode::Down => {
-                let buf = &pick.store.editor_buffer;
-                let cursor = pick.script_cursor;
+                let buf = &opt.store.editor_buffer;
+                let cursor = opt.script_cursor;
                 let line_start = buf[..cursor].rfind('\n').map(|p| p + 1).unwrap_or(0);
                 let col = cursor - line_start;
                 if let Some(nl_pos) = buf[cursor..].find('\n') {
@@ -477,13 +475,13 @@ impl App {
                         .map(|p| next_line_start + p)
                         .unwrap_or(buf.len());
                     let next_line_len = next_line_end - next_line_start;
-                    pick.script_cursor = next_line_start + col.min(next_line_len);
+                    opt.script_cursor = next_line_start + col.min(next_line_len);
                 }
                 true
             }
             KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                let path = pick.store.editor_path.clone();
-                let _ = pick;
+                let path = opt.store.editor_path.clone();
+                let _ = opt;
                 if let Some(path) = path {
                     self.save_buffer_to_path(path);
                 } else {
@@ -497,8 +495,8 @@ impl App {
                 true
             }
             KeyCode::Char('o') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                let editor_path = pick.store.editor_path.clone().unwrap_or_default();
-                let _ = pick;
+                let editor_path = opt.store.editor_path.clone().unwrap_or_default();
+                let _ = opt;
                 self.open_path_prompt(
                     PromptKind::LoadBufferPath,
                     "Load Script",
@@ -683,15 +681,15 @@ impl App {
                 ("s", "select all ready"),
                 ("Ctrl+A", "select all ready"),
             ]),
-            Some(TabType::Result) => keys.extend([
+            Some(TabType::Preview) => keys.extend([
                 ("Up/Dn", "move cursor"),
                 ("PgUp/Dn", "fast move"),
                 ("Home/End", "jump"),
                 ("d", "re-decompile"),
             ]),
-            Some(TabType::Pick) => {
+            Some(TabType::Opt) => {
                 let focus = self
-                    .current_pick_state()
+                    .current_opt_stage()
                     .map(|o| o.focus)
                     .unwrap_or(OptimizationFocus::Settings);
                 match focus {

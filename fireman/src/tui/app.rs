@@ -1,8 +1,8 @@
 use super::{
     StartupConfig,
     types::{
-        FileBrowserState, LOG_LIMIT, PickTabState, PipelineEntry, PromptKind, PromptState,
-        ResultTabState, TabManager, TabType,
+        FileBrowserState, LOG_LIMIT, OptStage, PipelineEntry, PreviewState, PromptKind,
+        PromptState, TabManager, TabType,
     },
 };
 use crate::{
@@ -38,6 +38,11 @@ pub(crate) struct App {
     pub(crate) last_decompile_selection: Vec<u64>,
     pub(crate) pending_decompile_target: Option<usize>,
     pub(crate) show_license: bool,
+    /// Raw decompile result before any Opt stages
+    pub(crate) base_ast: Option<fireball::abstract_syntax_tree::Ast>,
+    pub(crate) base_output: Option<crate::model::DecompileResult>,
+    /// Queue of pipeline indices (Opt stages) pending optimization
+    pub(crate) pending_optimize_queue: VecDeque<usize>,
 }
 
 impl Default for App {
@@ -53,13 +58,13 @@ impl App {
             .and_then(|config| config.optimization_store.clone())
             .unwrap_or_default();
 
-        // Default pipeline: Result_0 only. If we have optimization config, also add Pick_0.
-        let mut pipeline = vec![PipelineEntry::Result(ResultTabState::new())];
+        // Default pipeline: empty. If we have optimization config, add one Opt stage.
+        let mut pipeline = Vec::new();
         let mut tabs = TabManager::default();
 
         if startup.as_ref().and_then(|c| c.optimization_store.as_ref()).is_some() {
-            pipeline.push(PipelineEntry::Pick(PickTabState::new(optimization)));
-            tabs.tabs.push(super::types::Tab::with_label(TabType::Pick, "Pick 0"));
+            pipeline.push(PipelineEntry::Opt(OptStage::new(optimization)));
+            tabs.tabs.push(super::types::Tab::with_label(TabType::Opt, "Opt 0"));
         }
 
         let mut app = Self {
@@ -80,6 +85,9 @@ impl App {
             last_decompile_selection: Vec::new(),
             pending_decompile_target: None,
             show_license: false,
+            base_ast: None,
+            base_output: None,
+            pending_optimize_queue: VecDeque::new(),
         };
         app.log("TUI initialized");
         if let Some(startup) = startup {
@@ -118,72 +126,98 @@ impl App {
         if idx >= 2 { Some(idx - 2) } else { None }
     }
 
-    /// Get current Pick state if on a Pick tab
-    pub(crate) fn current_pick_state(&self) -> Option<&PickTabState> {
+    /// Get current Opt stage if on an Opt tab
+    pub(crate) fn current_opt_stage(&self) -> Option<&OptStage> {
         let pi = self.pipeline_index()?;
         match self.pipeline.get(pi)? {
-            PipelineEntry::Pick(pick) => Some(pick),
+            PipelineEntry::Opt(opt) => Some(opt),
             _ => None,
         }
     }
 
-    pub(crate) fn current_pick_state_mut(&mut self) -> Option<&mut PickTabState> {
+    pub(crate) fn current_opt_stage_mut(&mut self) -> Option<&mut OptStage> {
         let pi = self.pipeline_index()?;
         match self.pipeline.get_mut(pi)? {
-            PipelineEntry::Pick(pick) => Some(pick),
+            PipelineEntry::Opt(opt) => Some(opt),
             _ => None,
         }
     }
 
-    pub(crate) fn current_result_state(&self) -> Option<&ResultTabState> {
+    pub(crate) fn current_preview_state(&self) -> Option<&PreviewState> {
         let pi = self.pipeline_index()?;
         match self.pipeline.get(pi)? {
-            PipelineEntry::Result(res) => Some(res),
+            PipelineEntry::Preview(prev) => Some(prev),
             _ => None,
         }
     }
 
-    pub(crate) fn current_result_state_mut(&mut self) -> Option<&mut ResultTabState> {
+    pub(crate) fn current_preview_state_mut(&mut self) -> Option<&mut PreviewState> {
         let pi = self.pipeline_index()?;
         match self.pipeline.get_mut(pi)? {
-            PipelineEntry::Result(res) => Some(res),
+            PipelineEntry::Preview(prev) => Some(prev),
             _ => None,
         }
     }
 
-    /// Add a new pipeline stage: appends Pick + Result at end
-    pub(crate) fn add_pipeline_stage(&mut self) {
-        let pick_n = self
+    /// Add a new Opt stage at the end of the pipeline
+    pub(crate) fn add_opt_stage(&mut self) {
+        let opt_n = self
             .pipeline
             .iter()
-            .filter(|e| matches!(e, PipelineEntry::Pick(_)))
+            .filter(|e| matches!(e, PipelineEntry::Opt(_)))
             .count();
-        let result_n = self
+
+        self.pipeline
+            .push(PipelineEntry::Opt(OptStage::new(Default::default())));
+        self.tabs
+            .tabs
+            .push(super::types::Tab::with_label(TabType::Opt, format!("Opt {}", opt_n)));
+
+        // Navigate to the new Opt tab
+        self.tabs.current_index = self.tabs.tabs.len() - 1;
+        self.log(format!("Added Opt stage {}", opt_n));
+    }
+
+    /// Insert a Preview after the current pipeline position
+    pub(crate) fn add_preview(&mut self) {
+        let preview_n = self
             .pipeline
             .iter()
-            .filter(|e| matches!(e, PipelineEntry::Result(_)))
+            .filter(|e| matches!(e, PipelineEntry::Preview(_)))
             .count();
 
-        // Add Pick tab at end
-        self.pipeline
-            .push(PipelineEntry::Pick(PickTabState::new(Default::default())));
-        self.tabs
-            .tabs
-            .push(super::types::Tab::with_label(TabType::Pick, format!("Pick {}", pick_n)));
+        let pi = self.pipeline_index().unwrap_or(0);
+        let insert_pi = (pi + 1).min(self.pipeline.len());
+        let insert_tab = insert_pi + 2; // offset for Input+Logs
 
-        // Add Result tab at end
-        self.pipeline
-            .push(PipelineEntry::Result(ResultTabState::new()));
-        self.tabs
-            .tabs
-            .push(super::types::Tab::with_label(TabType::Result, format!("Result {}", result_n)));
+        let mut preview = PreviewState::new();
+        // Populate snapshot from nearest preceding Opt output or base_ast
+        self.populate_preview_snapshot(&mut preview, insert_pi);
 
-        // Navigate to the new Pick tab
-        self.tabs.current_index = self.tabs.tabs.len() - 2;
-        self.log(format!(
-            "Added pipeline stage (Pick {}, Result {})",
-            pick_n, result_n
-        ));
+        self.pipeline.insert(insert_pi, PipelineEntry::Preview(preview));
+        self.tabs.tabs.insert(
+            insert_tab,
+            super::types::Tab::with_label(TabType::Preview, format!("Preview {}", preview_n)),
+        );
+        self.tabs.current_index = insert_tab;
+        self.log(format!("Added Preview {}", preview_n));
+    }
+
+    /// Populate a preview snapshot from the nearest preceding Opt output or base data
+    fn populate_preview_snapshot(&self, preview: &mut PreviewState, before_pi: usize) {
+        // Walk backward to find nearest Opt with output
+        for i in (0..before_pi).rev() {
+            if let PipelineEntry::Opt(opt) = &self.pipeline[i] {
+                if opt.output_ast.is_some() {
+                    preview.ast = opt.output_ast.clone();
+                    preview.outputs = opt.output.clone();
+                    return;
+                }
+            }
+        }
+        // Fall back to base
+        preview.ast = self.base_ast.clone();
+        preview.outputs = self.base_output.clone();
     }
 
     /// Remove the pipeline entry at the current tab position
@@ -194,19 +228,30 @@ impl App {
         if pi >= self.pipeline.len() {
             return;
         }
+        let is_opt = matches!(self.pipeline.get(pi), Some(PipelineEntry::Opt(_)));
         let tab_idx = self.tabs.current_index;
         self.pipeline.remove(pi);
         self.tabs.remove_tab(tab_idx);
+        // If we removed an Opt, cascade invalidation from that point
+        if is_opt && pi < self.pipeline.len() {
+            self.cascade_invalidate(pi.saturating_sub(1));
+        }
         self.log("Removed pipeline entry");
     }
 
-    /// Cascade invalidation: clear all Result entries after pipeline index `from`
+    /// Cascade invalidation: clear output for all Opt stages and Preview snapshots after `from`
     pub(crate) fn cascade_invalidate(&mut self, from: usize) {
         for entry in self.pipeline.iter_mut().skip(from + 1) {
-            if let PipelineEntry::Result(res) = entry {
-                res.ast = None;
-                res.outputs = None;
-                res.cursor = 0;
+            match entry {
+                PipelineEntry::Opt(opt) => {
+                    opt.output_ast = None;
+                    opt.output = None;
+                }
+                PipelineEntry::Preview(prev) => {
+                    prev.ast = None;
+                    prev.outputs = None;
+                    prev.cursor = 0;
+                }
             }
         }
     }
@@ -220,32 +265,32 @@ impl App {
 
     // ── Optimization settings resolution ─────────────────────────────
 
-    /// Get optimization settings for decompile: from current Pick tab if on one,
-    /// or from the preceding Pick in the pipeline if on a Result tab.
+    /// Get optimization settings for decompile: from current Opt stage if on one,
+    /// or from the preceding Opt in the pipeline if on a Preview tab.
     fn resolve_opt_settings(&self) -> (OptimizationSettings, Option<String>) {
         let pi = match self.pipeline_index() {
             Some(pi) => pi,
             None => return Default::default(),
         };
-        // If on a Pick tab, use it; if on Result, walk backward to find preceding Pick
-        let pick_pi = match self.pipeline.get(pi) {
-            Some(PipelineEntry::Pick(_)) => Some(pi),
-            Some(PipelineEntry::Result(_)) => {
+        // If on an Opt tab, use it; if on Preview, walk backward to find preceding Opt
+        let opt_pi = match self.pipeline.get(pi) {
+            Some(PipelineEntry::Opt(_)) => Some(pi),
+            Some(PipelineEntry::Preview(_)) => {
                 (0..pi)
                     .rev()
-                    .find(|&i| matches!(self.pipeline.get(i), Some(PipelineEntry::Pick(_))))
+                    .find(|&i| matches!(self.pipeline.get(i), Some(PipelineEntry::Opt(_))))
             }
             None => None,
         };
-        pick_pi
+        opt_pi
             .and_then(|i| match &self.pipeline[i] {
-                PipelineEntry::Pick(pick) => {
-                    let buf = if pick.store.fb_script_enabled {
-                        pick.store.applied_buffer_script.clone()
+                PipelineEntry::Opt(opt) => {
+                    let buf = if opt.store.fb_script_enabled {
+                        opt.store.applied_buffer_script.clone()
                     } else {
                         None
                     };
-                    Some((pick.store.applied_settings.clone(), buf))
+                    Some((opt.store.applied_settings.clone(), buf))
                 }
                 _ => None,
             })
@@ -292,12 +337,20 @@ impl App {
                     self.opened_path = self.pending_open_path.take();
                     self.pending_analysis_address = None;
                     self.known_sections.clear();
-                    // Clear all Result outputs in pipeline
+                    // Clear base and all pipeline outputs
+                    self.base_ast = None;
+                    self.base_output = None;
                     for entry in &mut self.pipeline {
-                        if let PipelineEntry::Result(res) = entry {
-                            res.ast = None;
-                            res.outputs = None;
-                            res.cursor = 0;
+                        match entry {
+                            PipelineEntry::Opt(opt) => {
+                                opt.output_ast = None;
+                                opt.output = None;
+                            }
+                            PipelineEntry::Preview(prev) => {
+                                prev.ast = None;
+                                prev.outputs = None;
+                                prev.cursor = 0;
+                            }
                         }
                     }
                     self.section_cursor = 0;
@@ -331,15 +384,14 @@ impl App {
             },
             WorkerResponse::DecompileSections(result) => match result {
                 Ok(dwa) => {
-                    let target_pi = self.pending_decompile_target.take();
-                    if let Some(pi) = target_pi {
-                        if let Some(PipelineEntry::Result(res)) = self.pipeline.get_mut(pi) {
-                            res.ast = Some(dwa.ast);
-                            res.outputs = Some(dwa.result);
-                            res.cursor = 0;
-                        }
-                    }
+                    // Store as base result
+                    self.base_ast = Some(dwa.ast.clone());
+                    self.base_output = Some(dwa.result.clone());
+                    // Fill any leading Previews (before first Opt) with base data
+                    self.fill_previews_from_base();
                     self.set_status("Decompile completed");
+                    // Start processing optimize queue
+                    self.process_optimize_queue();
                 }
                 Err(error) => self.set_status(error),
             },
@@ -347,17 +399,111 @@ impl App {
                 Ok(dwa) => {
                     let target_pi = self.pending_decompile_target.take();
                     if let Some(pi) = target_pi {
-                        if let Some(PipelineEntry::Result(res)) = self.pipeline.get_mut(pi) {
-                            res.ast = Some(dwa.ast);
-                            res.outputs = Some(dwa.result);
-                            res.cursor = 0;
+                        if let Some(PipelineEntry::Opt(opt)) = self.pipeline.get_mut(pi) {
+                            opt.output_ast = Some(dwa.ast.clone());
+                            opt.output = Some(dwa.result.clone());
                         }
+                        // Fill subsequent Previews up to next Opt
+                        self.fill_previews_after_opt(pi, &dwa.ast, &dwa.result);
                     }
                     self.set_status("Optimization completed");
+                    // Process next in queue
+                    self.process_optimize_queue();
                 }
-                Err(error) => self.set_status(error),
+                Err(error) => {
+                    self.pending_optimize_queue.clear();
+                    self.set_status(error);
+                }
             },
         }
+    }
+
+    /// Fill leading Preview entries (before first Opt) with base data
+    fn fill_previews_from_base(&mut self) {
+        let base_ast = self.base_ast.clone();
+        let base_output = self.base_output.clone();
+        for entry in &mut self.pipeline {
+            match entry {
+                PipelineEntry::Opt(_) => break,
+                PipelineEntry::Preview(prev) => {
+                    prev.ast = base_ast.clone();
+                    prev.outputs = base_output.clone();
+                }
+            }
+        }
+    }
+
+    /// Fill Preview entries after an Opt stage (up to next Opt) with that Opt's output
+    fn fill_previews_after_opt(
+        &mut self,
+        opt_pi: usize,
+        ast: &fireball::abstract_syntax_tree::Ast,
+        result: &crate::model::DecompileResult,
+    ) {
+        for entry in self.pipeline.iter_mut().skip(opt_pi + 1) {
+            match entry {
+                PipelineEntry::Opt(_) => break,
+                PipelineEntry::Preview(prev) => {
+                    prev.ast = Some(ast.clone());
+                    prev.outputs = Some(result.clone());
+                }
+            }
+        }
+    }
+
+    /// Process the next entry in the optimize queue
+    fn process_optimize_queue(&mut self) {
+        if self.busy_label.is_some() {
+            return;
+        }
+        let Some(pi) = self.pending_optimize_queue.pop_front() else {
+            return;
+        };
+        // Find input AST: from preceding Opt's output_ast, or base_ast
+        let input_ast = (0..pi)
+            .rev()
+            .find_map(|i| {
+                if let PipelineEntry::Opt(opt) = &self.pipeline[i] {
+                    opt.output_ast.clone()
+                } else {
+                    None
+                }
+            })
+            .or_else(|| self.base_ast.clone());
+
+        let Some(ast) = input_ast else {
+            self.set_status("No input AST available for optimization stage");
+            self.pending_optimize_queue.clear();
+            return;
+        };
+
+        // Get settings from this Opt stage
+        let (settings, buffer_script) = match &self.pipeline[pi] {
+            PipelineEntry::Opt(opt) => {
+                let buf = if opt.store.fb_script_enabled {
+                    opt.store.applied_buffer_script.clone()
+                } else {
+                    None
+                };
+                (opt.store.applied_settings.clone(), buf)
+            }
+            _ => {
+                // Not an Opt stage, skip
+                self.process_optimize_queue();
+                return;
+            }
+        };
+
+        self.pending_decompile_target = Some(pi);
+        self.send_request(
+            WorkerRequest::OptimizeAst(OptimizeAstRequest {
+                ast,
+                settings,
+                script_paths: vec![],
+                buffer_script,
+            }),
+            "optimizing AST",
+        );
     }
 
     // ── Prompts ──────────────────────────────────────────────────────
@@ -455,67 +601,35 @@ impl App {
         }
         self.last_decompile_selection = start_addresses.clone();
 
-        let current_type = self.tabs.current_tab_type();
-        let pi = self.pipeline_index();
-
-        // Route result to appropriate pipeline Result entry
-        self.pending_decompile_target = match current_type {
-            Some(TabType::Result) => pi,
-            Some(TabType::Pick) => {
-                // Target the next Result after this Pick
-                pi.and_then(|p| {
-                    self.pipeline
-                        .get(p + 1)
-                        .and_then(|e| matches!(e, PipelineEntry::Result(_)).then_some(p + 1))
-                })
-            }
-            _ => {
-                // Input or other: target Result_0 (pipeline index 0)
-                if matches!(self.pipeline.first(), Some(PipelineEntry::Result(_))) {
-                    Some(0)
-                } else {
-                    None
-                }
-            }
+        // Always start with a raw decompile. The response handler will
+        // then enqueue Opt stages for sequential processing.
+        let (settings, buffer_script) = if self.pipeline.is_empty() {
+            // No pipeline stages: use default settings
+            Default::default()
+        } else {
+            // Use base settings (no Opt applied) for the raw decompile
+            Default::default()
         };
 
-        let (settings, buffer_script) = self.resolve_opt_settings();
+        self.pending_decompile_target = None;
+        self.pending_optimize_queue.clear();
 
-        // Try incremental: if on a Pick tab, check preceding Result for a stored Ast
-        let preceding_ast = pi.and_then(|p| {
-            if !matches!(self.pipeline.get(p), Some(PipelineEntry::Pick(_))) {
-                return None;
+        // Enqueue all Opt stage indices for after raw decompile completes
+        for (i, entry) in self.pipeline.iter().enumerate() {
+            if matches!(entry, PipelineEntry::Opt(_)) {
+                self.pending_optimize_queue.push_back(i);
             }
-            (0..p).rev().find_map(|i| {
-                if let Some(PipelineEntry::Result(res)) = self.pipeline.get(i) {
-                    res.ast.clone()
-                } else {
-                    None
-                }
-            })
-        });
-
-        if let Some(ast) = preceding_ast {
-            self.send_request(
-                WorkerRequest::OptimizeAst(OptimizeAstRequest {
-                    ast,
-                    settings,
-                    script_paths: vec![],
-                    buffer_script,
-                }),
-                "optimizing AST",
-            );
-        } else {
-            self.send_request(
-                WorkerRequest::DecompileSections(DecompileRequest {
-                    start_addresses,
-                    settings,
-                    script_paths: vec![],
-                    buffer_script,
-                }),
-                "decompiling sections",
-            );
         }
+
+        self.send_request(
+            WorkerRequest::DecompileSections(DecompileRequest {
+                start_addresses,
+                settings,
+                script_paths: vec![],
+                buffer_script,
+            }),
+            "decompiling sections",
+        );
     }
 
     fn merge_sections(&mut self, sections: Vec<KnownSectionData>, select_new: bool) {
@@ -593,16 +707,16 @@ impl App {
     // ── Optimization settings ────────────────────────────────────────
 
     pub(crate) fn apply_optimization_settings(&mut self) {
-        if let Some(pick) = self.current_pick_state_mut() {
-            pick.store.applied_settings = pick.store.draft_settings.clone();
-            if pick.store.fb_script_enabled {
-                pick.store.applied_buffer_script = if pick.store.editor_buffer.trim().is_empty() {
+        if let Some(opt) = self.current_opt_stage_mut() {
+            opt.store.applied_settings = opt.store.draft_settings.clone();
+            if opt.store.fb_script_enabled {
+                opt.store.applied_buffer_script = if opt.store.editor_buffer.trim().is_empty() {
                     None
                 } else {
-                    Some(pick.store.editor_buffer.clone())
+                    Some(opt.store.editor_buffer.clone())
                 };
             } else {
-                pick.store.applied_buffer_script = None;
+                opt.store.applied_buffer_script = None;
             }
         }
         // Cascade invalidation from current pipeline index forward
@@ -621,9 +735,9 @@ impl App {
         }
         match fs::read_to_string(path) {
             Ok(buffer) => {
-                if let Some(pick) = self.current_pick_state_mut() {
-                    pick.store.editor_buffer = buffer;
-                    pick.store.editor_path = Some(path.to_string());
+                if let Some(opt) = self.current_opt_stage_mut() {
+                    opt.store.editor_buffer = buffer;
+                    opt.store.editor_path = Some(path.to_string());
                 }
                 self.upsert_script_preset(Path::new(path));
                 self.set_status(format!("Loaded buffer from {path}"));
@@ -639,13 +753,13 @@ impl App {
             return;
         }
         let buffer_content = self
-            .current_pick_state()
-            .map(|pick| pick.store.editor_buffer.clone())
+            .current_opt_stage()
+            .map(|opt| opt.store.editor_buffer.clone())
             .unwrap_or_default();
         match fs::write(path, &buffer_content) {
             Ok(()) => {
-                if let Some(pick) = self.current_pick_state_mut() {
-                    pick.store.editor_path = Some(path.to_string());
+                if let Some(opt) = self.current_opt_stage_mut() {
+                    opt.store.editor_path = Some(path.to_string());
                 }
                 self.upsert_script_preset(Path::new(path));
                 self.set_status(format!("Saved buffer to {path}"));
@@ -658,68 +772,30 @@ impl App {
         if self.last_decompile_selection.is_empty() || self.busy_label.is_some() {
             return;
         }
-        let current_type = self.tabs.current_tab_type();
-        let pi = self.pipeline_index();
 
-        self.pending_decompile_target = match current_type {
-            Some(TabType::Result) => pi,
-            Some(TabType::Pick) => {
-                pi.and_then(|p| {
-                    self.pipeline
-                        .get(p + 1)
-                        .and_then(|e| matches!(e, PipelineEntry::Result(_)).then_some(p + 1))
-                })
+        // Clear queue and re-enqueue all Opt stages
+        self.pending_optimize_queue.clear();
+        for (i, entry) in self.pipeline.iter().enumerate() {
+            if matches!(entry, PipelineEntry::Opt(_)) {
+                self.pending_optimize_queue.push_back(i);
             }
-            _ => {
-                if matches!(self.pipeline.first(), Some(PipelineEntry::Result(_))) {
-                    Some(0)
-                } else {
-                    None
-                }
-            }
-        };
-
-        let (settings, buffer_script) = self.resolve_opt_settings();
-
-        // Try incremental: if on a Pick tab, check preceding Result for a stored Ast
-        let preceding_ast = pi.and_then(|p| {
-            if !matches!(self.pipeline.get(p), Some(PipelineEntry::Pick(_))) {
-                return None;
-            }
-            (0..p).rev().find_map(|i| {
-                if let Some(PipelineEntry::Result(res)) = self.pipeline.get(i) {
-                    res.ast.clone()
-                } else {
-                    None
-                }
-            })
-        });
-
-        if let Some(ast) = preceding_ast {
-            self.send_request(
-                WorkerRequest::OptimizeAst(OptimizeAstRequest {
-                    ast,
-                    settings,
-                    script_paths: vec![],
-                    buffer_script,
-                }),
-                "re-optimizing AST",
-            );
-        } else {
-            self.send_request(
-                WorkerRequest::DecompileSections(DecompileRequest {
-                    start_addresses: self.last_decompile_selection.clone(),
-                    settings,
-                    script_paths: vec![],
-                    buffer_script,
-                }),
-                "re-decompiling sections",
-            );
         }
+
+        // Start with raw decompile
+        self.pending_decompile_target = None;
+        self.send_request(
+            WorkerRequest::DecompileSections(DecompileRequest {
+                start_addresses: self.last_decompile_selection.clone(),
+                settings: Default::default(),
+                script_paths: vec![],
+                buffer_script: None,
+            }),
+            "re-decompiling sections",
+        );
     }
 
     fn upsert_script_preset(&mut self, path: &Path) {
-        let Some(pick) = self.current_pick_state_mut() else {
+        let Some(opt) = self.current_opt_stage_mut() else {
             return;
         };
         let path_string = path.to_string_lossy().to_string();
@@ -728,7 +804,7 @@ impl App {
             .and_then(|value| value.to_str())
             .unwrap_or(path_string.as_str())
             .to_string();
-        if let Some(existing) = pick
+        if let Some(existing) = opt
             .store
             .script_presets
             .iter_mut()
@@ -737,7 +813,7 @@ impl App {
             existing.name = name;
             return;
         }
-        pick.store
+        opt.store
             .script_presets
             .push(crate::model::OptimizationScriptPreset {
                 name,
@@ -750,14 +826,14 @@ impl App {
     pub(crate) fn load_saved_optimization_store(&mut self) {
         match super::persistence::load_optimization_store() {
             Ok(store) => {
-                if let Some(pick) = self.current_pick_state_mut() {
-                    pick.store = store;
-                    pick.setting_cursor = pick
+                if let Some(opt) = self.current_opt_stage_mut() {
+                    opt.store = store;
+                    opt.setting_cursor = opt
                         .setting_cursor
                         .min(super::types::optimization_field_count().saturating_sub(1));
-                    pick.script_cursor = pick
+                    opt.script_cursor = opt
                         .script_cursor
-                        .min(pick.store.script_presets.len().saturating_sub(1));
+                        .min(opt.store.script_presets.len().saturating_sub(1));
                 }
                 self.set_status("Loaded optimization settings from disk");
                 self.redecompile_last_selection();
@@ -767,13 +843,13 @@ impl App {
     }
 
     pub(crate) fn save_current_optimization_store(&mut self) {
-        let store = self.current_pick_state().map(|pick| pick.store.clone());
+        let store = self.current_opt_stage().map(|opt| opt.store.clone());
         match store {
             Some(store) => match super::persistence::save_optimization_store(&store) {
                 Ok(()) => self.set_status("Saved optimization settings to disk"),
                 Err(error) => self.set_status(format!("Optimization save failed: {error}")),
             },
-            None => self.set_status("No active Pick tab"),
+            None => self.set_status("No active Opt tab"),
         }
     }
 
