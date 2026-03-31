@@ -1,5 +1,6 @@
 use super::state::FirebatState;
 use crate::{
+    model::{DecompileRequest, DecompileResult, OptimizeAstRequest},
     node::{
         InputNode, Node, NodeGraph, NodeId, NodePosition, NodeResponse, NodeType, OptNode,
         OptimizationPass, PreviewNode,
@@ -7,13 +8,16 @@ use crate::{
     pipeline::PipelineData,
     theme::configure_theme,
     ui::{GraphCanvas, GraphResponse},
+    worker::WorkerRequest,
 };
 use eframe::{
     egui,
     egui::{RichText, Vec2},
 };
+use fireball::abstract_syntax_tree::Ast;
 use std::{
     collections::VecDeque,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -351,41 +355,184 @@ impl FirebatApp {
         self.set_status(format!("Added {} node", node_type.name()));
     }
 
-    fn execute_pipeline(&mut self) {
-        self.set_status("Executing pipeline...");
+    fn start_pipeline(&mut self) {
+        let addresses = self.state.selected_addresses();
+        if addresses.is_empty() {
+            self.set_status("No sections selected");
+            return;
+        }
 
-        // Walk the graph: process each node sequentially, passing data through.
-        let mut data = PipelineData::Empty;
-        let mut failed = false;
+        // Clear all node caches
         for node in self.graph.nodes_mut() {
-            match node.process(data.clone()) {
-                Ok(next) => data = next,
-                Err(e) => {
-                    self.set_status(format!("Pipeline failed: {}", e));
-                    failed = true;
-                    break;
+            if let Some(opt) = node.as_any_mut().downcast_mut::<OptNode>() {
+                opt.output_ast = None;
+                opt.output = None;
+            }
+            if let Some(prev) = node.as_any_mut().downcast_mut::<PreviewNode>() {
+                prev.clear_snapshot();
+            }
+        }
+
+        // Enqueue all OptNode IDs in graph order
+        self.state.pending_optimize_queue.clear();
+        for id in self.graph.opt_node_ids() {
+            self.state.pending_optimize_queue.push_back(id);
+        }
+
+        // Send raw decompile request
+        self.state.last_decompile_selection = addresses.clone();
+        self.state.queue_request(WorkerRequest::DecompileSections(
+            DecompileRequest {
+                start_addresses: addresses,
+                settings: Default::default(),
+                script_paths: vec![],
+                buffer_script: None,
+            },
+        ));
+        self.set_status("Pipeline started...");
+    }
+
+    fn process_pipeline_results(&mut self) {
+        // Handle completed raw decompile: fill leading PreviewNodes, start optimize queue
+        if self.state.base_ast.is_some()
+            && self.state.pending_target_node.is_none()
+            && self.state.last_optimize_result.is_none()
+        {
+            self.fill_leading_previews();
+            if !self.state.pending_optimize_queue.is_empty() {
+                self.process_optimize_queue();
+            }
+        }
+
+        // Handle completed OptimizeAst
+        if let Some((node_id, result)) = self.state.last_optimize_result.take() {
+            let ast = result.ast.clone();
+            // Store in target OptNode
+            if let Some(node) = self.graph.get_node_mut(node_id) {
+                if let Some(opt) = node.as_any_mut().downcast_mut::<OptNode>() {
+                    opt.output_ast = Some(result.ast.clone());
+                    opt.output = Some(DecompileResult {
+                        assembly: Vec::new(),
+                        ir: Vec::new(),
+                        ast: result.ast_lines,
+                        ast_object: Some(result.ast),
+                        ast_sync_message: None,
+                    });
+                }
+            }
+            // Fill subsequent PreviewNodes
+            self.fill_previews_after_node(node_id, &ast);
+            // Continue queue
+            self.process_optimize_queue();
+        }
+    }
+
+    fn process_optimize_queue(&mut self) {
+        if self.state.is_busy() {
+            return;
+        }
+        let Some(node_id) = self.state.pending_optimize_queue.pop_front() else {
+            self.set_status("Pipeline completed");
+            return;
+        };
+
+        // Find input AST: from preceding OptNode or base_ast
+        let input_ast = self.find_input_ast_for(node_id);
+        let Some(ast) = input_ast else {
+            self.set_status("No input AST available");
+            self.state.pending_optimize_queue.clear();
+            return;
+        };
+
+        // Get settings from this OptNode
+        let (settings, buffer_script) = {
+            let Some(node) = self.graph.get_node(node_id) else {
+                self.set_status("OptNode not found");
+                self.state.pending_optimize_queue.clear();
+                return;
+            };
+            let Some(opt) = node.as_any().downcast_ref::<OptNode>() else {
+                self.set_status("Node is not an OptNode");
+                self.state.pending_optimize_queue.clear();
+                return;
+            };
+            let buf = if opt.store.fb_script_enabled {
+                opt.store.applied_buffer_script.clone()
+            } else {
+                None
+            };
+            (opt.store.applied_settings.clone(), buf)
+        };
+
+        self.state.pending_target_node = Some(node_id);
+        self.state
+            .queue_request(WorkerRequest::OptimizeAst(OptimizeAstRequest {
+                ast: (*ast).clone(),
+                settings,
+                script_paths: vec![],
+                buffer_script,
+            }));
+    }
+
+    fn find_input_ast_for(&self, node_id: NodeId) -> Option<Arc<Ast>> {
+        let connections = self.graph.connections();
+
+        // Find what connects TO this node
+        let source_id = connections
+            .iter()
+            .find(|(_, to)| *to == node_id)
+            .map(|(from, _)| *from)?;
+
+        // Check source type
+        let source = self.graph.get_node(source_id)?;
+        if let Some(opt) = source.as_any().downcast_ref::<OptNode>() {
+            return opt.output_ast.clone();
+        }
+        if source.as_any().downcast_ref::<InputNode>().is_some() {
+            return self.state.base_ast.clone();
+        }
+        // If source is PreviewNode, walk further back
+        self.state.base_ast.clone()
+    }
+
+    fn fill_leading_previews(&mut self) {
+        let base_ast = self.state.base_ast.clone();
+        let base_output = self.state.base_output.clone();
+        if let Some(ast) = base_ast {
+            for node in self.graph.nodes_mut() {
+                if let Some(prev) = node.as_any_mut().downcast_mut::<PreviewNode>() {
+                    if prev.snapshot_ast.is_none() {
+                        prev.set_snapshot(ast.clone(), base_output.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    fn fill_previews_after_node(&mut self, opt_node_id: NodeId, ast: &Arc<Ast>) {
+        let connections: Vec<_> = self.graph.connections().to_vec();
+        let mut to_fill: Vec<NodeId> = Vec::new();
+        let mut frontier = vec![opt_node_id];
+
+        while let Some(current) = frontier.pop() {
+            for (from, to) in &connections {
+                if *from == current {
+                    if let Some(node) = self.graph.get_node(*to) {
+                        if node.as_any().downcast_ref::<PreviewNode>().is_some() {
+                            to_fill.push(*to);
+                            frontier.push(*to);
+                        }
+                        // Stop at OptNode boundaries
+                    }
                 }
             }
         }
 
-        if failed {
-            return;
-        }
-
-        match data {
-            PipelineData::Ast(ref ast) => {
-                let config = fireball::abstract_syntax_tree::AstPrintConfig::default();
-                let code = ast.print(Some(config));
-                let funcs = code
-                    .lines()
-                    .filter(|l| {
-                        l.contains("void ") || l.contains("int ") || l.contains("func ")
-                    })
-                    .count();
-                self.set_status(format!("Pipeline completed: {} functions", funcs));
-            }
-            PipelineData::Empty => {
-                self.set_status("Pipeline completed (empty)");
+        for id in to_fill {
+            if let Some(node) = self.graph.get_node_mut(id) {
+                if let Some(prev) = node.as_any_mut().downcast_mut::<PreviewNode>() {
+                    prev.set_snapshot(ast.clone(), None);
+                }
             }
         }
     }

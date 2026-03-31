@@ -41,9 +41,9 @@ impl PreviewNode {
         node
     }
 
-    pub fn set_snapshot(&mut self, ast: Arc<Ast>, output: DecompileResult) {
+    pub fn set_snapshot(&mut self, ast: Arc<Ast>, output: Option<DecompileResult>) {
         self.snapshot_ast = Some(ast);
-        self.snapshot_output = Some(output);
+        self.snapshot_output = output;
     }
 
     pub fn clear_snapshot(&mut self) {

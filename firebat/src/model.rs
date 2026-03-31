@@ -76,18 +76,6 @@ pub struct EditorTarget {
     pub row: usize,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AstNodeTarget {
-    pub layer: EditorLayer,
-    pub path: AstNodePath,
-}
-
-#[derive(Clone, Debug)]
-pub enum EditorTargetV2 {
-    Row { layer: EditorLayer, row: usize },
-    AstNode { path: AstNodePath },
-}
-
 #[derive(Clone, Debug, Serialize)]
 pub struct PatchOperation {
     pub layer: EditorLayer,
@@ -188,12 +176,6 @@ pub struct EditRequest {
     pub row: usize,
     pub position: EditPosition,
     pub text: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct AstNodeEditRequest {
-    pub path: AstNodePath,
-    pub edit: AstNodeEdit,
 }
 
 #[derive(Clone)]

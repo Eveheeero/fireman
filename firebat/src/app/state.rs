@@ -2,21 +2,18 @@ use crate::{
     app::editor_window::FloatingEditorWindow,
     model::{
         AssemblyEditorDraft, AstNodeDraftData, AstNodeEditType, AstNodeEditorDraft,
-        DecompileRequest, DecompileResult, DecompileResultView, EditPosition, EditRequest,
-        EditorDraft, EditorLayer, EditorTarget, IrEditorDraft, KnownSection, KnownSectionData,
-        OptimizationSettings, OptimizationStore,
+        DecompileResult, DecompileResultView, EditPosition, EditRequest, EditorDraft, EditorLayer,
+        EditorTarget, IrEditorDraft, KnownSection, KnownSectionData, OptimizeAstResult,
     },
     node::NodeId,
     worker::{FirebatWorker, WorkerRequest, WorkerResponse, WorkerTryRecv},
 };
 use chrono::Local;
-use eframe::egui::Color32;
+use eframe::egui::{self, Color32};
 use fireball::abstract_syntax_tree::Ast;
 use rfd::FileDialog;
 use std::{
     collections::{HashMap, VecDeque},
-    env, fs,
-    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -52,19 +49,12 @@ pub(super) struct FirebatState {
     pub(super) pending_optimize_queue: VecDeque<NodeId>,
     /// The OptNode currently being processed by the worker.
     pub(super) pending_target_node: Option<NodeId>,
-    // Legacy flat optimization fields kept for the panels UI (Task 5 will move these into per-node stores)
-    pub(super) optimization_draft: OptimizationSettings,
-    pub(super) optimization_applied: OptimizationSettings,
-    pub(super) optimization_scripts: Vec<crate::model::OptimizationScriptPreset>,
-    pub(super) optimization_editor_buffer: String,
-    pub(super) optimization_editor_path: Option<String>,
-    pub(super) optimization_applied_buffer_script: Option<String>,
-    pub(super) optimization_status_message: Option<String>,
+    /// Completed optimization result awaiting graph wiring in shell.rs.
+    pub(super) last_optimize_result: Option<(NodeId, OptimizeAstResult)>,
 }
 
 impl Default for FirebatState {
     fn default() -> Self {
-        let optimization_store = load_optimization_store().unwrap_or_default();
         let mut assembly_editor = FloatingEditorWindow::new("Assembly Editor");
         let mut ir_editor = FloatingEditorWindow::new("IR Editor");
         let mut ast_editor = FloatingEditorWindow::new("AST Editor");
@@ -87,13 +77,6 @@ impl Default for FirebatState {
             editor_target: None,
             editor_draft: None,
             exported_patch_json: None,
-            optimization_draft: optimization_store.draft_settings,
-            optimization_applied: optimization_store.applied_settings,
-            optimization_scripts: optimization_store.script_presets,
-            optimization_editor_buffer: optimization_store.editor_buffer,
-            optimization_editor_path: optimization_store.editor_path,
-            optimization_applied_buffer_script: optimization_store.applied_buffer_script,
-            optimization_status_message: None,
             last_decompile_selection: Vec::new(),
             assembly_editor,
             ir_editor,
@@ -106,6 +89,7 @@ impl Default for FirebatState {
             base_output: None,
             pending_optimize_queue: VecDeque::new(),
             pending_target_node: None,
+            last_optimize_result: None,
         }
     }
 }
@@ -127,39 +111,6 @@ impl FirebatState {
                 self.pending_requests = self.pending_requests.saturating_add(1);
             }
             Err(error) => self.log(error),
-        }
-    }
-
-    pub(super) fn optimization_is_dirty(&self) -> bool {
-        self.optimization_draft != self.optimization_applied
-            || self
-                .optimization_scripts
-                .iter()
-                .any(|preset| preset.enabled != preset.applied_enabled)
-    }
-
-    fn build_decompile_request(&self, start_addresses: Vec<u64>) -> DecompileRequest {
-        DecompileRequest {
-            start_addresses,
-            settings: self.optimization_applied.clone(),
-            script_paths: self
-                .optimization_scripts
-                .iter()
-                .filter(|preset| preset.applied_enabled)
-                .map(|preset| preset.path.clone())
-                .collect(),
-            buffer_script: self.optimization_applied_buffer_script.clone(),
-        }
-    }
-
-    fn set_optimization_status(&mut self, message: impl Into<String>) {
-        self.optimization_status_message = Some(message.into());
-    }
-
-    pub(super) fn persist_optimization_state(&mut self) {
-        if let Err(error) = self.save_optimization_store() {
-            self.log(format!("Optimization settings persistence failed {error}"));
-            self.set_optimization_status(format!("Persistence failed: {error}"));
         }
     }
 
@@ -238,13 +189,14 @@ impl FirebatState {
                                     "OptimizeAst ready: {} lines",
                                     opt_result.ast_lines.len()
                                 ));
-                                // Store the optimized result in the target node
-                                // (actual node update happens via pending_target_node in shell)
-                                self.pending_target_node = None;
+                                if let Some(target) = self.pending_target_node.take() {
+                                    self.last_optimize_result = Some((target, opt_result));
+                                }
                             }
                             Err(error) => {
                                 self.log(format!("OptimizeAst failed {error}"));
                                 self.pending_target_node = None;
+                                self.pending_optimize_queue.clear();
                             }
                         },
                     }
@@ -301,6 +253,7 @@ impl FirebatState {
         self.base_output = None;
         self.pending_optimize_queue.clear();
         self.pending_target_node = None;
+        self.last_optimize_result = None;
         self.log(format!("Open fireball with {path}"));
         self.queue_request(WorkerRequest::OpenFile(path));
     }
@@ -346,195 +299,12 @@ impl FirebatState {
         }
     }
 
-    pub(super) fn decompile_selected(&mut self) {
-        let has_pending_selection = self
-            .known_sections
+    pub(super) fn selected_addresses(&self) -> Vec<u64> {
+        self.known_sections
             .iter()
-            .any(|section| section.selected && !section.data.analyzed);
-        let selected = self
-            .known_sections
-            .iter()
-            .filter(|section| section.selected && section.data.analyzed)
-            .map(|section| section.data.start_address)
-            .collect::<Vec<_>>();
-
-        if selected.is_empty() {
-            if has_pending_selection {
-                self.log("Selected sections are not analyzed yet; analyze them before decompiling");
-            } else {
-                self.log("No analyzed sections selected for decompilation");
-            }
-            return;
-        }
-
-        self.exported_patch_json = None;
-        self.last_decompile_selection = selected.clone();
-        self.log(format!("Decompiling sections {selected:?}"));
-        self.queue_request(WorkerRequest::DecompileSections(
-            self.build_decompile_request(selected),
-        ));
-    }
-
-    pub(super) fn apply_optimization_settings(&mut self) {
-        self.optimization_applied = self.optimization_draft.clone();
-        for preset in &mut self.optimization_scripts {
-            preset.applied_enabled = preset.enabled;
-        }
-        self.persist_optimization_state();
-        if self.last_decompile_selection.is_empty() {
-            self.set_optimization_status("Optimization settings saved for the next decompile");
-            self.log("Optimization settings saved for the next decompile");
-            return;
-        }
-        self.set_optimization_status("Reapplying optimization settings to the current selection");
-        self.log("Reapplying optimization settings to the current selection");
-        self.queue_request(WorkerRequest::DecompileSections(
-            self.build_decompile_request(self.last_decompile_selection.clone()),
-        ));
-    }
-
-    pub(super) fn apply_optimization_buffer(&mut self) {
-        self.optimization_applied_buffer_script =
-            if self.optimization_editor_buffer.trim().is_empty() {
-                None
-            } else {
-                Some(self.optimization_editor_buffer.clone())
-            };
-        self.persist_optimization_state();
-        if self.last_decompile_selection.is_empty() {
-            self.set_optimization_status("Applied editor buffer for the next decompile");
-            self.log("Applied optimization buffer for the next decompile");
-            return;
-        }
-        self.set_optimization_status("Applying optimization buffer to the current selection");
-        self.log("Applying optimization buffer to the current selection");
-        self.queue_request(WorkerRequest::DecompileSections(
-            self.build_decompile_request(self.last_decompile_selection.clone()),
-        ));
-    }
-
-    pub(super) fn clear_applied_optimization_buffer(&mut self) {
-        self.optimization_applied_buffer_script = None;
-        self.persist_optimization_state();
-        if self.last_decompile_selection.is_empty() {
-            self.set_optimization_status("Cleared applied buffer script");
-            self.log("Cleared applied optimization buffer");
-            return;
-        }
-        self.set_optimization_status("Clearing applied buffer and recompiling current selection");
-        self.log("Clearing applied optimization buffer and recompiling current selection");
-        self.queue_request(WorkerRequest::DecompileSections(
-            self.build_decompile_request(self.last_decompile_selection.clone()),
-        ));
-    }
-
-    pub(super) fn restore_default_optimization_draft(&mut self) {
-        self.optimization_draft = OptimizationSettings::default();
-        for preset in &mut self.optimization_scripts {
-            preset.enabled = false;
-        }
-        self.persist_optimization_state();
-        self.set_optimization_status("Optimization draft restored to defaults");
-    }
-
-    pub(super) fn reset_optimization_draft(&mut self) {
-        self.optimization_draft = self.optimization_applied.clone();
-        for preset in &mut self.optimization_scripts {
-            preset.enabled = preset.applied_enabled;
-        }
-        self.persist_optimization_state();
-        self.set_optimization_status("Optimization draft reset to the applied state");
-    }
-
-    pub(super) fn new_optimization_script(&mut self) {
-        self.optimization_editor_buffer.clear();
-        self.optimization_editor_path = None;
-        self.persist_optimization_state();
-        self.set_optimization_status("Started a new optimization script buffer");
-    }
-
-    pub(super) fn open_optimization_script(&mut self) {
-        let Some(path) = FileDialog::new()
-            .add_filter("Firebat optimization", &["fb"])
-            .pick_file()
-        else {
-            self.log("Optimization script open canceled");
-            return;
-        };
-        match fs::read_to_string(&path) {
-            Ok(buffer) => {
-                self.optimization_editor_buffer = buffer;
-                self.optimization_editor_path = Some(path.to_string_lossy().to_string());
-                self.upsert_optimization_script_preset(&path);
-                self.persist_optimization_state();
-                self.set_optimization_status(format!(
-                    "Opened optimization script {}",
-                    path.to_string_lossy()
-                ));
-            }
-            Err(error) => {
-                self.log(format!("Optimization script open failed {error}"));
-                self.set_optimization_status(format!("Open failed: {error}"));
-            }
-        }
-    }
-
-    pub(super) fn save_optimization_script(&mut self) {
-        let Some(path) = self.optimization_editor_path.clone() else {
-            self.save_optimization_script_as();
-            return;
-        };
-        self.write_optimization_script(Path::new(&path));
-    }
-
-    pub(super) fn save_optimization_script_as(&mut self) {
-        let dialog = FileDialog::new().add_filter("Firebat optimization", &["fb"]);
-        let dialog = if let Some(path) = &self.optimization_editor_path {
-            dialog.set_file_name(
-                Path::new(path)
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .unwrap_or("optimization.fb"),
-            )
-        } else {
-            dialog.set_file_name("optimization.fb")
-        };
-        let Some(path) = dialog.save_file() else {
-            self.log("Optimization script save canceled");
-            return;
-        };
-        self.write_optimization_script(&path);
-    }
-
-    pub(super) fn load_optimization_preset_into_editor(&mut self, index: usize) {
-        let Some(path) = self
-            .optimization_scripts
-            .get(index)
-            .map(|preset| preset.path.clone())
-        else {
-            return;
-        };
-        match fs::read_to_string(&path) {
-            Ok(buffer) => {
-                self.optimization_editor_buffer = buffer;
-                self.optimization_editor_path = Some(path.clone());
-                self.persist_optimization_state();
-                self.set_optimization_status(format!("Loaded preset {path} into the editor"));
-            }
-            Err(error) => {
-                self.log(format!("Preset load failed {error}"));
-                self.set_optimization_status(format!("Preset load failed: {error}"));
-            }
-        }
-    }
-
-    pub(super) fn remove_optimization_script_preset(&mut self, index: usize) {
-        if index >= self.optimization_scripts.len() {
-            return;
-        }
-        let removed = self.optimization_scripts.remove(index);
-        self.persist_optimization_state();
-        self.set_optimization_status(format!("Removed script preset {}", removed.name));
+            .filter(|s| s.selected && s.data.analyzed)
+            .map(|s| s.data.start_address)
+            .collect()
     }
 
     pub(super) fn select_editor_target(&mut self, target: EditorTarget) {
@@ -661,85 +431,6 @@ impl FirebatState {
         }
     }
 
-    fn save_optimization_store(&self) -> Result<(), String> {
-        let path = optimization_store_path()?;
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-        }
-        let store = OptimizationStore {
-            draft_settings: self.optimization_draft.clone(),
-            applied_settings: self.optimization_applied.clone(),
-            script_presets: self.optimization_scripts.clone(),
-            editor_buffer: self.optimization_editor_buffer.clone(),
-            editor_path: self.optimization_editor_path.clone(),
-            applied_buffer_script: self.optimization_applied_buffer_script.clone(),
-            fb_script_enabled: false,
-        };
-        let json = serde_json::to_string_pretty(&store).map_err(|error| error.to_string())?;
-        fs::write(path, json).map_err(|error| error.to_string())
-    }
-
-    fn write_optimization_script(&mut self, path: &Path) {
-        match fs::write(path, &self.optimization_editor_buffer) {
-            Ok(()) => {
-                self.optimization_editor_path = Some(path.to_string_lossy().to_string());
-                self.upsert_optimization_script_preset(path);
-                self.persist_optimization_state();
-                self.set_optimization_status(format!(
-                    "Saved optimization script {}",
-                    path.to_string_lossy()
-                ));
-            }
-            Err(error) => {
-                self.log(format!("Optimization script save failed {error}"));
-                self.set_optimization_status(format!("Save failed: {error}"));
-            }
-        }
-    }
-
-    fn upsert_optimization_script_preset(&mut self, path: &Path) {
-        let path_string = path.to_string_lossy().to_string();
-        let name = path
-            .file_name()
-            .and_then(|value| value.to_str())
-            .unwrap_or("script.fb")
-            .to_string();
-        if let Some(preset) = self
-            .optimization_scripts
-            .iter_mut()
-            .find(|preset| preset.path == path_string)
-        {
-            preset.name = name;
-            return;
-        }
-        self.optimization_scripts
-            .push(crate::model::OptimizationScriptPreset {
-                name,
-                path: path_string,
-                enabled: false,
-                applied_enabled: false,
-            });
-        self.optimization_scripts
-            .sort_by(|left, right| left.name.cmp(&right.name));
-    }
-}
-
-fn optimization_store_path() -> Result<PathBuf, String> {
-    if let Ok(config_home) = env::var("XDG_CONFIG_HOME") {
-        return Ok(PathBuf::from(config_home).join("firebat/settings.json"));
-    }
-
-    let home = env::var("HOME").map_err(|error| error.to_string())?;
-    Ok(PathBuf::from(home).join(".config/firebat/settings.json"))
-}
-
-fn load_optimization_store() -> Result<OptimizationStore, String> {
-    let path = optimization_store_path()?;
-    if !path.exists() {
-        return Ok(OptimizationStore::default());
-    }
-    let json = fs::read_to_string(path).map_err(|error| error.to_string())?;
-    serde_json::from_str(&json).map_err(|error| error.to_string())
 }
 
 fn build_editor_draft(result: &DecompileResultView, target: EditorTarget) -> Option<EditorDraft> {
