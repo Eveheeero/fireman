@@ -5,10 +5,9 @@ use crate::{
     pipeline::PipelineData,
 };
 use egui::{Color32, Ui};
-use fireball::{abstract_syntax_tree::Ast, core::FireRaw, ir::analyze::generate_ast};
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
-/// Input node for loading binary files and converting directly to AST
+/// Input node for holding the active file path while the shell owns async loading.
 #[derive(Clone, Debug)]
 pub struct InputNode {
     id: NodeId,
@@ -16,7 +15,6 @@ pub struct InputNode {
     position: NodePosition,
     file_path: Option<PathBuf>,
     is_expanded: bool,
-    loaded_ast: Option<Arc<Ast>>,
 }
 
 impl InputNode {
@@ -27,7 +25,6 @@ impl InputNode {
             position: NodePosition::default(),
             file_path: None,
             is_expanded: false,
-            loaded_ast: None,
         }
     }
 
@@ -43,33 +40,6 @@ impl InputNode {
 
     pub fn set_file_path(&mut self, path: PathBuf) {
         self.file_path = Some(path);
-        self.loaded_ast = None;
-    }
-
-    fn load_binary_to_ast(&mut self) -> Result<Arc<Ast>, NodeError> {
-        if let Some(ref path) = self.file_path {
-            // Load binary with fireball
-            let fireball =
-                fireball::Fireball::from_path(path.to_str().unwrap_or("")).map_err(|e| {
-                    NodeError::ProcessingError(format!("Failed to load binary: {:?}", e))
-                })?;
-
-            // Analyze to get blocks
-            let blocks = fireball
-                .analyze_all()
-                .map_err(|e| NodeError::ProcessingError(format!("Analysis failed: {:?}", e)))?;
-
-            // Convert blocks to AST using generate_ast
-            let ast = generate_ast(blocks.into_iter()).map_err(|e| {
-                NodeError::ProcessingError(format!("AST generation failed: {:?}", e))
-            })?;
-
-            let arc_ast = Arc::new(ast);
-            self.loaded_ast = Some(arc_ast.clone());
-            Ok(arc_ast)
-        } else {
-            Err(NodeError::MissingData("No file path specified"))
-        }
     }
 }
 
@@ -128,20 +98,8 @@ impl Node for InputNode {
         "[No file selected]".to_string()
     }
 
-    fn process(&self, _input: PipelineData) -> Result<PipelineData, NodeError> {
-        // Input node doesn't accept input, creates AST from binary
-        if let Some(ref ast) = self.loaded_ast {
-            return Ok(PipelineData::Ast(ast.clone()));
-        }
-
-        // Try to load if path is set
-        if self.file_path.is_some() {
-            let mut clone = self.clone();
-            let ast = clone.load_binary_to_ast()?;
-            Ok(PipelineData::Ast(ast))
-        } else {
-            Err(NodeError::MissingData("No binary file loaded"))
-        }
+    fn process(&self, input: PipelineData) -> Result<PipelineData, NodeError> {
+        Ok(input)
     }
 
     fn ui(&mut self, ui: &mut Ui, ctx: &NodeContext) -> NodeResponse {
@@ -150,25 +108,6 @@ impl Node for InputNode {
         // Header with file path
         ui.horizontal(|ui| {
             ui.label(self.summary());
-
-            if ui.button("Browse").clicked() {
-                // Open file dialog using rfd
-                if let Some(path) = rfd::FileDialog::new()
-                    .add_filter(
-                        "Binary files",
-                        &["exe", "dll", "so", "dylib", "bin", "o", "obj"],
-                    )
-                    .add_filter("All files", &["*"])
-                    .pick_file()
-                {
-                    self.set_file_path(path);
-                    // Try to load immediately
-                    if let Err(e) = self.load_binary_to_ast() {
-                        eprintln!("Failed to load binary: {:?}", e);
-                    }
-                    response = NodeResponse::Selected;
-                }
-            }
 
             if ctx.can_delete && ui.button("x").clicked() {
                 response = NodeResponse::Deleted;
@@ -181,22 +120,9 @@ impl Node for InputNode {
 
             if let Some(ref path) = self.file_path {
                 ui.label(format!("Path: {}", path.display()));
-
-                if let Some(ref ast) = self.loaded_ast {
-                    let config = fireball::abstract_syntax_tree::AstPrintConfig::default();
-                    let code = ast.print(Some(config));
-                    let func_count = code
-                        .lines()
-                        .filter(|l| {
-                            l.contains("void ") || l.contains("int ") || l.contains("func ")
-                        })
-                        .count();
-                    ui.label(format!("AST generated with {} functions", func_count));
-                } else {
-                    ui.label("Click Browse to select a binary file");
-                }
+                ui.label("Use the shell side panel to open, analyze, and select sections.");
             } else {
-                ui.label("Click Browse to select a binary file");
+                ui.label("Select this node to open a binary from the shell side panel.");
             }
         }
 

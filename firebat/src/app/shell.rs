@@ -12,7 +12,7 @@ use crate::{
 };
 use eframe::{
     egui,
-    egui::{RichText, Vec2},
+    egui::{RichText, ScrollArea, Vec2},
 };
 use fireball::abstract_syntax_tree::Ast;
 use std::{
@@ -130,10 +130,22 @@ impl FirebatApp {
         self.status_timer = Some(Instant::now());
     }
 
+    fn set_status_if_changed(&mut self, message: impl Into<String>) {
+        let message = message.into();
+        if self.status_message.as_deref() != Some(message.as_str()) {
+            self.set_status(message);
+        }
+    }
+
     fn execute_pipeline(&mut self) {
         self.set_status("Executing pipeline...");
 
-        let mut data = PipelineData::Empty;
+        let mut data = self
+            .state
+            .base_ast
+            .clone()
+            .map(PipelineData::Ast)
+            .unwrap_or(PipelineData::Empty);
         let mut failed = false;
         for node in self.graph.nodes_mut() {
             match node.process(data.clone()) {
@@ -166,6 +178,26 @@ impl FirebatApp {
         }
     }
 
+    fn selected_input_node(&self) -> Option<&InputNode> {
+        let selected = self.selected_node?;
+        self.graph
+            .get_node(selected)?
+            .as_any()
+            .downcast_ref::<InputNode>()
+    }
+
+    fn selected_input_node_mut(&mut self) -> Option<&mut InputNode> {
+        let selected = self.selected_node?;
+        self.graph
+            .get_node_mut(selected)?
+            .as_any_mut()
+            .downcast_mut::<InputNode>()
+    }
+
+    fn is_input_node_selected(&self) -> bool {
+        self.selected_input_node().is_some()
+    }
+
     fn render_toolbar(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.heading("Firebat");
@@ -180,10 +212,25 @@ impl FirebatApp {
 
             let exec_response = ui.button("Execute Pipeline");
             if exec_response.clicked() {
-                self.execute_pipeline();
+                if self.state.selected_addresses().is_empty() {
+                    self.execute_pipeline();
+                } else {
+                    self.start_pipeline();
+                }
             }
 
             ui.add_space(8.0);
+
+            if ui
+                .button(if self.state.log_expanded {
+                    "Hide Logs"
+                } else {
+                    "Show Logs"
+                })
+                .clicked()
+            {
+                self.state.log_expanded = !self.state.log_expanded;
+            }
 
             if ui.button("Clear Graph").clicked() {
                 self.graph.clear();
@@ -417,15 +464,17 @@ impl FirebatApp {
 
         // Send raw decompile request
         self.state.last_decompile_selection = addresses.clone();
-        self.state.queue_request(WorkerRequest::DecompileSections(
-            DecompileRequest {
+        let selection_count = addresses.len();
+        self.state
+            .queue_request(WorkerRequest::DecompileSections(DecompileRequest {
                 start_addresses: addresses,
                 settings: Default::default(),
                 script_paths: vec![],
                 buffer_script: None,
-            },
+            }));
+        self.set_status(format!(
+            "Decompiling {selection_count} selected section(s)..."
         ));
-        self.set_status("Pipeline started...");
     }
 
     fn process_pipeline_results(&mut self) {
@@ -437,6 +486,8 @@ impl FirebatApp {
             self.fill_leading_previews();
             if !self.state.pending_optimize_queue.is_empty() {
                 self.process_optimize_queue();
+            } else {
+                self.set_status_if_changed("Pipeline completed");
             }
         }
 
@@ -500,6 +551,12 @@ impl FirebatApp {
             (opt.store.applied_settings.clone(), buf)
         };
 
+        let total_opt_nodes = self.graph.opt_node_ids().len();
+        let optimizing_index =
+            total_opt_nodes.saturating_sub(self.state.pending_optimize_queue.len());
+        self.set_status(format!(
+            "Optimizing Opt {optimizing_index}/{total_opt_nodes}..."
+        ));
         self.state.pending_target_node = Some(node_id);
         self.state
             .queue_request(WorkerRequest::OptimizeAst(OptimizeAstRequest {
@@ -594,6 +651,13 @@ impl FirebatApp {
                         node.set_position(new_pos);
                     }
                 }
+                NodeResponse::RunPipeline => {
+                    if self.state.selected_addresses().is_empty() {
+                        self.execute_pipeline();
+                    } else {
+                        self.start_pipeline();
+                    }
+                }
                 NodeResponse::InputPortClicked => {
                     // Handle connection: Input port clicked
                     match self.pending_connection {
@@ -676,6 +740,148 @@ impl FirebatApp {
             });
     }
 
+    fn render_input_panel(&mut self, ctx: &egui::Context) {
+        if !self.is_input_node_selected() {
+            return;
+        }
+
+        let mut open_requested = false;
+        let current_path = self
+            .selected_input_node()
+            .and_then(|node| node.file_path().cloned());
+        let analyzed_count = self
+            .state
+            .known_sections
+            .iter()
+            .filter(|section| section.data.analyzed)
+            .count();
+        let selected_count = self.state.selected_addresses().len();
+        let toggle_label = if analyzed_count > 0 && selected_count == analyzed_count {
+            "Clear Selected"
+        } else {
+            "Select All"
+        };
+
+        egui::Panel::right("input-section-panel")
+            .resizable(true)
+            .default_size(300.0)
+            .show(ctx, |ui| {
+                ui.heading("Input");
+                ui.add_space(8.0);
+
+                if let Some(path) = current_path.as_ref() {
+                    ui.label(path.display().to_string());
+                } else {
+                    ui.label("No binary file selected");
+                }
+
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    if ui.button("Open / Browse").clicked() {
+                        open_requested = true;
+                    }
+
+                    if ui
+                        .add_enabled(current_path.is_some(), egui::Button::new("Analyze All"))
+                        .clicked()
+                    {
+                        self.state.analyze_all();
+                        self.set_status("Analyzing all sections...");
+                    }
+                });
+
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    let response = ui.text_edit_singleline(&mut self.state.analyze_target_address);
+                    let submitted = response.lost_focus()
+                        && ui.input(|input| input.key_pressed(egui::Key::Enter));
+                    let clicked = ui.button("Analyze Address").clicked();
+                    if submitted || clicked {
+                        let address = self.state.analyze_target_address.clone();
+                        if address.trim().is_empty() {
+                            self.set_status("Enter an address before analyzing");
+                        } else {
+                            self.state.analyze_section_from_address(&address);
+                            self.set_status(format!("Analyzing address {address}..."));
+                        }
+                    }
+                });
+
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    if ui
+                        .add_enabled(analyzed_count > 0, egui::Button::new(toggle_label))
+                        .clicked()
+                    {
+                        self.state.select_all();
+                        self.set_status(if toggle_label == "Clear Selected" {
+                            "Selection cleared"
+                        } else {
+                            "All analyzed sections selected"
+                        });
+                    }
+                });
+
+                ui.separator();
+                ui.label(format!(
+                    "{} known section(s), {} selected",
+                    self.state.known_sections.len(),
+                    selected_count
+                ));
+                ui.add_space(4.0);
+
+                ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        if self.state.known_sections.is_empty() {
+                            ui.label("Run Analyze All or Analyze Address to discover sections.");
+                        } else {
+                            let sections = self
+                                .state
+                                .known_sections
+                                .iter()
+                                .map(|section| {
+                                    (
+                                        section.data.start_address,
+                                        section.data.end_address,
+                                        section.data.analyzed,
+                                        section.selected,
+                                    )
+                                })
+                                .collect::<Vec<_>>();
+
+                            for (start, end, analyzed, selected) in sections {
+                                let mut next_selected = selected;
+                                let range = end
+                                    .map(|end| format!("0x{start:016X}..0x{end:016X}"))
+                                    .unwrap_or_else(|| format!("0x{start:016X}"));
+                                let label = if analyzed {
+                                    range
+                                } else {
+                                    format!("{range} (pending)")
+                                };
+                                let response = ui.add_enabled(
+                                    analyzed,
+                                    egui::Checkbox::new(&mut next_selected, label),
+                                );
+                                if response.changed() {
+                                    self.state.set_section_selected(start, next_selected);
+                                }
+                            }
+                        }
+                    });
+            });
+
+        if open_requested {
+            if let Some(path) = self.state.open_file() {
+                if let Some(node) = self.selected_input_node_mut() {
+                    node.set_file_path(path.clone());
+                }
+                self.set_status(format!("Opening {}...", path.display()));
+            }
+        }
+    }
+
     fn render_about_window(&mut self, ctx: &egui::Context) {
         if !self.show_about {
             return;
@@ -735,6 +941,47 @@ impl FirebatApp {
                 });
             });
     }
+
+    fn render_logs_panel(&mut self, ctx: &egui::Context) {
+        let panel_height = if self.state.log_expanded { 180.0 } else { 32.0 };
+        egui::Panel::bottom("logs-panel")
+            .resizable(true)
+            .default_size(panel_height)
+            .min_size(panel_height)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Logs").strong());
+                    ui.label(format!("({})", self.state.logs.len()));
+                    ui.separator();
+                    if ui
+                        .button(if self.state.log_expanded {
+                            "Collapse"
+                        } else {
+                            "Expand"
+                        })
+                        .clicked()
+                    {
+                        self.state.log_expanded = !self.state.log_expanded;
+                    }
+                });
+
+                if self.state.log_expanded {
+                    ui.separator();
+                    ScrollArea::vertical()
+                        .stick_to_bottom(true)
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            if self.state.logs.is_empty() {
+                                ui.monospace("No logs yet.");
+                            } else {
+                                for entry in &self.state.logs {
+                                    ui.monospace(entry);
+                                }
+                            }
+                        });
+                }
+            });
+    }
 }
 
 impl eframe::App for FirebatApp {
@@ -746,6 +993,10 @@ impl eframe::App for FirebatApp {
         }
 
         self.state.poll_worker();
+        if let Some(notice) = self.state.take_status_notice() {
+            self.set_status(notice);
+        }
+        self.process_pipeline_results();
         if self.state.is_busy() {
             ctx.request_repaint_after(Duration::from_millis(16));
         }
@@ -755,6 +1006,9 @@ impl eframe::App for FirebatApp {
             .show(ctx, |ui| {
                 self.render_toolbar(ui);
             });
+
+        self.render_input_panel(ctx);
+        self.render_logs_panel(ctx);
 
         egui::CentralPanel::default().show(ctx, |ui| {
             let connections: Vec<(NodeId, NodeId)> =

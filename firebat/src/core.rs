@@ -388,8 +388,7 @@ impl FirebatCore {
         let optimized = if is_config_none(&config) {
             request.ast
         } else {
-            let function_ids: Vec<_> =
-                request.ast.function_versions.keys().cloned().collect();
+            let function_ids: Vec<_> = request.ast.function_versions.keys().cloned().collect();
             request
                 .ast
                 .optimize_functions(&function_ids, Some(config))

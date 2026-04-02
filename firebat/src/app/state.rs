@@ -14,6 +14,7 @@ use fireball::abstract_syntax_tree::Ast;
 use rfd::FileDialog;
 use std::{
     collections::{HashMap, VecDeque},
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -51,6 +52,7 @@ pub(super) struct FirebatState {
     pub(super) pending_target_node: Option<NodeId>,
     /// Completed optimization result awaiting graph wiring in shell.rs.
     pub(super) last_optimize_result: Option<(NodeId, OptimizeAstResult)>,
+    pub(super) status_notice: Option<String>,
 }
 
 impl Default for FirebatState {
@@ -90,6 +92,7 @@ impl Default for FirebatState {
             pending_optimize_queue: VecDeque::new(),
             pending_target_node: None,
             last_optimize_result: None,
+            status_notice: None,
         }
     }
 }
@@ -114,6 +117,14 @@ impl FirebatState {
         }
     }
 
+    fn set_status_notice(&mut self, message: impl Into<String>) {
+        self.status_notice = Some(message.into());
+    }
+
+    pub(super) fn take_status_notice(&mut self) -> Option<String> {
+        self.status_notice.take()
+    }
+
     pub(super) fn poll_worker(&mut self) {
         loop {
             match self.worker.try_recv() {
@@ -121,25 +132,35 @@ impl FirebatState {
                     self.pending_requests = self.pending_requests.saturating_sub(1);
                     match response {
                         WorkerResponse::OpenFile(result) => match result {
-                            Ok(()) => self.log("Open success"),
-                            Err(error) => self.log(format!("Open failed {error}")),
+                            Ok(()) => {
+                                self.log("Open success");
+                                self.set_status_notice("File opened");
+                            }
+                            Err(error) => {
+                                self.log(format!("Open failed {error}"));
+                                self.set_status_notice(format!("Open failed: {error}"));
+                            }
                         },
                         WorkerResponse::AnalyzeSection(result) => match result {
                             Ok(sections) => {
                                 self.log(format!("Section analyzation success {}", sections.len()));
                                 self.merge_known_sections(sections);
+                                self.set_status_notice("Section analysis completed");
                             }
                             Err(error) => {
                                 self.log(format!("Section analyzation failed {error}"));
+                                self.set_status_notice(format!("Section analysis failed: {error}"));
                             }
                         },
                         WorkerResponse::AnalyzeAllSections(result) => match result {
                             Ok(sections) => {
                                 self.log(format!("All sections analyzed {}", sections.len()));
                                 self.merge_known_sections(sections);
+                                self.set_status_notice("Analyze all completed");
                             }
                             Err(error) => {
                                 self.log(format!("All sections analyzation failed {error}"));
+                                self.set_status_notice(format!("Analyze all failed: {error}"));
                             }
                         },
                         WorkerResponse::DecompileSections(result) => match result {
@@ -155,7 +176,10 @@ impl FirebatState {
                                 self.base_output = Some(result.clone());
                                 self.set_decompile_result(result);
                             }
-                            Err(error) => self.log(format!("Decompilation failed {error}")),
+                            Err(error) => {
+                                self.log(format!("Decompilation failed {error}"));
+                                self.set_status_notice(format!("Pipeline failed: {error}"));
+                            }
                         },
                         WorkerResponse::ApplyEdit(result) => match result {
                             Ok(result) => {
@@ -197,6 +221,7 @@ impl FirebatState {
                                 self.log(format!("OptimizeAst failed {error}"));
                                 self.pending_target_node = None;
                                 self.pending_optimize_queue.clear();
+                                self.set_status_notice(format!("Pipeline failed: {error}"));
                             }
                         },
                     }
@@ -234,13 +259,7 @@ impl FirebatState {
             .sort_by_key(|section| section.data.start_address);
     }
 
-    pub(super) fn open_file(&mut self) {
-        let Some(path) = FileDialog::new().pick_file() else {
-            self.log("Open canceled");
-            return;
-        };
-
-        let path = path.to_string_lossy().to_string();
+    fn reset_pipeline_state(&mut self) {
         self.known_sections.clear();
         self.decompile_result = None;
         self.editor_target = None;
@@ -254,8 +273,37 @@ impl FirebatState {
         self.pending_optimize_queue.clear();
         self.pending_target_node = None;
         self.last_optimize_result = None;
-        self.log(format!("Open fireball with {path}"));
-        self.queue_request(WorkerRequest::OpenFile(path));
+        self.analyze_target_address.clear();
+    }
+
+    pub(super) fn open_file(&mut self) -> Option<PathBuf> {
+        let Some(path) = FileDialog::new().pick_file() else {
+            self.log("Open canceled");
+            return None;
+        };
+
+        self.open_file_path(path.clone());
+        Some(path)
+    }
+
+    pub(super) fn open_file_path(&mut self, path: impl AsRef<Path>) {
+        let path = path.as_ref().to_path_buf();
+        let path_string = path.to_string_lossy().to_string();
+        self.reset_pipeline_state();
+        self.log(format!("Open fireball with {path_string}"));
+        self.queue_request(WorkerRequest::OpenFile(path_string));
+    }
+
+    pub(super) fn set_section_selected(&mut self, start_address: u64, selected: bool) {
+        if let Some(section) = self
+            .known_sections
+            .iter_mut()
+            .find(|section| section.data.start_address == start_address)
+        {
+            if section.data.analyzed {
+                section.selected = selected;
+            }
+        }
     }
 
     pub(super) fn analyze_section_from_address(&mut self, start_address: &str) {
@@ -430,7 +478,6 @@ impl FirebatState {
             }
         }
     }
-
 }
 
 fn build_editor_draft(result: &DecompileResultView, target: EditorTarget) -> Option<EditorDraft> {
@@ -443,19 +490,17 @@ fn build_editor_draft(result: &DecompileResultView, target: EditorTarget) -> Opt
             .ir
             .get(target.row)
             .map(|ir| EditorDraft::Ir(IrEditorDraft::from_text(&ir.data))),
-        EditorLayer::Ast => {
-            result.data.ast.get(target.row).map(|ast| {
-                EditorDraft::AstNode(AstNodeEditorDraft {
-                    path: fireball::abstract_syntax_tree::AstNodePath::function(0),
-                    edit_type: AstNodeEditType::Statement,
-                    draft_data: AstNodeDraftData::Statement {
-                        statement_type: "unknown".to_string(),
-                        replacement: ast.data.clone(),
-                    },
-                    status_message: None,
-                })
+        EditorLayer::Ast => result.data.ast.get(target.row).map(|ast| {
+            EditorDraft::AstNode(AstNodeEditorDraft {
+                path: fireball::abstract_syntax_tree::AstNodePath::function(0),
+                edit_type: AstNodeEditType::Statement,
+                draft_data: AstNodeDraftData::Statement {
+                    statement_type: "unknown".to_string(),
+                    replacement: ast.data.clone(),
+                },
+                status_message: None,
             })
-        }
+        }),
     }
 }
 

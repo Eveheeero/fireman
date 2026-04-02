@@ -62,6 +62,7 @@ pub enum NodeResponse {
     Deleted,
     ToggleExpanded,
     ToggleEnabled,
+    RunPipeline,
     DraggedTo { new_pos: NodePosition },
     InputPortClicked,
     OutputPortClicked,
