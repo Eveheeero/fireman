@@ -120,7 +120,7 @@ impl OptimizationSettings {
             static_guard_suppression: false,
             security_scaffold_suppression: false,
             max_pass_iterations: 1,
-            use_embedded_passes: false,
+            use_embedded_passes: true,
         }
     }
 }
@@ -133,7 +133,7 @@ pub struct OptimizationScriptPreset {
     pub applied_enabled: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OptimizationStore {
     pub draft_settings: OptimizationSettings,
     pub applied_settings: OptimizationSettings,
@@ -157,48 +157,6 @@ pub struct OptimizeAstRequest {
 pub struct OptimizeAstResult {
     pub ast: Arc<fireball::abstract_syntax_tree::Ast>,
     pub ast_lines: Vec<AstLine>,
-}
-
-impl Default for OptimizationSettings {
-    fn default() -> Self {
-        let defaults = AstOptimizationConfig::default();
-        Self {
-            ir_analyzation: defaults.ir_analyzation,
-            parameter_analyzation: defaults.parameter_analyzation,
-            call_argument_analyzation: defaults.call_argument_analyzation,
-            constant_folding: defaults.constant_folding,
-            control_flow_cleanup: defaults.control_flow_cleanup,
-            collapse_unused_varaible: defaults.collapse_unused_varaible,
-            dead_store_elimination: defaults.dead_store_elimination,
-            pattern_matching_enabled: defaults.pattern_matching_enabled,
-            loop_analyzation: defaults.loop_analyzation,
-            copy_propagation: defaults.copy_propagation,
-            expression_inlining: defaults.expression_inlining,
-            ternary_recovery: defaults.ternary_recovery,
-            boolean_recovery: defaults.boolean_recovery,
-            switch_reconstruction: defaults.switch_reconstruction,
-            lifetime_scoping: defaults.lifetime_scoping,
-            signedness_inference: defaults.signedness_inference,
-            name_recovery: defaults.name_recovery,
-            early_return_normalization: defaults.early_return_normalization,
-            operator_canonicalization: defaults.operator_canonicalization,
-            magic_division_recovery: defaults.magic_division_recovery,
-            identity_simplification: defaults.identity_simplification,
-            bit_trick_recognition: defaults.bit_trick_recognition,
-            cast_minimization: defaults.cast_minimization,
-            assertion_recovery: defaults.assertion_recovery,
-            do_while_recovery: defaults.do_while_recovery,
-            clamp_recovery: defaults.clamp_recovery,
-            loop_cleanup: defaults.loop_cleanup,
-            if_conversion_reversal: defaults.if_conversion_reversal,
-            anti_debug_ast_suppression: defaults.anti_debug_ast_suppression,
-            logging_suppression: defaults.logging_suppression,
-            static_guard_suppression: defaults.static_guard_suppression,
-            security_scaffold_suppression: defaults.security_scaffold_suppression,
-            max_pass_iterations: defaults.max_pass_iterations,
-            use_embedded_passes: defaults.use_embedded_passes,
-        }
-    }
 }
 
 pub fn build_optimization_config(
