@@ -39,7 +39,6 @@ impl ScratchBlockRenderer {
     /// Render a single block
     pub fn render(ui: &mut Ui, node: &mut dyn Node, ctx: &NodeContext) -> BlockResponse {
         let color = node.color();
-        let text_color = text_color_for_background(color);
         let port_color = Self::port_color(color);
         let node_type = node.node_type();
 
@@ -81,15 +80,8 @@ impl ScratchBlockRenderer {
                     // Drag handle
                     ui.label(egui::RichText::new("::").color(content_text_color));
 
-                    // Node icon based on type
-                    let icon = match node.node_type() {
-                        NodeType::Input => "[F]",
-                        NodeType::Opt => "[O]",
-                        NodeType::Preview => "[V]",
-                    };
-
                     ui.label(
-                        egui::RichText::new(format!("{} {}", icon, node.name()))
+                        egui::RichText::new(node.name())
                             .color(content_text_color)
                             .size(16.0),
                     );

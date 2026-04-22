@@ -198,6 +198,18 @@ impl FirebatApp {
         self.selected_input_node().is_some()
     }
 
+    fn selected_preview_node(&self) -> Option<&PreviewNode> {
+        let selected = self.selected_node?;
+        self.graph
+            .get_node(selected)?
+            .as_any()
+            .downcast_ref::<PreviewNode>()
+    }
+
+    fn is_preview_node_selected(&self) -> bool {
+        self.selected_preview_node().is_some()
+    }
+
     fn render_toolbar(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.heading("Firebat");
@@ -234,6 +246,8 @@ impl FirebatApp {
 
             if ui.button("Clear Graph").clicked() {
                 self.graph.clear();
+                self.selected_node = None;
+                self.pending_connection = None;
                 self.set_status("Graph cleared");
             }
 
@@ -428,7 +442,9 @@ impl FirebatApp {
 
         let node: Box<dyn Node> = match node_type {
             NodeType::Input => Box::new(InputNode::with_position(pos.x, pos.y)),
-            NodeType::Opt => Box::new(OptNode::new().with_position(pos.x, pos.y)),
+            NodeType::Opt => Box::new(
+                OptNode::for_pass(self.selected_pass_type.clone()).with_position(pos.x, pos.y),
+            ),
             NodeType::Preview => Box::new(PreviewNode::with_position(pos.x, pos.y)),
         };
 
@@ -636,10 +652,27 @@ impl FirebatApp {
         self.dragged_node = response.dragged_node;
         self.selected_node = response.selected_node;
 
+        if let Some((from, to)) = response.removed_connection {
+            self.graph.remove_connection(from, to);
+            if self
+                .pending_connection
+                .is_some_and(|(node_id, _)| node_id == from || node_id == to)
+            {
+                self.pending_connection = None;
+            }
+            self.set_status(format!("Removed connection {:?} → {:?}", from, to));
+        }
+
         for (node_id, node_response) in response.node_responses {
             match node_response {
                 NodeResponse::Deleted => {
                     self.graph.remove_node(node_id);
+                    if self
+                        .pending_connection
+                        .is_some_and(|(pending_id, _)| pending_id == node_id)
+                    {
+                        self.pending_connection = None;
+                    }
                     if self.selected_node == Some(node_id) {
                         self.selected_node = None;
                     }
@@ -672,7 +705,7 @@ impl FirebatApp {
                             self.pending_connection = None;
                             self.set_status(format!("Connected {:?} → {:?}", pending_id, node_id));
                         }
-                        Some((pending_id, ConnectionPort::Input)) => {
+                        Some((_pending_id, ConnectionPort::Input)) => {
                             // Clicked another input port - switch to this one
                             self.pending_connection = Some((node_id, ConnectionPort::Input));
                             self.set_status("Click an output port to connect");
@@ -693,7 +726,7 @@ impl FirebatApp {
                             self.pending_connection = None;
                             self.set_status(format!("Connected {:?} → {:?}", node_id, pending_id));
                         }
-                        Some((pending_id, ConnectionPort::Output)) => {
+                        Some((_pending_id, ConnectionPort::Output)) => {
                             // Clicked another output port - switch to this one
                             self.pending_connection = Some((node_id, ConnectionPort::Output));
                             self.set_status("Click an input port to connect");
@@ -882,6 +915,39 @@ impl FirebatApp {
         }
     }
 
+    fn render_preview_panel(&mut self, ctx: &egui::Context) {
+        if !self.is_preview_node_selected() {
+            return;
+        }
+
+        let (node_id, summary, code) = if let Some(node) = self.selected_preview_node() {
+            (node.id(), node.summary(), node.rendered_code())
+        } else {
+            return;
+        };
+
+        egui::Panel::right("preview-section-panel")
+            .resizable(true)
+            .default_size(420.0)
+            .show(ctx, |ui| {
+                ui.heading("Preview");
+                ui.add_space(8.0);
+                ui.label(summary);
+                ui.separator();
+
+                ScrollArea::vertical()
+                    .id_salt(("preview-panel", node_id.0))
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        if let Some(code) = code.as_deref() {
+                            ui.monospace(code);
+                        } else {
+                            ui.label("No output available. Run the pipeline first.");
+                        }
+                    });
+            });
+    }
+
     fn render_about_window(&mut self, ctx: &egui::Context) {
         if !self.show_about {
             return;
@@ -1007,7 +1073,11 @@ impl eframe::App for FirebatApp {
                 self.render_toolbar(ui);
             });
 
-        self.render_input_panel(ctx);
+        if self.is_input_node_selected() {
+            self.render_input_panel(ctx);
+        } else if self.is_preview_node_selected() {
+            self.render_preview_panel(ctx);
+        }
         self.render_logs_panel(ctx);
 
         egui::CentralPanel::default().show(ctx, |ui| {

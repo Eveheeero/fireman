@@ -50,6 +50,13 @@ impl PreviewNode {
         self.snapshot_ast = None;
         self.snapshot_output = None;
     }
+
+    pub fn rendered_code(&self) -> Option<String> {
+        self.snapshot_ast.as_ref().map(|ast| {
+            let config = fireball::abstract_syntax_tree::AstPrintConfig::default();
+            ast.print(Some(config))
+        })
+    }
 }
 
 impl Default for PreviewNode {
@@ -99,15 +106,9 @@ impl Node for PreviewNode {
     }
 
     fn summary(&self) -> String {
-        match &self.snapshot_ast {
-            None => "[Preview (empty)]".to_string(),
-            Some(ast) => {
-                let config = fireball::abstract_syntax_tree::AstPrintConfig::default();
-                let code = ast.print(Some(config));
-                let line_count = code.lines().count();
-                format!("[Preview ({} lines)]", line_count)
-            }
-        }
+        self.rendered_code()
+            .map(|code| format!("{} lines captured", code.lines().count()))
+            .unwrap_or_else(|| "No output yet".to_string())
     }
 
     fn process(&self, input: PipelineData) -> Result<PipelineData, NodeError> {
@@ -125,37 +126,12 @@ impl Node for PreviewNode {
         let mut response = NodeResponse::None;
 
         ui.horizontal(|ui| {
-            ui.label(self.summary());
             if ctx.can_delete && ui.button("x").clicked() {
                 response = NodeResponse::Deleted;
             }
         });
-
-        if self.is_expanded {
-            ui.separator();
-            if let Some(ref ast) = self.snapshot_ast {
-                let config = fireball::abstract_syntax_tree::AstPrintConfig::default();
-                let code = ast.print(Some(config));
-                egui::ScrollArea::vertical()
-                    .max_height(300.0)
-                    .show(ui, |ui| {
-                        ui.monospace(&code);
-                    });
-            } else {
-                ui.label("No output available. Run the pipeline first.");
-            }
-        }
-
-        ui.horizontal(|ui| {
-            if ui
-                .button(if self.is_expanded { "^" } else { "v" })
-                .clicked()
-            {
-                self.toggle_expanded();
-                response = NodeResponse::ToggleExpanded;
-            }
-            ui.label("Expand to view output");
-        });
+        ui.small(self.summary());
+        ui.small("Select node to inspect preview output.");
 
         response
     }

@@ -230,6 +230,47 @@ pub struct OptimizationSettings {
     pub use_embedded_passes: bool,
 }
 
+impl OptimizationSettings {
+    pub const fn none() -> Self {
+        Self {
+            ir_analyzation: false,
+            parameter_analyzation: false,
+            call_argument_analyzation: false,
+            constant_folding: false,
+            control_flow_cleanup: false,
+            collapse_unused_varaible: false,
+            dead_store_elimination: false,
+            pattern_matching_enabled: false,
+            loop_analyzation: false,
+            copy_propagation: false,
+            expression_inlining: false,
+            ternary_recovery: false,
+            boolean_recovery: false,
+            switch_reconstruction: false,
+            lifetime_scoping: false,
+            signedness_inference: false,
+            name_recovery: false,
+            early_return_normalization: false,
+            operator_canonicalization: false,
+            magic_division_recovery: false,
+            identity_simplification: false,
+            bit_trick_recognition: false,
+            cast_minimization: false,
+            assertion_recovery: false,
+            do_while_recovery: false,
+            clamp_recovery: false,
+            loop_cleanup: false,
+            if_conversion_reversal: false,
+            anti_debug_ast_suppression: false,
+            logging_suppression: false,
+            static_guard_suppression: false,
+            security_scaffold_suppression: false,
+            max_pass_iterations: 1,
+            use_embedded_passes: false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OptimizationScriptPreset {
     pub name: String,
@@ -248,13 +289,6 @@ pub struct OptimizationStore {
     pub applied_buffer_script: Option<String>,
     #[serde(default)]
     pub fb_script_enabled: bool,
-}
-
-/// Focus within an OptNode's UI (settings toggles vs script editor).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OptimizationFocus {
-    Settings,
-    Script,
 }
 
 /// Request to optimize an existing AST with a given config.

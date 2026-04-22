@@ -1,8 +1,32 @@
 use crate::{
-    node::{Node, NodeContext, NodeId, NodePosition, NodeResponse, NodeType},
+    node::{Node, NodeContext, NodeId, NodePosition, NodeResponse},
     ui::ScratchBlockRenderer,
 };
-use egui::{Color32, Frame, Margin, Pos2, Rect, Response, Rounding, Sense, Stroke, Ui, Vec2};
+use egui::{Color32, Pos2, Rect, Response, Sense, Stroke, Ui, Vec2};
+
+#[derive(Clone, Copy, Debug)]
+struct NodeLayout {
+    node_id: NodeId,
+    rect: Rect,
+    input_port_pos: Option<Pos2>,
+    output_port_pos: Option<Pos2>,
+    color: Color32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct ConnectionEndpoints {
+    from: Pos2,
+    to: Pos2,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct ConnectionVisual {
+    from_id: NodeId,
+    to_id: NodeId,
+    from: Pos2,
+    to: Pos2,
+    color: Color32,
+}
 
 /// 2D Graph Canvas for node-based editing
 pub struct GraphCanvas<'a> {
@@ -68,83 +92,18 @@ impl<'a> GraphCanvas<'a> {
             )
         };
 
-        let from_screen = |pos: Pos2| -> Pos2 {
-            Pos2::new(
-                (pos.x - rect.min.x) / self.zoom - new_camera_offset.x,
-                (pos.y - rect.min.y) / self.zoom - new_camera_offset.y,
-            )
-        };
-
-        // Draw connections first (behind nodes)
-        for (from_id, to_id) in self.connections {
-            if let (Some(from_node), Some(to_node)) = (
-                self.nodes.iter().find(|n| n.id() == *from_id),
-                self.nodes.iter().find(|n| n.id() == *to_id),
-            ) {
-                let from_pos = to_screen(from_node.position().to_pos2());
-                let to_pos = to_screen(to_node.position().to_pos2());
-                let node_width = 380.0 * self.zoom;
-                let center_y_offset = 50.0 * self.zoom;
-                let port_offset = 10.0 * self.zoom;
-
-                // Connect from output port (right side) to input port (left side)
-                let from_pos = Pos2::new(
-                    from_pos.x + node_width + port_offset, // Right edge + port offset
-                    from_pos.y + center_y_offset,
-                );
-                let to_pos = Pos2::new(
-                    to_pos.x - port_offset, // Left edge - port offset
-                    to_pos.y + center_y_offset,
-                );
-
-                draw_connection(ui, from_pos, to_pos, to_node.color(), self.zoom);
-            }
-        }
-
         // Draw and interact with nodes
         let mut node_responses: Vec<(NodeId, NodeResponse)> = Vec::new();
         let mut new_dragged_node: Option<NodeId> = self.dragged_node;
         let mut new_selected_node: Option<NodeId> = self.selected_node;
+        let mut node_layouts = Vec::with_capacity(self.nodes.len());
+        let pointer_pos = ui.input(|input| input.pointer.interact_pos());
 
         for node in self.nodes.iter_mut() {
             let node_pos = node.position().to_pos2();
             let screen_pos = to_screen(node_pos);
-            // Node size: 380.0 width + 10.0 port on each side = 400.0 total
-            let node_rect =
-                Rect::from_min_size(screen_pos, Vec2::new(400.0 * self.zoom, 120.0 * self.zoom));
-
-            // Check for drag
-            let node_response = ui.interact(
-                node_rect,
-                ui.id().with(node.id().0),
-                Sense::click_and_drag(),
-            );
-
-            if node_response.drag_started() {
-                new_dragged_node = Some(node.id());
-                new_selected_node = Some(node.id());
-            }
-
-            if node_response.dragged() {
-                if let Some(dragged_id) = new_dragged_node {
-                    if dragged_id == node.id() {
-                        let delta = node_response.drag_delta() / self.zoom;
-                        let new_pos = NodePosition::from_pos2(Pos2::new(
-                            node_pos.x + delta.x,
-                            node_pos.y + delta.y,
-                        ));
-                        node.set_position(new_pos);
-                    }
-                }
-            }
-
-            if node_response.drag_stopped() {
-                new_dragged_node = None;
-            }
-
-            if node_response.clicked() {
-                new_selected_node = Some(node.id());
-            }
+            let max_node_rect =
+                Rect::from_min_size(screen_pos, Vec2::new(420.0 * self.zoom, 720.0 * self.zoom));
 
             // Draw node
             let ctx = NodeContext {
@@ -156,23 +115,75 @@ impl<'a> GraphCanvas<'a> {
             // Render node at calculated position
             let mut child_ui = ui.new_child(
                 egui::UiBuilder::new()
-                    .max_rect(node_rect)
+                    .max_rect(max_node_rect)
                     .layout(egui::Layout::top_down(egui::Align::LEFT)),
             );
 
             let block_response = ScratchBlockRenderer::render(&mut child_ui, node.as_mut(), &ctx);
+            let interactive_rect = block_response.rect.expand2(Vec2::new(20.0, 8.0));
+            let node_response = ui.interact(
+                interactive_rect,
+                ui.id().with(("node", node.id().0)),
+                Sense::click_and_drag(),
+            );
+
+            if node_response.drag_started() {
+                new_dragged_node = Some(node.id());
+                new_selected_node = Some(node.id());
+            }
+
+            if node_response.dragged() && new_dragged_node == Some(node.id()) {
+                let delta = node_response.drag_delta() / self.zoom;
+                let new_pos =
+                    NodePosition::from_pos2(Pos2::new(node_pos.x + delta.x, node_pos.y + delta.y));
+                node.set_position(new_pos);
+            }
+
+            if node_response.drag_stopped() {
+                new_dragged_node = None;
+            }
+
+            if node_response.clicked() {
+                new_selected_node = Some(node.id());
+            }
 
             if block_response.inner != NodeResponse::None {
                 node_responses.push((node.id(), block_response.inner));
             }
+
+            node_layouts.push(NodeLayout {
+                node_id: node.id(),
+                rect: block_response.rect,
+                input_port_pos: block_response.input_port_pos,
+                output_port_pos: block_response.output_port_pos,
+                color: node.color(),
+            });
         }
+
+        let connection_visuals = collect_connection_visuals(self.connections, &node_layouts);
+        for visual in &connection_visuals {
+            draw_connection(ui, visual.from, visual.to, visual.color, self.zoom);
+        }
+
+        let pointer_over_node = pointer_pos.is_some_and(|pointer| {
+            node_layouts
+                .iter()
+                .any(|layout| layout.rect.expand2(Vec2::new(20.0, 8.0)).contains(pointer))
+        });
+        let removed_connection = if response.clicked() && !pointer_over_node {
+            pointer_pos.and_then(|pointer| {
+                find_connection_at_point(&connection_visuals, pointer, 10.0 * self.zoom)
+            })
+        } else {
+            None
+        };
 
         // Handle zoom with mouse wheel
         let zoom_delta = ui.input(|i| i.smooth_scroll_delta.y);
         if zoom_delta != 0.0
             && rect.contains(ui.input(|i| i.pointer.hover_pos().unwrap_or(Pos2::ZERO)))
         {
-            let new_zoom = (self.zoom + zoom_delta * 0.001).clamp(0.1, 5.0);
+            let _new_zoom = (self.zoom + zoom_delta * 0.001).clamp(0.1, 5.0);
             // TODO: Zoom towards mouse pointer
         }
 
@@ -182,6 +193,7 @@ impl<'a> GraphCanvas<'a> {
             zoom: self.zoom,
             dragged_node: new_dragged_node,
             selected_node: new_selected_node,
+            removed_connection,
             canvas_rect: rect,
             canvas_response: response,
         }
@@ -223,6 +235,7 @@ pub struct GraphResponse {
     pub zoom: f32,
     pub dragged_node: Option<NodeId>,
     pub selected_node: Option<NodeId>,
+    pub removed_connection: Option<(NodeId, NodeId)>,
     pub canvas_rect: Rect,
     pub canvas_response: Response,
 }
@@ -230,14 +243,57 @@ pub struct GraphResponse {
 /// Draw a curved connection line between two points
 fn draw_connection(ui: &Ui, from: Pos2, to: Pos2, color: Color32, zoom: f32) {
     let painter = ui.painter();
+    let points = connection_curve_points(from, to);
 
-    // Control points for bezier curve
-    let control_offset = ((to.x - from.x) / 2.0).abs().max(50.0 * zoom);
+    painter.add(egui::Shape::line(points, Stroke::new(3.0 * zoom, color)));
+
+    // Draw connection dots
+    painter.circle_filled(from, 6.0 * zoom, color);
+    painter.circle_filled(to, 6.0 * zoom, color);
+}
+
+fn collect_connection_visuals(
+    connections: &[(NodeId, NodeId)],
+    node_layouts: &[NodeLayout],
+) -> Vec<ConnectionVisual> {
+    connections
+        .iter()
+        .filter_map(|(from_id, to_id)| {
+            let from_layout = node_layouts
+                .iter()
+                .find(|layout| layout.node_id == *from_id)?;
+            let to_layout = node_layouts
+                .iter()
+                .find(|layout| layout.node_id == *to_id)?;
+            let endpoints = connection_endpoints(from_layout, to_layout)?;
+
+            Some(ConnectionVisual {
+                from_id: *from_id,
+                to_id: *to_id,
+                from: endpoints.from,
+                to: endpoints.to,
+                color: to_layout.color,
+            })
+        })
+        .collect()
+}
+
+fn connection_endpoints(
+    from_layout: &NodeLayout,
+    to_layout: &NodeLayout,
+) -> Option<ConnectionEndpoints> {
+    Some(ConnectionEndpoints {
+        from: from_layout.output_port_pos?,
+        to: to_layout.input_port_pos?,
+    })
+}
+
+fn connection_curve_points(from: Pos2, to: Pos2) -> Vec<Pos2> {
+    let control_offset = ((to.x - from.x) / 2.0).abs().max(50.0);
     let control_from = Pos2::new(from.x + control_offset, from.y);
     let control_to = Pos2::new(to.x - control_offset, to.y);
 
-    // Generate points along bezier curve
-    let points: Vec<Pos2> = (0..=20)
+    (0..=20)
         .map(|i| {
             let t = i as f32 / 20.0;
             let t2 = t * t;
@@ -257,11 +313,92 @@ fn draw_connection(ui: &Ui, from: Pos2, to: Pos2, color: Color32, zoom: f32) {
                     + t3 * to.y,
             )
         })
-        .collect();
+        .collect()
+}
 
-    painter.add(egui::Shape::line(points, Stroke::new(3.0 * zoom, color)));
+fn find_connection_at_point(
+    connections: &[ConnectionVisual],
+    point: Pos2,
+    threshold: f32,
+) -> Option<(NodeId, NodeId)> {
+    connections
+        .iter()
+        .filter_map(|connection| {
+            let distance = connection_hit_distance(
+                point,
+                &connection_curve_points(connection.from, connection.to),
+            );
+            (distance <= threshold).then_some((distance, (connection.from_id, connection.to_id)))
+        })
+        .min_by(|(left, _), (right, _)| left.total_cmp(right))
+        .map(|(_, ids)| ids)
+}
 
-    // Draw connection dots
-    painter.circle_filled(from, 6.0 * zoom, color);
-    painter.circle_filled(to, 6.0 * zoom, color);
+fn connection_hit_distance(point: Pos2, points: &[Pos2]) -> f32 {
+    points
+        .windows(2)
+        .map(|segment| distance_to_segment(point, segment[0], segment[1]))
+        .fold(f32::INFINITY, f32::min)
+}
+
+fn distance_to_segment(point: Pos2, start: Pos2, end: Pos2) -> f32 {
+    let segment = end - start;
+    let segment_len_sq = segment.length_sq();
+    if segment_len_sq <= f32::EPSILON {
+        return point.distance(start);
+    }
+
+    let point_vec = point - start;
+    let t = (point_vec.dot(segment) / segment_len_sq).clamp(0.0, 1.0);
+    let projection = start + segment * t;
+    point.distance(projection)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::node::NodeId;
+
+    #[test]
+    fn connection_endpoints_follow_reported_port_positions() {
+        let from_layout = NodeLayout {
+            node_id: NodeId(1),
+            rect: Rect::from_min_size(Pos2::new(20.0, 40.0), Vec2::new(380.0, 180.0)),
+            input_port_pos: None,
+            output_port_pos: Some(Pos2::new(410.0, 156.0)),
+            color: Color32::WHITE,
+        };
+        let to_layout = NodeLayout {
+            node_id: NodeId(2),
+            rect: Rect::from_min_size(Pos2::new(520.0, 120.0), Vec2::new(380.0, 90.0)),
+            input_port_pos: Some(Pos2::new(510.0, 172.0)),
+            output_port_pos: None,
+            color: Color32::WHITE,
+        };
+
+        let endpoints = connection_endpoints(&from_layout, &to_layout).expect("ports should exist");
+
+        assert_eq!(endpoints.from, Pos2::new(410.0, 156.0));
+        assert_eq!(endpoints.to, Pos2::new(510.0, 172.0));
+    }
+
+    #[test]
+    fn hit_testing_finds_nearby_connection_and_ignores_distant_points() {
+        let connections = [ConnectionVisual {
+            from_id: NodeId(1),
+            to_id: NodeId(2),
+            from: Pos2::new(20.0, 40.0),
+            to: Pos2::new(220.0, 40.0),
+            color: Color32::WHITE,
+        }];
+
+        assert_eq!(
+            find_connection_at_point(&connections, Pos2::new(120.0, 44.0), 8.0),
+            Some((NodeId(1), NodeId(2)))
+        );
+        assert_eq!(
+            find_connection_at_point(&connections, Pos2::new(120.0, 80.0), 8.0),
+            None
+        );
+    }
 }
