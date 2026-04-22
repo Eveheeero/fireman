@@ -103,18 +103,14 @@ impl Node for InputNode {
     }
 
     fn ui(&mut self, ui: &mut Ui, ctx: &NodeContext) -> NodeResponse {
-        let mut response = NodeResponse::None;
+        let _ = ctx;
 
         // Header with file path
         ui.horizontal(|ui| {
             ui.label(self.summary());
-
-            if ctx.can_delete && ui.button("x").clicked() {
-                response = NodeResponse::Deleted;
-            }
         });
 
-        response
+        NodeResponse::None
     }
 
     fn clone_box(&self) -> Box<dyn Node> {

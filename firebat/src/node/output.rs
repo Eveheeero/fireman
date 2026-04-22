@@ -141,17 +141,12 @@ impl Node for PreviewNode {
     }
 
     fn ui(&mut self, ui: &mut Ui, ctx: &NodeContext) -> NodeResponse {
-        let mut response = NodeResponse::None;
+        let _ = ctx;
 
-        ui.horizontal(|ui| {
-            if ctx.can_delete && ui.button("x").clicked() {
-                response = NodeResponse::Deleted;
-            }
-        });
         ui.small(self.summary());
         ui.small("Select node to inspect preview output.");
 
-        response
+        NodeResponse::None
     }
 
     fn clone_box(&self) -> Box<dyn Node> {

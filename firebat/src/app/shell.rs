@@ -2,8 +2,8 @@ use super::state::FirebatState;
 use crate::{
     model::{DecompileRequest, DecompileResult, OptimizeAstRequest},
     node::{
-        InputNode, Node, NodeGraph, NodeId, NodePosition, NodeResponse, NodeType, OptNode,
-        OptimizationPass, PreviewNode,
+        InputNode, Node, NodeGraph, NodeId, NodePosition, NodeResponse, NodeType,
+        OPTIMIZATION_FIELDS, OptNode, OptimizationPass, PreviewNode,
     },
     pipeline::PipelineData,
     theme::configure_theme,
@@ -39,6 +39,13 @@ pub(crate) struct FirebatApp {
     selected_pass_type: OptimizationPass,
     connecting_from: Option<NodeId>,
     active_pipeline_input: Option<NodeId>,
+    optimization_panel_tab: OptimizationPanelTab,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum OptimizationPanelTab {
+    Settings,
+    Script,
 }
 
 impl Default for FirebatApp {
@@ -78,6 +85,7 @@ impl Default for FirebatApp {
             selected_pass_type: OptimizationPass::ConstantFolding,
             connecting_from: None,
             active_pipeline_input: None,
+            optimization_panel_tab: OptimizationPanelTab::Settings,
         }
     }
 }
@@ -257,11 +265,20 @@ impl FirebatApp {
         self.selected_preview_node().is_some()
     }
 
+    fn selected_optimization_node(&self) -> Option<&OptNode> {
+        let selected = self.selected_node?;
+        self.graph
+            .get_node(selected)?
+            .as_any()
+            .downcast_ref::<OptNode>()
+    }
+
+    fn is_optimization_node_selected(&self) -> bool {
+        self.selected_optimization_node().is_some()
+    }
+
     fn render_toolbar(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.heading("Firebat");
-            ui.add_space(16.0);
-
             let add_response = ui.button("+ Add Node");
             if add_response.clicked() {
                 self.show_add_node_menu = !self.show_add_node_menu;
@@ -334,7 +351,7 @@ impl FirebatApp {
                 }
 
                 ui.add_space(8.0);
-                ui.label("Pass:");
+                ui.label("Optimization:");
                 egui::ComboBox::from_id_salt("pass_selector")
                     .selected_text(self.selected_pass_type.name())
                     .width(200.0)
@@ -373,6 +390,11 @@ impl FirebatApp {
                             &mut self.selected_pass_type,
                             OptimizationPass::ParameterAnalysis,
                             OptimizationPass::ParameterAnalysis.name(),
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_pass_type,
+                            OptimizationPass::PatternMatching(Vec::new()),
+                            OptimizationPass::PatternMatching(Vec::new()).name(),
                         );
                         ui.selectable_value(
                             &mut self.selected_pass_type,
@@ -496,6 +518,7 @@ impl FirebatApp {
         let id = node.id();
         self.graph.add_node(node);
         self.selected_node = Some(id);
+        self.optimization_panel_tab = OptimizationPanelTab::Settings;
         self.set_status(format!("Added {} node", node_type.name()));
     }
 
@@ -690,8 +713,18 @@ impl FirebatApp {
         self.camera_offset = response.camera_offset;
         self.zoom = response.zoom;
         self.dragged_node = response.dragged_node;
+        let previous_selected = self.selected_node;
         self.selected_node = response.selected_node;
         self.connecting_from = response.connecting_from;
+
+        if let Some(node_id) = response.deleted_node {
+            self.remove_node(node_id);
+            self.set_status("Node deleted");
+        }
+
+        if self.selected_node != previous_selected {
+            self.optimization_panel_tab = OptimizationPanelTab::Settings;
+        }
 
         if let Some((from, to)) = response.completed_connection {
             self.graph.add_connection(from, to);
@@ -828,10 +861,10 @@ impl FirebatApp {
                     let clicked = ui.button("Analyze Address").clicked();
                     if submitted || clicked {
                         let address = self.state.analyze_target_address.clone();
+                        self.state.analyze_section_from_address(&address);
                         if address.trim().is_empty() {
-                            self.set_status("Enter an address before analyzing");
+                            self.set_status("Analyzing entrypoint...");
                         } else {
-                            self.state.analyze_section_from_address(&address);
                             self.set_status(format!("Analyzing address {address}..."));
                         }
                     }
@@ -908,6 +941,144 @@ impl FirebatApp {
                     node.set_file_path(path.clone());
                 }
                 self.set_status(format!("Opening {}...", path.display()));
+            }
+        }
+    }
+
+    fn render_optimization_panel(&mut self, ctx: &egui::Context) {
+        let Some(selected_node) = self.selected_node else {
+            return;
+        };
+        if !self.is_optimization_node_selected() {
+            return;
+        }
+
+        let mut active_tab = self.optimization_panel_tab;
+        let mut request_rerun = false;
+        let mut next_status = None;
+
+        egui::Panel::right("optimization-section-panel")
+            .resizable(true)
+            .default_size(360.0)
+            .show(ctx, |ui| {
+                let Some(node) = self
+                    .graph
+                    .get_node_mut(selected_node)
+                    .and_then(|node| node.as_any_mut().downcast_mut::<OptNode>())
+                else {
+                    return;
+                };
+
+                let settings_dirty = node.store.draft_settings != node.store.applied_settings;
+                let script_dirty = node.store.fb_script_enabled != node.store.applied_fb_script_enabled
+                    || node.store.editor_buffer
+                        != node.store.applied_buffer_script.clone().unwrap_or_default();
+
+                ui.heading("Optimization");
+                ui.add_space(8.0);
+                ui.label(node.name());
+                ui.small(node.summary());
+                if node.has_pending_changes() {
+                    ui.small("Pending changes are not active until Apply is pressed.");
+                }
+
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    ui.selectable_value(
+                        &mut active_tab,
+                        OptimizationPanelTab::Settings,
+                        if settings_dirty {
+                            "Settings *"
+                        } else {
+                            "Settings"
+                        },
+                    );
+                    ui.selectable_value(
+                        &mut active_tab,
+                        OptimizationPanelTab::Script,
+                        if script_dirty { ".fb Script *" } else { ".fb Script" },
+                    );
+                });
+                ui.separator();
+
+                ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| match active_tab {
+                        OptimizationPanelTab::Settings => {
+                            for field in OPTIMIZATION_FIELDS {
+                                let mut enabled = (field.get)(&node.store.draft_settings);
+                                if ui.checkbox(&mut enabled, field.label).changed() {
+                                    node.set_draft_setting(*field, enabled);
+                                }
+                            }
+
+                            ui.separator();
+                            ui.horizontal(|ui| {
+                                ui.label("Max Pass Iterations");
+                                ui.add(
+                                    egui::DragValue::new(
+                                        &mut node.store.draft_settings.max_pass_iterations,
+                                    )
+                                    .range(1..=16),
+                                );
+                            });
+
+                            ui.checkbox(
+                                &mut node.store.draft_settings.use_embedded_passes,
+                                "Use Embedded Passes",
+                            );
+                        }
+                        OptimizationPanelTab::Script => {
+                            let mut script_enabled = node.store.fb_script_enabled;
+                            if ui
+                                .checkbox(&mut script_enabled, "Enable .fb buffer script")
+                                .changed()
+                            {
+                                node.set_script_enabled(script_enabled);
+                            }
+
+                            ui.small(
+                                "The buffer script is applied together with the node settings when Apply is pressed.",
+                            );
+                            ui.add_space(8.0);
+                            ui.add_enabled(
+                                node.store.fb_script_enabled,
+                                egui::TextEdit::multiline(&mut node.store.editor_buffer)
+                                    .font(egui::TextStyle::Monospace)
+                                    .desired_rows(22)
+                                    .desired_width(f32::INFINITY),
+                            );
+                        }
+                    });
+
+                ui.separator();
+                ui.horizontal(|ui| {
+                    if ui.button("Reset").clicked() {
+                        node.reset_draft_changes();
+                        next_status = Some("Optimization draft reset".to_string());
+                    }
+
+                    if ui
+                        .add_enabled(node.has_pending_changes(), egui::Button::new("Apply"))
+                        .clicked()
+                    {
+                        node.apply_changes();
+                        request_rerun = true;
+                        next_status =
+                            Some("Optimization applied; rerunning pipeline...".to_string());
+                    }
+                });
+            });
+
+        self.optimization_panel_tab = active_tab;
+        if let Some(status) = next_status {
+            self.set_status(status);
+        }
+        if request_rerun {
+            if self.state.selected_addresses().is_empty() {
+                self.execute_pipeline();
+            } else {
+                self.start_pipeline();
             }
         }
     }
@@ -1072,6 +1243,8 @@ impl eframe::App for FirebatApp {
 
         if self.is_input_node_selected() {
             self.render_input_panel(ctx);
+        } else if self.is_optimization_node_selected() {
+            self.render_optimization_panel(ctx);
         } else if self.is_preview_node_selected() {
             self.render_preview_panel(ctx);
         }

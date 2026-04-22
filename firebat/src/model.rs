@@ -123,6 +123,33 @@ impl OptimizationSettings {
             use_embedded_passes: true,
         }
     }
+
+    pub fn with_explicit_dependencies(mut self) -> Self {
+        self.materialize_explicit_dependencies();
+        self
+    }
+
+    pub fn materialize_explicit_dependencies(&mut self) {
+        if self.parameter_analyzation || self.call_argument_analyzation || self.loop_analyzation {
+            self.ir_analyzation = true;
+        }
+
+        if self.constant_folding {
+            self.operator_canonicalization = true;
+            self.magic_division_recovery = true;
+            self.identity_simplification = true;
+            self.bit_trick_recognition = true;
+            self.cast_minimization = true;
+            self.if_conversion_reversal = true;
+        }
+
+        if self.ternary_recovery {
+            self.assertion_recovery = true;
+            self.do_while_recovery = true;
+            self.clamp_recovery = true;
+            self.loop_cleanup = true;
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -143,6 +170,34 @@ pub struct OptimizationStore {
     pub applied_buffer_script: Option<String>,
     #[serde(default)]
     pub fb_script_enabled: bool,
+    #[serde(default)]
+    pub applied_fb_script_enabled: bool,
+}
+
+impl OptimizationStore {
+    pub fn normalize(&mut self) {
+        if self
+            .applied_buffer_script
+            .as_deref()
+            .is_some_and(|script| !script.is_empty())
+        {
+            self.applied_fb_script_enabled = true;
+        }
+        if self.editor_buffer.is_empty() {
+            self.editor_buffer = self.applied_buffer_script.clone().unwrap_or_default();
+        }
+        if self.applied_fb_script_enabled && !self.fb_script_enabled {
+            self.fb_script_enabled = true;
+        }
+        self.draft_settings.materialize_explicit_dependencies();
+        self.applied_settings.materialize_explicit_dependencies();
+        if self.fb_script_enabled {
+            self.draft_settings.pattern_matching_enabled = true;
+        }
+        if self.applied_fb_script_enabled {
+            self.applied_settings.pattern_matching_enabled = true;
+        }
+    }
 }
 
 /// Request to optimize an existing AST with a given config.
@@ -164,6 +219,7 @@ pub fn build_optimization_config(
     script_paths: &[String],
     buffer_script: Option<&str>,
 ) -> Result<AstOptimizationConfig, String> {
+    let settings = settings.clone().with_explicit_dependencies();
     let defaults = AstOptimizationConfig::default();
     let mut config = AstOptimizationConfig {
         ir_analyzation: settings.ir_analyzation,

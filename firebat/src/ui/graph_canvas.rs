@@ -84,7 +84,7 @@ impl<'a> GraphCanvas<'a> {
             || (response.dragged_by(egui::PointerButton::Primary)
                 && ui.input(|i| i.key_down(egui::Key::Space)))
         {
-            new_camera_offset += response.drag_delta();
+            new_camera_offset += response.drag_delta() / self.zoom;
         }
 
         // Calculate transform
@@ -227,18 +227,31 @@ impl<'a> GraphCanvas<'a> {
             }
         }
 
-        let pointer_over_node = pointer_pos.is_some_and(|pointer| {
-            node_layouts
-                .iter()
-                .any(|layout| layout.rect.expand2(Vec2::new(20.0, 8.0)).contains(pointer))
+        let hovered_node = pointer_pos.and_then(|pointer| {
+            node_layouts.iter().rev().find_map(|layout| {
+                layout
+                    .rect
+                    .expand2(Vec2::new(20.0, 8.0))
+                    .contains(pointer)
+                    .then_some(layout.node_id)
+            })
         });
-        let removed_connection = remove_connection_request(
-            pointer_over_node,
-            response.clicked_by(egui::PointerButton::Secondary),
-            pointer_pos,
-            &connection_visuals,
-            10.0 * self.zoom,
-        );
+        let pointer_over_node = hovered_node.is_some();
+        let deleted_node = response
+            .clicked_by(egui::PointerButton::Secondary)
+            .then_some(hovered_node)
+            .flatten();
+        let removed_connection = if deleted_node.is_none() {
+            remove_connection_request(
+                pointer_over_node,
+                response.clicked_by(egui::PointerButton::Secondary),
+                pointer_pos,
+                &connection_visuals,
+                10.0 * self.zoom,
+            )
+        } else {
+            None
+        };
         let pointer_released =
             ui.input(|input| input.pointer.button_released(egui::PointerButton::Primary));
         let completed_connection =
@@ -248,23 +261,33 @@ impl<'a> GraphCanvas<'a> {
         }
 
         // Handle zoom with mouse wheel
+        let mut new_zoom = self.zoom;
         let zoom_delta = ui.input(|i| i.smooth_scroll_delta.y);
-        if zoom_delta != 0.0
-            && rect.contains(ui.input(|i| i.pointer.hover_pos().unwrap_or(Pos2::ZERO)))
-        {
-            let _new_zoom = (self.zoom + zoom_delta * 0.001).clamp(0.1, 5.0);
-            // TODO: Zoom towards mouse pointer
+        if zoom_delta != 0.0 {
+            if let Some(pointer) = pointer_pos.filter(|pointer| rect.contains(*pointer)) {
+                new_zoom = (self.zoom + zoom_delta * 0.001).clamp(0.1, 5.0);
+                let pointer_in_canvas = pointer - rect.min;
+                let world_before = Vec2::new(
+                    pointer_in_canvas.x / self.zoom,
+                    pointer_in_canvas.y / self.zoom,
+                ) - new_camera_offset;
+                new_camera_offset = Vec2::new(
+                    pointer_in_canvas.x / new_zoom,
+                    pointer_in_canvas.y / new_zoom,
+                ) - world_before;
+            }
         }
 
         GraphResponse {
             node_responses,
             camera_offset: new_camera_offset,
-            zoom: self.zoom,
+            zoom: new_zoom,
             dragged_node: new_dragged_node,
             selected_node: new_selected_node,
             connecting_from: new_connecting_from,
             completed_connection,
             removed_connection,
+            deleted_node,
         }
     }
 
@@ -307,6 +330,7 @@ pub struct GraphResponse {
     pub connecting_from: Option<NodeId>,
     pub completed_connection: Option<(NodeId, NodeId)>,
     pub removed_connection: Option<(NodeId, NodeId)>,
+    pub deleted_node: Option<NodeId>,
 }
 
 /// Draw a curved connection line between two points
