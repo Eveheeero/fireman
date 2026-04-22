@@ -1,4 +1,5 @@
 pub mod input;
+pub mod macro_nodes;
 pub mod optimization;
 pub mod output;
 
@@ -8,6 +9,10 @@ use crate::{
 };
 use egui::{Color32, Pos2, Ui};
 pub use input::InputNode;
+pub use macro_nodes::{
+    ArithmeticMacroNode, ArithmeticOperation, IfMacroNode, LoopMacroNode, MacroComparison,
+    VariableMacroNode,
+};
 pub use optimization::{OptNode, OptimizationPass};
 pub use output::PreviewNode;
 use serde::{Deserialize, Serialize};
@@ -76,6 +81,10 @@ pub enum NodeResponse {
 pub enum NodeType {
     Input,
     Opt,
+    LoopMacro,
+    IfMacro,
+    VariableMacro,
+    ArithmeticMacro,
     Preview,
 }
 
@@ -84,6 +93,10 @@ impl NodeType {
         match self {
             Self::Input => "Input",
             Self::Opt => "Optimization",
+            Self::LoopMacro => "Loop Macro",
+            Self::IfMacro => "If Macro",
+            Self::VariableMacro => "Variable Macro",
+            Self::ArithmeticMacro => "Arithmetic Macro",
             Self::Preview => "Preview",
         }
     }
@@ -92,8 +105,19 @@ impl NodeType {
         match self {
             Self::Input => "",
             Self::Opt => "",
+            Self::LoopMacro => "",
+            Self::IfMacro => "",
+            Self::VariableMacro => "",
+            Self::ArithmeticMacro => "",
             Self::Preview => "",
         }
+    }
+
+    pub fn is_macro(&self) -> bool {
+        matches!(
+            self,
+            Self::LoopMacro | Self::IfMacro | Self::VariableMacro | Self::ArithmeticMacro
+        )
     }
 }
 
@@ -249,8 +273,24 @@ impl NodeGraph {
             return;
         };
 
-        let source_supports_output = matches!(source.node_type(), NodeType::Input | NodeType::Opt);
-        let target_supports_input = matches!(target.node_type(), NodeType::Opt | NodeType::Preview);
+        let source_supports_output = matches!(
+            source.node_type(),
+            NodeType::Input
+                | NodeType::Opt
+                | NodeType::LoopMacro
+                | NodeType::IfMacro
+                | NodeType::VariableMacro
+                | NodeType::ArithmeticMacro
+        );
+        let target_supports_input = matches!(
+            target.node_type(),
+            NodeType::Opt
+                | NodeType::LoopMacro
+                | NodeType::IfMacro
+                | NodeType::VariableMacro
+                | NodeType::ArithmeticMacro
+                | NodeType::Preview
+        );
         if !source_supports_output || !target_supports_input {
             return;
         }
@@ -301,6 +341,10 @@ impl NodeGraph {
                 kind: match node.node_type() {
                     NodeType::Input => "InputNode".to_string(),
                     NodeType::Opt => "OptNode".to_string(),
+                    NodeType::LoopMacro => "LoopMacroNode".to_string(),
+                    NodeType::IfMacro => "IfMacroNode".to_string(),
+                    NodeType::VariableMacro => "VariableMacroNode".to_string(),
+                    NodeType::ArithmeticMacro => "ArithmeticMacroNode".to_string(),
                     NodeType::Preview => "PreviewNode".to_string(),
                 },
                 data: node.serialize(),
@@ -368,6 +412,10 @@ fn instantiate_node(kind: &str) -> Option<Box<dyn Node>> {
     match kind {
         "InputNode" => Some(Box::new(InputNode::new())),
         "OptNode" => Some(Box::new(OptNode::new())),
+        "LoopMacroNode" => Some(Box::new(LoopMacroNode::new())),
+        "IfMacroNode" => Some(Box::new(IfMacroNode::new())),
+        "VariableMacroNode" => Some(Box::new(VariableMacroNode::new())),
+        "ArithmeticMacroNode" => Some(Box::new(ArithmeticMacroNode::new())),
         "PreviewNode" => Some(Box::new(PreviewNode::new())),
         _ => None,
     }

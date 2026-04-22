@@ -4,8 +4,9 @@ use crate::{
         DecompileRequest, DecompileResult, GraphPreset, OptimizeAstRequest, PersistedViewport,
     },
     node::{
-        InputNode, Node, NodeGraph, NodeId, NodeIdMap, NodePosition, NodeResponse, NodeType,
-        OptNode, OptimizationPass, PreviewNode,
+        ArithmeticMacroNode, ArithmeticOperation, IfMacroNode, InputNode, LoopMacroNode,
+        MacroComparison, Node, NodeGraph, NodeId, NodeIdMap, NodePosition, NodeResponse, NodeType,
+        OptNode, OptimizationPass, PreviewNode, VariableMacroNode,
     },
     pipeline::PipelineData,
     theme::configure_theme,
@@ -282,6 +283,10 @@ impl FirebatApp {
     }
 
     fn execute_pipeline(&mut self) {
+        if self.has_macro_nodes() {
+            self.set_status("Expand macro nodes before running the pipeline");
+            return;
+        }
         self.set_status("Executing pipeline...");
 
         let mut data = self
@@ -362,6 +367,14 @@ impl FirebatApp {
             .downcast_ref::<OptNode>()
     }
 
+    fn selected_loop_macro_node(&self) -> Option<&LoopMacroNode> {
+        let selected = self.selected_node?;
+        self.graph
+            .get_node(selected)?
+            .as_any()
+            .downcast_ref::<LoopMacroNode>()
+    }
+
     fn selected_pattern_matching_node(&self) -> Option<&OptNode> {
         self.selected_optimization_node()
             .filter(|node| node.supports_pattern_editor())
@@ -386,6 +399,18 @@ impl FirebatApp {
             let add_response = ui.button("+ Add Node");
             if add_response.clicked() {
                 self.show_add_node_menu = !self.show_add_node_menu;
+            }
+
+            ui.add_space(8.0);
+
+            if ui
+                .add_enabled(
+                    self.selected_loop_macro_node().is_some(),
+                    egui::Button::new("Expand Macro"),
+                )
+                .clicked()
+            {
+                self.expand_selected_loop_macro();
             }
 
             ui.add_space(8.0);
@@ -451,6 +476,24 @@ impl FirebatApp {
                 ui.label("Add:");
                 if ui.button("Input").clicked() {
                     self.add_node_at_center(NodeType::Input);
+                    self.show_add_node_menu = false;
+                }
+
+                ui.add_space(8.0);
+                if ui.button("Loop").clicked() {
+                    self.add_node_at_center(NodeType::LoopMacro);
+                    self.show_add_node_menu = false;
+                }
+                if ui.button("If").clicked() {
+                    self.add_node_at_center(NodeType::IfMacro);
+                    self.show_add_node_menu = false;
+                }
+                if ui.button("Var").clicked() {
+                    self.add_node_at_center(NodeType::VariableMacro);
+                    self.show_add_node_menu = false;
+                }
+                if ui.button("Operation").clicked() {
+                    self.add_node_at_center(NodeType::ArithmeticMacro);
                     self.show_add_node_menu = false;
                 }
 
@@ -647,6 +690,14 @@ impl FirebatApp {
             NodeType::Opt => Box::new(
                 OptNode::for_pass(self.selected_pass_type.clone()).with_position(pos.x, pos.y),
             ),
+            NodeType::LoopMacro => Box::new(LoopMacroNode::new().with_position(pos.x, pos.y)),
+            NodeType::IfMacro => Box::new(IfMacroNode::new().with_position(pos.x, pos.y)),
+            NodeType::VariableMacro => {
+                Box::new(VariableMacroNode::new().with_position(pos.x, pos.y))
+            }
+            NodeType::ArithmeticMacro => {
+                Box::new(ArithmeticMacroNode::new().with_position(pos.x, pos.y))
+            }
             NodeType::Preview => Box::new(PreviewNode::with_position(pos.x, pos.y)),
         };
 
@@ -669,7 +720,91 @@ impl FirebatApp {
         self.set_status("Added Pattern Matching node");
     }
 
+    fn has_macro_nodes(&self) -> bool {
+        self.graph
+            .nodes()
+            .iter()
+            .any(|node| node.node_type().is_macro())
+    }
+
+    fn expand_selected_loop_macro(&mut self) {
+        let Some(loop_id) = self.selected_node else {
+            self.set_status("Select a loop macro first");
+            return;
+        };
+        let Some(loop_node) = self
+            .graph
+            .get_node(loop_id)
+            .and_then(|node| node.as_any().downcast_ref::<LoopMacroNode>())
+            .cloned()
+        else {
+            self.set_status("Selected node is not a loop macro");
+            return;
+        };
+
+        let template = match collect_macro_template(&self.graph, loop_id) {
+            Ok(template) => template,
+            Err(error) => {
+                self.set_status(error);
+                return;
+            }
+        };
+
+        let generated_nodes = match build_expanded_nodes(&template.steps, &loop_node) {
+            Ok(nodes) => nodes,
+            Err(error) => {
+                self.set_status(error);
+                return;
+            }
+        };
+
+        let upstream = resolve_input_source_node(&self.graph, loop_id);
+        let anchor = template.anchor;
+        let removed_ids = template.removed_ids;
+
+        for node_id in removed_ids {
+            self.remove_node(node_id);
+        }
+
+        let mut generated_ids = Vec::with_capacity(generated_nodes.len());
+        for node in generated_nodes {
+            let node_id = node.id();
+            self.graph.add_node(node);
+            generated_ids.push(node_id);
+        }
+
+        if let Some(upstream_id) = upstream {
+            if let Some(first_id) = generated_ids.first().copied() {
+                self.graph.add_connection(upstream_id, first_id);
+            } else if let Some(anchor_id) = anchor {
+                self.graph.add_connection(upstream_id, anchor_id);
+            }
+        }
+
+        for window in generated_ids.windows(2) {
+            if let [from_id, to_id] = window {
+                self.graph.add_connection(*from_id, *to_id);
+            }
+        }
+
+        if let Some(last_id) = generated_ids.last().copied() {
+            if let Some(anchor_id) = anchor {
+                self.graph.add_connection(last_id, anchor_id);
+            }
+        }
+
+        self.selected_node = generated_ids.first().copied().or(anchor);
+        self.set_status(format!(
+            "Expanded loop macro into {} optimization node(s)",
+            generated_ids.len()
+        ));
+    }
+
     fn start_pipeline(&mut self) {
+        if self.has_macro_nodes() {
+            self.set_status("Expand macro nodes before running the pipeline");
+            return;
+        }
         let Some(input_id) = self.active_input_node_id() else {
             self.set_status("No input node available");
             return;
@@ -1448,6 +1583,180 @@ fn first_input_path(preset: &GraphPreset) -> Option<PathBuf> {
         .and_then(|node| node.data.get("file_path"))
         .and_then(|value| value.as_str())
         .map(PathBuf::from)
+}
+
+#[derive(Clone)]
+enum MacroTemplateStep {
+    Opt(OptNode),
+    Var(VariableMacroNode),
+    If(IfMacroNode),
+    Arithmetic(ArithmeticMacroNode),
+}
+
+struct MacroTemplate {
+    removed_ids: Vec<NodeId>,
+    steps: Vec<MacroTemplateStep>,
+    anchor: Option<NodeId>,
+}
+
+fn collect_macro_template(graph: &NodeGraph, loop_id: NodeId) -> Result<MacroTemplate, String> {
+    let mut removed_ids = vec![loop_id];
+    let mut steps = Vec::new();
+    let mut cursor = single_outgoing_target(graph, loop_id)?;
+
+    while let Some(node_id) = cursor {
+        let Some(node) = graph.get_node(node_id) else {
+            break;
+        };
+
+        match node.node_type() {
+            NodeType::Opt => {
+                let Some(opt) = node.as_any().downcast_ref::<OptNode>() else {
+                    return Err("Invalid optimization template node".to_string());
+                };
+                removed_ids.push(node_id);
+                steps.push(MacroTemplateStep::Opt(opt.clone()));
+                cursor = single_outgoing_target(graph, node_id)?;
+            }
+            NodeType::VariableMacro => {
+                let Some(var) = node.as_any().downcast_ref::<VariableMacroNode>() else {
+                    return Err("Invalid variable macro node".to_string());
+                };
+                removed_ids.push(node_id);
+                steps.push(MacroTemplateStep::Var(var.clone()));
+                cursor = single_outgoing_target(graph, node_id)?;
+            }
+            NodeType::IfMacro => {
+                let Some(if_node) = node.as_any().downcast_ref::<IfMacroNode>() else {
+                    return Err("Invalid if macro node".to_string());
+                };
+                removed_ids.push(node_id);
+                steps.push(MacroTemplateStep::If(if_node.clone()));
+                cursor = single_outgoing_target(graph, node_id)?;
+            }
+            NodeType::ArithmeticMacro => {
+                let Some(op_node) = node.as_any().downcast_ref::<ArithmeticMacroNode>() else {
+                    return Err("Invalid arithmetic macro node".to_string());
+                };
+                removed_ids.push(node_id);
+                steps.push(MacroTemplateStep::Arithmetic(op_node.clone()));
+                cursor = single_outgoing_target(graph, node_id)?;
+            }
+            NodeType::LoopMacro => {
+                return Ok(MacroTemplate {
+                    removed_ids,
+                    steps,
+                    anchor: Some(node_id),
+                });
+            }
+            NodeType::Preview => {
+                return Ok(MacroTemplate {
+                    removed_ids,
+                    steps,
+                    anchor: Some(node_id),
+                });
+            }
+            NodeType::Input => {
+                return Err("Loop macro template cannot flow into an input node".to_string());
+            }
+        }
+    }
+
+    Ok(MacroTemplate {
+        removed_ids,
+        steps,
+        anchor: None,
+    })
+}
+
+fn single_outgoing_target(graph: &NodeGraph, node_id: NodeId) -> Result<Option<NodeId>, String> {
+    let targets: Vec<_> = outgoing_targets(graph.connections(), node_id).collect();
+    if targets.len() > 1 {
+        return Err("Expand only supports a single linear template path".to_string());
+    }
+    Ok(targets.into_iter().next())
+}
+
+fn build_expanded_nodes(
+    steps: &[MacroTemplateStep],
+    loop_node: &LoopMacroNode,
+) -> Result<Vec<Box<dyn Node>>, String> {
+    let mut variables = std::collections::HashMap::<String, i64>::new();
+    let mut generated: Vec<Box<dyn Node>> = Vec::new();
+    let origin = loop_node.position();
+    let mut emission_index = 0usize;
+
+    for iteration in 0..loop_node.iterations {
+        variables.insert("iteration".to_string(), iteration as i64);
+        let mut gate = true;
+
+        for step in steps {
+            match step {
+                MacroTemplateStep::Var(node) => {
+                    variables
+                        .entry(node.variable.trim().to_string())
+                        .or_insert(node.initial_value);
+                }
+                MacroTemplateStep::If(node) => {
+                    let variable_name = node.variable.trim();
+                    if variable_name.is_empty() {
+                        return Err("If macro variable cannot be empty".to_string());
+                    }
+                    let current = *variables.get(variable_name).unwrap_or(&0);
+                    gate = compare_macro(current, node.comparison.clone(), node.value);
+                }
+                MacroTemplateStep::Arithmetic(node) => {
+                    let variable_name = node.target_variable.trim();
+                    if variable_name.is_empty() {
+                        return Err("Operation macro variable cannot be empty".to_string());
+                    }
+                    let entry = variables.entry(variable_name.to_string()).or_insert(0);
+                    apply_arithmetic(entry, node.operation.clone(), node.value);
+                }
+                MacroTemplateStep::Opt(node) => {
+                    if gate {
+                        let x = origin.x + ((emission_index % 4) as f32 * 260.0);
+                        let y = origin.y + ((emission_index / 4) as f32 * 170.0);
+                        let mut cloned = node.clone();
+                        cloned.set_position(NodePosition::new(x, y));
+                        cloned.output_ast = None;
+                        cloned.output = None;
+                        cloned.store.editor_buffer = cloned
+                            .store
+                            .applied_buffer_script
+                            .clone()
+                            .unwrap_or_default();
+                        cloned = cloned.with_name(format!("{} [{}]", node.name(), iteration + 1));
+                        generated.push(Box::new(cloned));
+                        emission_index += 1;
+                    }
+                    gate = true;
+                }
+            }
+        }
+    }
+
+    Ok(generated)
+}
+
+fn compare_macro(left: i64, comparison: MacroComparison, right: i64) -> bool {
+    match comparison {
+        MacroComparison::LessThan => left < right,
+        MacroComparison::LessEqual => left <= right,
+        MacroComparison::Equal => left == right,
+        MacroComparison::NotEqual => left != right,
+        MacroComparison::GreaterEqual => left >= right,
+        MacroComparison::GreaterThan => left > right,
+    }
+}
+
+fn apply_arithmetic(value: &mut i64, operation: ArithmeticOperation, operand: i64) {
+    match operation {
+        ArithmeticOperation::Set => *value = operand,
+        ArithmeticOperation::Add => *value += operand,
+        ArithmeticOperation::Subtract => *value -= operand,
+        ArithmeticOperation::Multiply => *value *= operand,
+    }
 }
 
 fn build_default_graph() -> NodeGraph {

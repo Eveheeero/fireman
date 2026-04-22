@@ -134,8 +134,16 @@ impl ScratchBlockRenderer {
         let mut input_port_pos = None;
         let mut output_port_pos = None;
 
-        // Input port on the left (for nodes that accept input: Optimization, Output)
-        if matches!(node_type, NodeType::Opt | NodeType::Preview) {
+        // Input port on the left for nodes that accept a linear template or AST input.
+        if matches!(
+            node_type,
+            NodeType::Opt
+                | NodeType::LoopMacro
+                | NodeType::IfMacro
+                | NodeType::VariableMacro
+                | NodeType::ArithmeticMacro
+                | NodeType::Preview
+        ) {
             let input_pos = Pos2::new(block_rect.min.x - port_offset, center_y);
             input_port_pos = Some(input_pos);
 
@@ -159,8 +167,16 @@ impl ScratchBlockRenderer {
             input_port_drag_started = input_response.drag_started();
         }
 
-        // Output port on the right (for nodes that produce output: Input, Optimization)
-        if matches!(node_type, NodeType::Input | NodeType::Opt) {
+        // Output port on the right for nodes that can forward a linear template or AST output.
+        if matches!(
+            node_type,
+            NodeType::Input
+                | NodeType::Opt
+                | NodeType::LoopMacro
+                | NodeType::IfMacro
+                | NodeType::VariableMacro
+                | NodeType::ArithmeticMacro
+        ) {
             let output_pos = Pos2::new(block_rect.max.x + port_offset, center_y);
             output_port_pos = Some(output_pos);
 
