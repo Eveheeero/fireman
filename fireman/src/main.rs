@@ -650,7 +650,10 @@ fn apply_optimization_overrides(matches: &ArgMatches, settings: &mut Optimizatio
     opt_field!("anti-debug-ast-suppression", anti_debug_ast_suppression);
     opt_field!("logging-suppression", logging_suppression);
     opt_field!("static-guard-suppression", static_guard_suppression);
-    opt_field!("security-scaffold-suppression", security_scaffold_suppression);
+    opt_field!(
+        "security-scaffold-suppression",
+        security_scaffold_suppression
+    );
 
     if let Some(value) = matches.get_one::<usize>("max-pass-iterations") {
         settings.max_pass_iterations = *value;

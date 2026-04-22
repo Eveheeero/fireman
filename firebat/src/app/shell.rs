@@ -16,7 +16,7 @@ use eframe::{
 };
 use fireball::abstract_syntax_tree::Ast;
 use std::{
-    collections::VecDeque,
+    collections::{HashSet, VecDeque},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -37,13 +37,8 @@ pub(crate) struct FirebatApp {
     status_message: Option<String>,
     status_timer: Option<Instant>,
     selected_pass_type: OptimizationPass,
-    pending_connection: Option<(NodeId, ConnectionPort)>, // Track clicked port for connection
-}
-
-#[derive(Clone, Copy, Debug)]
-enum ConnectionPort {
-    Input,
-    Output,
+    connecting_from: Option<NodeId>,
+    active_pipeline_input: Option<NodeId>,
 }
 
 impl Default for FirebatApp {
@@ -81,7 +76,8 @@ impl Default for FirebatApp {
             status_message: None,
             status_timer: None,
             selected_pass_type: OptimizationPass::ConstantFolding,
-            pending_connection: None,
+            connecting_from: None,
+            active_pipeline_input: None,
         }
     }
 }
@@ -134,6 +130,57 @@ impl FirebatApp {
         let message = message.into();
         if self.status_message.as_deref() != Some(message.as_str()) {
             self.set_status(message);
+        }
+    }
+
+    fn active_input_node_id(&self) -> Option<NodeId> {
+        self.selected_node
+            .filter(|selected| {
+                self.graph
+                    .get_node(*selected)
+                    .is_some_and(|node| matches!(node.node_type(), NodeType::Input))
+            })
+            .or_else(|| {
+                self.graph
+                    .nodes()
+                    .iter()
+                    .find(|node| matches!(node.node_type(), NodeType::Input))
+                    .map(|node| node.id())
+            })
+    }
+
+    fn clear_graph(&mut self) {
+        self.graph.clear();
+        self.state.clear_loaded_input_session();
+        self.selected_node = None;
+        self.dragged_node = None;
+        self.connecting_from = None;
+        self.active_pipeline_input = None;
+    }
+
+    fn remove_node(&mut self, node_id: NodeId) {
+        let removed_node_type = self.graph.get_node(node_id).map(|node| node.node_type());
+        self.graph.remove_node(node_id);
+
+        if matches!(removed_node_type, Some(NodeType::Input)) {
+            self.state.clear_loaded_input_session();
+            self.active_pipeline_input = None;
+        }
+
+        if self.selected_node == Some(node_id) {
+            self.selected_node = None;
+        }
+        if self.dragged_node == Some(node_id) {
+            self.dragged_node = None;
+        }
+        if self.connecting_from == Some(node_id) {
+            self.connecting_from = None;
+        }
+    }
+
+    fn toggle_node_expanded(&mut self, node_id: NodeId) {
+        if let Some(node) = self.graph.get_node_mut(node_id) {
+            node.toggle_expanded();
         }
     }
 
@@ -245,9 +292,7 @@ impl FirebatApp {
             }
 
             if ui.button("Clear Graph").clicked() {
-                self.graph.clear();
-                self.selected_node = None;
-                self.pending_connection = None;
+                self.clear_graph();
                 self.set_status("Graph cleared");
             }
 
@@ -455,6 +500,10 @@ impl FirebatApp {
     }
 
     fn start_pipeline(&mut self) {
+        let Some(input_id) = self.active_input_node_id() else {
+            self.set_status("No input node available");
+            return;
+        };
         let addresses = self.state.selected_addresses();
         if addresses.is_empty() {
             self.set_status("No sections selected");
@@ -474,9 +523,10 @@ impl FirebatApp {
 
         // Enqueue all OptNode IDs in graph order
         self.state.pending_optimize_queue.clear();
-        for id in self.graph.opt_node_ids() {
+        for id in reachable_opt_nodes(&self.graph, input_id) {
             self.state.pending_optimize_queue.push_back(id);
         }
+        self.active_pipeline_input = Some(input_id);
 
         // Send raw decompile request
         self.state.last_decompile_selection = addresses.clone();
@@ -584,15 +634,7 @@ impl FirebatApp {
     }
 
     fn find_input_ast_for(&self, node_id: NodeId) -> Option<Arc<Ast>> {
-        let connections = self.graph.connections();
-
-        // Find what connects TO this node
-        let source_id = connections
-            .iter()
-            .find(|(_, to)| *to == node_id)
-            .map(|(from, _)| *from)?;
-
-        // Check source type
+        let source_id = resolve_input_source_node(&self.graph, node_id)?;
         let source = self.graph.get_node(source_id)?;
         if let Some(opt) = source.as_any().downcast_ref::<OptNode>() {
             return opt.output_ast.clone();
@@ -600,17 +642,20 @@ impl FirebatApp {
         if source.as_any().downcast_ref::<InputNode>().is_some() {
             return self.state.base_ast.clone();
         }
-        // If source is PreviewNode, walk further back
-        self.state.base_ast.clone()
+        None
     }
 
     fn fill_leading_previews(&mut self) {
         let base_ast = self.state.base_ast.clone();
         let base_output = self.state.base_output.clone();
+        let Some(input_id) = self.active_pipeline_input else {
+            return;
+        };
         if let Some(ast) = base_ast {
-            for node in self.graph.nodes_mut() {
-                if let Some(prev) = node.as_any_mut().downcast_mut::<PreviewNode>() {
-                    if prev.snapshot_ast.is_none() {
+            let preview_ids = leading_preview_nodes(&self.graph, input_id);
+            for preview_id in preview_ids {
+                if let Some(node) = self.graph.get_node_mut(preview_id) {
+                    if let Some(prev) = node.as_any_mut().downcast_mut::<PreviewNode>() {
                         prev.set_snapshot(ast.clone(), base_output.clone());
                     }
                 }
@@ -651,14 +696,21 @@ impl FirebatApp {
         self.zoom = response.zoom;
         self.dragged_node = response.dragged_node;
         self.selected_node = response.selected_node;
+        self.connecting_from = response.connecting_from;
+
+        if let Some((from, to)) = response.completed_connection {
+            self.graph.add_connection(from, to);
+            self.connecting_from = None;
+            self.set_status(format!("Connected {:?} → {:?}", from, to));
+        }
 
         if let Some((from, to)) = response.removed_connection {
             self.graph.remove_connection(from, to);
             if self
-                .pending_connection
-                .is_some_and(|(node_id, _)| node_id == from || node_id == to)
+                .connecting_from
+                .is_some_and(|node_id| node_id == from || node_id == to)
             {
-                self.pending_connection = None;
+                self.connecting_from = None;
             }
             self.set_status(format!("Removed connection {:?} → {:?}", from, to));
         }
@@ -666,16 +718,7 @@ impl FirebatApp {
         for (node_id, node_response) in response.node_responses {
             match node_response {
                 NodeResponse::Deleted => {
-                    self.graph.remove_node(node_id);
-                    if self
-                        .pending_connection
-                        .is_some_and(|(pending_id, _)| pending_id == node_id)
-                    {
-                        self.pending_connection = None;
-                    }
-                    if self.selected_node == Some(node_id) {
-                        self.selected_node = None;
-                    }
+                    self.remove_node(node_id);
                     self.set_status("Node deleted");
                 }
                 NodeResponse::DraggedTo { new_pos } => {
@@ -691,48 +734,7 @@ impl FirebatApp {
                         self.start_pipeline();
                     }
                 }
-                NodeResponse::InputPortClicked => {
-                    // Handle connection: Input port clicked
-                    match self.pending_connection {
-                        None => {
-                            // First click - store this input port
-                            self.pending_connection = Some((node_id, ConnectionPort::Input));
-                            self.set_status("Click an output port to connect");
-                        }
-                        Some((pending_id, ConnectionPort::Output)) => {
-                            // Second click - connect output to input
-                            self.graph.add_connection(pending_id, node_id);
-                            self.pending_connection = None;
-                            self.set_status(format!("Connected {:?} → {:?}", pending_id, node_id));
-                        }
-                        Some((_pending_id, ConnectionPort::Input)) => {
-                            // Clicked another input port - switch to this one
-                            self.pending_connection = Some((node_id, ConnectionPort::Input));
-                            self.set_status("Click an output port to connect");
-                        }
-                    }
-                }
-                NodeResponse::OutputPortClicked => {
-                    // Handle connection: Output port clicked
-                    match self.pending_connection {
-                        None => {
-                            // First click - store this output port
-                            self.pending_connection = Some((node_id, ConnectionPort::Output));
-                            self.set_status("Click an input port to connect");
-                        }
-                        Some((pending_id, ConnectionPort::Input)) => {
-                            // Second click - connect output to input
-                            self.graph.add_connection(node_id, pending_id);
-                            self.pending_connection = None;
-                            self.set_status(format!("Connected {:?} → {:?}", node_id, pending_id));
-                        }
-                        Some((_pending_id, ConnectionPort::Output)) => {
-                            // Clicked another output port - switch to this one
-                            self.pending_connection = Some((node_id, ConnectionPort::Output));
-                            self.set_status("Click an input port to connect");
-                        }
-                    }
-                }
+                NodeResponse::ToggleExpanded => self.toggle_node_expanded(node_id),
                 _ => {}
             }
         }
@@ -1089,6 +1091,7 @@ impl eframe::App for FirebatApp {
                 &connections,
                 self.selected_node,
                 self.dragged_node,
+                self.connecting_from,
             )
             .with_camera(self.camera_offset, self.zoom)
             .show(ui);
@@ -1102,5 +1105,168 @@ impl eframe::App for FirebatApp {
 
     fn ui(&mut self, _ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         // Not used - we use update() instead for full control
+    }
+}
+
+fn resolve_input_source_node(graph: &NodeGraph, node_id: NodeId) -> Option<NodeId> {
+    graph
+        .connections()
+        .iter()
+        .find(|(_, to)| *to == node_id)
+        .map(|(from, _)| *from)
+}
+
+fn reachable_opt_nodes(graph: &NodeGraph, input_id: NodeId) -> Vec<NodeId> {
+    let mut reachable = Vec::new();
+    let mut visited = HashSet::new();
+    let mut frontier = VecDeque::from([input_id]);
+
+    while let Some(node_id) = frontier.pop_front() {
+        if !visited.insert(node_id) {
+            continue;
+        }
+
+        for target_id in outgoing_targets(graph.connections(), node_id) {
+            let Some(node) = graph.get_node(target_id) else {
+                continue;
+            };
+            if matches!(node.node_type(), NodeType::Opt) {
+                reachable.push(target_id);
+                frontier.push_back(target_id);
+            }
+        }
+    }
+
+    reachable
+}
+
+fn leading_preview_nodes(graph: &NodeGraph, input_id: NodeId) -> Vec<NodeId> {
+    let mut previews = Vec::new();
+    let mut visited = HashSet::new();
+    let mut frontier = VecDeque::from([input_id]);
+
+    while let Some(node_id) = frontier.pop_front() {
+        if !visited.insert(node_id) {
+            continue;
+        }
+
+        for target_id in outgoing_targets(graph.connections(), node_id) {
+            let Some(node) = graph.get_node(target_id) else {
+                continue;
+            };
+            if matches!(node.node_type(), NodeType::Preview) {
+                previews.push(target_id);
+            }
+        }
+    }
+
+    previews
+}
+
+fn outgoing_targets(
+    connections: &[(NodeId, NodeId)],
+    from: NodeId,
+) -> impl Iterator<Item = NodeId> + '_ {
+    connections
+        .iter()
+        .filter(move |(source_id, _)| *source_id == from)
+        .map(|(_, target_id)| *target_id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{KnownSection, KnownSectionData};
+
+    fn input_id(app: &FirebatApp) -> NodeId {
+        app.graph
+            .nodes()
+            .iter()
+            .find(|node| matches!(node.node_type(), NodeType::Input))
+            .map(|node| node.id())
+            .expect("input node")
+    }
+
+    fn preview_id(app: &FirebatApp) -> NodeId {
+        app.graph
+            .nodes()
+            .iter()
+            .find(|node| matches!(node.node_type(), NodeType::Preview))
+            .map(|node| node.id())
+            .expect("preview node")
+    }
+
+    #[test]
+    fn reachable_opt_nodes_follow_connected_path_only() {
+        let mut app = FirebatApp::default();
+        let input = input_id(&app);
+        let preview = preview_id(&app);
+        let opt_reachable = OptNode::new();
+        let opt_unreachable = OptNode::new();
+        let opt_reachable_id = opt_reachable.id();
+        let opt_unreachable_id = opt_unreachable.id();
+        let preview_two = PreviewNode::new();
+        let preview_two_id = preview_two.id();
+
+        app.graph.add_node(Box::new(opt_reachable));
+        app.graph.add_node(Box::new(opt_unreachable));
+        app.graph.add_node(Box::new(preview_two));
+        app.graph.remove_connection(input, preview);
+        app.graph.add_connection(input, opt_reachable_id);
+        app.graph.add_connection(opt_reachable_id, preview);
+        app.graph.add_connection(input, preview_two_id);
+
+        assert_eq!(
+            reachable_opt_nodes(&app.graph, input),
+            vec![opt_reachable_id]
+        );
+        assert_ne!(
+            reachable_opt_nodes(&app.graph, input),
+            vec![opt_reachable_id, opt_unreachable_id]
+        );
+    }
+
+    #[test]
+    fn input_source_resolves_direct_upstream_node() {
+        let mut app = FirebatApp::default();
+        let input = input_id(&app);
+        let opt_upstream = OptNode::new();
+        let opt_target = OptNode::new();
+        let opt_upstream_id = opt_upstream.id();
+        let opt_target_id = opt_target.id();
+
+        app.graph.add_node(Box::new(opt_upstream));
+        app.graph.add_node(Box::new(opt_target));
+        app.graph.add_connection(input, opt_upstream_id);
+        app.graph.add_connection(opt_upstream_id, opt_target_id);
+
+        assert_eq!(
+            resolve_input_source_node(&app.graph, opt_target_id),
+            Some(opt_upstream_id)
+        );
+    }
+
+    #[test]
+    fn removing_input_node_clears_loaded_input_state() {
+        let mut app = FirebatApp::default();
+        let input = input_id(&app);
+        app.selected_node = Some(input);
+        app.state.known_sections.push(KnownSection {
+            selected: true,
+            data: KnownSectionData {
+                start_address: 0x401000,
+                end_address: Some(0x401020),
+                analyzed: true,
+            },
+        });
+        app.state.last_decompile_selection = vec![0x401000];
+        app.state.analyze_target_address = "0x401000".to_string();
+
+        app.remove_node(input);
+
+        assert!(app.state.known_sections.is_empty());
+        assert!(app.state.last_decompile_selection.is_empty());
+        assert!(app.state.analyze_target_address.is_empty());
+        assert_eq!(app.selected_node, None);
     }
 }

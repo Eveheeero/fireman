@@ -69,7 +69,11 @@ impl ViewSession {
         } else {
             raw_ast
                 .optimize_functions(
-                    &raw_ast.function_versions.keys().cloned().collect::<Vec<_>>(),
+                    &raw_ast
+                        .function_versions
+                        .keys()
+                        .cloned()
+                        .collect::<Vec<_>>(),
                     Some(self.optimization_config.clone()),
                 )
                 .map_err(|error| error.to_string())?
@@ -151,8 +155,7 @@ impl FirebatCore {
         let optimized = if is_config_none(&config) {
             request.ast
         } else {
-            let function_ids: Vec<_> =
-                request.ast.function_versions.keys().cloned().collect();
+            let function_ids: Vec<_> = request.ast.function_versions.keys().cloned().collect();
             request
                 .ast
                 .optimize_functions(&function_ids, Some(config))

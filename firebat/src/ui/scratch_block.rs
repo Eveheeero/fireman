@@ -100,6 +100,8 @@ impl ScratchBlockRenderer {
 
         let mut input_port_clicked = false;
         let mut output_port_clicked = false;
+        let mut input_port_drag_started = false;
+        let mut output_port_drag_started = false;
         let mut input_port_pos = None;
         let mut output_port_pos = None;
 
@@ -117,9 +119,10 @@ impl ScratchBlockRenderer {
             let input_response = ui.interact(
                 input_port_rect,
                 ui.id().with((node.id().0, "input_port")),
-                Sense::click(),
+                Sense::click_and_drag(),
             );
             input_port_clicked = input_response.clicked();
+            input_port_drag_started = input_response.drag_started();
         }
 
         // Output port on the right (for nodes that produce output: Input, Optimization)
@@ -136,9 +139,10 @@ impl ScratchBlockRenderer {
             let output_response = ui.interact(
                 output_port_rect,
                 ui.id().with((node.id().0, "output_port")),
-                Sense::click(),
+                Sense::click_and_drag(),
             );
             output_port_clicked = output_response.clicked();
+            output_port_drag_started = output_response.drag_started();
         }
 
         // Determine the response based on port clicks
@@ -155,6 +159,8 @@ impl ScratchBlockRenderer {
             inner: inner_response,
             input_port_clicked,
             output_port_clicked,
+            input_port_drag_started,
+            output_port_drag_started,
             input_port_pos,
             output_port_pos,
         }
@@ -219,6 +225,8 @@ pub struct BlockResponse {
     pub inner: NodeResponse,
     pub input_port_clicked: bool,
     pub output_port_clicked: bool,
+    pub input_port_drag_started: bool,
+    pub output_port_drag_started: bool,
     pub input_port_pos: Option<Pos2>,
     pub output_port_pos: Option<Pos2>,
 }

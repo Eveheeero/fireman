@@ -6,18 +6,11 @@ use super::{
     },
 };
 use crate::{
-    model::{
-        DecompileRequest, KnownSection, KnownSectionData, OptimizeAstRequest,
-    },
+    model::{DecompileRequest, KnownSection, KnownSectionData, OptimizeAstRequest},
     worker::{FirebatWorker, WorkerRequest, WorkerResponse, WorkerTryRecv},
 };
 use ratatui::crossterm::event;
-use std::{
-    collections::VecDeque,
-    fs, io,
-    path::Path,
-    time::Duration,
-};
+use std::{collections::VecDeque, fs, io, path::Path, time::Duration};
 
 pub(crate) struct App {
     pub(crate) worker: FirebatWorker,
@@ -61,9 +54,14 @@ impl App {
         let mut pipeline = Vec::new();
         let mut tabs = TabManager::default();
 
-        if startup.as_ref().and_then(|c| c.optimization_store.as_ref()).is_some() {
+        if startup
+            .as_ref()
+            .and_then(|c| c.optimization_store.as_ref())
+            .is_some()
+        {
             pipeline.push(PipelineEntry::Opt(OptStage::new(optimization)));
-            tabs.tabs.push(super::types::Tab::with_label(TabType::Opt, "Opt 0"));
+            tabs.tabs
+                .push(super::types::Tab::with_label(TabType::Opt, "Opt 0"));
         }
 
         let mut app = Self {
@@ -168,9 +166,10 @@ impl App {
 
         self.pipeline
             .push(PipelineEntry::Opt(OptStage::new(Default::default())));
-        self.tabs
-            .tabs
-            .push(super::types::Tab::with_label(TabType::Opt, format!("Opt {}", opt_n)));
+        self.tabs.tabs.push(super::types::Tab::with_label(
+            TabType::Opt,
+            format!("Opt {}", opt_n),
+        ));
 
         // Navigate to the new Opt tab
         self.tabs.current_index = self.tabs.tabs.len() - 1;
@@ -193,7 +192,8 @@ impl App {
         // Populate snapshot from nearest preceding Opt output or base_ast
         self.populate_preview_snapshot(&mut preview, insert_pi);
 
-        self.pipeline.insert(insert_pi, PipelineEntry::Preview(preview));
+        self.pipeline
+            .insert(insert_pi, PipelineEntry::Preview(preview));
         self.tabs.tabs.insert(
             insert_tab,
             super::types::Tab::with_label(TabType::Preview, format!("Preview {}", preview_n)),
@@ -276,7 +276,12 @@ impl App {
 
     /// Navigate to the first tab of the given type
     pub(crate) fn navigate_to_first(&mut self, target_type: TabType) {
-        if let Some(idx) = self.tabs.tabs.iter().position(|t| t.tab_type == target_type) {
+        if let Some(idx) = self
+            .tabs
+            .tabs
+            .iter()
+            .position(|t| t.tab_type == target_type)
+        {
             self.tabs.current_index = idx;
         }
     }

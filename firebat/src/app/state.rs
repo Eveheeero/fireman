@@ -276,6 +276,10 @@ impl FirebatState {
         self.analyze_target_address.clear();
     }
 
+    pub(super) fn clear_loaded_input_session(&mut self) {
+        self.reset_pipeline_state();
+    }
+
     pub(super) fn open_file(&mut self) -> Option<PathBuf> {
         let Some(path) = FileDialog::new().pick_file() else {
             self.log("Open canceled");

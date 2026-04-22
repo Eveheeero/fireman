@@ -249,12 +249,34 @@ impl NodeGraph {
 
     /// Add a connection between two nodes
     pub fn add_connection(&mut self, from: NodeId, to: NodeId) {
-        // Check if both nodes exist
-        if self.get_node(from).is_some() && self.get_node(to).is_some() {
-            // Remove existing connection to the target if any
-            self.connections.retain(|(_, target)| *target != to);
-            self.connections.push((from, to));
+        if from == to {
+            return;
         }
+
+        let Some(source) = self.get_node(from) else {
+            return;
+        };
+        let Some(target) = self.get_node(to) else {
+            return;
+        };
+
+        let source_supports_output = matches!(source.node_type(), NodeType::Input | NodeType::Opt);
+        let target_supports_input = matches!(target.node_type(), NodeType::Opt | NodeType::Preview);
+        if !source_supports_output || !target_supports_input {
+            return;
+        }
+
+        if self
+            .connections
+            .iter()
+            .any(|(existing_from, existing_to)| *existing_from == from && *existing_to == to)
+        {
+            return;
+        }
+
+        // Keep one upstream input per target, but allow the source to branch out.
+        self.connections.retain(|(_, target_id)| *target_id != to);
+        self.connections.push((from, to));
     }
 
     /// Remove a connection
@@ -353,5 +375,83 @@ impl dyn Node {
 
     pub fn downcast_mut<T: Node>(&mut self) -> Option<&mut T> {
         self.as_any_mut().downcast_mut::<T>()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn input_node() -> Box<dyn Node> {
+        Box::new(InputNode::new())
+    }
+
+    fn opt_node() -> Box<dyn Node> {
+        Box::new(OptNode::new())
+    }
+
+    fn preview_node() -> Box<dyn Node> {
+        Box::new(PreviewNode::new())
+    }
+
+    #[test]
+    fn add_connection_allows_multiple_downstream_targets_from_same_source() {
+        let mut graph = NodeGraph::new();
+        let input = input_node();
+        let preview_a = preview_node();
+        let preview_b = preview_node();
+        let input_id = input.id();
+        let preview_a_id = preview_a.id();
+        let preview_b_id = preview_b.id();
+
+        graph.add_node(input);
+        graph.add_node(preview_a);
+        graph.add_node(preview_b);
+
+        graph.add_connection(input_id, preview_a_id);
+        graph.add_connection(input_id, preview_b_id);
+
+        assert_eq!(
+            graph.connections(),
+            &[(input_id, preview_a_id), (input_id, preview_b_id)]
+        );
+    }
+
+    #[test]
+    fn add_connection_replaces_existing_upstream_for_target() {
+        let mut graph = NodeGraph::new();
+        let input = input_node();
+        let opt = opt_node();
+        let preview = preview_node();
+        let input_id = input.id();
+        let opt_id = opt.id();
+        let preview_id = preview.id();
+
+        graph.add_node(input);
+        graph.add_node(opt);
+        graph.add_node(preview);
+
+        graph.add_connection(input_id, preview_id);
+        graph.add_connection(opt_id, preview_id);
+
+        assert_eq!(graph.connections(), &[(opt_id, preview_id)]);
+    }
+
+    #[test]
+    fn add_connection_rejects_duplicate_and_self_edges() {
+        let mut graph = NodeGraph::new();
+        let input = input_node();
+        let preview = preview_node();
+        let input_id = input.id();
+        let preview_id = preview.id();
+
+        graph.add_node(input);
+        graph.add_node(preview);
+
+        graph.add_connection(input_id, preview_id);
+        graph.add_connection(input_id, preview_id);
+        graph.add_connection(input_id, input_id);
+
+        assert_eq!(graph.connections(), &[(input_id, preview_id)]);
     }
 }

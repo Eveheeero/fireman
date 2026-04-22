@@ -62,10 +62,7 @@ pub(crate) struct TabManager {
 impl Default for TabManager {
     fn default() -> Self {
         Self {
-            tabs: vec![
-                Tab::new(TabType::Input),
-                Tab::new(TabType::Logs),
-            ],
+            tabs: vec![Tab::new(TabType::Input), Tab::new(TabType::Logs)],
             current_index: 0,
         }
     }
@@ -126,10 +123,7 @@ impl TabManager {
 
     /// Reset to default tabs
     pub(crate) fn reset(&mut self) {
-        self.tabs = vec![
-            Tab::new(TabType::Input),
-            Tab::new(TabType::Logs),
-        ];
+        self.tabs = vec![Tab::new(TabType::Input), Tab::new(TabType::Logs)];
         self.current_index = 0;
     }
 }

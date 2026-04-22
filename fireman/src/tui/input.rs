@@ -2,7 +2,7 @@ use super::{
     app::App,
     prompt,
     types::{
-        all_optimization_fields, optimization_field_count, OptimizationFocus, PromptKind, TabType,
+        OptimizationFocus, PromptKind, TabType, all_optimization_fields, optimization_field_count,
     },
 };
 use crate::{model::OptimizationSettings, worker::WorkerRequest};
@@ -405,25 +405,15 @@ impl App {
                 true
             }
             KeyCode::Enter => {
-                prompt::insert_char(
-                    &mut opt.store.editor_buffer,
-                    &mut opt.script_cursor,
-                    '\n',
-                );
+                prompt::insert_char(&mut opt.store.editor_buffer, &mut opt.script_cursor, '\n');
                 true
             }
             KeyCode::Backspace => {
-                prompt::delete_prev_char(
-                    &mut opt.store.editor_buffer,
-                    &mut opt.script_cursor,
-                );
+                prompt::delete_prev_char(&mut opt.store.editor_buffer, &mut opt.script_cursor);
                 true
             }
             KeyCode::Delete => {
-                prompt::delete_next_char(
-                    &mut opt.store.editor_buffer,
-                    &mut opt.script_cursor,
-                );
+                prompt::delete_next_char(&mut opt.store.editor_buffer, &mut opt.script_cursor);
                 true
             }
             KeyCode::Left => {
@@ -458,10 +448,8 @@ impl App {
                 let col = cursor - line_start;
                 if line_start > 0 {
                     let prev_line_end = line_start - 1;
-                    let prev_line_start = buf[..prev_line_end]
-                        .rfind('\n')
-                        .map(|p| p + 1)
-                        .unwrap_or(0);
+                    let prev_line_start =
+                        buf[..prev_line_end].rfind('\n').map(|p| p + 1).unwrap_or(0);
                     let prev_line_len = prev_line_end - prev_line_start;
                     opt.script_cursor = prev_line_start + col.min(prev_line_len);
                 }

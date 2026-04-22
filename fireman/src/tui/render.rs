@@ -1,14 +1,14 @@
 use super::{
     app::App,
-    types::{OptimizationFocus, PipelineEntry, PromptState, TabType, OPTIMIZATION_FIELDS},
+    types::{OPTIMIZATION_FIELDS, OptimizationFocus, PipelineEntry, PromptState, TabType},
 };
 use crate::license::{self, THIRD_PARTY_DEPS};
 use ratatui::{
+    Frame,
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Tabs, Wrap},
-    Frame,
 };
 
 impl App {
@@ -296,11 +296,9 @@ impl App {
             return;
         };
 
-        let [settings_area, script_area] = Layout::horizontal([
-            Constraint::Percentage(40),
-            Constraint::Percentage(60),
-        ])
-        .areas(area);
+        let [settings_area, script_area] =
+            Layout::horizontal([Constraint::Percentage(40), Constraint::Percentage(60)])
+                .areas(area);
 
         // --- Settings panel (left) ---
         let mut settings_items: Vec<ListItem> = Vec::new();
@@ -347,7 +345,8 @@ impl App {
             Some(n) => format!("Settings (Opt {})", n),
             None => "Settings".to_string(),
         };
-        let settings_block = self.focus_block(&settings_title, opt.focus == OptimizationFocus::Settings);
+        let settings_block =
+            self.focus_block(&settings_title, opt.focus == OptimizationFocus::Settings);
         frame.render_stateful_widget(
             List::new(settings_items)
                 .block(settings_block)
@@ -358,11 +357,7 @@ impl App {
         );
 
         // --- Script panel (right) ---
-        let buffer_path = opt
-            .store
-            .editor_path
-            .as_deref()
-            .unwrap_or("Unsaved buffer");
+        let buffer_path = opt.store.editor_path.as_deref().unwrap_or("Unsaved buffer");
         let applied = if opt.store.applied_buffer_script.is_some() {
             "applied"
         } else {
@@ -388,9 +383,7 @@ impl App {
         ]);
         frame.render_widget(
             Paragraph::new(script_text)
-                .block(
-                    self.focus_block("Script", opt.focus == OptimizationFocus::Script),
-                )
+                .block(self.focus_block("Script", opt.focus == OptimizationFocus::Script))
                 .wrap(Wrap { trim: false }),
             script_area,
         );
