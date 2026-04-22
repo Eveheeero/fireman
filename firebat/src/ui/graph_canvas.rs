@@ -130,25 +130,42 @@ impl<'a> GraphCanvas<'a> {
                 ui.id().with(("node", node.id().0)),
                 Sense::click_and_drag(),
             );
+            let pointer_over_input_port =
+                pointer_hits_port(pointer_pos, block_response.input_port_pos, 14.0 * self.zoom);
+            let pointer_over_output_port = pointer_hits_port(
+                pointer_pos,
+                block_response.output_port_pos,
+                14.0 * self.zoom,
+            );
             let port_interaction = block_response.input_port_clicked
                 || block_response.output_port_clicked
                 || block_response.input_port_drag_started
                 || block_response.output_port_drag_started;
-            let connection_interaction =
-                port_interaction || self.connecting_from == Some(node.id());
+            let pointer_started_on_port = pointer_over_input_port || pointer_over_output_port;
+            let connection_interaction = port_interaction
+                || pointer_started_on_port
+                || self.connecting_from == Some(node.id());
+            let output_drag_intent = block_response.output_port_drag_started
+                || (pointer_over_output_port && node_response.drag_started());
 
-            if block_response.output_port_drag_started {
+            if output_drag_intent {
                 new_connecting_from = Some(node.id());
+                new_dragged_node = None;
                 new_selected_node = Some(node.id());
             }
 
-            if node_response.drag_started() && !connection_interaction {
+            if should_start_node_drag(
+                node_response.drag_started(),
+                pointer_started_on_port,
+                new_connecting_from == Some(node.id()),
+            ) {
                 new_dragged_node = Some(node.id());
                 new_selected_node = Some(node.id());
             }
 
             if node_response.dragged()
-                && !connection_interaction
+                && !pointer_started_on_port
+                && new_connecting_from != Some(node.id())
                 && new_dragged_node == Some(node.id())
             {
                 let delta = node_response.drag_delta() / self.zoom;
@@ -332,6 +349,21 @@ fn collect_connection_visuals(
             })
         })
         .collect()
+}
+
+fn pointer_hits_port(pointer_pos: Option<Pos2>, port_pos: Option<Pos2>, threshold: f32) -> bool {
+    match (pointer_pos, port_pos) {
+        (Some(pointer), Some(port)) => pointer.distance(port) <= threshold,
+        _ => false,
+    }
+}
+
+fn should_start_node_drag(
+    drag_started: bool,
+    pointer_originated_on_port: bool,
+    connection_active: bool,
+) -> bool {
+    drag_started && !pointer_originated_on_port && !connection_active
 }
 
 fn output_port_for_node(node_layouts: &[NodeLayout], node_id: NodeId) -> Option<Pos2> {
@@ -593,5 +625,12 @@ mod tests {
             remove_connection_request(false, true, Some(Pos2::new(120.0, 44.0)), &connections, 8.0),
             Some((NodeId(1), NodeId(2)))
         );
+    }
+
+    #[test]
+    fn node_drag_is_blocked_when_pointer_originated_on_a_port() {
+        assert!(!should_start_node_drag(true, true, false));
+        assert!(!should_start_node_drag(true, false, true));
+        assert!(should_start_node_drag(true, false, false));
     }
 }

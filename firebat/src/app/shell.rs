@@ -531,13 +531,9 @@ impl FirebatApp {
         // Send raw decompile request
         self.state.last_decompile_selection = addresses.clone();
         let selection_count = addresses.len();
-        self.state
-            .queue_request(WorkerRequest::DecompileSections(DecompileRequest {
-                start_addresses: addresses,
-                settings: Default::default(),
-                script_paths: vec![],
-                buffer_script: None,
-            }));
+        self.state.queue_request(WorkerRequest::DecompileSections(
+            build_base_decompile_request(addresses),
+        ));
         self.set_status(format!(
             "Decompiling {selection_count} selected section(s)..."
         ));
@@ -1173,10 +1169,19 @@ fn outgoing_targets(
         .map(|(_, target_id)| *target_id)
 }
 
+fn build_base_decompile_request(addresses: Vec<u64>) -> DecompileRequest {
+    DecompileRequest {
+        start_addresses: addresses,
+        settings: crate::model::OptimizationSettings::none(),
+        script_paths: vec![],
+        buffer_script: None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{KnownSection, KnownSectionData};
+    use crate::model::{KnownSection, KnownSectionData, OptimizationSettings};
 
     fn input_id(app: &FirebatApp) -> NodeId {
         app.graph
@@ -1268,5 +1273,15 @@ mod tests {
         assert!(app.state.last_decompile_selection.is_empty());
         assert!(app.state.analyze_target_address.is_empty());
         assert_eq!(app.selected_node, None);
+    }
+
+    #[test]
+    fn base_decompile_request_uses_no_optimization_settings() {
+        let request = build_base_decompile_request(vec![0x401000, 0x402000]);
+
+        assert_eq!(request.start_addresses, vec![0x401000, 0x402000]);
+        assert_eq!(request.settings, OptimizationSettings::none());
+        assert!(request.script_paths.is_empty());
+        assert_eq!(request.buffer_script, None);
     }
 }

@@ -114,29 +114,6 @@ impl Node for InputNode {
             }
         });
 
-        // Expanded content
-        if self.is_expanded {
-            ui.separator();
-
-            if let Some(ref path) = self.file_path {
-                ui.label(format!("Path: {}", path.display()));
-                ui.label("Use the shell side panel to open, analyze, and select sections.");
-            } else {
-                ui.label("Select this node to open a binary from the shell side panel.");
-            }
-        }
-
-        // Expand/collapse button
-        ui.horizontal(|ui| {
-            if ui
-                .button(if self.is_expanded { "^" } else { "v" })
-                .clicked()
-            {
-                self.toggle_expanded();
-                response = NodeResponse::ToggleExpanded;
-            }
-        });
-
         response
     }
 
