@@ -10,179 +10,10 @@ use fireball::abstract_syntax_tree::Ast;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[derive(Clone, Copy)]
-pub struct OptimizationField {
-    pub label: &'static str,
-    pub get: fn(&OptimizationSettings) -> bool,
-    pub set: fn(&mut OptimizationSettings, bool),
-}
-
-pub const OPTIMIZATION_FIELDS: &[OptimizationField] = &[
-    OptimizationField {
-        label: "IR Analysis",
-        get: |settings| settings.ir_analyzation,
-        set: |settings, value| settings.ir_analyzation = value,
-    },
-    OptimizationField {
-        label: "Parameter Analysis",
-        get: |settings| settings.parameter_analyzation,
-        set: |settings, value| settings.parameter_analyzation = value,
-    },
-    OptimizationField {
-        label: "Call Argument Analysis",
-        get: |settings| settings.call_argument_analyzation,
-        set: |settings, value| settings.call_argument_analyzation = value,
-    },
-    OptimizationField {
-        label: "Constant Folding",
-        get: |settings| settings.constant_folding,
-        set: |settings, value| settings.constant_folding = value,
-    },
-    OptimizationField {
-        label: "Control Flow Cleanup",
-        get: |settings| settings.control_flow_cleanup,
-        set: |settings, value| settings.control_flow_cleanup = value,
-    },
-    OptimizationField {
-        label: "Collapse Unused Variable",
-        get: |settings| settings.collapse_unused_varaible,
-        set: |settings, value| settings.collapse_unused_varaible = value,
-    },
-    OptimizationField {
-        label: "Dead Store Elimination",
-        get: |settings| settings.dead_store_elimination,
-        set: |settings, value| settings.dead_store_elimination = value,
-    },
-    OptimizationField {
-        label: "Pattern Matching",
-        get: |settings| settings.pattern_matching_enabled,
-        set: |settings, value| settings.pattern_matching_enabled = value,
-    },
-    OptimizationField {
-        label: "Loop Analysis",
-        get: |settings| settings.loop_analyzation,
-        set: |settings, value| settings.loop_analyzation = value,
-    },
-    OptimizationField {
-        label: "Copy Propagation",
-        get: |settings| settings.copy_propagation,
-        set: |settings, value| settings.copy_propagation = value,
-    },
-    OptimizationField {
-        label: "Expression Inlining",
-        get: |settings| settings.expression_inlining,
-        set: |settings, value| settings.expression_inlining = value,
-    },
-    OptimizationField {
-        label: "Ternary Recovery",
-        get: |settings| settings.ternary_recovery,
-        set: |settings, value| settings.ternary_recovery = value,
-    },
-    OptimizationField {
-        label: "Boolean Recovery",
-        get: |settings| settings.boolean_recovery,
-        set: |settings, value| settings.boolean_recovery = value,
-    },
-    OptimizationField {
-        label: "Switch Reconstruction",
-        get: |settings| settings.switch_reconstruction,
-        set: |settings, value| settings.switch_reconstruction = value,
-    },
-    OptimizationField {
-        label: "Lifetime Scoping",
-        get: |settings| settings.lifetime_scoping,
-        set: |settings, value| settings.lifetime_scoping = value,
-    },
-    OptimizationField {
-        label: "Signedness Inference",
-        get: |settings| settings.signedness_inference,
-        set: |settings, value| settings.signedness_inference = value,
-    },
-    OptimizationField {
-        label: "Name Recovery",
-        get: |settings| settings.name_recovery,
-        set: |settings, value| settings.name_recovery = value,
-    },
-    OptimizationField {
-        label: "Early Return Normalization",
-        get: |settings| settings.early_return_normalization,
-        set: |settings, value| settings.early_return_normalization = value,
-    },
-    OptimizationField {
-        label: "Operator Canonicalization",
-        get: |settings| settings.operator_canonicalization,
-        set: |settings, value| settings.operator_canonicalization = value,
-    },
-    OptimizationField {
-        label: "Magic Division Recovery",
-        get: |settings| settings.magic_division_recovery,
-        set: |settings, value| settings.magic_division_recovery = value,
-    },
-    OptimizationField {
-        label: "Identity Simplification",
-        get: |settings| settings.identity_simplification,
-        set: |settings, value| settings.identity_simplification = value,
-    },
-    OptimizationField {
-        label: "Bit Trick Recognition",
-        get: |settings| settings.bit_trick_recognition,
-        set: |settings, value| settings.bit_trick_recognition = value,
-    },
-    OptimizationField {
-        label: "Cast Minimization",
-        get: |settings| settings.cast_minimization,
-        set: |settings, value| settings.cast_minimization = value,
-    },
-    OptimizationField {
-        label: "Assertion Recovery",
-        get: |settings| settings.assertion_recovery,
-        set: |settings, value| settings.assertion_recovery = value,
-    },
-    OptimizationField {
-        label: "Do-While Recovery",
-        get: |settings| settings.do_while_recovery,
-        set: |settings, value| settings.do_while_recovery = value,
-    },
-    OptimizationField {
-        label: "Clamp Recovery",
-        get: |settings| settings.clamp_recovery,
-        set: |settings, value| settings.clamp_recovery = value,
-    },
-    OptimizationField {
-        label: "Loop Cleanup",
-        get: |settings| settings.loop_cleanup,
-        set: |settings, value| settings.loop_cleanup = value,
-    },
-    OptimizationField {
-        label: "If-Conversion Reversal",
-        get: |settings| settings.if_conversion_reversal,
-        set: |settings, value| settings.if_conversion_reversal = value,
-    },
-    OptimizationField {
-        label: "Anti-Debug AST Suppression",
-        get: |settings| settings.anti_debug_ast_suppression,
-        set: |settings, value| settings.anti_debug_ast_suppression = value,
-    },
-    OptimizationField {
-        label: "Logging Suppression",
-        get: |settings| settings.logging_suppression,
-        set: |settings, value| settings.logging_suppression = value,
-    },
-    OptimizationField {
-        label: "Static Guard Suppression",
-        get: |settings| settings.static_guard_suppression,
-        set: |settings, value| settings.static_guard_suppression = value,
-    },
-    OptimizationField {
-        label: "Security Scaffold Suppression",
-        get: |settings| settings.security_scaffold_suppression,
-        set: |settings, value| settings.security_scaffold_suppression = value,
-    },
-];
-
 /// Types of optimization passes available (kept for backward compat / presets).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum OptimizationPass {
+    IrAnalyzation,
     ConstantFolding,
     ControlFlowCleanup,
     CopyPropagation,
@@ -219,6 +50,7 @@ pub enum OptimizationPass {
 impl OptimizationPass {
     pub fn name(&self) -> &'static str {
         match self {
+            Self::IrAnalyzation => "IR Analyzation",
             Self::ConstantFolding => "Constant Folding",
             Self::ControlFlowCleanup => "Control Flow Cleanup",
             Self::CopyPropagation => "Copy Propagation",
@@ -257,6 +89,7 @@ impl OptimizationPass {
         let mut settings = OptimizationSettings::none();
 
         match self {
+            Self::IrAnalyzation => settings.ir_analyzation = true,
             Self::ConstantFolding => settings.constant_folding = true,
             Self::ControlFlowCleanup => settings.control_flow_cleanup = true,
             Self::CopyPropagation => settings.copy_propagation = true,
@@ -294,7 +127,7 @@ impl OptimizationPass {
     }
 
     fn build_store(&self) -> OptimizationStore {
-        let settings = self.to_settings().with_explicit_dependencies();
+        let settings = self.to_settings();
         let fb_script_enabled = matches!(self, Self::PatternMatching(_));
         OptimizationStore {
             draft_settings: settings.clone(),
@@ -344,53 +177,25 @@ impl OptNode {
         self
     }
 
+    pub fn supports_pattern_editor(&self) -> bool {
+        self.store.fb_script_enabled
+            || self.store.applied_fb_script_enabled
+            || self.store.draft_settings.pattern_matching_enabled
+            || self.store.applied_settings.pattern_matching_enabled
+    }
+
     pub fn has_pending_changes(&self) -> bool {
-        self.store.draft_settings != self.store.applied_settings
-            || self.store.fb_script_enabled != self.store.applied_fb_script_enabled
-            || self.store.editor_buffer
-                != self.store.applied_buffer_script.clone().unwrap_or_default()
+        self.store.editor_buffer != self.store.applied_buffer_script.clone().unwrap_or_default()
     }
 
     pub fn apply_changes(&mut self) {
-        let mut applied_settings = self
-            .store
-            .draft_settings
-            .clone()
-            .with_explicit_dependencies();
-        if self.store.fb_script_enabled {
-            applied_settings.pattern_matching_enabled = true;
-        }
-
-        self.store.draft_settings = applied_settings.clone();
-        self.store.applied_settings = applied_settings;
         self.store.applied_buffer_script = self
-            .store
-            .fb_script_enabled
+            .supports_pattern_editor()
             .then_some(self.store.editor_buffer.clone());
-        self.store.applied_fb_script_enabled = self.store.fb_script_enabled;
     }
 
     pub fn reset_draft_changes(&mut self) {
-        self.store.draft_settings = self.store.applied_settings.clone();
-        self.store.fb_script_enabled = self.store.applied_fb_script_enabled;
         self.store.editor_buffer = self.store.applied_buffer_script.clone().unwrap_or_default();
-    }
-
-    pub fn set_draft_setting(&mut self, field: OptimizationField, value: bool) {
-        (field.set)(&mut self.store.draft_settings, value);
-        self.store
-            .draft_settings
-            .materialize_explicit_dependencies();
-        if self.store.fb_script_enabled {
-            self.store.draft_settings.pattern_matching_enabled = true;
-        }
-    }
-
-    pub fn set_script_enabled(&mut self, enabled: bool) {
-        self.store.fb_script_enabled = enabled;
-        if enabled {
-            self.store.draft_settings.pattern_matching_enabled = true;
-        }
     }
 }
 

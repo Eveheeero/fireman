@@ -5,7 +5,7 @@ pub mod output;
 use crate::pipeline::PipelineData;
 use egui::{Color32, Pos2, Ui};
 pub use input::InputNode;
-pub use optimization::{OPTIMIZATION_FIELDS, OptNode, OptimizationPass};
+pub use optimization::{OptNode, OptimizationPass};
 pub use output::PreviewNode;
 use serde::{Deserialize, Serialize};
 use std::{

@@ -2,8 +2,8 @@ use super::state::FirebatState;
 use crate::{
     model::{DecompileRequest, DecompileResult, OptimizeAstRequest},
     node::{
-        InputNode, Node, NodeGraph, NodeId, NodePosition, NodeResponse, NodeType,
-        OPTIMIZATION_FIELDS, OptNode, OptimizationPass, PreviewNode,
+        InputNode, Node, NodeGraph, NodeId, NodePosition, NodeResponse, NodeType, OptNode,
+        OptimizationPass, PreviewNode,
     },
     pipeline::PipelineData,
     theme::configure_theme,
@@ -39,13 +39,6 @@ pub(crate) struct FirebatApp {
     selected_pass_type: OptimizationPass,
     connecting_from: Option<NodeId>,
     active_pipeline_input: Option<NodeId>,
-    optimization_panel_tab: OptimizationPanelTab,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum OptimizationPanelTab {
-    Settings,
-    Script,
 }
 
 impl Default for FirebatApp {
@@ -85,7 +78,6 @@ impl Default for FirebatApp {
             selected_pass_type: OptimizationPass::ConstantFolding,
             connecting_from: None,
             active_pipeline_input: None,
-            optimization_panel_tab: OptimizationPanelTab::Settings,
         }
     }
 }
@@ -273,8 +265,13 @@ impl FirebatApp {
             .downcast_ref::<OptNode>()
     }
 
-    fn is_optimization_node_selected(&self) -> bool {
-        self.selected_optimization_node().is_some()
+    fn selected_pattern_matching_node(&self) -> Option<&OptNode> {
+        self.selected_optimization_node()
+            .filter(|node| node.supports_pattern_editor())
+    }
+
+    fn is_pattern_matching_node_selected(&self) -> bool {
+        self.selected_pattern_matching_node().is_some()
     }
 
     fn render_toolbar(&mut self, ui: &mut egui::Ui) {
@@ -356,6 +353,11 @@ impl FirebatApp {
                     .selected_text(self.selected_pass_type.name())
                     .width(200.0)
                     .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut self.selected_pass_type,
+                            OptimizationPass::IrAnalyzation,
+                            OptimizationPass::IrAnalyzation.name(),
+                        );
                         ui.selectable_value(
                             &mut self.selected_pass_type,
                             OptimizationPass::ConstantFolding,
@@ -518,7 +520,6 @@ impl FirebatApp {
         let id = node.id();
         self.graph.add_node(node);
         self.selected_node = Some(id);
-        self.optimization_panel_tab = OptimizationPanelTab::Settings;
         self.set_status(format!("Added {} node", node_type.name()));
     }
 
@@ -713,17 +714,12 @@ impl FirebatApp {
         self.camera_offset = response.camera_offset;
         self.zoom = response.zoom;
         self.dragged_node = response.dragged_node;
-        let previous_selected = self.selected_node;
         self.selected_node = response.selected_node;
         self.connecting_from = response.connecting_from;
 
         if let Some(node_id) = response.deleted_node {
             self.remove_node(node_id);
             self.set_status("Node deleted");
-        }
-
-        if self.selected_node != previous_selected {
-            self.optimization_panel_tab = OptimizationPanelTab::Settings;
         }
 
         if let Some((from, to)) = response.completed_connection {
@@ -949,11 +945,10 @@ impl FirebatApp {
         let Some(selected_node) = self.selected_node else {
             return;
         };
-        if !self.is_optimization_node_selected() {
+        if !self.is_pattern_matching_node_selected() {
             return;
         }
 
-        let mut active_tab = self.optimization_panel_tab;
         let mut request_rerun = false;
         let mut next_status = None;
 
@@ -969,12 +964,10 @@ impl FirebatApp {
                     return;
                 };
 
-                let settings_dirty = node.store.draft_settings != node.store.applied_settings;
-                let script_dirty = node.store.fb_script_enabled != node.store.applied_fb_script_enabled
-                    || node.store.editor_buffer
-                        != node.store.applied_buffer_script.clone().unwrap_or_default();
+                let script_dirty =
+                    node.store.editor_buffer != node.store.applied_buffer_script.clone().unwrap_or_default();
 
-                ui.heading("Optimization");
+                ui.heading("Pattern Matching");
                 ui.add_space(8.0);
                 ui.label(node.name());
                 ui.small(node.summary());
@@ -982,73 +975,26 @@ impl FirebatApp {
                     ui.small("Pending changes are not active until Apply is pressed.");
                 }
 
-                ui.add_space(8.0);
-                ui.horizontal(|ui| {
-                    ui.selectable_value(
-                        &mut active_tab,
-                        OptimizationPanelTab::Settings,
-                        if settings_dirty {
-                            "Settings *"
-                        } else {
-                            "Settings"
-                        },
-                    );
-                    ui.selectable_value(
-                        &mut active_tab,
-                        OptimizationPanelTab::Script,
-                        if script_dirty { ".fb Script *" } else { ".fb Script" },
-                    );
-                });
                 ui.separator();
 
                 ScrollArea::vertical()
                     .auto_shrink([false, false])
-                    .show(ui, |ui| match active_tab {
-                        OptimizationPanelTab::Settings => {
-                            for field in OPTIMIZATION_FIELDS {
-                                let mut enabled = (field.get)(&node.store.draft_settings);
-                                if ui.checkbox(&mut enabled, field.label).changed() {
-                                    node.set_draft_setting(*field, enabled);
-                                }
-                            }
-
-                            ui.separator();
-                            ui.horizontal(|ui| {
-                                ui.label("Max Pass Iterations");
-                                ui.add(
-                                    egui::DragValue::new(
-                                        &mut node.store.draft_settings.max_pass_iterations,
-                                    )
-                                    .range(1..=16),
-                                );
-                            });
-
-                            ui.checkbox(
-                                &mut node.store.draft_settings.use_embedded_passes,
-                                "Use Embedded Passes",
-                            );
+                    .show(ui, |ui| {
+                        if script_dirty {
+                            ui.small(".fb Script *");
+                        } else {
+                            ui.small(".fb Script");
                         }
-                        OptimizationPanelTab::Script => {
-                            let mut script_enabled = node.store.fb_script_enabled;
-                            if ui
-                                .checkbox(&mut script_enabled, "Enable .fb buffer script")
-                                .changed()
-                            {
-                                node.set_script_enabled(script_enabled);
-                            }
-
-                            ui.small(
-                                "The buffer script is applied together with the node settings when Apply is pressed.",
-                            );
-                            ui.add_space(8.0);
-                            ui.add_enabled(
-                                node.store.fb_script_enabled,
-                                egui::TextEdit::multiline(&mut node.store.editor_buffer)
-                                    .font(egui::TextStyle::Monospace)
-                                    .desired_rows(22)
-                                    .desired_width(f32::INFINITY),
-                            );
-                        }
+                        ui.small(
+                            "The buffer script is applied together with the Pattern Matching node when Apply is pressed.",
+                        );
+                        ui.add_space(8.0);
+                        ui.add(
+                            egui::TextEdit::multiline(&mut node.store.editor_buffer)
+                                .font(egui::TextStyle::Monospace)
+                                .desired_rows(22)
+                                .desired_width(f32::INFINITY),
+                        );
                     });
 
                 ui.separator();
@@ -1070,7 +1016,6 @@ impl FirebatApp {
                 });
             });
 
-        self.optimization_panel_tab = active_tab;
         if let Some(status) = next_status {
             self.set_status(status);
         }
@@ -1243,7 +1188,7 @@ impl eframe::App for FirebatApp {
 
         if self.is_input_node_selected() {
             self.render_input_panel(ctx);
-        } else if self.is_optimization_node_selected() {
+        } else if self.is_pattern_matching_node_selected() {
             self.render_optimization_panel(ctx);
         } else if self.is_preview_node_selected() {
             self.render_preview_panel(ctx);
