@@ -2,14 +2,14 @@ use fireball::abstract_syntax_tree::{Ast, AstOptimizationConfig, pattern_matchin
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KnownSectionData {
     pub start_address: u64,
     pub end_address: Option<u64>,
     pub analyzed: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KnownSection {
     pub selected: bool,
     pub data: KnownSectionData,
@@ -183,6 +183,36 @@ pub struct OptimizeAstRequest {
 pub struct OptimizeAstResult {
     pub ast: Arc<fireball::abstract_syntax_tree::Ast>,
     pub ast_lines: Vec<AstLine>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PersistedViewport {
+    pub camera_offset_x: f32,
+    pub camera_offset_y: f32,
+    pub zoom: f32,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PersistedNode {
+    pub id: u64,
+    pub kind: String,
+    pub data: serde_json::Value,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PersistedConnection {
+    pub from: u64,
+    pub to: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct GraphPreset {
+    pub schema_version: u32,
+    pub viewport: PersistedViewport,
+    pub nodes: Vec<PersistedNode>,
+    pub connections: Vec<PersistedConnection>,
+    pub known_sections: Vec<KnownSection>,
+    pub analyze_target_address: String,
 }
 
 pub fn build_optimization_config(

@@ -2,7 +2,10 @@ pub mod input;
 pub mod optimization;
 pub mod output;
 
-use crate::pipeline::PipelineData;
+use crate::{
+    model::{GraphPreset, PersistedConnection, PersistedNode},
+    pipeline::PipelineData,
+};
 use egui::{Color32, Pos2, Ui};
 pub use input::InputNode;
 pub use optimization::{OptNode, OptimizationPass};
@@ -288,6 +291,85 @@ impl NodeGraph {
     /// Get node count
     pub fn len(&self) -> usize {
         self.nodes.len()
+    }
+
+    pub fn serialize_nodes(&self) -> Vec<PersistedNode> {
+        self.nodes
+            .iter()
+            .map(|node| PersistedNode {
+                id: node.id().0,
+                kind: match node.node_type() {
+                    NodeType::Input => "InputNode".to_string(),
+                    NodeType::Opt => "OptNode".to_string(),
+                    NodeType::Preview => "PreviewNode".to_string(),
+                },
+                data: node.serialize(),
+            })
+            .collect()
+    }
+
+    pub fn serialize_connections(&self) -> Vec<PersistedConnection> {
+        self.connections
+            .iter()
+            .map(|(from, to)| PersistedConnection {
+                from: from.0,
+                to: to.0,
+            })
+            .collect()
+    }
+
+    pub fn from_preset(preset: &GraphPreset) -> Result<(Self, NodeIdMap), String> {
+        let mut graph = Self::new();
+        let mut id_map = NodeIdMap::default();
+
+        for persisted in &preset.nodes {
+            let Some(mut node) = instantiate_node(&persisted.kind) else {
+                return Err(format!("Unsupported node type {}", persisted.kind));
+            };
+            node.deserialize(&persisted.data);
+            let new_id = node.id();
+            id_map.insert(persisted.id, new_id);
+            graph.add_node(node);
+        }
+
+        for connection in &preset.connections {
+            let Some(from_id) = id_map.get(connection.from) else {
+                continue;
+            };
+            let Some(to_id) = id_map.get(connection.to) else {
+                continue;
+            };
+            graph.add_connection(from_id, to_id);
+        }
+
+        Ok((graph, id_map))
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct NodeIdMap {
+    entries: Vec<(u64, NodeId)>,
+}
+
+impl NodeIdMap {
+    pub fn insert(&mut self, persisted_id: u64, runtime_id: NodeId) {
+        self.entries.push((persisted_id, runtime_id));
+    }
+
+    pub fn get(&self, persisted_id: u64) -> Option<NodeId> {
+        self.entries
+            .iter()
+            .find(|(saved_id, _)| *saved_id == persisted_id)
+            .map(|(_, runtime_id)| *runtime_id)
+    }
+}
+
+fn instantiate_node(kind: &str) -> Option<Box<dyn Node>> {
+    match kind {
+        "InputNode" => Some(Box::new(InputNode::new())),
+        "OptNode" => Some(Box::new(OptNode::new())),
+        "PreviewNode" => Some(Box::new(PreviewNode::new())),
+        _ => None,
     }
 }
 

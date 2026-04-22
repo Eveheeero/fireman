@@ -1,5 +1,5 @@
 use crate::{
-    model::{DecompileResult, KnownSection, KnownSectionData, OptimizeAstResult},
+    model::{DecompileResult, GraphPreset, KnownSection, KnownSectionData, OptimizeAstResult},
     node::NodeId,
     worker::{FirebatWorker, WorkerRequest, WorkerResponse, WorkerTryRecv},
 };
@@ -204,6 +204,12 @@ impl FirebatState {
         self.reset_pipeline_state();
     }
 
+    pub(super) fn restore_preset_state(&mut self, preset: &GraphPreset) {
+        self.reset_pipeline_state();
+        self.known_sections = preset.known_sections.clone();
+        self.analyze_target_address = preset.analyze_target_address.clone();
+    }
+
     pub(super) fn open_file(&mut self) -> Option<PathBuf> {
         let Some(path) = FileDialog::new().pick_file() else {
             self.log("Open canceled");
@@ -219,6 +225,12 @@ impl FirebatState {
         let path_string = path.to_string_lossy().to_string();
         self.reset_pipeline_state();
         self.log(format!("Open fireball with {path_string}"));
+        self.queue_request(WorkerRequest::OpenFile(path_string));
+    }
+
+    pub(super) fn reopen_loaded_path(&mut self, path: impl AsRef<Path>) {
+        let path_string = path.as_ref().to_string_lossy().to_string();
+        self.log(format!("Reopen fireball with {path_string}"));
         self.queue_request(WorkerRequest::OpenFile(path_string));
     }
 

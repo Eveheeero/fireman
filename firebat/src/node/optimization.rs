@@ -177,6 +177,11 @@ impl OptNode {
         self
     }
 
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
+        self.name = name.into();
+        self
+    }
+
     pub fn supports_pattern_editor(&self) -> bool {
         self.store.fb_script_enabled
             || self.store.applied_fb_script_enabled

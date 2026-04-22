@@ -1,9 +1,11 @@
 use super::state::FirebatState;
 use crate::{
-    model::{DecompileRequest, DecompileResult, OptimizeAstRequest},
+    model::{
+        DecompileRequest, DecompileResult, GraphPreset, OptimizeAstRequest, PersistedViewport,
+    },
     node::{
-        InputNode, Node, NodeGraph, NodeId, NodePosition, NodeResponse, NodeType, OptNode,
-        OptimizationPass, PreviewNode,
+        InputNode, Node, NodeGraph, NodeId, NodeIdMap, NodePosition, NodeResponse, NodeType,
+        OptNode, OptimizationPass, PreviewNode,
     },
     pipeline::PipelineData,
     theme::configure_theme,
@@ -15,8 +17,10 @@ use eframe::{
     egui::{RichText, ScrollArea, Vec2},
 };
 use fireball::abstract_syntax_tree::Ast;
+use rfd::FileDialog;
 use std::{
     collections::{HashSet, VecDeque},
+    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -43,22 +47,8 @@ pub(crate) struct FirebatApp {
 
 impl Default for FirebatApp {
     fn default() -> Self {
-        let mut graph = NodeGraph::new();
-
-        // New simplified pipeline: Input → Output
-        // Optimization nodes can be added between them
-        let mut input = InputNode::new();
-        input.set_position(NodePosition::new(50.0, 50.0));
-        graph.add_node(Box::new(input));
-
-        let mut output = PreviewNode::new();
-        output.set_position(NodePosition::new(500.0, 50.0));
-        graph.add_node(Box::new(output));
-
-        let input_id = graph.nodes()[0].id();
-        let output_id = graph.nodes()[1].id();
-
-        graph.add_connection(input_id, output_id);
+        let graph = build_default_graph();
+        let selected_node = graph.nodes().first().map(|node| node.id());
 
         Self {
             graph,
@@ -69,7 +59,7 @@ impl Default for FirebatApp {
             applied_dark_mode: None,
             last_frame_tick: None,
             frame_samples_ms: VecDeque::with_capacity(240),
-            selected_node: None,
+            selected_node,
             dragged_node: None,
             camera_offset: Vec2::new(-20.0, -20.0),
             zoom: 1.0,
@@ -156,6 +146,113 @@ impl FirebatApp {
         self.dragged_node = None;
         self.connecting_from = None;
         self.active_pipeline_input = None;
+    }
+
+    fn replace_graph(&mut self, graph: NodeGraph) {
+        self.graph = graph;
+        self.state.clear_loaded_input_session();
+        self.selected_node = None;
+        self.dragged_node = None;
+        self.connecting_from = None;
+        self.active_pipeline_input = None;
+    }
+
+    fn preset_snapshot(&self) -> GraphPreset {
+        GraphPreset {
+            schema_version: 1,
+            viewport: PersistedViewport {
+                camera_offset_x: self.camera_offset.x,
+                camera_offset_y: self.camera_offset.y,
+                zoom: self.zoom,
+            },
+            nodes: self.graph.serialize_nodes(),
+            connections: self.graph.serialize_connections(),
+            known_sections: self.state.known_sections.clone(),
+            analyze_target_address: self.state.analyze_target_address.clone(),
+        }
+    }
+
+    fn save_preset(&mut self) {
+        let Some(path) = FileDialog::new()
+            .add_filter("Firebat Preset", &["json"])
+            .set_file_name("firebat-preset.json")
+            .save_file()
+        else {
+            self.set_status("Preset save canceled");
+            return;
+        };
+
+        match serde_json::to_string_pretty(&self.preset_snapshot()) {
+            Ok(json) => match std::fs::write(&path, json) {
+                Ok(()) => {
+                    self.set_status(format!("Preset saved: {}", path.display()));
+                    self.state.log(format!("Preset saved {}", path.display()));
+                }
+                Err(error) => self.set_status(format!("Preset save failed: {error}")),
+            },
+            Err(error) => self.set_status(format!("Preset save failed: {error}")),
+        }
+    }
+
+    fn load_preset(&mut self) {
+        let Some(path) = FileDialog::new()
+            .add_filter("Firebat Preset", &["json"])
+            .pick_file()
+        else {
+            self.set_status("Preset load canceled");
+            return;
+        };
+
+        let preset = match std::fs::read_to_string(&path)
+            .map_err(|error| error.to_string())
+            .and_then(|json| {
+                serde_json::from_str::<GraphPreset>(&json).map_err(|error| error.to_string())
+            }) {
+            Ok(preset) => preset,
+            Err(error) => {
+                self.set_status(format!("Preset load failed: {error}"));
+                return;
+            }
+        };
+
+        let input_path = first_input_path(&preset);
+        let selected_node = self.selected_node_from_preset(&preset, input_path.as_ref());
+        match selected_node {
+            Ok((graph, id_map)) => {
+                self.replace_graph(graph);
+                self.state.restore_preset_state(&preset);
+                self.camera_offset = Vec2::new(
+                    preset.viewport.camera_offset_x,
+                    preset.viewport.camera_offset_y,
+                );
+                self.zoom = preset.viewport.zoom.max(0.1);
+                self.selected_node = selected_node_id(&preset, &id_map);
+
+                if let Some(path) = input_path {
+                    if path.exists() {
+                        self.state.reopen_loaded_path(&path);
+                        self.set_status(format!("Preset loaded: {}", path.display()));
+                    } else {
+                        self.set_status(format!(
+                            "Preset loaded, but input file is missing: {}",
+                            path.display()
+                        ));
+                    }
+                } else {
+                    self.set_status("Preset loaded");
+                }
+                self.state.log(format!("Preset loaded {}", path.display()));
+            }
+            Err(error) => self.set_status(format!("Preset load failed: {error}")),
+        }
+    }
+
+    fn selected_node_from_preset(
+        &self,
+        preset: &GraphPreset,
+        _input_path: Option<&PathBuf>,
+    ) -> Result<(NodeGraph, NodeIdMap), String> {
+        NodeGraph::from_preset(preset)
     }
 
     fn remove_node(&mut self, node_id: NodeId) {
@@ -276,6 +373,16 @@ impl FirebatApp {
 
     fn render_toolbar(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
+            if ui.button("Save Preset").clicked() {
+                self.save_preset();
+            }
+
+            if ui.button("Load Preset").clicked() {
+                self.load_preset();
+            }
+
+            ui.add_space(8.0);
+
             let add_response = ui.button("+ Add Node");
             if add_response.clicked() {
                 self.show_add_node_menu = !self.show_add_node_menu;
@@ -348,10 +455,16 @@ impl FirebatApp {
                 }
 
                 ui.add_space(8.0);
+                if ui.button("Pattern Matching").clicked() {
+                    self.add_pattern_matching_node_at_center();
+                    self.show_add_node_menu = false;
+                }
+
+                ui.add_space(12.0);
                 ui.label("Optimization:");
                 egui::ComboBox::from_id_salt("pass_selector")
                     .selected_text(self.selected_pass_type.name())
-                    .width(200.0)
+                    .width(320.0)
                     .show_ui(ui, |ui| {
                         ui.selectable_value(
                             &mut self.selected_pass_type,
@@ -395,8 +508,8 @@ impl FirebatApp {
                         );
                         ui.selectable_value(
                             &mut self.selected_pass_type,
-                            OptimizationPass::PatternMatching(Vec::new()),
-                            OptimizationPass::PatternMatching(Vec::new()).name(),
+                            OptimizationPass::CallArgumentAnalysis,
+                            OptimizationPass::CallArgumentAnalysis.name(),
                         );
                         ui.selectable_value(
                             &mut self.selected_pass_type,
@@ -415,8 +528,28 @@ impl FirebatApp {
                         );
                         ui.selectable_value(
                             &mut self.selected_pass_type,
+                            OptimizationPass::LifetimeScoping,
+                            OptimizationPass::LifetimeScoping.name(),
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_pass_type,
+                            OptimizationPass::SignednessInference,
+                            OptimizationPass::SignednessInference.name(),
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_pass_type,
                             OptimizationPass::NameRecovery,
                             OptimizationPass::NameRecovery.name(),
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_pass_type,
+                            OptimizationPass::EarlyReturnNormalization,
+                            OptimizationPass::EarlyReturnNormalization.name(),
+                        );
+                        ui.selectable_value(
+                            &mut self.selected_pass_type,
+                            OptimizationPass::CollapseUnusedVariable,
+                            OptimizationPass::CollapseUnusedVariable.name(),
                         );
                         ui.selectable_value(
                             &mut self.selected_pass_type,
@@ -490,7 +623,7 @@ impl FirebatApp {
                         );
                     });
 
-                if ui.button("Optimization").clicked() {
+                if ui.button("Add Optimization").clicked() {
                     self.add_node_at_center(NodeType::Opt);
                     self.show_add_node_menu = false;
                 }
@@ -521,6 +654,19 @@ impl FirebatApp {
         self.graph.add_node(node);
         self.selected_node = Some(id);
         self.set_status(format!("Added {} node", node_type.name()));
+    }
+
+    fn add_pattern_matching_node_at_center(&mut self) {
+        let center_x = -self.camera_offset.x + 400.0;
+        let center_y = -self.camera_offset.y + 300.0;
+        let node = Box::new(
+            OptNode::for_pass(OptimizationPass::PatternMatching(Vec::new()))
+                .with_position(center_x, center_y),
+        );
+        let id = node.id();
+        self.graph.add_node(node);
+        self.selected_node = Some(id);
+        self.set_status("Added Pattern Matching node");
     }
 
     fn start_pipeline(&mut self) {
@@ -1284,6 +1430,181 @@ fn outgoing_targets(
         .iter()
         .filter(move |(source_id, _)| *source_id == from)
         .map(|(_, target_id)| *target_id)
+}
+
+fn selected_node_id(preset: &GraphPreset, id_map: &NodeIdMap) -> Option<NodeId> {
+    preset
+        .nodes
+        .iter()
+        .find(|node| node.kind == "InputNode")
+        .and_then(|node| id_map.get(node.id))
+}
+
+fn first_input_path(preset: &GraphPreset) -> Option<PathBuf> {
+    preset
+        .nodes
+        .iter()
+        .find(|node| node.kind == "InputNode")
+        .and_then(|node| node.data.get("file_path"))
+        .and_then(|value| value.as_str())
+        .map(PathBuf::from)
+}
+
+fn build_default_graph() -> NodeGraph {
+    let mut graph = NodeGraph::new();
+    let steps = default_graph_steps();
+    let total_rows = steps.len().div_ceil(4);
+
+    let input = Box::new(InputNode::with_position(40.0, 80.0));
+    let input_id = input.id();
+    graph.add_node(input);
+    let mut previous_id = input_id;
+
+    for (index, (label, pass)) in steps.into_iter().enumerate() {
+        let row = index / 4;
+        let column = index % 4;
+        let x = 280.0 + (column as f32 * 260.0);
+        let y = 80.0 + (row as f32 * 170.0);
+        let node = Box::new(OptNode::for_pass(pass).with_name(label).with_position(x, y));
+        let node_id = node.id();
+        graph.add_node(node);
+        graph.add_connection(previous_id, node_id);
+        previous_id = node_id;
+    }
+
+    let preview = Box::new(PreviewNode::with_position(
+        40.0,
+        80.0 + (total_rows as f32 * 170.0),
+    ));
+    let preview_id = preview.id();
+    graph.add_node(preview);
+    graph.add_connection(previous_id, preview_id);
+
+    graph
+}
+
+fn default_graph_steps() -> Vec<(String, OptimizationPass)> {
+    let mut steps = vec![
+        (
+            "Pattern Matching Before IR".to_string(),
+            OptimizationPass::PatternMatching(Vec::new()),
+        ),
+        (
+            OptimizationPass::IrAnalyzation.name().to_string(),
+            OptimizationPass::IrAnalyzation,
+        ),
+        (
+            "Pattern Matching After IR".to_string(),
+            OptimizationPass::PatternMatching(Vec::new()),
+        ),
+        (
+            OptimizationPass::ParameterAnalysis.name().to_string(),
+            OptimizationPass::ParameterAnalysis,
+        ),
+        (
+            "Pattern Matching After Parameter".to_string(),
+            OptimizationPass::PatternMatching(Vec::new()),
+        ),
+        (
+            OptimizationPass::CallArgumentAnalysis.name().to_string(),
+            OptimizationPass::CallArgumentAnalysis,
+        ),
+        (
+            "Constant Folding After Call Args".to_string(),
+            OptimizationPass::ConstantFolding,
+        ),
+        (
+            "Pattern Matching After Call Args".to_string(),
+            OptimizationPass::PatternMatching(Vec::new()),
+        ),
+        (
+            OptimizationPass::SignednessInference.name().to_string(),
+            OptimizationPass::SignednessInference,
+        ),
+    ];
+
+    let iterative_passes = [
+        OptimizationPass::OperatorCanonicalization,
+        OptimizationPass::MagicDivisionRecovery,
+        OptimizationPass::ConstantFolding,
+        OptimizationPass::CopyPropagation,
+        OptimizationPass::ExpressionInlining,
+        OptimizationPass::LoopAnalysis,
+        OptimizationPass::CollapseUnusedVariable,
+        OptimizationPass::DeadStoreElimination,
+        OptimizationPass::ControlFlowCleanup,
+        OptimizationPass::BooleanRecovery,
+        OptimizationPass::TernaryRecovery,
+        OptimizationPass::AssertionRecovery,
+        OptimizationPass::DoWhileRecovery,
+        OptimizationPass::ClampRecovery,
+        OptimizationPass::LoopCleanup,
+        OptimizationPass::AntiDebugAstSuppression,
+        OptimizationPass::LoggingSuppression,
+        OptimizationPass::StaticGuardSuppression,
+        OptimizationPass::SecurityScaffoldSuppression,
+        OptimizationPass::IfConversionReversal,
+        OptimizationPass::IdentitySimplification,
+        OptimizationPass::BitTrickRecognition,
+        OptimizationPass::CastMinimization,
+    ];
+
+    for iteration in 1..=3 {
+        for pass in iterative_passes.iter().cloned() {
+            steps.push((format!("{} Pass {}", pass.name(), iteration), pass));
+        }
+        steps.push((
+            format!("Pattern Matching Pass {iteration}"),
+            OptimizationPass::PatternMatching(Vec::new()),
+        ));
+    }
+
+    steps.extend([
+        (
+            "Control Flow Cleanup Goto Containment".to_string(),
+            OptimizationPass::ControlFlowCleanup,
+        ),
+        (
+            "Loop Analysis Induction Variables".to_string(),
+            OptimizationPass::LoopAnalysis,
+        ),
+        (
+            OptimizationPass::SwitchReconstruction.name().to_string(),
+            OptimizationPass::SwitchReconstruction,
+        ),
+        (
+            OptimizationPass::EarlyReturnNormalization
+                .name()
+                .to_string(),
+            OptimizationPass::EarlyReturnNormalization,
+        ),
+        (
+            "Expression Inlining Temporary Elimination".to_string(),
+            OptimizationPass::ExpressionInlining,
+        ),
+        (
+            "Collapse Unused Variable Coalescing".to_string(),
+            OptimizationPass::CollapseUnusedVariable,
+        ),
+        (
+            OptimizationPass::LifetimeScoping.name().to_string(),
+            OptimizationPass::LifetimeScoping,
+        ),
+        (
+            OptimizationPass::NameRecovery.name().to_string(),
+            OptimizationPass::NameRecovery,
+        ),
+        (
+            "Pattern Matching After Optimization".to_string(),
+            OptimizationPass::PatternMatching(Vec::new()),
+        ),
+    ]);
+
+    steps
+        .into_iter()
+        .enumerate()
+        .map(|(index, (label, pass))| (format!("{:02}. {label}", index + 1), pass))
+        .collect()
 }
 
 fn build_base_decompile_request(addresses: Vec<u64>) -> DecompileRequest {
