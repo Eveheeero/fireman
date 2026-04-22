@@ -123,8 +123,11 @@ impl<'a> GraphCanvas<'a> {
                     .layout(egui::Layout::top_down(egui::Align::LEFT)),
             );
 
-            let block_response = ScratchBlockRenderer::render(&mut child_ui, node.as_mut(), &ctx);
-            let interactive_rect = block_response.rect.expand2(Vec2::new(20.0, 8.0));
+            let block_response =
+                ScratchBlockRenderer::render(&mut child_ui, node.as_mut(), &ctx, self.zoom);
+            let interactive_rect = block_response
+                .rect
+                .expand2(Vec2::new(20.0 * self.zoom, 8.0 * self.zoom));
             let node_response = ui.interact(
                 interactive_rect,
                 ui.id().with(("node", node.id().0)),
@@ -231,20 +234,20 @@ impl<'a> GraphCanvas<'a> {
             node_layouts.iter().rev().find_map(|layout| {
                 layout
                     .rect
-                    .expand2(Vec2::new(20.0, 8.0))
+                    .expand2(Vec2::new(20.0 * self.zoom, 8.0 * self.zoom))
                     .contains(pointer)
                     .then_some(layout.node_id)
             })
         });
         let pointer_over_node = hovered_node.is_some();
-        let deleted_node = response
-            .clicked_by(egui::PointerButton::Secondary)
-            .then_some(hovered_node)
-            .flatten();
+        let secondary_clicked = ui
+            .input(|input| input.pointer.button_clicked(egui::PointerButton::Secondary))
+            && pointer_pos.is_some_and(|pointer| rect.contains(pointer));
+        let deleted_node = secondary_clicked.then_some(hovered_node).flatten();
         let removed_connection = if deleted_node.is_none() {
             remove_connection_request(
                 pointer_over_node,
-                response.clicked_by(egui::PointerButton::Secondary),
+                secondary_clicked,
                 pointer_pos,
                 &connection_visuals,
                 10.0 * self.zoom,
