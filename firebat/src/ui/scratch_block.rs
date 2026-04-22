@@ -1,5 +1,5 @@
 use crate::node::{Node, NodeContext, NodeResponse, NodeType};
-use egui::{Color32, Frame, Margin, Pos2, Rect, Sense, Stroke, Ui, Vec2};
+use egui::{Align2, Color32, FontId, Frame, Margin, Pos2, Rect, Sense, Stroke, Ui, Vec2};
 
 /// Helper function to get darker version of a color
 fn darker_color(color: Color32, factor: f32) -> Color32 {
@@ -128,17 +128,16 @@ impl ScratchBlockRenderer {
         let painter = ui.painter();
 
         let mut input_port_clicked = false;
-        let mut output_port_clicked = false;
+        let mut output_port_clicked = None;
         let mut input_port_drag_started = false;
-        let mut output_port_drag_started = false;
+        let mut output_port_drag_started = None;
         let mut input_port_pos = None;
-        let mut output_port_pos = None;
+        let mut output_port_positions = Vec::new();
 
         // Input port on the left for nodes that accept a linear template or AST input.
         if matches!(
             node_type,
             NodeType::Opt
-                | NodeType::LoopMacro
                 | NodeType::IfMacro
                 | NodeType::VariableMacro
                 | NodeType::ArithmeticMacro
@@ -172,38 +171,70 @@ impl ScratchBlockRenderer {
             node_type,
             NodeType::Input
                 | NodeType::Opt
-                | NodeType::LoopMacro
                 | NodeType::IfMacro
                 | NodeType::VariableMacro
                 | NodeType::ArithmeticMacro
         ) {
-            let output_pos = Pos2::new(block_rect.max.x + port_offset, center_y);
-            output_port_pos = Some(output_pos);
+            let output_ports = match node_type {
+                NodeType::IfMacro => [
+                    (
+                        0usize,
+                        Pos2::new(block_rect.max.x + port_offset, center_y - (18.0 * zoom)),
+                    ),
+                    (
+                        1usize,
+                        Pos2::new(block_rect.max.x + port_offset, center_y + (18.0 * zoom)),
+                    ),
+                ]
+                .into_iter()
+                .collect::<Vec<_>>(),
+                _ => vec![(0usize, Pos2::new(block_rect.max.x + port_offset, center_y))],
+            };
 
-            // Draw the port
-            painter.circle_filled(output_pos, port_radius, port_color);
-            painter.circle_stroke(
-                output_pos,
-                port_radius,
-                Stroke::new(2.0 * zoom, Color32::WHITE),
-            );
+            for (port_index, output_pos) in output_ports {
+                output_port_positions.push(OutputPortAnchor {
+                    index: port_index,
+                    pos: output_pos,
+                });
 
-            // Make output port clickable
-            let output_port_rect =
-                Rect::from_center_size(output_pos, Vec2::new(port_hit_size, port_hit_size));
-            let output_response = ui.interact(
-                output_port_rect,
-                ui.id().with((node.id().0, "output_port")),
-                Sense::click_and_drag(),
-            );
-            output_port_clicked = output_response.clicked();
-            output_port_drag_started = output_response.drag_started();
+                painter.circle_filled(output_pos, port_radius, port_color);
+                painter.circle_stroke(
+                    output_pos,
+                    port_radius,
+                    Stroke::new(2.0 * zoom, Color32::WHITE),
+                );
+
+                if matches!(node_type, NodeType::IfMacro) {
+                    let label = if port_index == 0 { "T" } else { "F" };
+                    painter.text(
+                        Pos2::new(output_pos.x + (18.0 * zoom), output_pos.y),
+                        Align2::LEFT_CENTER,
+                        label,
+                        FontId::proportional(11.0 * zoom),
+                        Color32::WHITE,
+                    );
+                }
+
+                let output_port_rect =
+                    Rect::from_center_size(output_pos, Vec2::new(port_hit_size, port_hit_size));
+                let output_response = ui.interact(
+                    output_port_rect,
+                    ui.id().with((node.id().0, "output_port", port_index)),
+                    Sense::click_and_drag(),
+                );
+                if output_response.clicked() {
+                    output_port_clicked = Some(port_index);
+                }
+                if output_response.drag_started() {
+                    output_port_drag_started = Some(port_index);
+                }
+            }
         }
 
         // Determine the response based on port clicks
         let inner_response = if input_port_clicked {
             NodeResponse::InputPortClicked
-        } else if output_port_clicked {
+        } else if output_port_clicked.is_some() {
             NodeResponse::OutputPortClicked
         } else {
             response.inner.inner
@@ -217,7 +248,7 @@ impl ScratchBlockRenderer {
             input_port_drag_started,
             output_port_drag_started,
             input_port_pos,
-            output_port_pos,
+            output_port_positions,
         }
     }
 
@@ -239,9 +270,15 @@ pub struct BlockResponse {
     pub rect: Rect,
     pub inner: NodeResponse,
     pub input_port_clicked: bool,
-    pub output_port_clicked: bool,
+    pub output_port_clicked: Option<usize>,
     pub input_port_drag_started: bool,
-    pub output_port_drag_started: bool,
+    pub output_port_drag_started: Option<usize>,
     pub input_port_pos: Option<Pos2>,
-    pub output_port_pos: Option<Pos2>,
+    pub output_port_positions: Vec<OutputPortAnchor>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct OutputPortAnchor {
+    pub index: usize,
+    pub pos: Pos2,
 }

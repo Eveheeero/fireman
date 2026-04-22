@@ -4,7 +4,7 @@ use crate::{
         DecompileRequest, DecompileResult, GraphPreset, OptimizeAstRequest, PersistedViewport,
     },
     node::{
-        ArithmeticMacroNode, ArithmeticOperation, IfMacroNode, InputNode, LoopMacroNode,
+        ArithmeticMacroNode, ArithmeticOperation, Connection, IfMacroNode, InputNode,
         MacroComparison, Node, NodeGraph, NodeId, NodeIdMap, NodePosition, NodeResponse, NodeType,
         OptNode, OptimizationPass, PreviewNode, VariableMacroNode,
     },
@@ -42,7 +42,7 @@ pub(crate) struct FirebatApp {
     status_message: Option<String>,
     status_timer: Option<Instant>,
     selected_pass_type: OptimizationPass,
-    connecting_from: Option<NodeId>,
+    connecting_from: Option<(NodeId, usize)>,
     active_pipeline_input: Option<NodeId>,
 }
 
@@ -160,7 +160,7 @@ impl FirebatApp {
 
     fn preset_snapshot(&self) -> GraphPreset {
         GraphPreset {
-            schema_version: 1,
+            schema_version: 2,
             viewport: PersistedViewport {
                 camera_offset_x: self.camera_offset.x,
                 camera_offset_y: self.camera_offset.y,
@@ -271,7 +271,10 @@ impl FirebatApp {
         if self.dragged_node == Some(node_id) {
             self.dragged_node = None;
         }
-        if self.connecting_from == Some(node_id) {
+        if self
+            .connecting_from
+            .is_some_and(|(connecting_node, _)| connecting_node == node_id)
+        {
             self.connecting_from = None;
         }
     }
@@ -367,12 +370,15 @@ impl FirebatApp {
             .downcast_ref::<OptNode>()
     }
 
-    fn selected_loop_macro_node(&self) -> Option<&LoopMacroNode> {
-        let selected = self.selected_node?;
-        self.graph
-            .get_node(selected)?
-            .as_any()
-            .downcast_ref::<LoopMacroNode>()
+    fn is_macro_editor_selected(&self) -> bool {
+        self.selected_node.is_some_and(|selected| {
+            self.graph.get_node(selected).is_some_and(|node| {
+                matches!(
+                    node.node_type(),
+                    NodeType::IfMacro | NodeType::VariableMacro | NodeType::ArithmeticMacro
+                )
+            })
+        })
     }
 
     fn selected_pattern_matching_node(&self) -> Option<&OptNode> {
@@ -399,18 +405,6 @@ impl FirebatApp {
             let add_response = ui.button("+ Add Node");
             if add_response.clicked() {
                 self.show_add_node_menu = !self.show_add_node_menu;
-            }
-
-            ui.add_space(8.0);
-
-            if ui
-                .add_enabled(
-                    self.selected_loop_macro_node().is_some(),
-                    egui::Button::new("Expand Macro"),
-                )
-                .clicked()
-            {
-                self.expand_selected_loop_macro();
             }
 
             ui.add_space(8.0);
@@ -480,10 +474,6 @@ impl FirebatApp {
                 }
 
                 ui.add_space(8.0);
-                if ui.button("Loop").clicked() {
-                    self.add_node_at_center(NodeType::LoopMacro);
-                    self.show_add_node_menu = false;
-                }
                 if ui.button("If").clicked() {
                     self.add_node_at_center(NodeType::IfMacro);
                     self.show_add_node_menu = false;
@@ -509,161 +499,18 @@ impl FirebatApp {
                     .selected_text(self.selected_pass_type.name())
                     .width(320.0)
                     .show_ui(ui, |ui| {
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::IrAnalyzation,
-                            OptimizationPass::IrAnalyzation.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::ConstantFolding,
-                            OptimizationPass::ConstantFolding.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::ControlFlowCleanup,
-                            OptimizationPass::ControlFlowCleanup.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::CopyPropagation,
-                            OptimizationPass::CopyPropagation.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::DeadStoreElimination,
-                            OptimizationPass::DeadStoreElimination.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::ExpressionInlining,
-                            OptimizationPass::ExpressionInlining.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::LoopAnalysis,
-                            OptimizationPass::LoopAnalysis.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::ParameterAnalysis,
-                            OptimizationPass::ParameterAnalysis.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::CallArgumentAnalysis,
-                            OptimizationPass::CallArgumentAnalysis.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::BooleanRecovery,
-                            OptimizationPass::BooleanRecovery.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::SwitchReconstruction,
-                            OptimizationPass::SwitchReconstruction.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::TernaryRecovery,
-                            OptimizationPass::TernaryRecovery.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::LifetimeScoping,
-                            OptimizationPass::LifetimeScoping.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::SignednessInference,
-                            OptimizationPass::SignednessInference.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::NameRecovery,
-                            OptimizationPass::NameRecovery.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::EarlyReturnNormalization,
-                            OptimizationPass::EarlyReturnNormalization.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::CollapseUnusedVariable,
-                            OptimizationPass::CollapseUnusedVariable.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::OperatorCanonicalization,
-                            OptimizationPass::OperatorCanonicalization.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::MagicDivisionRecovery,
-                            OptimizationPass::MagicDivisionRecovery.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::IdentitySimplification,
-                            OptimizationPass::IdentitySimplification.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::BitTrickRecognition,
-                            OptimizationPass::BitTrickRecognition.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::CastMinimization,
-                            OptimizationPass::CastMinimization.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::AssertionRecovery,
-                            OptimizationPass::AssertionRecovery.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::DoWhileRecovery,
-                            OptimizationPass::DoWhileRecovery.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::ClampRecovery,
-                            OptimizationPass::ClampRecovery.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::LoopCleanup,
-                            OptimizationPass::LoopCleanup.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::IfConversionReversal,
-                            OptimizationPass::IfConversionReversal.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::AntiDebugAstSuppression,
-                            OptimizationPass::AntiDebugAstSuppression.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::LoggingSuppression,
-                            OptimizationPass::LoggingSuppression.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::StaticGuardSuppression,
-                            OptimizationPass::StaticGuardSuppression.name(),
-                        );
-                        ui.selectable_value(
-                            &mut self.selected_pass_type,
-                            OptimizationPass::SecurityScaffoldSuppression,
-                            OptimizationPass::SecurityScaffoldSuppression.name(),
-                        );
+                        ScrollArea::vertical()
+                            .max_height(360.0)
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| {
+                                for pass in addable_optimization_passes() {
+                                    ui.selectable_value(
+                                        &mut self.selected_pass_type,
+                                        pass.clone(),
+                                        pass.name(),
+                                    );
+                                }
+                            });
                     });
 
                 if ui.button("Add Optimization").clicked() {
@@ -690,7 +537,6 @@ impl FirebatApp {
             NodeType::Opt => Box::new(
                 OptNode::for_pass(self.selected_pass_type.clone()).with_position(pos.x, pos.y),
             ),
-            NodeType::LoopMacro => Box::new(LoopMacroNode::new().with_position(pos.x, pos.y)),
             NodeType::IfMacro => Box::new(IfMacroNode::new().with_position(pos.x, pos.y)),
             NodeType::VariableMacro => {
                 Box::new(VariableMacroNode::new().with_position(pos.x, pos.y))
@@ -727,82 +573,9 @@ impl FirebatApp {
             .any(|node| node.node_type().is_macro())
     }
 
-    fn expand_selected_loop_macro(&mut self) {
-        let Some(loop_id) = self.selected_node else {
-            self.set_status("Select a loop macro first");
-            return;
-        };
-        let Some(loop_node) = self
-            .graph
-            .get_node(loop_id)
-            .and_then(|node| node.as_any().downcast_ref::<LoopMacroNode>())
-            .cloned()
-        else {
-            self.set_status("Selected node is not a loop macro");
-            return;
-        };
-
-        let template = match collect_macro_template(&self.graph, loop_id) {
-            Ok(template) => template,
-            Err(error) => {
-                self.set_status(error);
-                return;
-            }
-        };
-
-        let generated_nodes = match build_expanded_nodes(&template.steps, &loop_node) {
-            Ok(nodes) => nodes,
-            Err(error) => {
-                self.set_status(error);
-                return;
-            }
-        };
-
-        let upstream = resolve_input_source_node(&self.graph, loop_id);
-        let anchor = template.anchor;
-        let removed_ids = template.removed_ids;
-
-        for node_id in removed_ids {
-            self.remove_node(node_id);
-        }
-
-        let mut generated_ids = Vec::with_capacity(generated_nodes.len());
-        for node in generated_nodes {
-            let node_id = node.id();
-            self.graph.add_node(node);
-            generated_ids.push(node_id);
-        }
-
-        if let Some(upstream_id) = upstream {
-            if let Some(first_id) = generated_ids.first().copied() {
-                self.graph.add_connection(upstream_id, first_id);
-            } else if let Some(anchor_id) = anchor {
-                self.graph.add_connection(upstream_id, anchor_id);
-            }
-        }
-
-        for window in generated_ids.windows(2) {
-            if let [from_id, to_id] = window {
-                self.graph.add_connection(*from_id, *to_id);
-            }
-        }
-
-        if let Some(last_id) = generated_ids.last().copied() {
-            if let Some(anchor_id) = anchor {
-                self.graph.add_connection(last_id, anchor_id);
-            }
-        }
-
-        self.selected_node = generated_ids.first().copied().or(anchor);
-        self.set_status(format!(
-            "Expanded loop macro into {} optimization node(s)",
-            generated_ids.len()
-        ));
-    }
-
     fn start_pipeline(&mut self) {
         if self.has_macro_nodes() {
-            self.set_status("Expand macro nodes before running the pipeline");
+            self.set_status("Macro nodes are not executable yet; remove them before running");
             return;
         }
         let Some(input_id) = self.active_input_node_id() else {
@@ -964,17 +737,17 @@ impl FirebatApp {
     }
 
     fn fill_previews_after_node(&mut self, opt_node_id: NodeId, ast: &Arc<Ast>) {
-        let connections: Vec<_> = self.graph.connections().to_vec();
+        let connections: Vec<Connection> = self.graph.connections().to_vec();
         let mut to_fill: Vec<NodeId> = Vec::new();
         let mut frontier = vec![opt_node_id];
 
         while let Some(current) = frontier.pop() {
-            for (from, to) in &connections {
-                if *from == current {
-                    if let Some(node) = self.graph.get_node(*to) {
+            for connection in &connections {
+                if connection.from == current {
+                    if let Some(node) = self.graph.get_node(connection.to) {
                         if node.as_any().downcast_ref::<PreviewNode>().is_some() {
-                            to_fill.push(*to);
-                            frontier.push(*to);
+                            to_fill.push(connection.to);
+                            frontier.push(connection.to);
                         }
                         // Stop at OptNode boundaries
                     }
@@ -1003,21 +776,29 @@ impl FirebatApp {
             self.set_status("Node deleted");
         }
 
-        if let Some((from, to)) = response.completed_connection {
-            self.graph.add_connection(from, to);
+        if let Some(connection) = response.completed_connection {
+            self.graph
+                .add_connection(connection.from, connection.from_port, connection.to);
             self.connecting_from = None;
-            self.set_status(format!("Connected {:?} → {:?}", from, to));
+            self.set_status(format!(
+                "Connected {:?}[{}] → {:?}",
+                connection.from, connection.from_port, connection.to
+            ));
         }
 
-        if let Some((from, to)) = response.removed_connection {
-            self.graph.remove_connection(from, to);
+        if let Some(connection) = response.removed_connection {
+            self.graph
+                .remove_connection(connection.from, connection.from_port, connection.to);
             if self
                 .connecting_from
-                .is_some_and(|node_id| node_id == from || node_id == to)
+                .is_some_and(|(node_id, _)| node_id == connection.from || node_id == connection.to)
             {
                 self.connecting_from = None;
             }
-            self.set_status(format!("Removed connection {:?} → {:?}", from, to));
+            self.set_status(format!(
+                "Removed connection {:?}[{}] → {:?}",
+                connection.from, connection.from_port, connection.to
+            ));
         }
 
         for (node_id, node_response) in response.node_responses {
@@ -1309,6 +1090,135 @@ impl FirebatApp {
         }
     }
 
+    fn render_macro_editor_panel(&mut self, ctx: &egui::Context) {
+        let Some(selected_node) = self.selected_node else {
+            return;
+        };
+        if !self.is_macro_editor_selected() {
+            return;
+        }
+
+        egui::Panel::right("macro-editor-panel")
+            .resizable(true)
+            .default_size(320.0)
+            .show(ctx, |ui| {
+                let Some(node) = self.graph.get_node_mut(selected_node) else {
+                    return;
+                };
+
+                match node.node_type() {
+                    NodeType::VariableMacro => {
+                        let Some(var) = node.as_any_mut().downcast_mut::<VariableMacroNode>()
+                        else {
+                            return;
+                        };
+                        ui.heading("Var");
+                        ui.add_space(8.0);
+                        ui.small(var.summary());
+                        ui.separator();
+                        ui.label("Variable Name");
+                        ui.text_edit_singleline(&mut var.variable);
+                        ui.add_space(8.0);
+                        ui.label("Initial Value");
+                        ui.add(egui::DragValue::new(&mut var.initial_value));
+                    }
+                    NodeType::IfMacro => {
+                        let Some(if_node) = node.as_any_mut().downcast_mut::<IfMacroNode>() else {
+                            return;
+                        };
+                        ui.heading("If");
+                        ui.add_space(8.0);
+                        ui.small(if_node.summary());
+                        ui.small("True = port 0, False = port 1");
+                        ui.separator();
+                        ui.label("Variable");
+                        ui.text_edit_singleline(&mut if_node.variable);
+                        ui.add_space(8.0);
+                        ui.label("Comparison");
+                        egui::ComboBox::from_id_salt(("if-macro-panel-op", if_node.id().0))
+                            .selected_text(if_node.comparison.name())
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(
+                                    &mut if_node.comparison,
+                                    MacroComparison::LessThan,
+                                    "<",
+                                );
+                                ui.selectable_value(
+                                    &mut if_node.comparison,
+                                    MacroComparison::LessEqual,
+                                    "<=",
+                                );
+                                ui.selectable_value(
+                                    &mut if_node.comparison,
+                                    MacroComparison::Equal,
+                                    "==",
+                                );
+                                ui.selectable_value(
+                                    &mut if_node.comparison,
+                                    MacroComparison::NotEqual,
+                                    "!=",
+                                );
+                                ui.selectable_value(
+                                    &mut if_node.comparison,
+                                    MacroComparison::GreaterEqual,
+                                    ">=",
+                                );
+                                ui.selectable_value(
+                                    &mut if_node.comparison,
+                                    MacroComparison::GreaterThan,
+                                    ">",
+                                );
+                            });
+                        ui.add_space(8.0);
+                        ui.label("Comparison Value");
+                        ui.add(egui::DragValue::new(&mut if_node.value));
+                    }
+                    NodeType::ArithmeticMacro => {
+                        let Some(op_node) = node.as_any_mut().downcast_mut::<ArithmeticMacroNode>()
+                        else {
+                            return;
+                        };
+                        ui.heading("Operation");
+                        ui.add_space(8.0);
+                        ui.small(op_node.summary());
+                        ui.separator();
+                        ui.label("Target Variable");
+                        ui.text_edit_singleline(&mut op_node.target_variable);
+                        ui.add_space(8.0);
+                        ui.label("Operator");
+                        egui::ComboBox::from_id_salt(("op-macro-panel-op", op_node.id().0))
+                            .selected_text(op_node.operation.name())
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(
+                                    &mut op_node.operation,
+                                    ArithmeticOperation::Set,
+                                    "=",
+                                );
+                                ui.selectable_value(
+                                    &mut op_node.operation,
+                                    ArithmeticOperation::Add,
+                                    "+=",
+                                );
+                                ui.selectable_value(
+                                    &mut op_node.operation,
+                                    ArithmeticOperation::Subtract,
+                                    "-=",
+                                );
+                                ui.selectable_value(
+                                    &mut op_node.operation,
+                                    ArithmeticOperation::Multiply,
+                                    "*=",
+                                );
+                            });
+                        ui.add_space(8.0);
+                        ui.label("Operand");
+                        ui.add(egui::DragValue::new(&mut op_node.value));
+                    }
+                    _ => {}
+                }
+            });
+    }
+
     fn render_preview_panel(&mut self, ctx: &egui::Context) {
         if !self.is_preview_node_selected() {
             return;
@@ -1471,14 +1381,15 @@ impl eframe::App for FirebatApp {
             self.render_input_panel(ctx);
         } else if self.is_pattern_matching_node_selected() {
             self.render_optimization_panel(ctx);
+        } else if self.is_macro_editor_selected() {
+            self.render_macro_editor_panel(ctx);
         } else if self.is_preview_node_selected() {
             self.render_preview_panel(ctx);
         }
         self.render_logs_panel(ctx);
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            let connections: Vec<(NodeId, NodeId)> =
-                self.graph.connections().iter().copied().collect();
+            let connections: Vec<Connection> = self.graph.connections().to_vec();
 
             let graph_response = GraphCanvas::new(
                 self.graph.nodes_mut(),
@@ -1506,8 +1417,8 @@ fn resolve_input_source_node(graph: &NodeGraph, node_id: NodeId) -> Option<NodeI
     graph
         .connections()
         .iter()
-        .find(|(_, to)| *to == node_id)
-        .map(|(from, _)| *from)
+        .find(|connection| connection.to == node_id)
+        .map(|connection| connection.from)
 }
 
 fn reachable_opt_nodes(graph: &NodeGraph, input_id: NodeId) -> Vec<NodeId> {
@@ -1557,14 +1468,11 @@ fn leading_preview_nodes(graph: &NodeGraph, input_id: NodeId) -> Vec<NodeId> {
     previews
 }
 
-fn outgoing_targets(
-    connections: &[(NodeId, NodeId)],
-    from: NodeId,
-) -> impl Iterator<Item = NodeId> + '_ {
+fn outgoing_targets(connections: &[Connection], from: NodeId) -> impl Iterator<Item = NodeId> + '_ {
     connections
         .iter()
-        .filter(move |(source_id, _)| *source_id == from)
-        .map(|(_, target_id)| *target_id)
+        .filter(move |connection| connection.from == from)
+        .map(|connection| connection.to)
 }
 
 fn selected_node_id(preset: &GraphPreset, id_map: &NodeIdMap) -> Option<NodeId> {
@@ -1585,180 +1493,6 @@ fn first_input_path(preset: &GraphPreset) -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-#[derive(Clone)]
-enum MacroTemplateStep {
-    Opt(OptNode),
-    Var(VariableMacroNode),
-    If(IfMacroNode),
-    Arithmetic(ArithmeticMacroNode),
-}
-
-struct MacroTemplate {
-    removed_ids: Vec<NodeId>,
-    steps: Vec<MacroTemplateStep>,
-    anchor: Option<NodeId>,
-}
-
-fn collect_macro_template(graph: &NodeGraph, loop_id: NodeId) -> Result<MacroTemplate, String> {
-    let mut removed_ids = vec![loop_id];
-    let mut steps = Vec::new();
-    let mut cursor = single_outgoing_target(graph, loop_id)?;
-
-    while let Some(node_id) = cursor {
-        let Some(node) = graph.get_node(node_id) else {
-            break;
-        };
-
-        match node.node_type() {
-            NodeType::Opt => {
-                let Some(opt) = node.as_any().downcast_ref::<OptNode>() else {
-                    return Err("Invalid optimization template node".to_string());
-                };
-                removed_ids.push(node_id);
-                steps.push(MacroTemplateStep::Opt(opt.clone()));
-                cursor = single_outgoing_target(graph, node_id)?;
-            }
-            NodeType::VariableMacro => {
-                let Some(var) = node.as_any().downcast_ref::<VariableMacroNode>() else {
-                    return Err("Invalid variable macro node".to_string());
-                };
-                removed_ids.push(node_id);
-                steps.push(MacroTemplateStep::Var(var.clone()));
-                cursor = single_outgoing_target(graph, node_id)?;
-            }
-            NodeType::IfMacro => {
-                let Some(if_node) = node.as_any().downcast_ref::<IfMacroNode>() else {
-                    return Err("Invalid if macro node".to_string());
-                };
-                removed_ids.push(node_id);
-                steps.push(MacroTemplateStep::If(if_node.clone()));
-                cursor = single_outgoing_target(graph, node_id)?;
-            }
-            NodeType::ArithmeticMacro => {
-                let Some(op_node) = node.as_any().downcast_ref::<ArithmeticMacroNode>() else {
-                    return Err("Invalid arithmetic macro node".to_string());
-                };
-                removed_ids.push(node_id);
-                steps.push(MacroTemplateStep::Arithmetic(op_node.clone()));
-                cursor = single_outgoing_target(graph, node_id)?;
-            }
-            NodeType::LoopMacro => {
-                return Ok(MacroTemplate {
-                    removed_ids,
-                    steps,
-                    anchor: Some(node_id),
-                });
-            }
-            NodeType::Preview => {
-                return Ok(MacroTemplate {
-                    removed_ids,
-                    steps,
-                    anchor: Some(node_id),
-                });
-            }
-            NodeType::Input => {
-                return Err("Loop macro template cannot flow into an input node".to_string());
-            }
-        }
-    }
-
-    Ok(MacroTemplate {
-        removed_ids,
-        steps,
-        anchor: None,
-    })
-}
-
-fn single_outgoing_target(graph: &NodeGraph, node_id: NodeId) -> Result<Option<NodeId>, String> {
-    let targets: Vec<_> = outgoing_targets(graph.connections(), node_id).collect();
-    if targets.len() > 1 {
-        return Err("Expand only supports a single linear template path".to_string());
-    }
-    Ok(targets.into_iter().next())
-}
-
-fn build_expanded_nodes(
-    steps: &[MacroTemplateStep],
-    loop_node: &LoopMacroNode,
-) -> Result<Vec<Box<dyn Node>>, String> {
-    let mut variables = std::collections::HashMap::<String, i64>::new();
-    let mut generated: Vec<Box<dyn Node>> = Vec::new();
-    let origin = loop_node.position();
-    let mut emission_index = 0usize;
-
-    for iteration in 0..loop_node.iterations {
-        variables.insert("iteration".to_string(), iteration as i64);
-        let mut gate = true;
-
-        for step in steps {
-            match step {
-                MacroTemplateStep::Var(node) => {
-                    variables
-                        .entry(node.variable.trim().to_string())
-                        .or_insert(node.initial_value);
-                }
-                MacroTemplateStep::If(node) => {
-                    let variable_name = node.variable.trim();
-                    if variable_name.is_empty() {
-                        return Err("If macro variable cannot be empty".to_string());
-                    }
-                    let current = *variables.get(variable_name).unwrap_or(&0);
-                    gate = compare_macro(current, node.comparison.clone(), node.value);
-                }
-                MacroTemplateStep::Arithmetic(node) => {
-                    let variable_name = node.target_variable.trim();
-                    if variable_name.is_empty() {
-                        return Err("Operation macro variable cannot be empty".to_string());
-                    }
-                    let entry = variables.entry(variable_name.to_string()).or_insert(0);
-                    apply_arithmetic(entry, node.operation.clone(), node.value);
-                }
-                MacroTemplateStep::Opt(node) => {
-                    if gate {
-                        let x = origin.x + ((emission_index % 4) as f32 * 260.0);
-                        let y = origin.y + ((emission_index / 4) as f32 * 170.0);
-                        let mut cloned = node.clone();
-                        cloned.set_position(NodePosition::new(x, y));
-                        cloned.output_ast = None;
-                        cloned.output = None;
-                        cloned.store.editor_buffer = cloned
-                            .store
-                            .applied_buffer_script
-                            .clone()
-                            .unwrap_or_default();
-                        cloned = cloned.with_name(format!("{} [{}]", node.name(), iteration + 1));
-                        generated.push(Box::new(cloned));
-                        emission_index += 1;
-                    }
-                    gate = true;
-                }
-            }
-        }
-    }
-
-    Ok(generated)
-}
-
-fn compare_macro(left: i64, comparison: MacroComparison, right: i64) -> bool {
-    match comparison {
-        MacroComparison::LessThan => left < right,
-        MacroComparison::LessEqual => left <= right,
-        MacroComparison::Equal => left == right,
-        MacroComparison::NotEqual => left != right,
-        MacroComparison::GreaterEqual => left >= right,
-        MacroComparison::GreaterThan => left > right,
-    }
-}
-
-fn apply_arithmetic(value: &mut i64, operation: ArithmeticOperation, operand: i64) {
-    match operation {
-        ArithmeticOperation::Set => *value = operand,
-        ArithmeticOperation::Add => *value += operand,
-        ArithmeticOperation::Subtract => *value -= operand,
-        ArithmeticOperation::Multiply => *value *= operand,
-    }
-}
-
 fn build_default_graph() -> NodeGraph {
     let mut graph = NodeGraph::new();
     let steps = default_graph_steps();
@@ -1777,7 +1511,7 @@ fn build_default_graph() -> NodeGraph {
         let node = Box::new(OptNode::for_pass(pass).with_name(label).with_position(x, y));
         let node_id = node.id();
         graph.add_node(node);
-        graph.add_connection(previous_id, node_id);
+        graph.add_connection(previous_id, 0, node_id);
         previous_id = node_id;
     }
 
@@ -1787,9 +1521,45 @@ fn build_default_graph() -> NodeGraph {
     ));
     let preview_id = preview.id();
     graph.add_node(preview);
-    graph.add_connection(previous_id, preview_id);
+    graph.add_connection(previous_id, 0, preview_id);
 
     graph
+}
+
+fn addable_optimization_passes() -> Vec<OptimizationPass> {
+    vec![
+        OptimizationPass::IrAnalyzation,
+        OptimizationPass::ConstantFolding,
+        OptimizationPass::ControlFlowCleanup,
+        OptimizationPass::CopyPropagation,
+        OptimizationPass::DeadStoreElimination,
+        OptimizationPass::ExpressionInlining,
+        OptimizationPass::LoopAnalysis,
+        OptimizationPass::ParameterAnalysis,
+        OptimizationPass::CallArgumentAnalysis,
+        OptimizationPass::BooleanRecovery,
+        OptimizationPass::SwitchReconstruction,
+        OptimizationPass::TernaryRecovery,
+        OptimizationPass::LifetimeScoping,
+        OptimizationPass::SignednessInference,
+        OptimizationPass::NameRecovery,
+        OptimizationPass::EarlyReturnNormalization,
+        OptimizationPass::CollapseUnusedVariable,
+        OptimizationPass::OperatorCanonicalization,
+        OptimizationPass::MagicDivisionRecovery,
+        OptimizationPass::IdentitySimplification,
+        OptimizationPass::BitTrickRecognition,
+        OptimizationPass::CastMinimization,
+        OptimizationPass::AssertionRecovery,
+        OptimizationPass::DoWhileRecovery,
+        OptimizationPass::ClampRecovery,
+        OptimizationPass::LoopCleanup,
+        OptimizationPass::IfConversionReversal,
+        OptimizationPass::AntiDebugAstSuppression,
+        OptimizationPass::LoggingSuppression,
+        OptimizationPass::StaticGuardSuppression,
+        OptimizationPass::SecurityScaffoldSuppression,
+    ]
 }
 
 fn default_graph_steps() -> Vec<(String, OptimizationPass)> {

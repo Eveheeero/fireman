@@ -10,8 +10,7 @@ use crate::{
 use egui::{Color32, Pos2, Ui};
 pub use input::InputNode;
 pub use macro_nodes::{
-    ArithmeticMacroNode, ArithmeticOperation, IfMacroNode, LoopMacroNode, MacroComparison,
-    VariableMacroNode,
+    ArithmeticMacroNode, ArithmeticOperation, IfMacroNode, MacroComparison, VariableMacroNode,
 };
 pub use optimization::{OptNode, OptimizationPass};
 pub use output::PreviewNode;
@@ -81,7 +80,6 @@ pub enum NodeResponse {
 pub enum NodeType {
     Input,
     Opt,
-    LoopMacro,
     IfMacro,
     VariableMacro,
     ArithmeticMacro,
@@ -93,7 +91,6 @@ impl NodeType {
         match self {
             Self::Input => "Input",
             Self::Opt => "Optimization",
-            Self::LoopMacro => "Loop Macro",
             Self::IfMacro => "If Macro",
             Self::VariableMacro => "Variable Macro",
             Self::ArithmeticMacro => "Arithmetic Macro",
@@ -105,7 +102,6 @@ impl NodeType {
         match self {
             Self::Input => "",
             Self::Opt => "",
-            Self::LoopMacro => "",
             Self::IfMacro => "",
             Self::VariableMacro => "",
             Self::ArithmeticMacro => "",
@@ -116,7 +112,7 @@ impl NodeType {
     pub fn is_macro(&self) -> bool {
         matches!(
             self,
-            Self::LoopMacro | Self::IfMacro | Self::VariableMacro | Self::ArithmeticMacro
+            Self::IfMacro | Self::VariableMacro | Self::ArithmeticMacro
         )
     }
 }
@@ -200,11 +196,18 @@ impl Clone for Box<dyn Node> {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Connection {
+    pub from: NodeId,
+    pub from_port: usize,
+    pub to: NodeId,
+}
+
 /// Graph containing multiple nodes connected in a pipeline
 #[derive(Clone, Default)]
 pub struct NodeGraph {
     nodes: Vec<Box<dyn Node>>,
-    connections: Vec<(NodeId, NodeId)>,
+    connections: Vec<Connection>,
 }
 
 impl NodeGraph {
@@ -225,7 +228,7 @@ impl NodeGraph {
         if let Some(index) = self.nodes.iter().position(|n| n.id() == id) {
             // Remove connections involving this node
             self.connections
-                .retain(|(from, to)| *from != id && *to != id);
+                .retain(|connection| connection.from != id && connection.to != id);
             Some(self.nodes.remove(index))
         } else {
             None
@@ -256,12 +259,12 @@ impl NodeGraph {
     }
 
     /// Get all connections
-    pub fn connections(&self) -> &[(NodeId, NodeId)] {
+    pub fn connections(&self) -> &[Connection] {
         &self.connections
     }
 
     /// Add a connection between two nodes
-    pub fn add_connection(&mut self, from: NodeId, to: NodeId) {
+    pub fn add_connection(&mut self, from: NodeId, from_port: usize, to: NodeId) {
         if from == to {
             return;
         }
@@ -277,7 +280,6 @@ impl NodeGraph {
             source.node_type(),
             NodeType::Input
                 | NodeType::Opt
-                | NodeType::LoopMacro
                 | NodeType::IfMacro
                 | NodeType::VariableMacro
                 | NodeType::ArithmeticMacro
@@ -285,7 +287,6 @@ impl NodeGraph {
         let target_supports_input = matches!(
             target.node_type(),
             NodeType::Opt
-                | NodeType::LoopMacro
                 | NodeType::IfMacro
                 | NodeType::VariableMacro
                 | NodeType::ArithmeticMacro
@@ -295,22 +296,40 @@ impl NodeGraph {
             return;
         }
 
-        if self
-            .connections
-            .iter()
-            .any(|(existing_from, existing_to)| *existing_from == from && *existing_to == to)
-        {
+        let valid_port = match source.node_type() {
+            NodeType::IfMacro => from_port <= 1,
+            NodeType::Input
+            | NodeType::Opt
+            | NodeType::VariableMacro
+            | NodeType::ArithmeticMacro => from_port == 0,
+            NodeType::Preview => false,
+        };
+        if !valid_port {
             return;
         }
 
-        // Keep one upstream input per target, but allow the source to branch out.
-        self.connections.retain(|(_, target_id)| *target_id != to);
-        self.connections.push((from, to));
+        if self.connections.iter().any(|connection| {
+            connection.from == from && connection.from_port == from_port && connection.to == to
+        }) {
+            return;
+        }
+
+        // Keep a single upstream input per target and a single downstream target per output port.
+        self.connections.retain(|connection| {
+            connection.to != to && !(connection.from == from && connection.from_port == from_port)
+        });
+        self.connections.push(Connection {
+            from,
+            from_port,
+            to,
+        });
     }
 
     /// Remove a connection
-    pub fn remove_connection(&mut self, from: NodeId, to: NodeId) {
-        self.connections.retain(|(f, t)| *f != from || *t != to);
+    pub fn remove_connection(&mut self, from: NodeId, from_port: usize, to: NodeId) {
+        self.connections.retain(|connection| {
+            connection.from != from || connection.from_port != from_port || connection.to != to
+        });
     }
 
     /// Collect OptNode IDs in pipeline order (for async queue).
@@ -341,7 +360,6 @@ impl NodeGraph {
                 kind: match node.node_type() {
                     NodeType::Input => "InputNode".to_string(),
                     NodeType::Opt => "OptNode".to_string(),
-                    NodeType::LoopMacro => "LoopMacroNode".to_string(),
                     NodeType::IfMacro => "IfMacroNode".to_string(),
                     NodeType::VariableMacro => "VariableMacroNode".to_string(),
                     NodeType::ArithmeticMacro => "ArithmeticMacroNode".to_string(),
@@ -355,9 +373,10 @@ impl NodeGraph {
     pub fn serialize_connections(&self) -> Vec<PersistedConnection> {
         self.connections
             .iter()
-            .map(|(from, to)| PersistedConnection {
-                from: from.0,
-                to: to.0,
+            .map(|connection| PersistedConnection {
+                from: connection.from.0,
+                from_port: connection.from_port,
+                to: connection.to.0,
             })
             .collect()
     }
@@ -383,7 +402,7 @@ impl NodeGraph {
             let Some(to_id) = id_map.get(connection.to) else {
                 continue;
             };
-            graph.add_connection(from_id, to_id);
+            graph.add_connection(from_id, connection.from_port, to_id);
         }
 
         Ok((graph, id_map))
@@ -412,7 +431,6 @@ fn instantiate_node(kind: &str) -> Option<Box<dyn Node>> {
     match kind {
         "InputNode" => Some(Box::new(InputNode::new())),
         "OptNode" => Some(Box::new(OptNode::new())),
-        "LoopMacroNode" => Some(Box::new(LoopMacroNode::new())),
         "IfMacroNode" => Some(Box::new(IfMacroNode::new())),
         "VariableMacroNode" => Some(Box::new(VariableMacroNode::new())),
         "ArithmeticMacroNode" => Some(Box::new(ArithmeticMacroNode::new())),

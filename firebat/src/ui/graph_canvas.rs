@@ -1,15 +1,15 @@
 use crate::{
-    node::{Node, NodeContext, NodeId, NodePosition, NodeResponse},
-    ui::ScratchBlockRenderer,
+    node::{Connection, Node, NodeContext, NodeId, NodePosition, NodeResponse},
+    ui::{OutputPortAnchor, ScratchBlockRenderer},
 };
 use egui::{Color32, Pos2, Rect, Sense, Stroke, Ui, Vec2};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 struct NodeLayout {
     node_id: NodeId,
     rect: Rect,
     input_port_pos: Option<Pos2>,
-    output_port_pos: Option<Pos2>,
+    output_ports: Vec<OutputPortAnchor>,
     color: Color32,
 }
 
@@ -21,8 +21,7 @@ struct ConnectionEndpoints {
 
 #[derive(Clone, Copy, Debug)]
 struct ConnectionVisual {
-    from_id: NodeId,
-    to_id: NodeId,
+    connection: Connection,
     from: Pos2,
     to: Pos2,
     color: Color32,
@@ -33,8 +32,8 @@ pub struct GraphCanvas<'a> {
     nodes: &'a mut [Box<dyn Node>],
     selected_node: Option<NodeId>,
     dragged_node: Option<NodeId>,
-    connecting_from: Option<NodeId>,
-    connections: &'a [(NodeId, NodeId)],
+    connecting_from: Option<(NodeId, usize)>,
+    connections: &'a [Connection],
     camera_offset: Vec2,
     zoom: f32,
 }
@@ -42,10 +41,10 @@ pub struct GraphCanvas<'a> {
 impl<'a> GraphCanvas<'a> {
     pub fn new(
         nodes: &'a mut [Box<dyn Node>],
-        connections: &'a [(NodeId, NodeId)],
+        connections: &'a [Connection],
         selected_node: Option<NodeId>,
         dragged_node: Option<NodeId>,
-        connecting_from: Option<NodeId>,
+        connecting_from: Option<(NodeId, usize)>,
     ) -> Self {
         Self {
             nodes,
@@ -68,17 +67,10 @@ impl<'a> GraphCanvas<'a> {
         let available_size = ui.available_size();
         let (rect, response) = ui.allocate_exact_size(available_size, Sense::click_and_drag());
 
-        // Fill background
-        ui.painter().rect_filled(
-            rect,
-            0.0,
-            Color32::from_rgb(30, 30, 35), // Dark background
-        );
-
-        // Draw grid
+        ui.painter()
+            .rect_filled(rect, 0.0, Color32::from_rgb(30, 30, 35));
         self.draw_grid(ui, rect);
 
-        // Process camera movement (pan)
         let mut new_camera_offset = self.camera_offset;
         if response.dragged_by(egui::PointerButton::Middle)
             || (response.dragged_by(egui::PointerButton::Primary)
@@ -87,7 +79,6 @@ impl<'a> GraphCanvas<'a> {
             new_camera_offset += response.drag_delta() / self.zoom;
         }
 
-        // Calculate transform
         let to_screen = |pos: Pos2| -> Pos2 {
             Pos2::new(
                 rect.min.x + (pos.x + new_camera_offset.x) * self.zoom,
@@ -95,11 +86,10 @@ impl<'a> GraphCanvas<'a> {
             )
         };
 
-        // Draw and interact with nodes
         let mut node_responses: Vec<(NodeId, NodeResponse)> = Vec::new();
-        let mut new_dragged_node: Option<NodeId> = self.dragged_node;
-        let mut new_selected_node: Option<NodeId> = self.selected_node;
-        let mut new_connecting_from: Option<NodeId> = self.connecting_from;
+        let mut new_dragged_node = self.dragged_node;
+        let mut new_selected_node = self.selected_node;
+        let mut new_connecting_from = self.connecting_from;
         let mut node_layouts = Vec::with_capacity(self.nodes.len());
         let pointer_pos = ui.input(|input| input.pointer.interact_pos());
 
@@ -109,14 +99,12 @@ impl<'a> GraphCanvas<'a> {
             let max_node_rect =
                 Rect::from_min_size(screen_pos, Vec2::new(420.0 * self.zoom, 720.0 * self.zoom));
 
-            // Draw node
             let ctx = NodeContext {
                 is_selected: self.selected_node == Some(node.id()),
                 is_dragging: self.dragged_node == Some(node.id()),
                 can_delete: true,
             };
 
-            // Render node at calculated position
             let mut child_ui = ui.new_child(
                 egui::UiBuilder::new()
                     .max_rect(max_node_rect)
@@ -133,26 +121,33 @@ impl<'a> GraphCanvas<'a> {
                 ui.id().with(("node", node.id().0)),
                 Sense::click_and_drag(),
             );
+
             let pointer_over_input_port =
                 pointer_hits_port(pointer_pos, block_response.input_port_pos, 14.0 * self.zoom);
-            let pointer_over_output_port = pointer_hits_port(
+            let pointer_over_output_port = hovered_output_port(
                 pointer_pos,
-                block_response.output_port_pos,
+                &block_response.output_port_positions,
                 14.0 * self.zoom,
             );
             let port_interaction = block_response.input_port_clicked
-                || block_response.output_port_clicked
+                || block_response.output_port_clicked.is_some()
                 || block_response.input_port_drag_started
-                || block_response.output_port_drag_started;
-            let pointer_started_on_port = pointer_over_input_port || pointer_over_output_port;
+                || block_response.output_port_drag_started.is_some();
+            let pointer_started_on_port =
+                pointer_over_input_port || pointer_over_output_port.is_some();
             let connection_interaction = port_interaction
                 || pointer_started_on_port
-                || self.connecting_from == Some(node.id());
-            let output_drag_intent = block_response.output_port_drag_started
-                || (pointer_over_output_port && node_response.drag_started());
+                || self
+                    .connecting_from
+                    .is_some_and(|(node_id, _)| node_id == node.id());
+            let output_drag_intent = block_response.output_port_drag_started.or_else(|| {
+                (node_response.drag_started())
+                    .then_some(pointer_over_output_port)
+                    .flatten()
+            });
 
-            if output_drag_intent {
-                new_connecting_from = Some(node.id());
+            if let Some(port_index) = output_drag_intent {
+                new_connecting_from = Some((node.id(), port_index));
                 new_dragged_node = None;
                 new_selected_node = Some(node.id());
             }
@@ -160,7 +155,7 @@ impl<'a> GraphCanvas<'a> {
             if should_start_node_drag(
                 node_response.drag_started(),
                 pointer_started_on_port,
-                new_connecting_from == Some(node.id()),
+                new_connecting_from.is_some_and(|(node_id, _)| node_id == node.id()),
             ) {
                 new_dragged_node = Some(node.id());
                 new_selected_node = Some(node.id());
@@ -168,7 +163,7 @@ impl<'a> GraphCanvas<'a> {
 
             if node_response.dragged()
                 && !pointer_started_on_port
-                && new_connecting_from != Some(node.id())
+                && !new_connecting_from.is_some_and(|(node_id, _)| node_id == node.id())
                 && new_dragged_node == Some(node.id())
             {
                 let delta = node_response.drag_delta() / self.zoom;
@@ -193,7 +188,7 @@ impl<'a> GraphCanvas<'a> {
                 node_id: node.id(),
                 rect: block_response.rect,
                 input_port_pos: block_response.input_port_pos,
-                output_port_pos: block_response.output_port_pos,
+                output_ports: block_response.output_port_positions,
                 color: node.color(),
             });
         }
@@ -203,23 +198,21 @@ impl<'a> GraphCanvas<'a> {
             draw_connection(ui, visual.from, visual.to, visual.color, self.zoom);
         }
 
-        let hovered_target = new_connecting_from.and_then(|source_id| {
+        let hovered_target = new_connecting_from.and_then(|(source_id, _)| {
             pointer_pos.and_then(|pointer| {
                 hovered_input_target(source_id, &node_layouts, pointer, 12.0 * self.zoom)
             })
         });
 
-        if let Some(source_id) = new_connecting_from {
-            if let (Some(from), Some(pointer)) =
-                (output_port_for_node(&node_layouts, source_id), pointer_pos)
-            {
+        if let Some((source_id, source_port)) = new_connecting_from {
+            if let (Some(from), Some(pointer)) = (
+                output_port_for_node(&node_layouts, source_id, source_port),
+                pointer_pos,
+            ) {
                 let preview_target = hovered_target
                     .and_then(|target_id| input_port_for_node(&node_layouts, target_id))
                     .unwrap_or(pointer);
-                let color = node_layouts
-                    .iter()
-                    .find(|layout| layout.node_id == source_id)
-                    .map_or(Color32::WHITE, |layout| layout.color);
+                let color = preview_connection_color(&node_layouts, source_id, source_port);
                 draw_connection(ui, from, preview_target, color, self.zoom);
             }
 
@@ -263,7 +256,6 @@ impl<'a> GraphCanvas<'a> {
             new_connecting_from = None;
         }
 
-        // Handle zoom with mouse wheel
         let mut new_zoom = self.zoom;
         let zoom_delta = ui.input(|i| i.smooth_scroll_delta.y);
         if zoom_delta != 0.0 {
@@ -301,7 +293,6 @@ impl<'a> GraphCanvas<'a> {
 
         let grid_color = Color32::from_rgb(50, 50, 55);
 
-        // Vertical lines
         let mut x = rect.min.x + offset_x;
         while x < rect.max.x {
             ui.painter().line_segment(
@@ -311,7 +302,6 @@ impl<'a> GraphCanvas<'a> {
             x += grid_size;
         }
 
-        // Horizontal lines
         let mut y = rect.min.y + offset_y;
         while y < rect.max.y {
             ui.painter().line_segment(
@@ -330,45 +320,42 @@ pub struct GraphResponse {
     pub zoom: f32,
     pub dragged_node: Option<NodeId>,
     pub selected_node: Option<NodeId>,
-    pub connecting_from: Option<NodeId>,
-    pub completed_connection: Option<(NodeId, NodeId)>,
-    pub removed_connection: Option<(NodeId, NodeId)>,
+    pub connecting_from: Option<(NodeId, usize)>,
+    pub completed_connection: Option<Connection>,
+    pub removed_connection: Option<Connection>,
     pub deleted_node: Option<NodeId>,
 }
 
-/// Draw a curved connection line between two points
 fn draw_connection(ui: &Ui, from: Pos2, to: Pos2, color: Color32, zoom: f32) {
     let painter = ui.painter();
     let points = connection_curve_points(from, to);
 
     painter.add(egui::Shape::line(points, Stroke::new(3.0 * zoom, color)));
-
-    // Draw connection dots
     painter.circle_filled(from, 6.0 * zoom, color);
     painter.circle_filled(to, 6.0 * zoom, color);
 }
 
 fn collect_connection_visuals(
-    connections: &[(NodeId, NodeId)],
+    connections: &[Connection],
     node_layouts: &[NodeLayout],
 ) -> Vec<ConnectionVisual> {
     connections
         .iter()
-        .filter_map(|(from_id, to_id)| {
+        .filter_map(|connection| {
             let from_layout = node_layouts
                 .iter()
-                .find(|layout| layout.node_id == *from_id)?;
+                .find(|layout| layout.node_id == connection.from)?;
             let to_layout = node_layouts
                 .iter()
-                .find(|layout| layout.node_id == *to_id)?;
-            let endpoints = connection_endpoints(from_layout, to_layout)?;
+                .find(|layout| layout.node_id == connection.to)?;
+            let endpoints = connection_endpoints(from_layout, connection.from_port, to_layout)?;
 
             Some(ConnectionVisual {
-                from_id: *from_id,
-                to_id: *to_id,
+                connection: *connection,
                 from: endpoints.from,
                 to: endpoints.to,
-                color: to_layout.color,
+                color: preview_connection_color_for_layout(from_layout, connection.from_port)
+                    .unwrap_or(to_layout.color),
             })
         })
         .collect()
@@ -381,6 +368,25 @@ fn pointer_hits_port(pointer_pos: Option<Pos2>, port_pos: Option<Pos2>, threshol
     }
 }
 
+fn hovered_output_port(
+    pointer_pos: Option<Pos2>,
+    output_ports: &[OutputPortAnchor],
+    threshold: f32,
+) -> Option<usize> {
+    let Some(pointer) = pointer_pos else {
+        return None;
+    };
+
+    output_ports
+        .iter()
+        .filter_map(|port| {
+            (port.pos.distance(pointer) <= threshold)
+                .then_some((port.pos.distance(pointer), port.index))
+        })
+        .min_by(|(left, _), (right, _)| left.total_cmp(right))
+        .map(|(_, index)| index)
+}
+
 fn should_start_node_drag(
     drag_started: bool,
     pointer_originated_on_port: bool,
@@ -389,11 +395,21 @@ fn should_start_node_drag(
     drag_started && !pointer_originated_on_port && !connection_active
 }
 
-fn output_port_for_node(node_layouts: &[NodeLayout], node_id: NodeId) -> Option<Pos2> {
+fn output_port_for_node(
+    node_layouts: &[NodeLayout],
+    node_id: NodeId,
+    port_index: usize,
+) -> Option<Pos2> {
     node_layouts
         .iter()
         .find(|layout| layout.node_id == node_id)
-        .and_then(|layout| layout.output_port_pos)
+        .and_then(|layout| {
+            layout
+                .output_ports
+                .iter()
+                .find(|port| port.index == port_index)
+                .map(|port| port.pos)
+        })
 }
 
 fn input_port_for_node(node_layouts: &[NodeLayout], node_id: NodeId) -> Option<Pos2> {
@@ -422,23 +438,33 @@ fn hovered_input_target(
 }
 
 fn completed_connection(
-    source_id: Option<NodeId>,
+    source: Option<(NodeId, usize)>,
     pointer_released: bool,
     hovered_target: Option<NodeId>,
-) -> Option<(NodeId, NodeId)> {
+) -> Option<Connection> {
     if !pointer_released {
         return None;
     }
 
-    Some((source_id?, hovered_target?))
+    let (from, from_port) = source?;
+    Some(Connection {
+        from,
+        from_port,
+        to: hovered_target?,
+    })
 }
 
 fn connection_endpoints(
     from_layout: &NodeLayout,
+    from_port: usize,
     to_layout: &NodeLayout,
 ) -> Option<ConnectionEndpoints> {
     Some(ConnectionEndpoints {
-        from: from_layout.output_port_pos?,
+        from: from_layout
+            .output_ports
+            .iter()
+            .find(|port| port.index == from_port)?
+            .pos,
         to: to_layout.input_port_pos?,
     })
 }
@@ -475,7 +501,7 @@ fn find_connection_at_point(
     connections: &[ConnectionVisual],
     point: Pos2,
     threshold: f32,
-) -> Option<(NodeId, NodeId)> {
+) -> Option<Connection> {
     connections
         .iter()
         .filter_map(|connection| {
@@ -483,10 +509,10 @@ fn find_connection_at_point(
                 point,
                 &connection_curve_points(connection.from, connection.to),
             );
-            (distance <= threshold).then_some((distance, (connection.from_id, connection.to_id)))
+            (distance <= threshold).then_some((distance, connection.connection))
         })
         .min_by(|(left, _), (right, _)| left.total_cmp(right))
-        .map(|(_, ids)| ids)
+        .map(|(_, connection)| connection)
 }
 
 fn remove_connection_request(
@@ -495,7 +521,7 @@ fn remove_connection_request(
     pointer_pos: Option<Pos2>,
     connections: &[ConnectionVisual],
     threshold: f32,
-) -> Option<(NodeId, NodeId)> {
+) -> Option<Connection> {
     if pointer_over_node || !secondary_clicked {
         return None;
     }
@@ -521,4 +547,24 @@ fn distance_to_segment(point: Pos2, start: Pos2, end: Pos2) -> f32 {
     let t = (point_vec.dot(segment) / segment_len_sq).clamp(0.0, 1.0);
     let projection = start + segment * t;
     point.distance(projection)
+}
+
+fn preview_connection_color(
+    node_layouts: &[NodeLayout],
+    source_id: NodeId,
+    from_port: usize,
+) -> Color32 {
+    node_layouts
+        .iter()
+        .find(|layout| layout.node_id == source_id)
+        .and_then(|layout| preview_connection_color_for_layout(layout, from_port))
+        .unwrap_or(Color32::WHITE)
+}
+
+fn preview_connection_color_for_layout(layout: &NodeLayout, from_port: usize) -> Option<Color32> {
+    (layout.output_ports.len() > 1).then(|| match from_port {
+        0 => Color32::from_rgb(0x3E, 0xA5, 0x76),
+        1 => Color32::from_rgb(0xB8, 0x72, 0x34),
+        _ => layout.color,
+    })
 }

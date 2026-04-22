@@ -202,6 +202,8 @@ pub struct PersistedNode {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PersistedConnection {
     pub from: u64,
+    #[serde(default)]
+    pub from_port: usize,
     pub to: u64,
 }
 

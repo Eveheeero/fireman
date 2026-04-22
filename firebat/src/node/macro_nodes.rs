@@ -52,132 +52,6 @@ fn macro_color(red: u8, green: u8, blue: u8) -> Color32 {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LoopMacroNode {
-    id: NodeId,
-    name: String,
-    position: NodePosition,
-    is_expanded: bool,
-    pub iterations: usize,
-}
-
-impl LoopMacroNode {
-    pub fn new() -> Self {
-        Self {
-            id: NodeId::new(),
-            name: "Loop".to_string(),
-            position: NodePosition::default(),
-            is_expanded: false,
-            iterations: 3,
-        }
-    }
-
-    pub fn with_position(mut self, x: f32, y: f32) -> Self {
-        self.position = NodePosition::new(x, y);
-        self
-    }
-}
-
-impl Default for LoopMacroNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Node for LoopMacroNode {
-    fn id(&self) -> NodeId {
-        self.id
-    }
-
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn node_type(&self) -> NodeType {
-        NodeType::LoopMacro
-    }
-
-    fn color(&self) -> Color32 {
-        macro_color(0xB5, 0x5F, 0x1D)
-    }
-
-    fn position(&self) -> NodePosition {
-        self.position
-    }
-
-    fn set_position(&mut self, pos: NodePosition) {
-        self.position = pos;
-    }
-
-    fn is_expanded(&self) -> bool {
-        self.is_expanded
-    }
-
-    fn toggle_expanded(&mut self) {
-        self.is_expanded = !self.is_expanded;
-    }
-
-    fn summary(&self) -> String {
-        format!("Expands the following template {} time(s)", self.iterations)
-    }
-
-    fn process(&self, input: PipelineData) -> Result<PipelineData, NodeError> {
-        Ok(input)
-    }
-
-    fn ui(&mut self, ui: &mut Ui, _ctx: &NodeContext) -> NodeResponse {
-        ui.small(self.summary());
-        ui.horizontal(|ui| {
-            ui.label("Iterations");
-            ui.add(egui::DragValue::new(&mut self.iterations).range(1..=64));
-        });
-        NodeResponse::None
-    }
-
-    fn clone_box(&self) -> Box<dyn Node> {
-        Box::new(self.clone())
-    }
-
-    fn serialize(&self) -> serde_json::Value {
-        serde_json::json!({
-            "type": "LoopMacroNode",
-            "id": self.id.0.to_string(),
-            "name": self.name,
-            "position": {"x": self.position.x, "y": self.position.y},
-            "is_expanded": self.is_expanded,
-            "iterations": self.iterations,
-        })
-    }
-
-    fn deserialize(&mut self, value: &serde_json::Value) {
-        if let Some(name) = value.get("name").and_then(|v| v.as_str()) {
-            self.name = name.to_string();
-        }
-        if let Some(pos) = value.get("position") {
-            if let (Some(x), Some(y)) = (
-                pos.get("x").and_then(|v| v.as_f64()),
-                pos.get("y").and_then(|v| v.as_f64()),
-            ) {
-                self.position = NodePosition::new(x as f32, y as f32);
-            }
-        }
-        if let Some(expanded) = value.get("is_expanded").and_then(|v| v.as_bool()) {
-            self.is_expanded = expanded;
-        }
-        if let Some(iterations) = value.get("iterations").and_then(|v| v.as_u64()) {
-            self.iterations = iterations.max(1) as usize;
-        }
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct VariableMacroNode {
     id: NodeId,
     name: String,
@@ -245,7 +119,7 @@ impl Node for VariableMacroNode {
     }
 
     fn summary(&self) -> String {
-        format!("{} starts at {}", self.variable, self.initial_value)
+        format!("var {} = {}", self.variable, self.initial_value)
     }
 
     fn process(&self, input: PipelineData) -> Result<PipelineData, NodeError> {
@@ -254,14 +128,7 @@ impl Node for VariableMacroNode {
 
     fn ui(&mut self, ui: &mut Ui, _ctx: &NodeContext) -> NodeResponse {
         ui.small(self.summary());
-        ui.horizontal(|ui| {
-            ui.label("Name");
-            ui.text_edit_singleline(&mut self.variable);
-        });
-        ui.horizontal(|ui| {
-            ui.label("Initial");
-            ui.add(egui::DragValue::new(&mut self.initial_value));
-        });
+        ui.small("Edit in the right panel.");
         NodeResponse::None
     }
 
@@ -384,7 +251,7 @@ impl Node for IfMacroNode {
 
     fn summary(&self) -> String {
         format!(
-            "Applies to the next optimization when {} {} {}",
+            "if {} {} {}",
             self.variable,
             self.comparison.name(),
             self.value
@@ -397,23 +264,8 @@ impl Node for IfMacroNode {
 
     fn ui(&mut self, ui: &mut Ui, _ctx: &NodeContext) -> NodeResponse {
         ui.small(self.summary());
-        ui.horizontal(|ui| {
-            ui.label("Var");
-            ui.text_edit_singleline(&mut self.variable);
-        });
-        ui.horizontal(|ui| {
-            egui::ComboBox::from_id_salt(("if-macro-op", self.id.0))
-                .selected_text(self.comparison.name())
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.comparison, MacroComparison::LessThan, "<");
-                    ui.selectable_value(&mut self.comparison, MacroComparison::LessEqual, "<=");
-                    ui.selectable_value(&mut self.comparison, MacroComparison::Equal, "==");
-                    ui.selectable_value(&mut self.comparison, MacroComparison::NotEqual, "!=");
-                    ui.selectable_value(&mut self.comparison, MacroComparison::GreaterEqual, ">=");
-                    ui.selectable_value(&mut self.comparison, MacroComparison::GreaterThan, ">");
-                });
-            ui.add(egui::DragValue::new(&mut self.value));
-        });
+        ui.small("Port 0 = true, port 1 = false.");
+        ui.small("Edit in the right panel.");
         NodeResponse::None
     }
 
@@ -555,21 +407,7 @@ impl Node for ArithmeticMacroNode {
 
     fn ui(&mut self, ui: &mut Ui, _ctx: &NodeContext) -> NodeResponse {
         ui.small(self.summary());
-        ui.horizontal(|ui| {
-            ui.label("Var");
-            ui.text_edit_singleline(&mut self.target_variable);
-        });
-        ui.horizontal(|ui| {
-            egui::ComboBox::from_id_salt(("op-macro-op", self.id.0))
-                .selected_text(self.operation.name())
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.operation, ArithmeticOperation::Set, "=");
-                    ui.selectable_value(&mut self.operation, ArithmeticOperation::Add, "+=");
-                    ui.selectable_value(&mut self.operation, ArithmeticOperation::Subtract, "-=");
-                    ui.selectable_value(&mut self.operation, ArithmeticOperation::Multiply, "*=");
-                });
-            ui.add(egui::DragValue::new(&mut self.value));
-        });
+        ui.small("Edit in the right panel.");
         NodeResponse::None
     }
 
