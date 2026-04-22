@@ -314,10 +314,9 @@ impl NodeGraph {
             return;
         }
 
-        // Keep a single upstream input per target and a single downstream target per output port.
-        self.connections.retain(|connection| {
-            connection.to != to && !(connection.from == from && connection.from_port == from_port)
-        });
+        // Keep one downstream target per output port, but allow multiple upstream inputs.
+        self.connections
+            .retain(|connection| !(connection.from == from && connection.from_port == from_port));
         self.connections.push(Connection {
             from,
             from_port,

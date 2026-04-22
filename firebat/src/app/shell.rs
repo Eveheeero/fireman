@@ -1417,6 +1417,7 @@ fn resolve_input_source_node(graph: &NodeGraph, node_id: NodeId) -> Option<NodeI
     graph
         .connections()
         .iter()
+        .rev()
         .find(|connection| connection.to == node_id)
         .map(|connection| connection.from)
 }
