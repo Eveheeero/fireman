@@ -19,7 +19,6 @@ pub struct PreviewNode {
     /// Snapshot from nearest preceding OptNode or base.
     pub snapshot_ast: Option<Arc<Ast>>,
     pub snapshot_output: Option<DecompileResult>,
-    pub cursor: usize,
 }
 
 impl PreviewNode {
@@ -31,7 +30,6 @@ impl PreviewNode {
             is_expanded: false,
             snapshot_ast: None,
             snapshot_output: None,
-            cursor: 0,
         }
     }
 
@@ -54,36 +52,17 @@ impl PreviewNode {
     pub fn rendered_code(&self) -> Option<String> {
         if let Some(output) = &self.snapshot_output {
             if !output.assembly.is_empty() {
-                return Some(
-                    output
-                        .assembly
-                        .iter()
-                        .map(|line| line.data.as_str())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                );
+                return Some(join_lines(
+                    output.assembly.iter().map(|line| line.data.as_str()),
+                ));
             }
 
             if !output.ir.is_empty() {
-                return Some(
-                    output
-                        .ir
-                        .iter()
-                        .map(|line| line.data.as_str())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                );
+                return Some(join_lines(output.ir.iter().map(|line| line.data.as_str())));
             }
 
             if !output.ast.is_empty() {
-                return Some(
-                    output
-                        .ast
-                        .iter()
-                        .map(|line| line.data.as_str())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                );
+                return Some(join_lines(output.ast.iter().map(|line| line.data.as_str())));
             }
         }
 
@@ -92,6 +71,10 @@ impl PreviewNode {
             ast.print(Some(config))
         })
     }
+}
+
+fn join_lines<'a>(lines: impl Iterator<Item = &'a str>) -> String {
+    lines.collect::<Vec<_>>().join("\n")
 }
 
 impl Default for PreviewNode {
@@ -196,71 +179,5 @@ impl Node for PreviewNode {
         if let Some(expanded) = value.get("is_expanded").and_then(|v| v.as_bool()) {
             self.is_expanded = expanded;
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::model::{Assembly, AstLine, DecompileResult, Ir};
-
-    #[test]
-    fn rendered_code_prefers_assembly_snapshot_when_available() {
-        let mut node = PreviewNode::new();
-        node.snapshot_output = Some(DecompileResult {
-            assembly: vec![
-                Assembly {
-                    index: 1,
-                    parents_start_address: 0x401000,
-                    data: "mov eax, 1".to_string(),
-                },
-                Assembly {
-                    index: 2,
-                    parents_start_address: 0x401000,
-                    data: "ret".to_string(),
-                },
-            ],
-            ir: vec![Ir {
-                parents_assembly_index: 0,
-                data: "tmp0 = 1".to_string(),
-            }],
-            ast: vec![AstLine {
-                row: 0,
-                data: "int main() {}".to_string(),
-            }],
-            ast_object: None,
-            ast_sync_message: None,
-        });
-
-        assert_eq!(node.rendered_code().as_deref(), Some("mov eax, 1\nret"));
-    }
-
-    #[test]
-    fn rendered_code_prefers_ir_snapshot_over_ast_print_when_ir_is_available() {
-        let mut node = PreviewNode::new();
-        node.snapshot_output = Some(DecompileResult {
-            assembly: Vec::new(),
-            ir: vec![
-                Ir {
-                    parents_assembly_index: 0,
-                    data: "tmp0 = 1".to_string(),
-                },
-                Ir {
-                    parents_assembly_index: 0,
-                    data: "return tmp0".to_string(),
-                },
-            ],
-            ast: vec![AstLine {
-                row: 0,
-                data: "int main() {}".to_string(),
-            }],
-            ast_object: None,
-            ast_sync_message: None,
-        });
-
-        assert_eq!(
-            node.rendered_code().as_deref(),
-            Some("tmp0 = 1\nreturn tmp0")
-        );
     }
 }

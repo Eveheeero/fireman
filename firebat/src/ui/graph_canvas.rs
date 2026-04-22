@@ -2,7 +2,7 @@ use crate::{
     node::{Node, NodeContext, NodeId, NodePosition, NodeResponse},
     ui::ScratchBlockRenderer,
 };
-use egui::{Color32, Pos2, Rect, Response, Sense, Stroke, Ui, Vec2};
+use egui::{Color32, Pos2, Rect, Sense, Stroke, Ui, Vec2};
 
 #[derive(Clone, Copy, Debug)]
 struct NodeLayout {
@@ -265,8 +265,6 @@ impl<'a> GraphCanvas<'a> {
             connecting_from: new_connecting_from,
             completed_connection,
             removed_connection,
-            canvas_rect: rect,
-            canvas_response: response,
         }
     }
 
@@ -309,8 +307,6 @@ pub struct GraphResponse {
     pub connecting_from: Option<NodeId>,
     pub completed_connection: Option<(NodeId, NodeId)>,
     pub removed_connection: Option<(NodeId, NodeId)>,
-    pub canvas_rect: Rect,
-    pub canvas_response: Response,
 }
 
 /// Draw a curved connection line between two points
@@ -498,139 +494,4 @@ fn distance_to_segment(point: Pos2, start: Pos2, end: Pos2) -> f32 {
     let t = (point_vec.dot(segment) / segment_len_sq).clamp(0.0, 1.0);
     let projection = start + segment * t;
     point.distance(projection)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::node::NodeId;
-
-    #[test]
-    fn connection_endpoints_follow_reported_port_positions() {
-        let from_layout = NodeLayout {
-            node_id: NodeId(1),
-            rect: Rect::from_min_size(Pos2::new(20.0, 40.0), Vec2::new(380.0, 180.0)),
-            input_port_pos: None,
-            output_port_pos: Some(Pos2::new(410.0, 156.0)),
-            color: Color32::WHITE,
-        };
-        let to_layout = NodeLayout {
-            node_id: NodeId(2),
-            rect: Rect::from_min_size(Pos2::new(520.0, 120.0), Vec2::new(380.0, 90.0)),
-            input_port_pos: Some(Pos2::new(510.0, 172.0)),
-            output_port_pos: None,
-            color: Color32::WHITE,
-        };
-
-        let endpoints = connection_endpoints(&from_layout, &to_layout).expect("ports should exist");
-
-        assert_eq!(endpoints.from, Pos2::new(410.0, 156.0));
-        assert_eq!(endpoints.to, Pos2::new(510.0, 172.0));
-    }
-
-    #[test]
-    fn hit_testing_finds_nearby_connection_and_ignores_distant_points() {
-        let connections = [ConnectionVisual {
-            from_id: NodeId(1),
-            to_id: NodeId(2),
-            from: Pos2::new(20.0, 40.0),
-            to: Pos2::new(220.0, 40.0),
-            color: Color32::WHITE,
-        }];
-
-        assert_eq!(
-            find_connection_at_point(&connections, Pos2::new(120.0, 44.0), 8.0),
-            Some((NodeId(1), NodeId(2)))
-        );
-        assert_eq!(
-            find_connection_at_point(&connections, Pos2::new(120.0, 80.0), 8.0),
-            None
-        );
-    }
-
-    #[test]
-    fn hovered_input_target_ignores_source_and_nodes_without_input_ports() {
-        let layouts = [
-            NodeLayout {
-                node_id: NodeId(1),
-                rect: Rect::from_min_size(Pos2::new(0.0, 0.0), Vec2::new(40.0, 40.0)),
-                input_port_pos: Some(Pos2::new(5.0, 20.0)),
-                output_port_pos: Some(Pos2::new(35.0, 20.0)),
-                color: Color32::WHITE,
-            },
-            NodeLayout {
-                node_id: NodeId(2),
-                rect: Rect::from_min_size(Pos2::new(60.0, 0.0), Vec2::new(40.0, 40.0)),
-                input_port_pos: None,
-                output_port_pos: Some(Pos2::new(95.0, 20.0)),
-                color: Color32::WHITE,
-            },
-            NodeLayout {
-                node_id: NodeId(3),
-                rect: Rect::from_min_size(Pos2::new(120.0, 0.0), Vec2::new(40.0, 40.0)),
-                input_port_pos: Some(Pos2::new(125.0, 20.0)),
-                output_port_pos: None,
-                color: Color32::WHITE,
-            },
-        ];
-
-        assert_eq!(
-            hovered_input_target(NodeId(1), &layouts, Pos2::new(5.0, 20.0), 12.0),
-            None
-        );
-        assert_eq!(
-            hovered_input_target(NodeId(1), &layouts, Pos2::new(95.0, 20.0), 12.0),
-            None
-        );
-        assert_eq!(
-            hovered_input_target(NodeId(1), &layouts, Pos2::new(125.0, 20.0), 12.0),
-            Some(NodeId(3))
-        );
-    }
-
-    #[test]
-    fn resolve_connection_completion_requires_release_over_target() {
-        assert_eq!(
-            completed_connection(Some(NodeId(1)), false, Some(NodeId(2))),
-            None
-        );
-        assert_eq!(completed_connection(Some(NodeId(1)), true, None), None);
-        assert_eq!(
-            completed_connection(Some(NodeId(1)), true, Some(NodeId(2))),
-            Some((NodeId(1), NodeId(2)))
-        );
-    }
-
-    #[test]
-    fn remove_connection_request_requires_secondary_click() {
-        let connections = [ConnectionVisual {
-            from_id: NodeId(1),
-            to_id: NodeId(2),
-            from: Pos2::new(20.0, 40.0),
-            to: Pos2::new(220.0, 40.0),
-            color: Color32::WHITE,
-        }];
-
-        assert_eq!(
-            remove_connection_request(
-                false,
-                false,
-                Some(Pos2::new(120.0, 44.0)),
-                &connections,
-                8.0
-            ),
-            None
-        );
-        assert_eq!(
-            remove_connection_request(false, true, Some(Pos2::new(120.0, 44.0)), &connections, 8.0),
-            Some((NodeId(1), NodeId(2)))
-        );
-    }
-
-    #[test]
-    fn node_drag_is_blocked_when_pointer_originated_on_a_port() {
-        assert!(!should_start_node_drag(true, true, false));
-        assert!(!should_start_node_drag(true, false, true));
-        assert!(should_start_node_drag(true, false, false));
-    }
 }

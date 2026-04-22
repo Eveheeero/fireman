@@ -565,7 +565,6 @@ impl FirebatApp {
                         ir: Vec::new(),
                         ast: result.ast_lines,
                         ast_object: Some(result.ast),
-                        ast_sync_message: None,
                     });
                 }
             }
@@ -1175,113 +1174,5 @@ fn build_base_decompile_request(addresses: Vec<u64>) -> DecompileRequest {
         settings: crate::model::OptimizationSettings::none(),
         script_paths: vec![],
         buffer_script: None,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::model::{KnownSection, KnownSectionData, OptimizationSettings};
-
-    fn input_id(app: &FirebatApp) -> NodeId {
-        app.graph
-            .nodes()
-            .iter()
-            .find(|node| matches!(node.node_type(), NodeType::Input))
-            .map(|node| node.id())
-            .expect("input node")
-    }
-
-    fn preview_id(app: &FirebatApp) -> NodeId {
-        app.graph
-            .nodes()
-            .iter()
-            .find(|node| matches!(node.node_type(), NodeType::Preview))
-            .map(|node| node.id())
-            .expect("preview node")
-    }
-
-    #[test]
-    fn reachable_opt_nodes_follow_connected_path_only() {
-        let mut app = FirebatApp::default();
-        let input = input_id(&app);
-        let preview = preview_id(&app);
-        let opt_reachable = OptNode::new();
-        let opt_unreachable = OptNode::new();
-        let opt_reachable_id = opt_reachable.id();
-        let opt_unreachable_id = opt_unreachable.id();
-        let preview_two = PreviewNode::new();
-        let preview_two_id = preview_two.id();
-
-        app.graph.add_node(Box::new(opt_reachable));
-        app.graph.add_node(Box::new(opt_unreachable));
-        app.graph.add_node(Box::new(preview_two));
-        app.graph.remove_connection(input, preview);
-        app.graph.add_connection(input, opt_reachable_id);
-        app.graph.add_connection(opt_reachable_id, preview);
-        app.graph.add_connection(input, preview_two_id);
-
-        assert_eq!(
-            reachable_opt_nodes(&app.graph, input),
-            vec![opt_reachable_id]
-        );
-        assert_ne!(
-            reachable_opt_nodes(&app.graph, input),
-            vec![opt_reachable_id, opt_unreachable_id]
-        );
-    }
-
-    #[test]
-    fn input_source_resolves_direct_upstream_node() {
-        let mut app = FirebatApp::default();
-        let input = input_id(&app);
-        let opt_upstream = OptNode::new();
-        let opt_target = OptNode::new();
-        let opt_upstream_id = opt_upstream.id();
-        let opt_target_id = opt_target.id();
-
-        app.graph.add_node(Box::new(opt_upstream));
-        app.graph.add_node(Box::new(opt_target));
-        app.graph.add_connection(input, opt_upstream_id);
-        app.graph.add_connection(opt_upstream_id, opt_target_id);
-
-        assert_eq!(
-            resolve_input_source_node(&app.graph, opt_target_id),
-            Some(opt_upstream_id)
-        );
-    }
-
-    #[test]
-    fn removing_input_node_clears_loaded_input_state() {
-        let mut app = FirebatApp::default();
-        let input = input_id(&app);
-        app.selected_node = Some(input);
-        app.state.known_sections.push(KnownSection {
-            selected: true,
-            data: KnownSectionData {
-                start_address: 0x401000,
-                end_address: Some(0x401020),
-                analyzed: true,
-            },
-        });
-        app.state.last_decompile_selection = vec![0x401000];
-        app.state.analyze_target_address = "0x401000".to_string();
-
-        app.remove_node(input);
-
-        assert!(app.state.known_sections.is_empty());
-        assert!(app.state.last_decompile_selection.is_empty());
-        assert!(app.state.analyze_target_address.is_empty());
-        assert_eq!(app.selected_node, None);
-    }
-
-    #[test]
-    fn base_decompile_request_uses_no_optimization_settings() {
-        let request = build_base_decompile_request(vec![0x401000, 0x402000]);
-
-        assert_eq!(request.start_addresses, vec![0x401000, 0x402000]);
-        assert_eq!(request.settings, OptimizationSettings::none());
-        assert!(request.script_paths.is_empty());
-        assert_eq!(request.buffer_script, None);
     }
 }

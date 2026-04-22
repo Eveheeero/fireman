@@ -1,7 +1,6 @@
 ﻿#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app;
-mod ast_editor;
 mod core;
 mod model;
 mod node;

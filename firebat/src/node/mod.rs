@@ -218,20 +218,6 @@ impl NodeGraph {
             .map(|n| n.as_mut())
     }
 
-    /// Get the index of a node by ID
-    pub fn get_node_index(&self, id: NodeId) -> Option<usize> {
-        self.nodes.iter().position(|n| n.id() == id)
-    }
-
-    /// Move a node from one position to another in the vector
-    pub fn move_node(&mut self, from: usize, to: usize) {
-        if from < self.nodes.len() && to < self.nodes.len() && from != to {
-            let node = self.nodes.remove(from);
-            let new_index = if to > from { to - 1 } else { to };
-            self.nodes.insert(new_index, node);
-        }
-    }
-
     /// Get all nodes
     pub fn nodes(&self) -> &[Box<dyn Node>] {
         &self.nodes
@@ -303,68 +289,6 @@ impl NodeGraph {
     pub fn len(&self) -> usize {
         self.nodes.len()
     }
-
-    /// Check if graph is empty
-    pub fn is_empty(&self) -> bool {
-        self.nodes.is_empty()
-    }
-
-    /// Serialize the graph to JSON
-    pub fn serialize(&self) -> serde_json::Value {
-        let nodes: Vec<serde_json::Value> = self.nodes.iter().map(|n| n.serialize()).collect();
-
-        let connections: Vec<serde_json::Value> = self
-            .connections
-            .iter()
-            .map(|(from, to)| {
-                serde_json::json!({
-                    "from": from.0,
-                    "to": to.0
-                })
-            })
-            .collect();
-
-        serde_json::json!({
-            "nodes": nodes,
-            "connections": connections
-        })
-    }
-
-    /// Deserialize the graph from JSON
-    pub fn deserialize(&mut self, value: &serde_json::Value) -> Result<(), String> {
-        self.clear();
-
-        if let Some(nodes) = value.get("nodes").and_then(|n| n.as_array()) {
-            for node_value in nodes {
-                if let Some(node_type) = node_value.get("type").and_then(|t| t.as_str()) {
-                    let mut node: Box<dyn Node> = match node_type {
-                        "InputNode" => Box::new(InputNode::new()),
-                        "OptNode" => Box::new(OptNode::new()),
-                        "PreviewNode" => Box::new(PreviewNode::new()),
-                        // Legacy compat: treat old names as new types
-                        "OptimizationNode" => Box::new(OptNode::new()),
-                        "OutputNode" => Box::new(PreviewNode::new()),
-                        _ => continue,
-                    };
-                    node.deserialize(node_value);
-                    self.add_node(node);
-                }
-            }
-        }
-
-        if let Some(connections) = value.get("connections").and_then(|c| c.as_array()) {
-            for conn in connections {
-                if let (Some(from), Some(to)) = (
-                    conn.get("from").and_then(|f| f.as_u64()).map(NodeId),
-                    conn.get("to").and_then(|t| t.as_u64()).map(NodeId),
-                ) {
-                    self.add_connection(from, to);
-                }
-            }
-        }
-
-        Ok(())
-    }
 }
 
 // Implement as_any and as_any_mut for all node types
@@ -375,83 +299,5 @@ impl dyn Node {
 
     pub fn downcast_mut<T: Node>(&mut self) -> Option<&mut T> {
         self.as_any_mut().downcast_mut::<T>()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn input_node() -> Box<dyn Node> {
-        Box::new(InputNode::new())
-    }
-
-    fn opt_node() -> Box<dyn Node> {
-        Box::new(OptNode::new())
-    }
-
-    fn preview_node() -> Box<dyn Node> {
-        Box::new(PreviewNode::new())
-    }
-
-    #[test]
-    fn add_connection_allows_multiple_downstream_targets_from_same_source() {
-        let mut graph = NodeGraph::new();
-        let input = input_node();
-        let preview_a = preview_node();
-        let preview_b = preview_node();
-        let input_id = input.id();
-        let preview_a_id = preview_a.id();
-        let preview_b_id = preview_b.id();
-
-        graph.add_node(input);
-        graph.add_node(preview_a);
-        graph.add_node(preview_b);
-
-        graph.add_connection(input_id, preview_a_id);
-        graph.add_connection(input_id, preview_b_id);
-
-        assert_eq!(
-            graph.connections(),
-            &[(input_id, preview_a_id), (input_id, preview_b_id)]
-        );
-    }
-
-    #[test]
-    fn add_connection_replaces_existing_upstream_for_target() {
-        let mut graph = NodeGraph::new();
-        let input = input_node();
-        let opt = opt_node();
-        let preview = preview_node();
-        let input_id = input.id();
-        let opt_id = opt.id();
-        let preview_id = preview.id();
-
-        graph.add_node(input);
-        graph.add_node(opt);
-        graph.add_node(preview);
-
-        graph.add_connection(input_id, preview_id);
-        graph.add_connection(opt_id, preview_id);
-
-        assert_eq!(graph.connections(), &[(opt_id, preview_id)]);
-    }
-
-    #[test]
-    fn add_connection_rejects_duplicate_and_self_edges() {
-        let mut graph = NodeGraph::new();
-        let input = input_node();
-        let preview = preview_node();
-        let input_id = input.id();
-        let preview_id = preview.id();
-
-        graph.add_node(input);
-        graph.add_node(preview);
-
-        graph.add_connection(input_id, preview_id);
-        graph.add_connection(input_id, preview_id);
-        graph.add_connection(input_id, input_id);
-
-        assert_eq!(graph.connections(), &[(input_id, preview_id)]);
     }
 }

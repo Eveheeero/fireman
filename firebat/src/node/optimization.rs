@@ -83,79 +83,6 @@ impl OptimizationPass {
         }
     }
 
-    pub fn icon(&self) -> &'static str {
-        match self {
-            Self::ConstantFolding => "+",
-            Self::ControlFlowCleanup => "~",
-            Self::CopyPropagation => ">",
-            Self::DeadStoreElimination => "x",
-            Self::ExpressionInlining => "->",
-            Self::LoopAnalysis => "@",
-            Self::ParameterAnalysis => "*",
-            Self::CallArgumentAnalysis => "*",
-            Self::PatternMatching(_) => "#",
-            Self::BooleanRecovery => "T",
-            Self::SwitchReconstruction => "<>",
-            Self::LifetimeScoping => "|",
-            Self::SignednessInference => "+-",
-            Self::NameRecovery => "#",
-            Self::EarlyReturnNormalization => "<-",
-            Self::CollapseUnusedVariable => "-",
-            Self::TernaryRecovery => "?",
-            Self::OperatorCanonicalization => "=",
-            Self::MagicDivisionRecovery => "/",
-            Self::IdentitySimplification => "1",
-            Self::BitTrickRecognition => "&",
-            Self::CastMinimization => "(",
-            Self::AssertionRecovery => "!",
-            Self::DoWhileRecovery => "d",
-            Self::ClampRecovery => "c",
-            Self::LoopCleanup => "~@",
-            Self::IfConversionReversal => "<?",
-            Self::AntiDebugAstSuppression => "%%",
-            Self::LoggingSuppression => "L",
-            Self::StaticGuardSuppression => "G",
-            Self::SecurityScaffoldSuppression => "S",
-        }
-    }
-
-    pub fn from_name(name: &str) -> Option<Self> {
-        Some(match name {
-            "Constant Folding" => Self::ConstantFolding,
-            "Control Flow Cleanup" => Self::ControlFlowCleanup,
-            "Copy Propagation" => Self::CopyPropagation,
-            "Dead Store Elimination" => Self::DeadStoreElimination,
-            "Expression Inlining" => Self::ExpressionInlining,
-            "Loop Analysis" => Self::LoopAnalysis,
-            "Parameter Analysis" => Self::ParameterAnalysis,
-            "Call Argument Analysis" => Self::CallArgumentAnalysis,
-            "Pattern Matching" => Self::PatternMatching(Vec::new()),
-            "Boolean Recovery" => Self::BooleanRecovery,
-            "Switch Reconstruction" => Self::SwitchReconstruction,
-            "Lifetime Scoping" => Self::LifetimeScoping,
-            "Signedness Inference" => Self::SignednessInference,
-            "Name Recovery" => Self::NameRecovery,
-            "Early Return Normalization" => Self::EarlyReturnNormalization,
-            "Collapse Unused Variable" => Self::CollapseUnusedVariable,
-            "Ternary Recovery" => Self::TernaryRecovery,
-            "Operator Canonicalization" => Self::OperatorCanonicalization,
-            "Magic Division Recovery" => Self::MagicDivisionRecovery,
-            "Identity Simplification" => Self::IdentitySimplification,
-            "Bit Trick Recognition" => Self::BitTrickRecognition,
-            "Cast Minimization" => Self::CastMinimization,
-            "Assertion Recovery" => Self::AssertionRecovery,
-            "Do-While Recovery" => Self::DoWhileRecovery,
-            "Clamp Recovery" => Self::ClampRecovery,
-            "Loop Cleanup" => Self::LoopCleanup,
-            "If-Conversion Reversal" => Self::IfConversionReversal,
-            "Anti-Debug AST Suppression" => Self::AntiDebugAstSuppression,
-            "Logging Suppression" => Self::LoggingSuppression,
-            "Static Guard Suppression" => Self::StaticGuardSuppression,
-            "Security Scaffold Suppression" => Self::SecurityScaffoldSuppression,
-            _ => return None,
-        })
-    }
-
     pub fn to_settings(&self) -> OptimizationSettings {
         let mut settings = OptimizationSettings::none();
 
@@ -194,78 +121,6 @@ impl OptimizationPass {
         }
 
         settings
-    }
-
-    fn from_settings(settings: &OptimizationSettings) -> Option<Self> {
-        let candidates = [
-            (settings.constant_folding, Self::ConstantFolding),
-            (settings.control_flow_cleanup, Self::ControlFlowCleanup),
-            (settings.copy_propagation, Self::CopyPropagation),
-            (settings.dead_store_elimination, Self::DeadStoreElimination),
-            (settings.expression_inlining, Self::ExpressionInlining),
-            (settings.loop_analyzation, Self::LoopAnalysis),
-            (settings.parameter_analyzation, Self::ParameterAnalysis),
-            (
-                settings.call_argument_analyzation,
-                Self::CallArgumentAnalysis,
-            ),
-            (
-                settings.pattern_matching_enabled,
-                Self::PatternMatching(Vec::new()),
-            ),
-            (settings.boolean_recovery, Self::BooleanRecovery),
-            (settings.switch_reconstruction, Self::SwitchReconstruction),
-            (settings.lifetime_scoping, Self::LifetimeScoping),
-            (settings.signedness_inference, Self::SignednessInference),
-            (settings.name_recovery, Self::NameRecovery),
-            (
-                settings.early_return_normalization,
-                Self::EarlyReturnNormalization,
-            ),
-            (
-                settings.collapse_unused_varaible,
-                Self::CollapseUnusedVariable,
-            ),
-            (settings.ternary_recovery, Self::TernaryRecovery),
-            (
-                settings.operator_canonicalization,
-                Self::OperatorCanonicalization,
-            ),
-            (
-                settings.magic_division_recovery,
-                Self::MagicDivisionRecovery,
-            ),
-            (
-                settings.identity_simplification,
-                Self::IdentitySimplification,
-            ),
-            (settings.bit_trick_recognition, Self::BitTrickRecognition),
-            (settings.cast_minimization, Self::CastMinimization),
-            (settings.assertion_recovery, Self::AssertionRecovery),
-            (settings.do_while_recovery, Self::DoWhileRecovery),
-            (settings.clamp_recovery, Self::ClampRecovery),
-            (settings.loop_cleanup, Self::LoopCleanup),
-            (settings.if_conversion_reversal, Self::IfConversionReversal),
-            (
-                settings.anti_debug_ast_suppression,
-                Self::AntiDebugAstSuppression,
-            ),
-            (settings.logging_suppression, Self::LoggingSuppression),
-            (
-                settings.static_guard_suppression,
-                Self::StaticGuardSuppression,
-            ),
-            (
-                settings.security_scaffold_suppression,
-                Self::SecurityScaffoldSuppression,
-            ),
-        ];
-
-        let mut enabled = candidates
-            .into_iter()
-            .filter_map(|(is_enabled, pass)| is_enabled.then_some(pass));
-        let first = enabled.next()?;
-        enabled.next().is_none().then_some(first)
     }
 
     fn build_store(&self) -> OptimizationStore {
@@ -314,16 +169,6 @@ impl OptNode {
 
     pub fn with_position(mut self, x: f32, y: f32) -> Self {
         self.position = NodePosition::new(x, y);
-        self
-    }
-
-    pub fn with_store(mut self, store: OptimizationStore) -> Self {
-        self.store = store;
-        if let Some(pass) = OptimizationPass::from_settings(&self.store.applied_settings)
-            .or_else(|| OptimizationPass::from_settings(&self.store.draft_settings))
-        {
-            self.name = pass.name().to_string();
-        }
         self
     }
 }
@@ -441,28 +286,5 @@ impl Node for OptNode {
                 self.store = store;
             }
         }
-        if value.get("name").is_none() {
-            if let Some(pass) = OptimizationPass::from_settings(&self.store.applied_settings)
-                .or_else(|| OptimizationPass::from_settings(&self.store.draft_settings))
-            {
-                self.name = pass.name().to_string();
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn selected_pass_is_reflected_in_node_configuration() {
-        let node = OptNode::for_pass(OptimizationPass::CopyPropagation);
-
-        assert_eq!(node.name(), "Copy Propagation");
-        assert!(node.store.applied_settings.copy_propagation);
-        assert!(node.store.draft_settings.copy_propagation);
-        assert!(!node.store.applied_settings.constant_folding);
-        assert!(!node.store.applied_settings.dead_store_elimination);
     }
 }
