@@ -1,6 +1,37 @@
-use eframe::egui::{self, Color32, Stroke};
+use eframe::egui::{self, Color32, FontData, FontDefinitions, FontFamily, Stroke};
+use std::sync::Arc;
+
+/// Embedded NotoSansCJKsc-Regular font data (compile-time embedding)
+const FONT_REGULAR: &[u8] = include_bytes!("../fonts/NotoSansCJKsc-Regular.otf");
+/// Embedded NotoSansCJKsc-Bold font data (compile-time embedding)
+const FONT_BOLD: &[u8] = include_bytes!("../fonts/NotoSansCJKsc-Bold.otf");
 
 pub(crate) fn configure_theme(ctx: &egui::Context, is_dark_mode: bool) {
+    let mut fonts = FontDefinitions::default();
+
+    fonts.font_data.insert(
+        "CJKFont".to_owned(),
+        Arc::new(FontData::from_static(FONT_REGULAR)),
+    );
+
+    fonts.font_data.insert(
+        "CJKFont-Bold".to_owned(),
+        Arc::new(FontData::from_static(FONT_BOLD)),
+    );
+
+    fonts
+        .families
+        .get_mut(&FontFamily::Proportional)
+        .unwrap()
+        .insert(0, "CJKFont".to_owned());
+    fonts
+        .families
+        .get_mut(&FontFamily::Monospace)
+        .unwrap()
+        .insert(0, "CJKFont".to_owned());
+
+    ctx.set_fonts(fonts);
+
     let mut visuals = if is_dark_mode {
         egui::Visuals::dark()
     } else {

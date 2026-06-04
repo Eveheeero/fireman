@@ -1,0 +1,451 @@
+pub mod input;
+pub mod macro_nodes;
+pub mod optimization;
+pub mod output;
+
+use crate::{
+    model::{GraphPreset, PersistedConnection, PersistedNode},
+    pipeline::PipelineData,
+};
+use egui::{Color32, Pos2, Ui};
+pub use input::InputNode;
+pub use macro_nodes::{
+    ArithmeticMacroNode, ArithmeticOperation, IfMacroNode, MacroComparison, VariableMacroNode,
+};
+pub use optimization::{OptNode, OptimizationPass};
+pub use output::PreviewNode;
+use serde::{Deserialize, Serialize};
+use std::{
+    any::Any,
+    sync::atomic::{AtomicU64, Ordering},
+};
+
+static NEXT_NODE_ID: AtomicU64 = AtomicU64::new(1);
+
+/// Unique identifier for nodes
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct NodeId(pub u64);
+
+impl NodeId {
+    pub fn new() -> Self {
+        Self(NEXT_NODE_ID.fetch_add(1, Ordering::SeqCst))
+    }
+}
+
+impl Default for NodeId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Position of a node in 2D graph space
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct NodePosition {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl NodePosition {
+    pub fn new(x: f32, y: f32) -> Self {
+        Self { x, y }
+    }
+
+    /// Convert to egui::Pos2
+    pub fn to_pos2(&self) -> Pos2 {
+        Pos2::new(self.x, self.y)
+    }
+
+    /// Create from egui::Pos2
+    pub fn from_pos2(pos: Pos2) -> Self {
+        Self { x: pos.x, y: pos.y }
+    }
+}
+
+/// Response from node UI interaction
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum NodeResponse {
+    None,
+    Selected,
+    Deleted,
+    ToggleExpanded,
+    ToggleEnabled,
+    RunPipeline,
+    DraggedTo { new_pos: NodePosition },
+    InputPortClicked,
+    OutputPortClicked,
+}
+
+/// Type of node in the graph
+#[derive(Clone, Debug, PartialEq)]
+pub enum NodeType {
+    Input,
+    Opt,
+    IfMacro,
+    VariableMacro,
+    ArithmeticMacro,
+    Preview,
+}
+
+impl NodeType {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Input => "Input",
+            Self::Opt => "Optimization",
+            Self::IfMacro => "If Macro",
+            Self::VariableMacro => "Variable Macro",
+            Self::ArithmeticMacro => "Arithmetic Macro",
+            Self::Preview => "Preview",
+        }
+    }
+
+    pub fn icon(&self) -> &'static str {
+        match self {
+            Self::Input => "",
+            Self::Opt => "",
+            Self::IfMacro => "",
+            Self::VariableMacro => "",
+            Self::ArithmeticMacro => "",
+            Self::Preview => "",
+        }
+    }
+
+    pub fn is_macro(&self) -> bool {
+        matches!(
+            self,
+            Self::IfMacro | Self::VariableMacro | Self::ArithmeticMacro
+        )
+    }
+}
+
+/// Error types for node processing
+#[derive(Clone, Debug)]
+pub enum NodeError {
+    MissingData(&'static str),
+    InvalidInput {
+        expected: &'static str,
+        got: &'static str,
+    },
+    ProcessingError(String),
+}
+
+impl std::fmt::Display for NodeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MissingData(msg) => write!(f, "Missing data: {}", msg),
+            Self::InvalidInput { expected, got } => {
+                write!(f, "Invalid input: expected {}, got {}", expected, got)
+            }
+            Self::ProcessingError(msg) => write!(f, "Processing error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for NodeError {}
+
+/// Color palette for different node types
+pub struct NodeColors;
+
+impl NodeColors {
+    pub fn input() -> Color32 {
+        Color32::from_rgb(0x0F, 0x6C, 0xBD) // Blue
+    }
+
+    pub fn optimization() -> Color32 {
+        Color32::from_rgb(0x03, 0x83, 0x87) // Cyan
+    }
+
+    pub fn preview() -> Color32 {
+        Color32::from_rgb(0x0F, 0x7B, 0x0F) // Green
+    }
+}
+
+/// Context passed to node UI rendering
+pub struct NodeContext {
+    pub is_selected: bool,
+    pub is_dragging: bool,
+    pub can_delete: bool,
+}
+
+/// Core trait for all pipeline nodes
+pub trait Node: Any {
+    fn id(&self) -> NodeId;
+    fn name(&self) -> &str;
+    fn node_type(&self) -> NodeType;
+    fn color(&self) -> Color32;
+    fn position(&self) -> NodePosition;
+    fn set_position(&mut self, pos: NodePosition);
+    fn is_expanded(&self) -> bool;
+    fn toggle_expanded(&mut self);
+    fn is_enabled(&self) -> bool {
+        true
+    }
+    fn set_enabled(&mut self, _enabled: bool) {}
+    fn summary(&self) -> String;
+    fn process(&self, input: PipelineData) -> Result<PipelineData, NodeError>;
+    fn ui(&mut self, ui: &mut Ui, ctx: &NodeContext) -> NodeResponse;
+    fn clone_box(&self) -> Box<dyn Node>;
+    fn serialize(&self) -> serde_json::Value;
+    fn deserialize(&mut self, value: &serde_json::Value);
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl Clone for Box<dyn Node> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Connection {
+    pub from: NodeId,
+    pub from_port: usize,
+    pub to: NodeId,
+}
+
+/// Graph containing multiple nodes connected in a pipeline
+#[derive(Clone, Default)]
+pub struct NodeGraph {
+    nodes: Vec<Box<dyn Node>>,
+    connections: Vec<Connection>,
+}
+
+impl NodeGraph {
+    pub fn new() -> Self {
+        Self {
+            nodes: Vec::new(),
+            connections: Vec::new(),
+        }
+    }
+
+    /// Add a node to the graph
+    pub fn add_node(&mut self, node: Box<dyn Node>) {
+        self.nodes.push(node);
+    }
+
+    /// Remove a node from the graph by ID
+    pub fn remove_node(&mut self, id: NodeId) -> Option<Box<dyn Node>> {
+        if let Some(index) = self.nodes.iter().position(|n| n.id() == id) {
+            // Remove connections involving this node
+            self.connections
+                .retain(|connection| connection.from != id && connection.to != id);
+            Some(self.nodes.remove(index))
+        } else {
+            None
+        }
+    }
+
+    /// Get a node by ID
+    pub fn get_node(&self, id: NodeId) -> Option<&dyn Node> {
+        self.nodes.iter().find(|n| n.id() == id).map(|n| n.as_ref())
+    }
+
+    /// Get a mutable node by ID
+    pub fn get_node_mut(&mut self, id: NodeId) -> Option<&mut dyn Node> {
+        self.nodes
+            .iter_mut()
+            .find(|n| n.id() == id)
+            .map(|n| n.as_mut())
+    }
+
+    /// Get all nodes
+    pub fn nodes(&self) -> &[Box<dyn Node>] {
+        &self.nodes
+    }
+
+    /// Get all nodes mutably
+    pub fn nodes_mut(&mut self) -> &mut [Box<dyn Node>] {
+        &mut self.nodes
+    }
+
+    /// Get all connections
+    pub fn connections(&self) -> &[Connection] {
+        &self.connections
+    }
+
+    /// Add a connection between two nodes
+    pub fn add_connection(&mut self, from: NodeId, from_port: usize, to: NodeId) {
+        if from == to {
+            return;
+        }
+
+        let Some(source) = self.get_node(from) else {
+            return;
+        };
+        let Some(target) = self.get_node(to) else {
+            return;
+        };
+
+        let source_supports_output = matches!(
+            source.node_type(),
+            NodeType::Input
+                | NodeType::Opt
+                | NodeType::IfMacro
+                | NodeType::VariableMacro
+                | NodeType::ArithmeticMacro
+        );
+        let target_supports_input = matches!(
+            target.node_type(),
+            NodeType::Opt
+                | NodeType::IfMacro
+                | NodeType::VariableMacro
+                | NodeType::ArithmeticMacro
+                | NodeType::Preview
+        );
+        if !source_supports_output || !target_supports_input {
+            return;
+        }
+
+        let valid_port = match source.node_type() {
+            NodeType::IfMacro => from_port <= 1,
+            NodeType::Input
+            | NodeType::Opt
+            | NodeType::VariableMacro
+            | NodeType::ArithmeticMacro => from_port == 0,
+            NodeType::Preview => false,
+        };
+        if !valid_port {
+            return;
+        }
+
+        if self.connections.iter().any(|connection| {
+            connection.from == from && connection.from_port == from_port && connection.to == to
+        }) {
+            return;
+        }
+
+        if matches!(target.node_type(), NodeType::Preview) {
+            self.connections.retain(|connection| connection.to != to);
+        }
+
+        self.connections.push(Connection {
+            from,
+            from_port,
+            to,
+        });
+    }
+
+    /// Remove a connection
+    pub fn remove_connection(&mut self, from: NodeId, from_port: usize, to: NodeId) {
+        self.connections.retain(|connection| {
+            connection.from != from || connection.from_port != from_port || connection.to != to
+        });
+    }
+
+    /// Collect OptNode IDs in pipeline order (for async queue).
+    pub fn opt_node_ids(&self) -> Vec<NodeId> {
+        self.nodes
+            .iter()
+            .filter(|n| matches!(n.node_type(), NodeType::Opt))
+            .map(|n| n.id())
+            .collect()
+    }
+
+    /// Clear all nodes and connections
+    pub fn clear(&mut self) {
+        self.nodes.clear();
+        self.connections.clear();
+    }
+
+    /// Get node count
+    pub fn len(&self) -> usize {
+        self.nodes.len()
+    }
+
+    pub fn serialize_nodes(&self) -> Vec<PersistedNode> {
+        self.nodes
+            .iter()
+            .map(|node| PersistedNode {
+                id: node.id().0,
+                kind: match node.node_type() {
+                    NodeType::Input => "InputNode".to_string(),
+                    NodeType::Opt => "OptNode".to_string(),
+                    NodeType::IfMacro => "IfMacroNode".to_string(),
+                    NodeType::VariableMacro => "VariableMacroNode".to_string(),
+                    NodeType::ArithmeticMacro => "ArithmeticMacroNode".to_string(),
+                    NodeType::Preview => "PreviewNode".to_string(),
+                },
+                data: node.serialize(),
+            })
+            .collect()
+    }
+
+    pub fn serialize_connections(&self) -> Vec<PersistedConnection> {
+        self.connections
+            .iter()
+            .map(|connection| PersistedConnection {
+                from: connection.from.0,
+                from_port: connection.from_port,
+                to: connection.to.0,
+            })
+            .collect()
+    }
+
+    pub fn from_preset(preset: &GraphPreset) -> Result<(Self, NodeIdMap), String> {
+        let mut graph = Self::new();
+        let mut id_map = NodeIdMap::default();
+
+        for persisted in &preset.nodes {
+            let Some(mut node) = instantiate_node(&persisted.kind) else {
+                return Err(format!("Unsupported node type {}", persisted.kind));
+            };
+            node.deserialize(&persisted.data);
+            let new_id = node.id();
+            id_map.insert(persisted.id, new_id);
+            graph.add_node(node);
+        }
+
+        for connection in &preset.connections {
+            let Some(from_id) = id_map.get(connection.from) else {
+                continue;
+            };
+            let Some(to_id) = id_map.get(connection.to) else {
+                continue;
+            };
+            graph.add_connection(from_id, connection.from_port, to_id);
+        }
+
+        Ok((graph, id_map))
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct NodeIdMap {
+    entries: Vec<(u64, NodeId)>,
+}
+
+impl NodeIdMap {
+    pub fn insert(&mut self, persisted_id: u64, runtime_id: NodeId) {
+        self.entries.push((persisted_id, runtime_id));
+    }
+
+    pub fn get(&self, persisted_id: u64) -> Option<NodeId> {
+        self.entries
+            .iter()
+            .find(|(saved_id, _)| *saved_id == persisted_id)
+            .map(|(_, runtime_id)| *runtime_id)
+    }
+}
+
+fn instantiate_node(kind: &str) -> Option<Box<dyn Node>> {
+    match kind {
+        "InputNode" => Some(Box::new(InputNode::new())),
+        "OptNode" => Some(Box::new(OptNode::new())),
+        "IfMacroNode" => Some(Box::new(IfMacroNode::new())),
+        "VariableMacroNode" => Some(Box::new(VariableMacroNode::new())),
+        "ArithmeticMacroNode" => Some(Box::new(ArithmeticMacroNode::new())),
+        "PreviewNode" => Some(Box::new(PreviewNode::new())),
+        _ => None,
+    }
+}
+
+// Implement as_any and as_any_mut for all node types
+impl dyn Node {
+    pub fn downcast_ref<T: Node>(&self) -> Option<&T> {
+        self.as_any().downcast_ref::<T>()
+    }
+
+    pub fn downcast_mut<T: Node>(&mut self) -> Option<&mut T> {
+        self.as_any_mut().downcast_mut::<T>()
+    }
+}

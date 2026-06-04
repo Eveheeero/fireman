@@ -30,7 +30,6 @@ pub struct AstOptimizationConfig {
     pub lifetime_scoping: bool,
     pub signedness_inference: bool,
     pub name_recovery: bool,
-    pub auto_comment: bool,
     pub early_return_normalization: bool,
     pub anti_debug_ast_suppression: bool,
     pub logging_suppression: bool,
@@ -69,7 +68,6 @@ pub enum ProcessedOptimization {
     VariableCoalescing,
     SignednessInference,
     NameRecovery,
-    AutoComment,
     EarlyReturnNormalization,
     AssertionRecovery,
     DoWhileRecovery,
@@ -104,7 +102,6 @@ impl AstOptimizationConfig {
         lifetime_scoping: true,
         signedness_inference: true,
         name_recovery: true,
-        auto_comment: true,
         early_return_normalization: true,
         anti_debug_ast_suppression: false,
         logging_suppression: false,
@@ -142,7 +139,6 @@ impl AstOptimizationConfig {
         lifetime_scoping: true,
         signedness_inference: true,
         name_recovery: true,
-        auto_comment: true,
         early_return_normalization: true,
         anti_debug_ast_suppression: true,
         logging_suppression: true,
@@ -180,7 +176,6 @@ impl AstOptimizationConfig {
         lifetime_scoping: false,
         signedness_inference: false,
         name_recovery: false,
-        auto_comment: false,
         early_return_normalization: false,
         anti_debug_ast_suppression: false,
         logging_suppression: false,
@@ -317,10 +312,6 @@ impl AstOptimizationConfig {
     }
     pub fn name_recovery(mut self, value: bool) -> Self {
         self.name_recovery = value;
-        self
-    }
-    pub fn auto_comment(mut self, value: bool) -> Self {
-        self.auto_comment = value;
         self
     }
     pub fn early_return_normalization(mut self, value: bool) -> Self {

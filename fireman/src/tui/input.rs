@@ -2,13 +2,10 @@ use super::{
     app::App,
     prompt,
     types::{
-        OptimizationFocus, PromptKind, View, all_optimization_fields, optimization_field_count,
+        OptimizationFocus, PromptKind, TabType, all_optimization_fields, optimization_field_count,
     },
 };
-use crate::{
-    model::{EditorLayer, OptimizationSettings},
-    worker::WorkerRequest,
-};
+use crate::{model::OptimizationSettings, worker::WorkerRequest};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 impl App {
@@ -30,95 +27,97 @@ impl App {
             self.show_license = false;
             return;
         }
-        let handled = match self.current_view {
-            View::Sections => self.handle_sections_key(key),
-            View::Assembly => self.handle_output_key(key, EditorLayer::Assembly),
-            View::Ir => self.handle_output_key(key, EditorLayer::Ir),
-            View::Ast => self.handle_output_key(key, EditorLayer::Ast),
-            View::Editor => self.handle_editor_key(key),
-            View::Optimization => self.handle_optimization_key(key),
-            View::Patch => self.handle_patch_key(key),
-            View::Logs => self.handle_logs_key(key),
+        let handled = match self.tabs.current_tab_type() {
+            Some(TabType::Input) => self.handle_sections_key(key),
+            Some(TabType::Preview) => self.handle_preview_key(key),
+            Some(TabType::Opt) => self.handle_opt_key(key),
+            Some(TabType::Logs) => self.handle_logs_key(key),
+            None => false,
         };
-
         if handled {
             return;
         }
-
         let _ = self.handle_global_key(key);
     }
 
     fn handle_global_key(&mut self, key: KeyEvent) -> bool {
-        if !key.modifiers.is_empty() {
+        if key.modifiers.intersects(
+            KeyModifiers::CONTROL
+                | KeyModifiers::ALT
+                | KeyModifiers::META
+                | KeyModifiers::SUPER
+                | KeyModifiers::HYPER,
+        ) {
             return false;
         }
-
         match key.code {
             KeyCode::Char('q') => {
                 self.running = false;
                 true
             }
+            // Tab navigation - numbers go to specific tabs
             KeyCode::Char('1') => {
-                self.set_view(View::Sections);
+                self.tabs.goto_tab(0);
                 true
             }
             KeyCode::Char('2') => {
-                self.set_view(View::Assembly);
+                self.tabs.goto_tab(1);
                 true
             }
             KeyCode::Char('3') => {
-                self.set_view(View::Ir);
+                self.tabs.goto_tab(2);
                 true
             }
             KeyCode::Char('4') => {
-                self.set_view(View::Ast);
+                self.tabs.goto_tab(3);
                 true
             }
             KeyCode::Char('5') => {
-                self.set_view(View::Editor);
+                self.tabs.goto_tab(4);
                 true
             }
             KeyCode::Char('6') => {
-                self.set_view(View::Optimization);
+                self.tabs.goto_tab(5);
                 true
             }
             KeyCode::Char('7') => {
-                self.set_view(View::Patch);
+                self.tabs.goto_tab(6);
                 true
             }
             KeyCode::Char('8') => {
-                self.set_view(View::Logs);
+                self.tabs.goto_tab(7);
                 true
             }
-            KeyCode::Char('o') => {
-                self.open_path_prompt(
-                    PromptKind::OpenFile,
-                    "Open Binary",
-                    self.opened_path.clone().unwrap_or_default(),
-                    "Enter file path and press Enter. Tab autocompletes. Esc cancels.",
-                );
+            KeyCode::Char('9') => {
+                self.tabs.goto_tab(8);
                 true
             }
-            KeyCode::Char('a') => {
-                self.open_prompt(
-                    PromptKind::AnalyzeAddress,
-                    "Analyze Address",
-                    self.pending_analysis_address.clone().unwrap_or_default(),
-                    false,
-                    "Enter an address. Leave empty to analyze the entry point.",
-                );
+            // Tab management
+            KeyCode::Char('t') => {
+                self.tabs.next_tab();
                 true
             }
-            KeyCode::Char('g') => {
-                self.send_request(WorkerRequest::AnalyzeAllSections, "analyzing all sections");
+            KeyCode::Char('T') => {
+                self.tabs.prev_tab();
                 true
             }
-            KeyCode::Char('d') => {
-                self.start_decompile();
+            KeyCode::Char('c') => {
+                self.remove_pipeline_entry();
                 true
             }
-            KeyCode::Char('x') => {
-                self.send_request(WorkerRequest::ExportPatch, "exporting patch");
+            KeyCode::Char('n') => {
+                self.add_opt_stage();
+                true
+            }
+            KeyCode::Char('p') => {
+                self.add_preview();
+                true
+            }
+            KeyCode::Char('r') => {
+                // Reset pipeline and tabs to default
+                self.tabs.reset();
+                self.pipeline = Vec::new();
+                self.log("Reset tabs to default");
                 true
             }
             KeyCode::Char('?') => {
@@ -166,120 +165,120 @@ impl App {
             }
             KeyCode::Char(' ') => {
                 self.toggle_section(self.section_cursor);
+                self.start_decompile();
                 true
             }
             KeyCode::Char('s') if key.modifiers.is_empty() => {
                 self.toggle_all_sections();
+                self.start_decompile();
                 true
             }
             KeyCode::Char('a') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.toggle_all_sections();
+                self.start_decompile();
                 true
             }
             KeyCode::Enter => {
                 self.toggle_section(self.section_cursor);
+                self.start_decompile();
+                true
+            }
+            KeyCode::Char('o') => {
+                self.open_path_prompt(
+                    PromptKind::OpenFile,
+                    "Open Binary",
+                    self.opened_path.clone().unwrap_or_default(),
+                    "Enter file path and press Enter. Tab autocompletes. Esc cancels.",
+                );
+                true
+            }
+            KeyCode::Char('a') => {
+                self.open_prompt(
+                    PromptKind::AnalyzeAddress,
+                    "Analyze Address",
+                    self.pending_analysis_address.clone().unwrap_or_default(),
+                    false,
+                    "Enter an address. Leave empty to analyze the entry point.",
+                );
+                true
+            }
+            KeyCode::Char('g') => {
+                self.send_request(WorkerRequest::AnalyzeAllSections, "analyzing all sections");
                 true
             }
             _ => false,
         }
     }
 
-    fn handle_output_key(&mut self, key: KeyEvent, layer: EditorLayer) -> bool {
-        let len = self.output_len(layer);
+    fn handle_preview_key(&mut self, key: KeyEvent) -> bool {
+        // Allow re-decompile even when preview is empty
+        if matches!(key.code, KeyCode::Char('d')) && key.modifiers.is_empty() {
+            self.start_decompile();
+            return true;
+        }
+        let len = self
+            .current_preview_state()
+            .and_then(|a| a.outputs.as_ref())
+            .map(|o| o.ast.len())
+            .unwrap_or(0);
         if len == 0 {
             return false;
         }
-
-        let cursor = self.output_cursor_mut(layer);
+        let Some(prev) = self.current_preview_state_mut() else {
+            return false;
+        };
         match key.code {
             KeyCode::Up => {
-                move_cursor_up(cursor, 1);
-                self.update_hover();
+                move_cursor_up(&mut prev.cursor, 1);
                 true
             }
             KeyCode::Char('k') if key.modifiers.is_empty() => {
-                move_cursor_up(cursor, 1);
-                self.update_hover();
+                move_cursor_up(&mut prev.cursor, 1);
                 true
             }
             KeyCode::Down => {
-                move_cursor_down(cursor, 1, len);
-                self.update_hover();
+                move_cursor_down(&mut prev.cursor, 1, len);
                 true
             }
             KeyCode::Char('j') if key.modifiers.is_empty() => {
-                move_cursor_down(cursor, 1, len);
-                self.update_hover();
+                move_cursor_down(&mut prev.cursor, 1, len);
                 true
             }
             KeyCode::PageUp => {
-                move_cursor_up(cursor, 10);
-                self.update_hover();
+                move_cursor_up(&mut prev.cursor, 10);
                 true
             }
             KeyCode::PageDown => {
-                move_cursor_down(cursor, 10, len);
-                self.update_hover();
+                move_cursor_down(&mut prev.cursor, 10, len);
                 true
             }
             KeyCode::Home => {
-                *cursor = 0;
-                self.update_hover();
+                prev.cursor = 0;
                 true
             }
             KeyCode::End => {
-                *cursor = len.saturating_sub(1);
-                self.update_hover();
-                true
-            }
-            KeyCode::Enter => {
-                self.load_editor_from_current_row(layer);
-                true
-            }
-            KeyCode::Char('e') if key.modifiers.is_empty() => {
-                self.edit_current_row(layer);
+                prev.cursor = len.saturating_sub(1);
                 true
             }
             _ => false,
         }
     }
 
-    fn handle_editor_key(&mut self, key: KeyEvent) -> bool {
+    fn handle_opt_key(&mut self, key: KeyEvent) -> bool {
+        let Some(focus) = self.current_opt_stage().map(|o| o.focus) else {
+            return false;
+        };
         match key.code {
-            KeyCode::Char('e') if key.modifiers.is_empty() => {
-                self.edit_loaded_draft();
-                true
-            }
-            KeyCode::Char('r') if key.modifiers.is_empty() => {
-                if let Some(target) = self.editor_target {
-                    self.reload_editor(target);
+            KeyCode::Tab => {
+                if let Some(opt) = self.current_opt_stage_mut() {
+                    opt.focus = opt.focus.next();
                 }
                 true
             }
-            KeyCode::Char('[') => {
-                self.cycle_edit_position(false);
-                true
-            }
-            KeyCode::Char(']') => {
-                self.cycle_edit_position(true);
-                true
-            }
-            KeyCode::Enter => {
-                self.apply_edit();
-                true
-            }
-            _ => false,
-        }
-    }
-
-    fn handle_optimization_key(&mut self, key: KeyEvent) -> bool {
-        match key.code {
-            KeyCode::Tab => {
-                self.optimization_focus = self.optimization_focus.next();
-                true
-            }
             KeyCode::BackTab => {
-                self.optimization_focus = self.optimization_focus.previous();
+                if let Some(opt) = self.current_opt_stage_mut() {
+                    opt.focus = opt.focus.previous();
+                }
                 true
             }
             KeyCode::Char('L') => {
@@ -290,63 +289,99 @@ impl App {
                 self.save_current_optimization_store();
                 true
             }
-            _ => match self.optimization_focus {
-                OptimizationFocus::Settings => self.handle_optimization_settings_key(key),
-                OptimizationFocus::Scripts => self.handle_optimization_scripts_key(key),
-                OptimizationFocus::Buffer => self.handle_optimization_buffer_key(key),
+            _ => match focus {
+                OptimizationFocus::Settings => self.handle_opt_settings_key(key),
+                OptimizationFocus::Script => self.handle_opt_script_key(key),
             },
         }
     }
 
-    fn handle_optimization_settings_key(&mut self, key: KeyEvent) -> bool {
-        let field_count = optimization_field_count();
+    fn handle_opt_settings_key(&mut self, key: KeyEvent) -> bool {
+        let base_field_count = optimization_field_count();
+        let has_buffer = self
+            .current_opt_stage()
+            .map(|o| !o.store.editor_buffer.trim().is_empty())
+            .unwrap_or(false);
+        let field_count = if has_buffer {
+            base_field_count + 1
+        } else {
+            base_field_count
+        };
+        let Some(opt) = self.current_opt_stage_mut() else {
+            return false;
+        };
         match key.code {
             KeyCode::Up => {
-                move_cursor_up(&mut self.optimization_setting_cursor, 1);
+                move_cursor_up(&mut opt.setting_cursor, 1);
                 true
             }
             KeyCode::Char('k') if key.modifiers.is_empty() => {
-                move_cursor_up(&mut self.optimization_setting_cursor, 1);
+                move_cursor_up(&mut opt.setting_cursor, 1);
                 true
             }
             KeyCode::Down => {
-                move_cursor_down(&mut self.optimization_setting_cursor, 1, field_count);
+                move_cursor_down(&mut opt.setting_cursor, 1, field_count);
                 true
             }
             KeyCode::Char('j') if key.modifiers.is_empty() => {
-                move_cursor_down(&mut self.optimization_setting_cursor, 1, field_count);
+                move_cursor_down(&mut opt.setting_cursor, 1, field_count);
                 true
             }
             KeyCode::PageUp => {
-                move_cursor_up(&mut self.optimization_setting_cursor, 10);
+                move_cursor_up(&mut opt.setting_cursor, 10);
                 true
             }
             KeyCode::PageDown => {
-                move_cursor_down(&mut self.optimization_setting_cursor, 10, field_count);
+                move_cursor_down(&mut opt.setting_cursor, 10, field_count);
                 true
             }
             KeyCode::Home => {
-                self.optimization_setting_cursor = 0;
+                opt.setting_cursor = 0;
                 true
             }
             KeyCode::End if field_count > 0 => {
-                self.optimization_setting_cursor = field_count - 1;
+                opt.setting_cursor = field_count - 1;
                 true
             }
             KeyCode::Char(' ') => {
-                if let Some(field) = all_optimization_fields().nth(self.optimization_setting_cursor)
-                {
-                    let next = !(field.get)(&self.optimization.draft_settings);
-                    (field.set)(&mut self.optimization.draft_settings, next);
+                let cursor = opt.setting_cursor;
+                let is_script_entry = has_buffer && cursor == base_field_count;
+                if is_script_entry {
+                    opt.store.fb_script_enabled = !opt.store.fb_script_enabled;
+                    if opt.store.fb_script_enabled {
+                        opt.store.applied_buffer_script =
+                            if opt.store.editor_buffer.trim().is_empty() {
+                                None
+                            } else {
+                                Some(opt.store.editor_buffer.clone())
+                            };
+                    } else {
+                        opt.store.applied_buffer_script = None;
+                    }
+                    let _ = opt;
+                    self.redecompile_last_selection();
+                } else if let Some(field) = all_optimization_fields().nth(cursor) {
+                    let current = (field.get)(&opt.store.draft_settings);
+                    if current {
+                        (field.set)(&mut opt.store.draft_settings, false);
+                    } else {
+                        let all_fields: Vec<_> = all_optimization_fields().collect();
+                        for f in &all_fields {
+                            (f.set)(&mut opt.store.draft_settings, false);
+                        }
+                        (field.set)(&mut opt.store.draft_settings, true);
+                        opt.store.editor_buffer.clear();
+                        opt.store.fb_script_enabled = false;
+                        opt.store.applied_buffer_script = None;
+                    }
+                    let _ = opt;
+                    self.apply_optimization_settings();
                 }
                 true
             }
-            KeyCode::Char('c') if key.modifiers.is_empty() => {
-                self.apply_optimization_settings();
-                true
-            }
             KeyCode::Char('r') if key.modifiers.is_empty() => {
-                self.optimization.draft_settings = OptimizationSettings::default();
+                opt.store.draft_settings = OptimizationSettings::default();
+                let _ = opt;
                 self.set_status("Restored optimization draft defaults");
                 true
             }
@@ -354,171 +389,111 @@ impl App {
         }
     }
 
-    fn handle_optimization_scripts_key(&mut self, key: KeyEvent) -> bool {
-        let len = self.optimization.script_presets.len();
+    fn handle_opt_script_key(&mut self, key: KeyEvent) -> bool {
+        let Some(opt) = self.current_opt_stage_mut() else {
+            return false;
+        };
         match key.code {
-            KeyCode::Up => {
-                move_cursor_up(&mut self.optimization_script_cursor, 1);
+            KeyCode::Tab => {
+                opt.focus = OptimizationFocus::Settings;
                 true
             }
-            KeyCode::Char('k') if key.modifiers.is_empty() => {
-                move_cursor_up(&mut self.optimization_script_cursor, 1);
-                true
-            }
-            KeyCode::Down => {
-                move_cursor_down(&mut self.optimization_script_cursor, 1, len);
-                true
-            }
-            KeyCode::Char('j') if key.modifiers.is_empty() => {
-                move_cursor_down(&mut self.optimization_script_cursor, 1, len);
-                true
-            }
-            KeyCode::PageUp => {
-                move_cursor_up(&mut self.optimization_script_cursor, 10);
-                true
-            }
-            KeyCode::PageDown => {
-                move_cursor_down(&mut self.optimization_script_cursor, 10, len);
-                true
-            }
-            KeyCode::Home => {
-                self.optimization_script_cursor = 0;
-                true
-            }
-            KeyCode::End if len > 0 => {
-                self.optimization_script_cursor = len - 1;
-                true
-            }
-            KeyCode::Char(' ') => {
-                if let Some(preset) = self
-                    .optimization
-                    .script_presets
-                    .get_mut(self.optimization_script_cursor)
-                {
-                    preset.enabled = !preset.enabled;
-                }
-                true
-            }
-            KeyCode::Char('n') if key.modifiers.is_empty() => {
-                self.open_path_prompt(
-                    PromptKind::AddScriptPath,
-                    "Add Script Path",
-                    String::new(),
-                    "Enter a .fb file path. Tab autocompletes.",
-                );
-                true
-            }
-            KeyCode::Char('x') if key.modifiers.is_empty() => {
-                self.remove_script_preset(self.optimization_script_cursor);
+            KeyCode::Char(ch)
+                if key.modifiers.is_empty() || key.modifiers == KeyModifiers::SHIFT =>
+            {
+                prompt::insert_char(&mut opt.store.editor_buffer, &mut opt.script_cursor, ch);
                 true
             }
             KeyCode::Enter => {
-                self.load_script_preset_into_buffer(self.optimization_script_cursor);
+                prompt::insert_char(&mut opt.store.editor_buffer, &mut opt.script_cursor, '\n');
                 true
             }
-            KeyCode::Char('c') if key.modifiers.is_empty() => {
-                self.apply_optimization_settings();
+            KeyCode::Backspace => {
+                prompt::delete_prev_char(&mut opt.store.editor_buffer, &mut opt.script_cursor);
                 true
             }
-            _ => false,
-        }
-    }
-
-    fn handle_optimization_buffer_key(&mut self, key: KeyEvent) -> bool {
-        match key.code {
-            KeyCode::Char('e') if key.modifiers.is_empty() => {
-                self.open_prompt(
-                    PromptKind::EditBuffer,
-                    "Edit Buffer Script",
-                    self.optimization.editor_buffer.clone(),
-                    true,
-                    "Ctrl+S saves the buffer. Esc cancels.",
-                );
+            KeyCode::Delete => {
+                prompt::delete_next_char(&mut opt.store.editor_buffer, &mut opt.script_cursor);
                 true
             }
-            KeyCode::Char('u') if key.modifiers.is_empty() => {
-                self.apply_buffer_script();
+            KeyCode::Left => {
+                prompt::move_cursor_left(&opt.store.editor_buffer, &mut opt.script_cursor);
                 true
             }
-            KeyCode::Char('c') if key.modifiers.is_empty() => {
-                self.clear_applied_buffer_script();
+            KeyCode::Right => {
+                prompt::move_cursor_right(&opt.store.editor_buffer, &mut opt.script_cursor);
                 true
             }
-            KeyCode::Char('o') if key.modifiers.is_empty() => {
-                self.open_path_prompt(
-                    PromptKind::LoadBufferPath,
-                    "Load Buffer From Path",
-                    self.optimization.editor_path.clone().unwrap_or_default(),
-                    "Enter a .fb file path. Tab autocompletes.",
-                );
+            KeyCode::Home => {
+                let buf = &opt.store.editor_buffer;
+                let cursor = opt.script_cursor;
+                let line_start = buf[..cursor].rfind('\n').map(|p| p + 1).unwrap_or(0);
+                opt.script_cursor = line_start;
                 true
             }
-            KeyCode::Char('s') if key.modifiers.is_empty() => {
-                if let Some(path) = self.optimization.editor_path.clone() {
+            KeyCode::End => {
+                let buf = &opt.store.editor_buffer;
+                let cursor = opt.script_cursor;
+                let line_end = buf[cursor..]
+                    .find('\n')
+                    .map(|p| cursor + p)
+                    .unwrap_or(buf.len());
+                opt.script_cursor = line_end;
+                true
+            }
+            KeyCode::Up => {
+                let buf = &opt.store.editor_buffer;
+                let cursor = opt.script_cursor;
+                let line_start = buf[..cursor].rfind('\n').map(|p| p + 1).unwrap_or(0);
+                let col = cursor - line_start;
+                if line_start > 0 {
+                    let prev_line_end = line_start - 1;
+                    let prev_line_start =
+                        buf[..prev_line_end].rfind('\n').map(|p| p + 1).unwrap_or(0);
+                    let prev_line_len = prev_line_end - prev_line_start;
+                    opt.script_cursor = prev_line_start + col.min(prev_line_len);
+                }
+                true
+            }
+            KeyCode::Down => {
+                let buf = &opt.store.editor_buffer;
+                let cursor = opt.script_cursor;
+                let line_start = buf[..cursor].rfind('\n').map(|p| p + 1).unwrap_or(0);
+                let col = cursor - line_start;
+                if let Some(nl_pos) = buf[cursor..].find('\n') {
+                    let next_line_start = cursor + nl_pos + 1;
+                    let next_line_end = buf[next_line_start..]
+                        .find('\n')
+                        .map(|p| next_line_start + p)
+                        .unwrap_or(buf.len());
+                    let next_line_len = next_line_end - next_line_start;
+                    opt.script_cursor = next_line_start + col.min(next_line_len);
+                }
+                true
+            }
+            KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                let path = opt.store.editor_path.clone();
+                let _ = opt;
+                if let Some(path) = path {
                     self.save_buffer_to_path(path);
                 } else {
                     self.open_path_prompt(
                         PromptKind::SaveBufferPath,
-                        "Save Buffer",
+                        "Save Script",
                         String::new(),
-                        "Enter a path for the buffer script. Tab autocompletes.",
+                        "Enter a path for the script. Tab autocompletes.",
                     );
                 }
                 true
             }
-            KeyCode::Char('S') => {
+            KeyCode::Char('o') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                let editor_path = opt.store.editor_path.clone().unwrap_or_default();
+                let _ = opt;
                 self.open_path_prompt(
-                    PromptKind::SaveBufferPath,
-                    "Save Buffer As",
-                    self.optimization.editor_path.clone().unwrap_or_default(),
-                    "Enter a path for the buffer script. Tab autocompletes.",
-                );
-                true
-            }
-            _ => false,
-        }
-    }
-
-    fn handle_patch_key(&mut self, key: KeyEvent) -> bool {
-        match key.code {
-            KeyCode::Up => {
-                move_cursor_up(&mut self.patch_scroll, 1);
-                true
-            }
-            KeyCode::Char('k') if key.modifiers.is_empty() => {
-                move_cursor_up(&mut self.patch_scroll, 1);
-                true
-            }
-            KeyCode::Down => {
-                self.patch_scroll = self.patch_scroll.saturating_add(1);
-                true
-            }
-            KeyCode::Char('j') if key.modifiers.is_empty() => {
-                self.patch_scroll = self.patch_scroll.saturating_add(1);
-                true
-            }
-            KeyCode::PageUp => {
-                move_cursor_up(&mut self.patch_scroll, 10);
-                true
-            }
-            KeyCode::PageDown => {
-                self.patch_scroll = self.patch_scroll.saturating_add(10);
-                true
-            }
-            KeyCode::Home => {
-                self.patch_scroll = 0;
-                true
-            }
-            KeyCode::End => {
-                self.patch_scroll = u16::MAX as usize;
-                true
-            }
-            KeyCode::Char('s') if key.modifiers.is_empty() => {
-                self.open_path_prompt(
-                    PromptKind::SavePatchPath,
-                    "Save Patch Preview",
-                    String::new(),
-                    "Enter a file path for the exported patch JSON. Tab autocompletes.",
+                    PromptKind::LoadBufferPath,
+                    "Load Script",
+                    editor_path,
+                    "Enter a .fb file path. Tab autocompletes.",
                 );
                 true
             }
@@ -568,9 +543,7 @@ impl App {
         let Some(prompt_ref) = self.prompt.as_mut() else {
             return;
         };
-
         let has_browser = prompt_ref.file_browser.is_some();
-
         match key.code {
             KeyCode::Esc => {
                 self.prompt = None;
@@ -678,105 +651,64 @@ impl App {
                 ]
             };
         }
-
-        let mut keys = vec![("1-8", "views"), ("q", "quit"), ("?", "license")];
-        match self.current_view {
-            View::Sections => keys.extend([
-                ("o", "open"),
-                ("a", "analyze"),
-                ("g", "analyze-all"),
-                ("d", "decompile"),
-                ("x", "export"),
-                ("Up/Down/Pg", "move"),
+        let mut keys = vec![
+            ("1-9", "goto tab"),
+            ("t", "next"),
+            ("T", "prev"),
+            ("n", "+stage"),
+            ("p", "+preview"),
+            ("c", "close"),
+            ("r", "reset"),
+            ("q", "quit"),
+            ("?", "license"),
+        ];
+        match self.tabs.current_tab_type() {
+            Some(TabType::Input) => keys.extend([
+                ("o", "open binary"),
+                ("a", "analyze address"),
+                ("g", "analyze all sections"),
+                ("Up/Dn", "move cursor"),
+                ("PgUp/Dn", "fast move"),
                 ("Home/End", "jump"),
-                ("Space/Enter", "toggle"),
-                ("s/Ctrl+A", "select-ready"),
+                ("Space/Enter", "toggle section"),
+                ("s", "select all ready"),
+                ("Ctrl+A", "select all ready"),
             ]),
-            View::Assembly | View::Ir | View::Ast => keys.extend([
-                ("o", "open"),
-                ("a", "analyze"),
-                ("g", "analyze-all"),
-                ("d", "decompile"),
-                ("x", "export"),
-                ("Up/Down/Pg", "move"),
+            Some(TabType::Preview) => keys.extend([
+                ("Up/Dn", "move cursor"),
+                ("PgUp/Dn", "fast move"),
                 ("Home/End", "jump"),
-                ("Enter", "load-editor"),
-                ("e", "edit"),
+                ("d", "re-decompile"),
             ]),
-            View::Editor => keys.extend([
-                ("o", "open"),
-                ("a", "analyze"),
-                ("g", "analyze-all"),
-                ("d", "decompile"),
-                ("x", "export"),
-                ("e", "edit"),
-                ("[ ]", "position"),
-                ("Enter", "apply"),
-                ("r", "reload"),
-            ]),
-            View::Optimization => match self.optimization_focus {
-                OptimizationFocus::Settings => keys.extend([
-                    ("o", "open"),
-                    ("a", "analyze"),
-                    ("g", "analyze-all"),
-                    ("d", "decompile"),
-                    ("x", "export"),
-                    ("Tab", "focus"),
-                    ("Up/Down/Pg", "move"),
-                    ("Home/End", "jump"),
-                    ("Space", "toggle"),
-                    ("c", "apply"),
-                    ("r", "defaults"),
-                    ("L/W", "load-save"),
-                ]),
-                OptimizationFocus::Scripts => keys.extend([
-                    ("o", "open"),
-                    ("a", "analyze"),
-                    ("g", "analyze-all"),
-                    ("d", "decompile"),
-                    ("Tab", "focus"),
-                    ("Up/Down/Pg", "move"),
-                    ("Home/End", "jump"),
-                    ("Space", "toggle"),
-                    ("n", "add"),
-                    ("x", "remove"),
-                    ("Enter", "load"),
-                    ("c", "apply"),
-                    ("L/W", "load-save"),
-                ]),
-                OptimizationFocus::Buffer => keys.extend([
-                    ("a", "analyze"),
-                    ("g", "analyze-all"),
-                    ("d", "decompile"),
-                    ("x", "export"),
-                    ("Tab", "focus"),
-                    ("e", "edit"),
-                    ("u", "apply"),
-                    ("c", "clear-applied"),
-                    ("o", "load"),
-                    ("s/S", "save"),
-                    ("L/W", "load-save"),
-                ]),
-            },
-            View::Patch => keys.extend([
-                ("o", "open"),
-                ("a", "analyze"),
-                ("g", "analyze-all"),
-                ("d", "decompile"),
-                ("x", "export"),
-                ("Up/Down/Pg", "scroll"),
-                ("Home/End", "jump"),
-                ("s", "save"),
-            ]),
-            View::Logs => keys.extend([
-                ("o", "open"),
-                ("a", "analyze"),
-                ("g", "analyze-all"),
-                ("d", "decompile"),
-                ("x", "export"),
-                ("Up/Down/Pg", "scroll"),
+            Some(TabType::Opt) => {
+                let focus = self
+                    .current_opt_stage()
+                    .map(|o| o.focus)
+                    .unwrap_or(OptimizationFocus::Settings);
+                match focus {
+                    OptimizationFocus::Settings => keys.extend([
+                        ("Tab", "switch focus"),
+                        ("Up/Dn", "move cursor"),
+                        ("Space", "select pass"),
+                        ("r", "reset to none"),
+                        ("L", "load config"),
+                        ("W", "save config"),
+                    ]),
+                    OptimizationFocus::Script => keys.extend([
+                        ("Tab", "switch focus"),
+                        ("Type", "edit script"),
+                        ("Backspace", "delete"),
+                        ("Ctrl+S", "save file"),
+                        ("Ctrl+O", "load file"),
+                    ]),
+                }
+            }
+            Some(TabType::Logs) => keys.extend([
+                ("Up/Dn", "scroll logs"),
+                ("PgUp/Dn", "fast scroll"),
                 ("Home/End", "jump"),
             ]),
+            None => {}
         }
         keys
     }
@@ -785,7 +717,6 @@ impl App {
 fn move_cursor_up(cursor: &mut usize, amount: usize) {
     *cursor = (*cursor).saturating_sub(amount);
 }
-
 fn move_cursor_down(cursor: &mut usize, amount: usize, len: usize) {
     if len == 0 {
         *cursor = 0;

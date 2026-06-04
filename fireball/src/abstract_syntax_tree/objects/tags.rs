@@ -24,4 +24,8 @@ impl AstFunctionId {
     pub fn get_default_name(&self) -> String {
         format!("f{:x}", self.address)
     }
+
+    pub fn address(&self) -> u64 {
+        self.address
+    }
 }

@@ -1,6 +1,8 @@
 use crate::{
     core::FirebatCore,
-    model::{AppliedEditResult, DecompileRequest, DecompileResult, EditRequest, KnownSectionData},
+    model::{
+        DecompileRequest, DecompileResult, KnownSectionData, OptimizeAstRequest, OptimizeAstResult,
+    },
 };
 use std::{sync::mpsc, thread};
 
@@ -9,8 +11,7 @@ pub enum WorkerRequest {
     AnalyzeSection(String),
     AnalyzeAllSections,
     DecompileSections(DecompileRequest),
-    ApplyEdit(EditRequest),
-    ExportPatch,
+    OptimizeAst(OptimizeAstRequest),
 }
 
 pub enum WorkerResponse {
@@ -18,8 +19,7 @@ pub enum WorkerResponse {
     AnalyzeSection(Result<Vec<KnownSectionData>, String>),
     AnalyzeAllSections(Result<Vec<KnownSectionData>, String>),
     DecompileSections(Result<DecompileResult, String>),
-    ApplyEdit(Result<AppliedEditResult, String>),
-    ExportPatch(Result<String, String>),
+    OptimizeAst(Result<OptimizeAstResult, String>),
 }
 
 pub enum WorkerTryRecv {
@@ -55,11 +55,8 @@ impl FirebatWorker {
                         WorkerRequest::DecompileSections(request) => {
                             WorkerResponse::DecompileSections(core.decompile_sections(request))
                         }
-                        WorkerRequest::ApplyEdit(request) => {
-                            WorkerResponse::ApplyEdit(core.apply_edit(request))
-                        }
-                        WorkerRequest::ExportPatch => {
-                            WorkerResponse::ExportPatch(core.export_patch())
+                        WorkerRequest::OptimizeAst(request) => {
+                            WorkerResponse::OptimizeAst(core.optimize_ast(request))
                         }
                     };
 
