@@ -231,7 +231,11 @@ impl Node for OptNode {
     }
 
     fn color(&self) -> Color32 {
-        NodeColors::optimization()
+        if self.supports_pattern_editor() {
+            NodeColors::pattern_matching()
+        } else {
+            NodeColors::optimization()
+        }
     }
 
     fn position(&self) -> NodePosition {

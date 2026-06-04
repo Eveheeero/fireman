@@ -154,6 +154,10 @@ impl NodeColors {
         Color32::from_rgb(0x03, 0x83, 0x87) // Cyan
     }
 
+    pub fn pattern_matching() -> Color32 {
+        Color32::from_rgb(0x1A, 0x75, 0x69) // Warm teal
+    }
+
     pub fn preview() -> Color32 {
         Color32::from_rgb(0x0F, 0x7B, 0x0F) // Green
     }
