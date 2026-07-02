@@ -35,21 +35,17 @@ pub struct DecompileWithAst {
 /// Request to optimize an existing Ast with a single-pass config.
 pub struct OptimizeAstRequest {
     pub ast: fireball::abstract_syntax_tree::Ast,
-    pub settings: OptimizationSettings,
+    pub settings: DefaultOptimizationSetting,
     pub script_paths: Vec<String>,
-    pub buffer_script: Option<String>,
 }
 
 #[derive(Clone, Debug)]
-pub struct DecompileRequest {
+pub struct DisassembleRequest {
     pub start_addresses: Vec<u64>,
-    pub settings: OptimizationSettings,
-    pub script_paths: Vec<String>,
-    pub buffer_script: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct OptimizationSettings {
+pub struct DefaultOptimizationSetting {
     pub ir_analyzation: bool,
     pub parameter_analyzation: bool,
     pub call_argument_analyzation: bool,
@@ -57,7 +53,6 @@ pub struct OptimizationSettings {
     pub control_flow_cleanup: bool,
     pub collapse_unused_varaible: bool,
     pub dead_store_elimination: bool,
-    pub pattern_matching_enabled: bool,
     pub loop_analyzation: bool,
     pub copy_propagation: bool,
     pub expression_inlining: bool,
@@ -87,27 +82,20 @@ pub struct OptimizationSettings {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct OptimizationScriptPreset {
+pub struct UserOptimizationScript {
     pub name: String,
     pub path: String,
-    pub enabled: bool,
-    pub applied_enabled: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
-pub struct OptimizationStore {
-    pub draft_settings: OptimizationSettings,
-    pub applied_settings: OptimizationSettings,
-    pub script_presets: Vec<OptimizationScriptPreset>,
-    pub editor_buffer: String,
-    pub editor_path: Option<String>,
-    pub applied_buffer_script: Option<String>,
-    pub fb_script_enabled: bool,
+pub struct OptimizationConfig {
+    pub default_optimizations: DefaultOptimizationSetting,
+    pub user_scripts: Vec<UserOptimizationScript>,
 }
 
-impl Default for OptimizationSettings {
+impl Default for DefaultOptimizationSetting {
     fn default() -> Self {
-        let none = AstOptimizationConfig::NONE;
+        let none = AstOptimizationConfig::none();
         Self {
             ir_analyzation: none.ir_analyzation,
             parameter_analyzation: none.parameter_analyzation,
@@ -116,7 +104,6 @@ impl Default for OptimizationSettings {
             control_flow_cleanup: none.control_flow_cleanup,
             collapse_unused_varaible: none.collapse_unused_varaible,
             dead_store_elimination: none.dead_store_elimination,
-            pattern_matching_enabled: none.pattern_matching_enabled,
             loop_analyzation: none.loop_analyzation,
             copy_propagation: none.copy_propagation,
             expression_inlining: none.expression_inlining,
@@ -148,11 +135,14 @@ impl Default for OptimizationSettings {
 }
 
 pub fn build_optimization_config(
-    settings: &OptimizationSettings,
-    script_paths: &[String],
-    buffer_script: Option<&str>,
+    args: OptimizationConfig,
 ) -> Result<AstOptimizationConfig, String> {
-    let defaults = AstOptimizationConfig::default();
+    let script_paths: Vec<_> = args
+        .user_scripts
+        .iter()
+        .map(|preset| preset.path.clone())
+        .collect();
+    let settings = args.default_optimizations;
     let mut config = AstOptimizationConfig {
         ir_analyzation: settings.ir_analyzation,
         parameter_analyzation: settings.parameter_analyzation,
@@ -161,7 +151,7 @@ pub fn build_optimization_config(
         control_flow_cleanup: settings.control_flow_cleanup,
         collapse_unused_varaible: settings.collapse_unused_varaible,
         dead_store_elimination: settings.dead_store_elimination,
-        pattern_matching_enabled: settings.pattern_matching_enabled,
+        pattern_matching_enabled: true,
         pattern_matching: Vec::new(),
         loop_analyzation: settings.loop_analyzation,
         copy_propagation: settings.copy_propagation,
@@ -191,11 +181,6 @@ pub fn build_optimization_config(
         use_embedded_passes: settings.use_embedded_passes,
     };
 
-    if !config.pattern_matching_enabled {
-        config.pattern_matching = defaults.pattern_matching;
-        return Ok(config);
-    }
-
     let mut patterns = AstPattern::predefined_patterns();
     patterns.extend(
         script_paths
@@ -204,13 +189,6 @@ pub fn build_optimization_config(
             .cloned()
             .map(AstPattern::from_file),
     );
-
-    if let Some(source) = buffer_script
-        .map(str::trim)
-        .filter(|source| !source.is_empty())
-    {
-        patterns.push(AstPattern::new("firebat-buffer", source));
-    }
 
     config.pattern_matching = patterns;
     Ok(config)

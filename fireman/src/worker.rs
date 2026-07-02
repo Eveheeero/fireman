@@ -1,6 +1,6 @@
 use crate::{
     core::FirebatCore,
-    model::{DecompileRequest, DecompileWithAst, KnownSectionData, OptimizeAstRequest},
+    model::{DisassembleRequest, DecompileWithAst, KnownSectionData, OptimizeAstRequest},
 };
 use std::{sync::mpsc, thread};
 
@@ -8,7 +8,7 @@ pub enum WorkerRequest {
     OpenFile(String),
     AnalyzeSection(String),
     AnalyzeAllSections,
-    DecompileSections(DecompileRequest),
+    DecompileSections(DisassembleRequest),
     OptimizeAst(OptimizeAstRequest),
 }
 
@@ -51,7 +51,7 @@ impl FirebatWorker {
                             WorkerResponse::AnalyzeAllSections(core.analyze_all_sections())
                         }
                         WorkerRequest::DecompileSections(request) => {
-                            WorkerResponse::DecompileSections(core.decompile_sections(request))
+                            WorkerResponse::DecompileSections(core.disassemble_sections(request))
                         }
                         WorkerRequest::OptimizeAst(request) => {
                             WorkerResponse::OptimizeAst(core.optimize_ast(request))

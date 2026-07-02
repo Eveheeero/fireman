@@ -6,7 +6,7 @@ use super::{
     },
 };
 use crate::{
-    model::{DecompileRequest, KnownSection, KnownSectionData, OptimizeAstRequest},
+    model::{DisassembleRequest, KnownSection, KnownSectionData, OptimizeAstRequest},
     worker::{FirebatWorker, WorkerRequest, WorkerResponse, WorkerTryRecv},
 };
 use ratatui::crossterm::event;
@@ -593,7 +593,7 @@ impl App {
         // Always start with a raw decompile. The response handler will
         // then enqueue Opt stages for sequential processing.
         // Raw decompile always uses default (no optimization) settings
-        let (settings, buffer_script): (crate::model::OptimizationSettings, Option<String>) =
+        let (settings, buffer_script): (crate::model::DefaultOptimizationSetting, Option<String>) =
             Default::default();
 
         self.pending_decompile_target = None;
@@ -607,11 +607,8 @@ impl App {
         }
 
         self.send_request(
-            WorkerRequest::DecompileSections(DecompileRequest {
+            WorkerRequest::DecompileSections(DisassembleRequest {
                 start_addresses,
-                settings,
-                script_paths: vec![],
-                buffer_script,
             }),
             "decompiling sections",
         );
@@ -693,7 +690,7 @@ impl App {
 
     pub(crate) fn apply_optimization_settings(&mut self) {
         if let Some(opt) = self.current_opt_stage_mut() {
-            opt.store.applied_settings = opt.store.draft_settings.clone();
+            opt.store.applied_settings = opt.store.default_optimizations.clone();
             if opt.store.fb_script_enabled {
                 opt.store.applied_buffer_script = if opt.store.editor_buffer.trim().is_empty() {
                     None
@@ -726,7 +723,7 @@ impl App {
             Ok(buffer) => {
                 if let Some(opt) = self.current_opt_stage_mut() {
                     opt.store.editor_buffer = buffer;
-                    opt.store.editor_path = Some(path.to_string());
+                    opt.store.script_path = Some(path.to_string());
                 }
                 self.upsert_script_preset(Path::new(path));
                 self.set_status(format!("Loaded buffer from {path}"));
@@ -748,7 +745,7 @@ impl App {
         match fs::write(path, &buffer_content) {
             Ok(()) => {
                 if let Some(opt) = self.current_opt_stage_mut() {
-                    opt.store.editor_path = Some(path.to_string());
+                    opt.store.script_path = Some(path.to_string());
                 }
                 self.upsert_script_preset(Path::new(path));
                 self.set_status(format!("Saved buffer to {path}"));
@@ -773,11 +770,8 @@ impl App {
         // Start with raw decompile
         self.pending_decompile_target = None;
         self.send_request(
-            WorkerRequest::DecompileSections(DecompileRequest {
+            WorkerRequest::DecompileSections(DisassembleRequest {
                 start_addresses: self.last_decompile_selection.clone(),
-                settings: Default::default(),
-                script_paths: vec![],
-                buffer_script: None,
             }),
             "re-decompiling sections",
         );
@@ -795,7 +789,7 @@ impl App {
             .to_string();
         if let Some(existing) = opt
             .store
-            .script_presets
+            .user_scripts
             .iter_mut()
             .find(|preset| preset.path == path_string)
         {
@@ -803,8 +797,8 @@ impl App {
             return;
         }
         opt.store
-            .script_presets
-            .push(crate::model::OptimizationScriptPreset {
+            .user_scripts
+            .push(crate::model::UserOptimizationScript {
                 name,
                 path: path_string,
                 enabled: false,
@@ -822,7 +816,7 @@ impl App {
                         .min(super::types::optimization_field_count().saturating_sub(1));
                     opt.script_cursor = opt
                         .script_cursor
-                        .min(opt.store.script_presets.len().saturating_sub(1));
+                        .min(opt.store.user_scripts.len().saturating_sub(1));
                 }
                 self.set_status("Loaded optimization settings from disk");
                 self.redecompile_last_selection();

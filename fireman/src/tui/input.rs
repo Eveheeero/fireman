@@ -5,7 +5,7 @@ use super::{
         OptimizationFocus, PromptKind, TabType, all_optimization_fields, optimization_field_count,
     },
 };
-use crate::{model::OptimizationSettings, worker::WorkerRequest};
+use crate::{model::DefaultOptimizationSetting, worker::WorkerRequest};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 impl App {
@@ -361,15 +361,15 @@ impl App {
                     let _ = opt;
                     self.redecompile_last_selection();
                 } else if let Some(field) = all_optimization_fields().nth(cursor) {
-                    let current = (field.get)(&opt.store.draft_settings);
+                    let current = (field.get)(&opt.store.default_optimizations);
                     if current {
-                        (field.set)(&mut opt.store.draft_settings, false);
+                        (field.set)(&mut opt.store.default_optimizations, false);
                     } else {
                         let all_fields: Vec<_> = all_optimization_fields().collect();
                         for f in &all_fields {
-                            (f.set)(&mut opt.store.draft_settings, false);
+                            (f.set)(&mut opt.store.default_optimizations, false);
                         }
-                        (field.set)(&mut opt.store.draft_settings, true);
+                        (field.set)(&mut opt.store.default_optimizations, true);
                         opt.store.editor_buffer.clear();
                         opt.store.fb_script_enabled = false;
                         opt.store.applied_buffer_script = None;
@@ -380,7 +380,7 @@ impl App {
                 true
             }
             KeyCode::Char('r') if key.modifiers.is_empty() => {
-                opt.store.draft_settings = OptimizationSettings::default();
+                opt.store.default_optimizations = DefaultOptimizationSetting::default();
                 let _ = opt;
                 self.set_status("Restored optimization draft defaults");
                 true
@@ -472,7 +472,7 @@ impl App {
                 true
             }
             KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                let path = opt.store.editor_path.clone();
+                let path = opt.store.script_path.clone();
                 let _ = opt;
                 if let Some(path) = path {
                     self.save_buffer_to_path(path);
@@ -487,7 +487,7 @@ impl App {
                 true
             }
             KeyCode::Char('o') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                let editor_path = opt.store.editor_path.clone().unwrap_or_default();
+                let editor_path = opt.store.script_path.clone().unwrap_or_default();
                 let _ = opt;
                 self.open_path_prompt(
                     PromptKind::LoadBufferPath,

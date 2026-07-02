@@ -802,26 +802,6 @@ fn absolute_path(path: &Path) -> Result<PathBuf, String> {
     }
 }
 
-fn _validate_generated_pattern_file_for_debug(
-    input_path: &Path,
-    pattern_path: &Path,
-) -> Result<(), String> {
-    let input_path_string = path_string(input_path)?;
-    let fireball = Fireball::from_path(&input_path_string).map_err(|err| err.to_string())?;
-    let blocks = fireball.analyze_all().map_err(|err| err.to_string())?;
-    let ast = generate_ast_with_pre_defined_symbols(blocks, fireball.get_defined())
-        .map_err(|err| err.to_string())?;
-    let pattern_path_string = path_string(pattern_path)?;
-    let pattern = AstPattern::from_file(pattern_path_string);
-    let result = ast.optimize(Some(
-        AstOptimizationConfig::NONE
-            .pattern_matching_enabled(true)
-            .pattern_matching(vec![pattern])
-            .max_pass_iterations(1),
-    ));
-    result.map(|_| ()).map_err(|err| err.to_string())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

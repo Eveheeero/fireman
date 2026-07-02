@@ -84,10 +84,6 @@ impl AstPattern {
         }
     }
 
-    // NOTE: stable Rust cannot hold a non-empty `Vec<Self>` in a `const`.
-    // Empty here acts as a sentinel, resolved to embedded predefined patterns.
-    pub const ALL: Vec<Self> = vec![];
-
     pub fn new(name: impl Into<String>, pattern: impl Into<String>) -> Self {
         let name = name.into();
         let pattern = pattern.into();

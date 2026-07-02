@@ -119,12 +119,12 @@ pub(crate) mod test_utils {
         let ast_embed = build_ast(body, vm);
 
         let fb_pattern = file_backed_pattern(relative_path);
-        let fb_base = AstOptimizationConfig::NONE
+        let fb_base = AstOptimizationConfig::none()
             .constant_folding(true)
             .pattern_matching_enabled(true)
             .pattern_matching(vec![fb_pattern])
             .use_embedded_passes(false);
-        let embed_base = AstOptimizationConfig::NONE
+        let embed_base = AstOptimizationConfig::none()
             .constant_folding(true)
             .use_embedded_passes(true);
 
@@ -176,7 +176,7 @@ pub(crate) mod test_utils {
         let ast = build_ast(body, Arc::new(RwLock::new(HashMap::new())));
         let fb_printed = ast
             .optimize(Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![fb_pattern])
                     .use_embedded_passes(false),

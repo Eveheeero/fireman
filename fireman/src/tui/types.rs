@@ -1,4 +1,4 @@
-use crate::model::OptimizationSettings;
+use crate::model::DefaultOptimizationSetting;
 use serde::Deserialize;
 
 pub(crate) const LOG_LIMIT: usize = 256;
@@ -152,7 +152,7 @@ impl OptimizationFocus {
 
 /// Per-pipeline optimization stage. Holds settings and cached output.
 pub(crate) struct OptStage {
-    pub(crate) store: crate::model::OptimizationStore,
+    pub(crate) store: crate::model::OptimizationConfig,
     pub(crate) focus: OptimizationFocus,
     pub(crate) setting_cursor: usize,
     pub(crate) script_cursor: usize,
@@ -162,7 +162,7 @@ pub(crate) struct OptStage {
 }
 
 impl OptStage {
-    pub(crate) fn new(store: crate::model::OptimizationStore) -> Self {
+    pub(crate) fn new(store: crate::model::OptimizationConfig) -> Self {
         Self {
             store,
             focus: OptimizationFocus::Settings,
@@ -342,15 +342,15 @@ fn resolve_scan_target(input: &str) -> (std::path::PathBuf, String) {
 
 #[derive(Deserialize)]
 pub(crate) struct OptimizationStoreEnvelope {
-    pub(crate) optimization_store: crate::model::OptimizationStore,
+    pub(crate) optimization_store: crate::model::OptimizationConfig,
 }
 
 #[derive(Clone, Copy)]
 pub(crate) struct OptimizationField {
     pub(crate) label: &'static str,
     pub(crate) description: &'static str,
-    pub(crate) get: fn(&OptimizationSettings) -> bool,
-    pub(crate) set: fn(&mut OptimizationSettings, bool),
+    pub(crate) get: fn(&DefaultOptimizationSetting) -> bool,
+    pub(crate) set: fn(&mut DefaultOptimizationSetting, bool),
 }
 
 pub(crate) const OPTIMIZATION_FIELDS: &[OptimizationField] = &[

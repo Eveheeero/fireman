@@ -1,5 +1,5 @@
 use super::types::OptimizationStoreEnvelope;
-use crate::model::OptimizationStore;
+use crate::model::OptimizationConfig;
 use std::{fs, path::PathBuf};
 
 pub(crate) fn optimization_store_path() -> Result<PathBuf, String> {
@@ -15,7 +15,7 @@ pub(crate) fn optimization_store_path() -> Result<PathBuf, String> {
     Ok(PathBuf::from(home).join(".config/firebat/settings.json"))
 }
 
-pub(crate) fn load_optimization_store() -> Result<OptimizationStore, String> {
+pub(crate) fn load_optimization_store() -> Result<OptimizationConfig, String> {
     let path = optimization_store_path()?;
     if !path.exists() {
         return Err(format!("settings file not found at {}", path.display()));
@@ -29,7 +29,7 @@ pub(crate) fn load_optimization_store() -> Result<OptimizationStore, String> {
         .map_err(|error| error.to_string())
 }
 
-pub(crate) fn save_optimization_store(store: &OptimizationStore) -> Result<(), String> {
+pub(crate) fn save_optimization_store(store: &OptimizationConfig) -> Result<(), String> {
     let path = optimization_store_path()?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| error.to_string())?;

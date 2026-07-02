@@ -1,5 +1,5 @@
 use crate::model::{
-    AstLine, DecompileRequest, DecompileResult, DecompileWithAst, KnownSectionData,
+    AstLine, DecompileResult, DecompileWithAst, DisassembleRequest, KnownSectionData,
     OptimizeAstRequest, build_optimization_config,
 };
 use fireball::{
@@ -18,19 +18,14 @@ pub struct FirebatCore {
 
 struct ViewSession {
     target_blocks: Vec<Arc<Block>>,
-    optimization_config: AstOptimizationConfig,
     rendered: DecompileResult,
     ast: fireball::abstract_syntax_tree::Ast,
 }
 
 impl ViewSession {
-    fn from_blocks(
-        target_blocks: Vec<Arc<Block>>,
-        optimization_config: AstOptimizationConfig,
-    ) -> Result<Self, String> {
+    fn from_blocks(target_blocks: Vec<Arc<Block>>) -> Result<Self, String> {
         let mut session = Self {
             target_blocks,
-            optimization_config,
             rendered: DecompileResult {
                 ast: Vec::new(),
                 ast_sync_message: None,
@@ -129,16 +124,11 @@ impl FirebatCore {
         }
     }
 
-    pub fn decompile_sections(
+    pub fn disassemble_sections(
         &mut self,
-        request: DecompileRequest,
+        request: DisassembleRequest,
     ) -> Result<DecompileWithAst, String> {
-        let optimization_config = build_optimization_config(
-            &request.settings,
-            &request.script_paths,
-            request.buffer_script.as_deref(),
-        )?;
-        let session = self.build_session(&request.start_addresses, optimization_config)?;
+        let session = self.build_session(&request.start_addresses)?;
         let result = session.rendered().clone();
         let ast = session.ast().clone();
         self.session = Some(session);
@@ -147,11 +137,7 @@ impl FirebatCore {
 
     /// Optimize an existing Ast incrementally with a single-pass config.
     pub fn optimize_ast(&self, request: OptimizeAstRequest) -> Result<DecompileWithAst, String> {
-        let config = build_optimization_config(
-            &request.settings,
-            &request.script_paths,
-            request.buffer_script.as_deref(),
-        )?;
+        let config = build_optimization_config(&request.settings, &request.script_paths)?;
         let optimized = if is_config_none(&config) {
             request.ast
         } else {
@@ -171,11 +157,7 @@ impl FirebatCore {
         })
     }
 
-    fn build_session(
-        &self,
-        start_addresses: &[u64],
-        optimization_config: AstOptimizationConfig,
-    ) -> Result<ViewSession, String> {
+    fn build_session(&self, start_addresses: &[u64]) -> Result<ViewSession, String> {
         let fireball = self.fireball()?;
         let blocks = fireball.get_blocks();
         let sections = fireball.get_sections();
@@ -184,7 +166,7 @@ impl FirebatCore {
             .map(|&address| Address::from_virtual_address(&sections, address))
             .filter_map(|address| blocks.get_by_start_address(&address))
             .collect::<Vec<_>>();
-        ViewSession::from_blocks(target_blocks, optimization_config)
+        ViewSession::from_blocks(target_blocks)
     }
 }
 

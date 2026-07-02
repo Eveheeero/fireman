@@ -9,7 +9,8 @@ pub mod utils;
 pub mod worker;
 
 use crate::model::{
-    OptimizationScriptPreset, OptimizationSettings, OptimizationStore, build_optimization_config,
+    DefaultOptimizationSetting, OptimizationConfig, UserOptimizationScript,
+    build_optimization_config,
 };
 use clap::{Arg, ArgAction, ArgMatches, Command, builder::BoolishValueParser};
 use fireball::{
@@ -26,7 +27,7 @@ use std::{
     sync::Arc,
 };
 
-const OPTIMIZATION_ARG_IDS: [&str; 33] = [
+const OPTIMIZATION_ARG_IDS: [&str; 32] = [
     "ir-analyzation",
     "parameter-analyzation",
     "call-argument-analyzation",
@@ -34,7 +35,6 @@ const OPTIMIZATION_ARG_IDS: [&str; 33] = [
     "control-flow-cleanup",
     "collapse-unused-variable",
     "dead-store-elimination",
-    "pattern-matching-enabled",
     "loop-analyzation",
     "copy-propagation",
     "expression-inlining",
@@ -67,7 +67,7 @@ struct FiremanConfig {
     input_path: Option<String>,
     output_path: Option<String>,
     print_config: PrintConfig,
-    optimization_store: OptimizationStore,
+    optimization_store: OptimizationConfig,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -115,21 +115,15 @@ impl PrintConfig {
 
 impl FiremanConfig {
     fn sample() -> Self {
-        let script_preset = OptimizationScriptPreset {
+        let script_preset = UserOptimizationScript {
             name: "sample-script".to_owned(),
             path: "./path/to/sample.fb".to_owned(),
-            enabled: true,
-            applied_enabled: false,
         };
-        let mut sample_store = OptimizationStore {
-            script_presets: vec![script_preset],
-            editor_buffer: "// sample inline script".to_owned(),
-            editor_path: Some("./path/to/editor.fb".to_owned()),
-            applied_buffer_script: Some("// applied buffer script".to_owned()),
+        let mut sample_store = OptimizationConfig {
+            user_scripts: vec![script_preset],
             ..Default::default()
         };
-        sample_store.draft_settings = OptimizationSettings::default();
-        sample_store.applied_settings = OptimizationSettings::default();
+        sample_store.default_optimizations = DefaultOptimizationSetting::default();
         Self {
             input_path: Some("./path/to/target.exe".to_owned()),
             output_path: Some("./path/to/output.txt".to_owned()),
@@ -173,9 +167,7 @@ fn run() -> Result<(), String> {
         .ok_or_else(|| "target path is required".to_owned())?;
     let output_path = resolved_config.output_path;
     let print_config = resolved_config.print_config;
-    let optimization_store = resolved_config.optimization_store;
-    let script_paths = collect_applied_script_paths(&optimization_store);
-    let buffer_script = optimization_store.applied_buffer_script.clone();
+    let optimization_config = resolved_config.optimization_store;
 
     let fireball = Fireball::from_path(&input_path).map_err(|error| error.to_string())?;
     let blocks = match fireball.analyze_from_entry() {
@@ -186,11 +178,7 @@ fn run() -> Result<(), String> {
         }
         Err(error) => return Err(error.to_string()),
     };
-    let optimization_config = build_optimization_config(
-        &optimization_store.applied_settings,
-        &script_paths,
-        buffer_script.as_deref(),
-    )?;
+    let optimization_config = build_optimization_config(optimization_config)?;
     let ast = generate_ast(blocks).map_err(|error| error.to_string())?;
     let optimized = ast
         .optimize(Some(optimization_config))
@@ -239,8 +227,7 @@ fn resolve_config(args: &ArgMatches) -> Result<(FiremanConfig, bool), String> {
         .as_ref()
         .map(|config| config.optimization_store.clone())
         .unwrap_or_else(Default::default);
-    apply_optimization_overrides(args, &mut optimization_store.draft_settings);
-    apply_optimization_overrides(args, &mut optimization_store.applied_settings);
+    apply_optimization_overrides(args, &mut optimization_store.default_optimizations);
     apply_script_overrides(args, &mut optimization_store);
 
     Ok((
@@ -302,11 +289,6 @@ fn parse_arg() -> ArgMatches {
                 .value_name("PATH")
                 .action(ArgAction::Append)
                 .help("Enable a script file (.fb)"),
-            Arg::new("script-buffer")
-                .long("script-buffer")
-                .value_name("SCRIPT")
-                .action(ArgAction::Set)
-                .help("Apply an inline optimization script"),
             Arg::new("input-path")
                 .short('i')
                 .long("path")
@@ -379,7 +361,7 @@ fn print_args() -> [Arg; 7] {
     ]
 }
 
-fn optimization_args() -> [Arg; 33] {
+fn optimization_args() -> [Arg; 32] {
     [
         Arg::new("ir-analyzation")
             .long("ir-analyzation")
@@ -423,12 +405,6 @@ fn optimization_args() -> [Arg; 33] {
             .value_parser(BoolishValueParser::new())
             .action(ArgAction::Set)
             .help("Toggle dead store elimination"),
-        Arg::new("pattern-matching-enabled")
-            .long("pattern-matching-enabled")
-            .value_name("BOOL")
-            .value_parser(BoolishValueParser::new())
-            .action(ArgAction::Set)
-            .help("Enable pattern matching"),
         Arg::new("loop-analyzation")
             .long("loop-analyzation")
             .value_name("BOOL")
@@ -604,7 +580,7 @@ fn apply_print_overrides(matches: &ArgMatches, config: &mut PrintConfig) {
     });
 }
 
-fn apply_optimization_overrides(matches: &ArgMatches, settings: &mut OptimizationSettings) {
+fn apply_optimization_overrides(matches: &ArgMatches, settings: &mut DefaultOptimizationSetting) {
     macro_rules! opt_field {
         ($id:expr, $field:ident) => {
             override_bool(matches, $id, |value| settings.$field = value);
@@ -618,7 +594,6 @@ fn apply_optimization_overrides(matches: &ArgMatches, settings: &mut Optimizatio
     opt_field!("control-flow-cleanup", control_flow_cleanup);
     opt_field!("collapse-unused-variable", collapse_unused_varaible);
     opt_field!("dead-store-elimination", dead_store_elimination);
-    opt_field!("pattern-matching-enabled", pattern_matching_enabled);
     opt_field!("loop-analyzation", loop_analyzation);
     opt_field!("copy-propagation", copy_propagation);
     opt_field!("expression-inlining", expression_inlining);
@@ -653,21 +628,15 @@ fn apply_optimization_overrides(matches: &ArgMatches, settings: &mut Optimizatio
     }
 }
 
-fn apply_script_overrides(matches: &ArgMatches, store: &mut OptimizationStore) {
+fn apply_script_overrides(matches: &ArgMatches, store: &mut OptimizationConfig) {
     if let Some(scripts) = matches.get_many::<String>("script") {
         for script_path in scripts {
             upsert_script_preset(store, script_path);
         }
     }
-
-    if let Some(buffer_script) = matches.get_one::<String>("script-buffer") {
-        store.editor_buffer = buffer_script.clone();
-        store.editor_path = None;
-        store.applied_buffer_script = Some(buffer_script.clone());
-    }
 }
 
-fn upsert_script_preset(store: &mut OptimizationStore, script_path: &str) {
+fn upsert_script_preset(store: &mut OptimizationConfig, script_path: &str) {
     let script_name = Path::new(script_path)
         .file_name()
         .and_then(|value| value.to_str())
@@ -675,36 +644,22 @@ fn upsert_script_preset(store: &mut OptimizationStore, script_path: &str) {
         .to_owned();
 
     if let Some(existing) = store
-        .script_presets
+        .user_scripts
         .iter_mut()
         .find(|preset| preset.path == script_path)
     {
         existing.name = script_name;
-        existing.enabled = true;
-        existing.applied_enabled = true;
         return;
     }
 
-    store.script_presets.push(OptimizationScriptPreset {
+    store.user_scripts.push(UserOptimizationScript {
         name: script_name,
         path: script_path.to_owned(),
-        enabled: true,
-        applied_enabled: true,
     });
-}
-
-fn collect_applied_script_paths(store: &OptimizationStore) -> Vec<String> {
-    store
-        .script_presets
-        .iter()
-        .filter(|preset| preset.applied_enabled)
-        .map(|preset| preset.path.clone())
-        .collect()
 }
 
 fn has_tui_optimization_overrides(matches: &ArgMatches) -> bool {
     matches.get_many::<String>("script").is_some()
-        || matches.get_one::<String>("script-buffer").is_some()
         || matches.get_one::<usize>("max-pass-iterations").is_some()
         || OPTIMIZATION_ARG_IDS
             .iter()

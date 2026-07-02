@@ -303,7 +303,7 @@ impl App {
         // --- Settings panel (left) ---
         let mut settings_items: Vec<ListItem> = Vec::new();
         for field in OPTIMIZATION_FIELDS {
-            let enabled = (field.get)(&opt.store.draft_settings);
+            let enabled = (field.get)(&opt.store.default_optimizations);
             let applied = (field.get)(&opt.store.applied_settings);
             let dirty_marker = if enabled != applied { " *" } else { "" };
             let radio = if enabled { "(o)" } else { "( )" };
@@ -357,7 +357,7 @@ impl App {
         );
 
         // --- Script panel (right) ---
-        let buffer_path = opt.store.editor_path.as_deref().unwrap_or("Unsaved buffer");
+        let buffer_path = opt.store.script_path.as_deref().unwrap_or("Unsaved buffer");
         let applied = if opt.store.applied_buffer_script.is_some() {
             "applied"
         } else {

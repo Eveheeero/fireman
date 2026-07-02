@@ -5,14 +5,14 @@ mod prompt;
 mod render;
 mod types;
 
-use crate::{model::OptimizationStore, utils::log::init_log};
+use crate::{model::OptimizationConfig, utils::log::init_log};
 use app::App;
 use std::io::stdout;
 
 #[derive(Clone, Debug)]
 pub(super) struct StartupConfig {
     pub(super) input_path: Option<String>,
-    pub(super) optimization_store: Option<OptimizationStore>,
+    pub(super) optimization_store: Option<OptimizationConfig>,
 }
 
 pub(super) fn main(startup: Option<StartupConfig>) {

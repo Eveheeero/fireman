@@ -159,7 +159,7 @@ fn optimize_constant_folding_and_propagation() {
 
     let optimized = ast
         .optimize(Some(
-            AstOptimizationConfig::NONE
+            AstOptimizationConfig::none()
                 .constant_folding(true)
                 .max_pass_iterations(2),
         ))
@@ -211,7 +211,9 @@ fn optimize_control_flow_cleanup_removes_unreachable_tail() {
     };
 
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.control_flow_cleanup(true)))
+        .optimize(Some(
+            AstOptimizationConfig::none().control_flow_cleanup(true),
+        ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
 
@@ -261,7 +263,9 @@ fn optimize_control_flow_cleanup_keeps_labeled_tail() {
     };
 
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.control_flow_cleanup(true)))
+        .optimize(Some(
+            AstOptimizationConfig::none().control_flow_cleanup(true),
+        ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
 
@@ -317,7 +321,9 @@ fn optimize_control_flow_cleanup_flattens_standalone_block_without_global_patter
     };
 
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.control_flow_cleanup(true)))
+        .optimize(Some(
+            AstOptimizationConfig::none().control_flow_cleanup(true),
+        ))
         .unwrap();
     let body = optimized_function_body(&optimized, function_id);
 
@@ -386,7 +392,7 @@ fn optimize_control_flow_cleanup_removes_tail_after_noreturn_function_call() {
     let optimized = ast
         .optimize_function(
             caller_id,
-            Some(AstOptimizationConfig::NONE.control_flow_cleanup(true)),
+            Some(AstOptimizationConfig::none().control_flow_cleanup(true)),
         )
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
@@ -459,7 +465,7 @@ fn optimize_call_argument_splits_branch_goto_and_merges_single_call_callees() {
 
     let optimized = ast
         .optimize(Some(
-            AstOptimizationConfig::NONE.call_argument_analyzation(true),
+            AstOptimizationConfig::none().call_argument_analyzation(true),
         ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
@@ -527,7 +533,7 @@ fn optimize_call_argument_keeps_multi_call_callee_split() {
 
     let optimized = ast
         .optimize(Some(
-            AstOptimizationConfig::NONE.call_argument_analyzation(true),
+            AstOptimizationConfig::none().call_argument_analyzation(true),
         ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
@@ -584,7 +590,7 @@ fn optimize_call_argument_keeps_recursive_callee_split() {
 
     let optimized = ast
         .optimize(Some(
-            AstOptimizationConfig::NONE.call_argument_analyzation(true),
+            AstOptimizationConfig::none().call_argument_analyzation(true),
         ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
@@ -660,7 +666,7 @@ fn optimize_call_argument_converts_branch_goto_targets_to_calls_without_split_fu
 
     let optimized = ast
         .optimize(Some(
-            AstOptimizationConfig::NONE.call_argument_analyzation(true),
+            AstOptimizationConfig::none().call_argument_analyzation(true),
         ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
@@ -770,7 +776,7 @@ fn optimize_call_argument_renames_merged_callee_variable_name_conflicts() {
 
     let optimized = ast
         .optimize(Some(
-            AstOptimizationConfig::NONE.call_argument_analyzation(true),
+            AstOptimizationConfig::none().call_argument_analyzation(true),
         ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
@@ -895,7 +901,7 @@ fn optimize_call_argument_renames_callee_default_variable_without_caller_conflic
 
     let optimized = ast
         .optimize(Some(
-            AstOptimizationConfig::NONE.call_argument_analyzation(true),
+            AstOptimizationConfig::none().call_argument_analyzation(true),
         ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
@@ -1009,7 +1015,7 @@ fn optimize_call_argument_renames_callee_default_variable_with_scope_suffix_when
 
     let optimized = ast
         .optimize(Some(
-            AstOptimizationConfig::NONE.call_argument_analyzation(true),
+            AstOptimizationConfig::none().call_argument_analyzation(true),
         ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
@@ -1169,7 +1175,7 @@ fn optimize_call_argument_applies_incremental_scope_suffixes_for_multiple_callee
 
     let optimized = ast
         .optimize(Some(
-            AstOptimizationConfig::NONE.call_argument_analyzation(true),
+            AstOptimizationConfig::none().call_argument_analyzation(true),
         ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
@@ -1364,7 +1370,7 @@ fn optimize_call_argument_preserves_comments_when_inlining_blocks() {
 
     let optimized = ast
         .optimize(Some(
-            AstOptimizationConfig::NONE.call_argument_analyzation(true),
+            AstOptimizationConfig::none().call_argument_analyzation(true),
         ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
@@ -1527,7 +1533,7 @@ fn optimize_same_operand_sub_to_zero() {
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .optimize(Some(AstOptimizationConfig::none().constant_folding(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -1553,7 +1559,7 @@ fn optimize_same_operand_xor_to_zero() {
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .optimize(Some(AstOptimizationConfig::none().constant_folding(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -1579,7 +1585,7 @@ fn optimize_same_operand_and_identity() {
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .optimize(Some(AstOptimizationConfig::none().constant_folding(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -1607,7 +1613,7 @@ fn optimize_cast_minimization_collapses_double_cast() {
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .optimize(Some(AstOptimizationConfig::none().constant_folding(true)))
         .unwrap();
     let body = optimized_function_body(&optimized, fid);
     let AstStatement::Return(Some(expr)) = &body[0].statement else {
@@ -1636,7 +1642,7 @@ fn optimize_cast_minimization_removes_identity_literal_cast() {
 
     let ast = build_simple_test_ast(0, body, Arc::new(RwLock::new(HashMap::new())));
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .optimize(Some(AstOptimizationConfig::none().constant_folding(true)))
         .unwrap();
     let body = optimized_function_body(&optimized, fid);
     let AstStatement::Return(Some(expr)) = &body[0].statement else {
@@ -1667,7 +1673,7 @@ fn optimize_cast_minimization_collapses_double_unary_cast() {
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .optimize(Some(AstOptimizationConfig::none().constant_folding(true)))
         .unwrap();
     let body = optimized_function_body(&optimized, fid);
     let AstStatement::Return(Some(expr)) = &body[0].statement else {
@@ -1702,7 +1708,7 @@ fn optimize_cast_minimization_drops_unsigned_before_signed_cast() {
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .optimize(Some(AstOptimizationConfig::none().constant_folding(true)))
         .unwrap();
     let body = optimized_function_body(&optimized, fid);
     let AstStatement::Return(Some(expr)) = &body[0].statement else {
@@ -1735,7 +1741,7 @@ fn optimize_same_operand_eq_to_true() {
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .optimize(Some(AstOptimizationConfig::none().constant_folding(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -1763,7 +1769,7 @@ fn optimize_double_bitnot_cancellation() {
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .optimize(Some(AstOptimizationConfig::none().constant_folding(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -1789,7 +1795,7 @@ fn optimize_absorbing_mul_zero() {
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .optimize(Some(AstOptimizationConfig::none().constant_folding(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -1821,7 +1827,7 @@ fn optimize_reassociation() {
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
         .optimize(Some(
-            AstOptimizationConfig::NONE
+            AstOptimizationConfig::none()
                 .constant_folding(true)
                 .pattern_matching_enabled(true),
         ))
@@ -1868,7 +1874,7 @@ fn optimize_expression_inlining_wider_window() {
     let ast = build_simple_test_ast(3, body, vm.clone());
     let optimized = ast
         .optimize(Some(
-            AstOptimizationConfig::NONE
+            AstOptimizationConfig::none()
                 .expression_inlining(true)
                 .constant_folding(true)
                 .max_pass_iterations(2),
@@ -1901,7 +1907,9 @@ fn optimize_declaration_inlining() {
 
     let ast = build_simple_test_ast(1, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.expression_inlining(true)))
+        .optimize(Some(
+            AstOptimizationConfig::none().expression_inlining(true),
+        ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -1939,7 +1947,7 @@ fn optimize_ternary_recovery_basic() {
 
     let ast = build_simple_test_ast(2, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.ternary_recovery(true)))
+        .optimize(Some(AstOptimizationConfig::none().ternary_recovery(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -1970,7 +1978,7 @@ fn optimize_ternary_recovery_rejects_different_vars() {
 
     let ast = build_simple_test_ast(3, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.ternary_recovery(true)))
+        .optimize(Some(AstOptimizationConfig::none().ternary_recovery(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -2001,7 +2009,7 @@ fn optimize_if_conversion_reversal_expands_nested_ternary_assignment() {
 
     let ast = build_simple_test_ast(3, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.constant_folding(true)))
+        .optimize(Some(AstOptimizationConfig::none().constant_folding(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -2049,7 +2057,7 @@ fn optimize_boolean_recovery_and_pattern() {
 
     let ast = build_simple_test_ast(3, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.boolean_recovery(true)))
+        .optimize(Some(AstOptimizationConfig::none().boolean_recovery(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -2092,7 +2100,7 @@ fn optimize_boolean_recovery_or_pattern() {
 
     let ast = build_simple_test_ast(3, body, vm.clone());
     let optimized = ast
-        .optimize(Some(AstOptimizationConfig::NONE.boolean_recovery(true)))
+        .optimize(Some(AstOptimizationConfig::none().boolean_recovery(true)))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
     assert!(
@@ -2155,7 +2163,7 @@ fn optimize_switch_reconstruction_3_cases() {
     let ast = build_simple_test_ast(2, body, vm.clone());
     let optimized = ast
         .optimize(Some(
-            AstOptimizationConfig::NONE.switch_reconstruction(true),
+            AstOptimizationConfig::none().switch_reconstruction(true),
         ))
         .unwrap();
     let printed = optimized.print(Some(AstPrintConfig::NONE));
