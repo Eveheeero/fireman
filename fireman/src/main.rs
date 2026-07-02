@@ -64,9 +64,9 @@ const OPTIMIZATION_ARG_IDS: [&str; 33] = [
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct FiremanConfig {
-    path: String,
-    output: Option<String>,
-    print: PrintConfig,
+    input_path: Option<String>,
+    output_path: Option<String>,
+    print_config: PrintConfig,
     optimization_store: OptimizationStore,
 }
 
@@ -79,14 +79,6 @@ struct PrintConfig {
     parameter_usage_comment: bool,
     variable_usage_comment: bool,
     hide_unused_declarations: bool,
-}
-
-#[derive(Clone, Debug)]
-struct ResolvedConfig {
-    input_path: Option<String>,
-    output_path: Option<String>,
-    print_config: PrintConfig,
-    optimization_store: OptimizationStore,
 }
 
 impl Default for PrintConfig {
@@ -139,9 +131,9 @@ impl FiremanConfig {
         sample_store.draft_settings = OptimizationSettings::default();
         sample_store.applied_settings = OptimizationSettings::default();
         Self {
-            path: "./path/to/target.exe".to_owned(),
-            output: Some("./path/to/output.txt".to_owned()),
-            print: PrintConfig::from_ast_config(AstPrintConfig::ALL),
+            input_path: Some("./path/to/target.exe".to_owned()),
+            output_path: Some("./path/to/output.txt".to_owned()),
+            print_config: PrintConfig::from_ast_config(AstPrintConfig::ALL),
             optimization_store: sample_store,
         }
     }
@@ -219,26 +211,27 @@ fn run() -> Result<(), String> {
     Ok(())
 }
 
-fn resolve_config(args: &ArgMatches) -> Result<(ResolvedConfig, bool), String> {
+fn resolve_config(args: &ArgMatches) -> Result<(FiremanConfig, bool), String> {
     let json_config = args
         .get_one::<String>("json")
         .map(|path| load_json_config(Path::new(path)))
         .transpose()?;
     let has_json_source = json_config.is_some();
 
-    let input_path = args
-        .get_one::<String>("input-path")
-        .cloned()
-        .or_else(|| json_config.as_ref().map(|config| config.path.clone()));
+    let input_path = args.get_one::<String>("input-path").cloned().or_else(|| {
+        json_config
+            .as_ref()
+            .and_then(|config| config.input_path.clone())
+    });
     let output_path = args.get_one::<String>("output-path").cloned().or_else(|| {
         json_config
             .as_ref()
-            .and_then(|config| config.output.clone())
+            .and_then(|config| config.output_path.clone())
     });
 
     let mut print_config = json_config
         .as_ref()
-        .map(|config| config.print.clone())
+        .map(|config| config.print_config.clone())
         .unwrap_or_default();
     apply_print_overrides(args, &mut print_config);
 
@@ -251,7 +244,7 @@ fn resolve_config(args: &ArgMatches) -> Result<(ResolvedConfig, bool), String> {
     apply_script_overrides(args, &mut optimization_store);
 
     Ok((
-        ResolvedConfig {
+        FiremanConfig {
             input_path,
             output_path,
             print_config,
@@ -263,7 +256,7 @@ fn resolve_config(args: &ArgMatches) -> Result<(ResolvedConfig, bool), String> {
 
 fn build_tui_startup_config(
     args: &ArgMatches,
-    resolved_config: ResolvedConfig,
+    resolved_config: FiremanConfig,
     has_json_source: bool,
 ) -> Option<tui::StartupConfig> {
     let has_input_path = resolved_config.input_path.is_some();
