@@ -13,11 +13,12 @@ fireball.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 chrono = { version = "0.4", default-features = true, features = ["clock"] }
-eframe = "0.34"
-egui = "0.34"
-egui_dock = "0.19"
+eframe = "0.35"
+egui = "0.35"
+egui_dock = "0.20"
 rfd = "0.17"
 image = { version = "0.25", default-features = false, features = ["png"] }
+uuid = { version = "1.12", features = ["v4", "serde"] }
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

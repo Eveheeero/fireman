@@ -25,10 +25,10 @@ While using snowman back in high school, I often imagined a decompiler that woul
 - [ ] Simulation Routine
 - [X] Generate C like Code
   - [X] Optimization
-- [X] GUI decompiler
-  - [X] Inspect IR
+- [ ] GUI decompiler
+  - [ ] Inspect IR
   - [ ] Modify IR or Instruction
-  - [X] Generate C like Code
+  - [ ] Generate C like Code
   - [ ] Simulate With Memory / Register
 - [ ] TUI decompiler
 - [ ] CLI decompiler

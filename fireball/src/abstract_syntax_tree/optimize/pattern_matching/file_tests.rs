@@ -464,7 +464,7 @@ fn optimize_with_file_backed_pattern(
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(max_pass_iterations),
@@ -542,7 +542,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -562,7 +562,7 @@ fn pattern_matching_actions_example_applies_key_actions() {
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -632,7 +632,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -666,7 +666,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -704,7 +704,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -760,7 +760,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -781,7 +781,7 @@ fn pattern_matching_do_del_syntax_deletes_statement_based_ranges() {
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -824,7 +824,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -864,7 +864,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -897,7 +897,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -920,7 +920,7 @@ fn pattern_matching_predefined_patterns_apply_without_explicit_pattern_list() {
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .max_pass_iterations(1),
             ),
@@ -1020,7 +1020,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -1067,7 +1067,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(3),
@@ -1101,7 +1101,7 @@ do:
         .optimize_function(
             function_id_without_ir,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern.clone()])
                     .max_pass_iterations(1),
@@ -1120,7 +1120,7 @@ do:
         .optimize_function(
             function_id_with_ir,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .ir_analyzation(true)
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
@@ -1153,7 +1153,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(3),
@@ -1196,7 +1196,7 @@ do:
         .optimize_function(
             function_id_no_at,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![no_at_pattern])
                     .max_pass_iterations(3),
@@ -1210,7 +1210,7 @@ do:
         .optimize_function(
             function_id_at_any,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![at_any_pattern])
                     .max_pass_iterations(3),
@@ -1245,7 +1245,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(3),
@@ -1333,7 +1333,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -1434,7 +1434,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -1512,7 +1512,7 @@ do:
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -1586,7 +1586,7 @@ fn stmt_pattern_if_conversion_reversal_preserves_simple_ternary() {
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(1),
@@ -1669,7 +1669,7 @@ fn stmt_pattern_if_conversion_reversal_expands_nested_ternary() {
         .optimize_function(
             function_id,
             Some(
-                AstOptimizationConfig::NONE
+                AstOptimizationConfig::none()
                     .pattern_matching_enabled(true)
                     .pattern_matching(vec![pattern])
                     .max_pass_iterations(3),
