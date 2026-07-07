@@ -7,7 +7,7 @@ pub struct AstOptimizationConfig {
     pub call_argument_analyzation: bool,
     pub constant_folding: bool,
     pub control_flow_cleanup: bool,
-    pub collapse_unused_varaible: bool,
+    pub collapse_unused_variable: bool,
     pub dead_store_elimination: bool,
     pub pattern_matching_enabled: bool,
     pub pattern_matching: Vec<AstPattern>,
@@ -80,7 +80,7 @@ impl AstOptimizationConfig {
             call_argument_analyzation: true,
             constant_folding: true,
             control_flow_cleanup: true,
-            collapse_unused_varaible: true,
+            collapse_unused_variable: true,
             dead_store_elimination: true,
             pattern_matching_enabled: true,
             pattern_matching: AstPattern::predefined_patterns(),
@@ -119,7 +119,7 @@ impl AstOptimizationConfig {
             call_argument_analyzation: false,
             constant_folding: false,
             control_flow_cleanup: false,
-            collapse_unused_varaible: false,
+            collapse_unused_variable: false,
             dead_store_elimination: false,
             pattern_matching_enabled: false,
             pattern_matching: Vec::new(),
@@ -181,7 +181,7 @@ impl AstOptimizationConfig {
         self
     }
     pub fn collapse_unused_varaible(mut self, value: bool) -> Self {
-        self.collapse_unused_varaible = value;
+        self.collapse_unused_variable = value;
         self
     }
     pub fn collapse_unused_variable(self, value: bool) -> Self {
@@ -318,7 +318,7 @@ impl Default for AstOptimizationConfig {
             call_argument_analyzation: true,
             constant_folding: true,
             control_flow_cleanup: true,
-            collapse_unused_varaible: true,
+            collapse_unused_variable: true,
             dead_store_elimination: true,
             pattern_matching_enabled: true,
             pattern_matching: AstPattern::predefined_patterns(),
