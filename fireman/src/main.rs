@@ -31,15 +31,16 @@ impl ResolvedArgs {
     }
     fn to_decompile_args(self) -> Result<DecompileArgs, String> {
         let args = DecompileArgs {
-            input: self.input.map(|path| PathBuf::from(path)),
+            input: self
+                .input
+                .map(|path| PathBuf::from(path))
+                .expect("Input path doesn't given."),
             output: self.output.map(|path| PathBuf::from(path)),
             custom_script: self.custom_script,
             json: self.json,
         };
         // validate
-        if let Some(input) = &args.input
-            && !input.is_file()
-        {
+        if !args.input.is_file() {
             return Err("Input file does not exist".to_string());
         }
         Ok(args)
@@ -57,7 +58,7 @@ struct TuiArgs {
 }
 
 struct DecompileArgs {
-    input: Option<PathBuf>,
+    input: PathBuf,
     output: Option<PathBuf>,
     custom_script: Vec<String>, // if invalid path, ignore
     json: Option<String>,       // if invalid path, ignore
@@ -68,28 +69,16 @@ fn main() {
     let args = resolve_args(args);
 
     if args.print_json_sample {
-        let args = args.to_print_json_sample_args();
-        let args = match args {
-            Ok(args) => args,
-            Err(msg) => panic!("{}", msg),
-        };
+        let args = args.to_print_json_sample_args().unwrap();
         print_json_sample::print_json_sample(args);
         return;
     } else if args.is_tui {
-        let args = args.to_tui_args();
-        let args = match args {
-            Ok(args) => args,
-            Err(msg) => panic!("{}", msg),
-        };
+        let args = args.to_tui_args().unwrap();
         tui::tui(args);
         return;
     }
 
-    let args = args.to_decompile_args();
-    let args = match args {
-        Ok(args) => args,
-        Err(msg) => panic!("{}", msg),
-    };
+    let args = args.to_decompile_args().unwrap();
     decompile::decompile(args);
 }
 
