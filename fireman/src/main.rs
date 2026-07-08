@@ -5,7 +5,7 @@ mod tui;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use fireball::pattern_matching::AstPattern;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 struct ResolvedArgs {
     input: Option<String>,

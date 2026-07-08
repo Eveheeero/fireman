@@ -3,7 +3,10 @@ mod navigate_input;
 mod tab;
 
 use crate::{JsonPreset, TuiArgs};
-use crossterm::event;
+use crossterm::{
+    event,
+    event::{KeyCode, KeyModifiers},
+};
 use fireball::{Fireball, pattern_matching::AstPattern};
 use ratatui::Frame;
 
@@ -19,22 +22,23 @@ pub fn tui(args: TuiArgs) {
 struct TuiApp {
     state: TuiState,
     fireball: Option<Fireball>,
-    tabs: Vec<TuiTab>,
     optimization_config: fireball::abstract_syntax_tree::AstOptimizationConfig,
     print_config: fireball::abstract_syntax_tree::AstPrintConfig,
+    data: TuiData<'static>,
 }
-struct TuiTab {
-    index: usize,
-    kind: TuiTabKind,
+#[derive(Default)]
+struct TuiData<'data> {
+    navigate_input: navigate_input::TuiNavigateInputData<'data>,
+    tab: tab::TuiTabData,
 }
-enum TuiTabKind {}
 
 #[derive(PartialEq)]
 enum TuiState {
+    TempState,
     Init,
     NavigateInput,
     Tab(usize),
-    Help(/* previous state */ Box<TuiState>),
+    Help { previous_state: Box<TuiState> },
     Exit,
 }
 
@@ -43,9 +47,9 @@ impl TuiApp {
         Self {
             state: TuiState::Init,
             fireball: None,
-            tabs: Vec::new(),
             optimization_config: Default::default(),
             print_config: Default::default(),
+            data: Default::default(),
         }
     }
     fn init(&mut self, args: TuiArgs) {
@@ -57,7 +61,10 @@ impl TuiApp {
 
         // input
         let fireball = match input {
-            Some(input) => fireball::Fireball::from_path(&input).ok(),
+            Some(input) => {
+                self.data.navigate_input.input = input.clone();
+                fireball::Fireball::from_path(&input).ok()
+            }
             None => None,
         };
         if fireball.is_some() {
@@ -109,9 +116,64 @@ impl TuiApp {
     }
 
     fn draw(&mut self, terminal: &mut Frame) {
-        todo!()
+        match self.state {
+            TuiState::TempState => {}
+            TuiState::Init => {}
+            TuiState::NavigateInput => navigate_input::draw(self, terminal),
+            TuiState::Tab(_) => tab::draw(self, terminal),
+            TuiState::Help { .. } => help::draw(self, terminal),
+            TuiState::Exit => {}
+        }
     }
     fn handle_event(&mut self, event: event::Event) {
-        todo!()
+        // handle interrupt
+        if event.is_key_press()
+            && let Some(event) = event.as_key_press_event()
+            && event.modifiers == KeyModifiers::CONTROL
+            && event.code == KeyCode::Char('c')
+        {
+            self.state = TuiState::Exit;
+            return;
+        }
+        if handle_help(self, &event) {
+            return;
+        }
+
+        match self.state {
+            TuiState::TempState => {}
+            TuiState::Init => {}
+            TuiState::NavigateInput => navigate_input::handle_event(self, event),
+            TuiState::Tab(_) => tab::handle_event(self, event),
+            TuiState::Help { .. } => help::handle_event(self, event),
+            TuiState::Exit => {}
+        }
     }
+}
+
+/// ### Returns
+/// bool -> true if handled
+fn handle_help(app: &mut TuiApp, event: &event::Event) -> bool {
+    if event.is_key_press()
+        && let Some(event) = event.as_key_press_event()
+        && event.code == KeyCode::F(1)
+    {
+        match &mut app.state {
+            TuiState::Help { previous_state } => {
+                let mut temp = TuiState::TempState;
+                std::mem::swap(&mut temp, previous_state);
+                app.state = temp;
+                return true;
+            }
+            state => {
+                let mut old_state = TuiState::TempState;
+                std::mem::swap(&mut old_state, state);
+                app.state = TuiState::Help {
+                    previous_state: Box::new(old_state),
+                };
+            }
+        }
+
+        return true;
+    }
+    false
 }
