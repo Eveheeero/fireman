@@ -191,15 +191,17 @@ pub fn handle_event(app: &mut TuiApp, event: event::Event) {
             }
         }
         event::KeyCode::Tab => {
-            let current =
-                app.data.navigate_input.dir_content[app.data.navigate_input.input_index].clone();
+            let current = app.data.navigate_input.dir_content
+                [app.data.navigate_input.list_cursor.selected().unwrap()]
+            .clone();
             app.data.navigate_input.input = current.to_string_lossy().to_string();
             app.data.navigate_input.input_index = app.data.navigate_input.input.chars().count();
             refresh_list(app);
         }
         event::KeyCode::Enter => {
-            let current =
-                app.data.navigate_input.dir_content[app.data.navigate_input.input_index].clone();
+            let current = app.data.navigate_input.dir_content
+                [app.data.navigate_input.list_cursor.selected().unwrap()]
+            .clone();
             let fireball =
                 fireball::Fireball::from_path(current.to_str().unwrap()).expect("unsupported file");
             app.fireball = Some(fireball);
@@ -306,7 +308,22 @@ fn refresh_list(app: &mut TuiApp) {
         app.data.navigate_input.list_cursor.select(Some(0));
         app.data.navigate_input.dir_content = dir_content;
     }
-    // TODO change list index based on current input
+    let input = app.data.navigate_input.input.as_str();
+    let closest_index = app
+        .data
+        .navigate_input
+        .dir_content
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, path)| {
+            path.to_string_lossy()
+                .chars()
+                .zip(input.chars())
+                .take_while(|(path_char, input_char)| path_char == input_char)
+                .count()
+        })
+        .map(|(index, _)| index);
+    app.data.navigate_input.list_cursor.select(closest_index);
 
     app.data.navigate_input.previous_input = app.data.navigate_input.input.clone();
 }
