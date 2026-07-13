@@ -1,4 +1,4 @@
-use crate::tui::TuiApp;
+use crate::tui::{TuiApp, TuiState};
 use crossterm::event;
 use ratatui::{Frame, style, text, widgets};
 use std::path::{Path, PathBuf};
@@ -122,13 +122,42 @@ pub fn handle_event(app: &mut TuiApp, event: event::Event) {
                     app.data.navigate_input.input_index += 1;
                 }
             }
-            refresh_list(app);
         }
-        event::KeyCode::Up
-        | event::KeyCode::Down
-        | event::KeyCode::PageUp
-        | event::KeyCode::PageDown => {
-            todo!();
+        event::KeyCode::Up => {
+            let current = app.data.navigate_input.list_cursor.selected().unwrap();
+            if current > 0 {
+                app.data
+                    .navigate_input
+                    .list_cursor
+                    .select(Some(current - 1));
+            }
+        }
+        event::KeyCode::Down => {
+            let current = app.data.navigate_input.list_cursor.selected().unwrap();
+            if current < app.data.navigate_input.list.len() - 1 {
+                app.data
+                    .navigate_input
+                    .list_cursor
+                    .select(Some(current + 1));
+            }
+        }
+        event::KeyCode::PageUp => {
+            let mut current = app.data.navigate_input.list_cursor.selected().unwrap();
+            for _ in 0..3 {
+                if current > 0 {
+                    current -= 1;
+                }
+            }
+            app.data.navigate_input.list_cursor.select(Some(current));
+        }
+        event::KeyCode::PageDown => {
+            let mut current = app.data.navigate_input.list_cursor.selected().unwrap();
+            for _ in 0..3 {
+                if current < app.data.navigate_input.list.len() - 1 {
+                    current += 1;
+                }
+            }
+            app.data.navigate_input.list_cursor.select(Some(current));
             refresh_list(app);
         }
         event::KeyCode::Char(c) => {
@@ -160,6 +189,21 @@ pub fn handle_event(app: &mut TuiApp, event: event::Event) {
                 app.data.navigate_input.input.remove(byte_index);
                 refresh_list(app);
             }
+        }
+        event::KeyCode::Tab => {
+            let current =
+                app.data.navigate_input.dir_content[app.data.navigate_input.input_index].clone();
+            app.data.navigate_input.input = current.to_string_lossy().to_string();
+            app.data.navigate_input.input_index = app.data.navigate_input.input.chars().count();
+            refresh_list(app);
+        }
+        event::KeyCode::Enter => {
+            let current =
+                app.data.navigate_input.dir_content[app.data.navigate_input.input_index].clone();
+            let fireball =
+                fireball::Fireball::from_path(current.to_str().unwrap()).expect("unsupported file");
+            app.fireball = Some(fireball);
+            app.state = TuiState::Tab(0);
         }
         _ => {}
     }
@@ -229,12 +273,40 @@ fn list<'list>(entries: Vec<String>) -> widgets::List<'list> {
 }
 
 fn refresh_list(app: &mut TuiApp) {
-    let previous_input = &app.data.navigate_input.previous_input;
-    let input = &app.data.navigate_input.input;
-    if previous_input != input {
-        // TODO
+    let previous_input = Path::new(&app.data.navigate_input.previous_input);
+    let previous_input_dir = if previous_input.is_dir() {
+        Some(previous_input)
+    } else {
+        previous_input.parent()
+    };
+    let input = Path::new(&app.data.navigate_input.input);
+    let input_dir = if input.is_dir() {
+        Some(input)
+    } else {
+        input.parent()
+    };
+    if previous_input == input {
+        return;
     }
 
-    // handle list index changes
-    // TODO
+    if input_dir != previous_input_dir
+        && let Some(input_dir) = input_dir
+    {
+        // if dir changed, refresh list
+        let dir_content = std::fs::read_dir(input_dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .collect::<Vec<PathBuf>>();
+        app.data.navigate_input.list = list(
+            dir_content
+                .iter()
+                .map(|path| path.to_string_lossy().to_string())
+                .collect::<Vec<String>>(),
+        );
+        app.data.navigate_input.list_cursor.select(Some(0));
+        app.data.navigate_input.dir_content = dir_content;
+    }
+    // TODO change list index based on current input
+
+    app.data.navigate_input.previous_input = app.data.navigate_input.input.clone();
 }
