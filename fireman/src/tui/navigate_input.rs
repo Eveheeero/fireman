@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 pub struct TuiNavigateInputData<'list> {
     init: bool,
+    previous_input: String,
     pub input: String,
     input_index: usize,
     dir_content: Vec<PathBuf>,
@@ -20,7 +21,8 @@ impl<'list> Default for TuiNavigateInputData<'list> {
             .to_string();
         Self {
             init: false,
-            input_index: current_dir.len(),
+            input_index: current_dir.chars().count(),
+            previous_input: String::new(),
             input: current_dir,
             dir_content: Vec::new(),
             list: widgets::List::default(),
@@ -61,7 +63,115 @@ pub fn draw(app: &mut TuiApp, terminal: &mut Frame) {
     let input = widgets::Paragraph::new(input);
     terminal.render_widget(input, text_area);
 }
-pub fn handle_event(_app: &mut TuiApp, _event: event::Event) {}
+pub fn handle_event(app: &mut TuiApp, event: event::Event) {
+    if !(event.is_key_press() || event.is_key_repeat()) {
+        return;
+    }
+    let event = event.as_key_event().unwrap();
+    const SPECIALS: &str = " `~!@#$%^&*()+-=[]\\;',./{}|:\"<>?";
+    match event.code {
+        event::KeyCode::Left | event::KeyCode::Right => {
+            let is_control = event.modifiers.contains(event::KeyModifiers::CONTROL);
+            let is_left = event::KeyCode::Left == event.code;
+            if is_control && is_left {
+                let mut is_first = true;
+                while app.data.navigate_input.input_index > 0 {
+                    let next = app
+                        .data
+                        .navigate_input
+                        .input
+                        .chars()
+                        .skip(app.data.navigate_input.input_index - 1)
+                        .next()
+                        .unwrap();
+                    let next_is_special = SPECIALS.contains(next);
+                    if !is_first && next_is_special {
+                        break;
+                    }
+                    app.data.navigate_input.input_index -= 1;
+                    is_first = false;
+                }
+            } else if is_control {
+                let mut is_first = true;
+                while app.data.navigate_input.input_index
+                    < app.data.navigate_input.input.chars().count()
+                {
+                    let next = app
+                        .data
+                        .navigate_input
+                        .input
+                        .chars()
+                        .skip(app.data.navigate_input.input_index)
+                        .next()
+                        .unwrap();
+                    let next_is_special = SPECIALS.contains(next);
+                    if !is_first && next_is_special {
+                        break;
+                    }
+                    app.data.navigate_input.input_index += 1;
+                    is_first = false;
+                }
+            } else if is_left {
+                if app.data.navigate_input.input_index > 0 {
+                    app.data.navigate_input.input_index -= 1;
+                }
+            } else {
+                if app.data.navigate_input.input_index
+                    < app.data.navigate_input.input.chars().count()
+                {
+                    app.data.navigate_input.input_index += 1;
+                }
+            }
+            refresh_list(app);
+        }
+        event::KeyCode::Up
+        | event::KeyCode::Down
+        | event::KeyCode::PageUp
+        | event::KeyCode::PageDown => {
+            todo!();
+            refresh_list(app);
+        }
+        event::KeyCode::Char(c) => {
+            let byte_index = char_index_to_byte_index(
+                &app.data.navigate_input.input,
+                app.data.navigate_input.input_index,
+            );
+            app.data.navigate_input.input.insert(byte_index, c);
+            app.data.navigate_input.input_index += 1;
+            refresh_list(app);
+        }
+        event::KeyCode::Backspace => {
+            if app.data.navigate_input.input_index > 0 {
+                let byte_index = char_index_to_byte_index(
+                    &app.data.navigate_input.input,
+                    app.data.navigate_input.input_index - 1,
+                );
+                app.data.navigate_input.input.remove(byte_index);
+                app.data.navigate_input.input_index -= 1;
+                refresh_list(app);
+            }
+        }
+        event::KeyCode::Delete => {
+            if app.data.navigate_input.input_index < app.data.navigate_input.input.chars().count() {
+                let byte_index = char_index_to_byte_index(
+                    &app.data.navigate_input.input,
+                    app.data.navigate_input.input_index,
+                );
+                app.data.navigate_input.input.remove(byte_index);
+                refresh_list(app);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn char_index_to_byte_index(input: &str, char_index: usize) -> usize {
+    input
+        .char_indices()
+        .nth(char_index)
+        .map(|(byte_index, _)| byte_index)
+        .unwrap_or(input.len())
+}
 
 fn init_list(app: &mut TuiApp) {
     if app.data.navigate_input.init {
@@ -107,7 +217,8 @@ fn init_list(app: &mut TuiApp) {
         .list_cursor
         .select(Some(list_cursor));
     app.data.navigate_input.dir_content = dir_content;
-    app.data.navigate_input.input_index = app.data.navigate_input.input.len();
+    app.data.navigate_input.previous_input = app.data.navigate_input.input.clone();
+    app.data.navigate_input.input_index = app.data.navigate_input.input.chars().count();
 }
 
 fn list<'list>(entries: Vec<String>) -> widgets::List<'list> {
@@ -117,4 +228,13 @@ fn list<'list>(entries: Vec<String>) -> widgets::List<'list> {
         .highlight_symbol("> ")
 }
 
-fn refresh_list(_app: &mut TuiApp) {}
+fn refresh_list(app: &mut TuiApp) {
+    let previous_input = &app.data.navigate_input.previous_input;
+    let input = &app.data.navigate_input.input;
+    if previous_input != input {
+        // TODO
+    }
+
+    // handle list index changes
+    // TODO
+}
