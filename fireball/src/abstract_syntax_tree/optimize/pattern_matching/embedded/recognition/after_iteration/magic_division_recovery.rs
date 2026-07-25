@@ -7,7 +7,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
-        AstStatement, ProcessedOptimization, Wrapped, WrappedAstStatement,
+        AstStatement, AstOptimizationKind, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -38,7 +38,7 @@ pub(crate) fn recover_magic_divisions(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::MagicDivisionRecovery);
+            .push(AstOptimizationKind::MagicDivisionRecovery);
     }
 
     Ok(())

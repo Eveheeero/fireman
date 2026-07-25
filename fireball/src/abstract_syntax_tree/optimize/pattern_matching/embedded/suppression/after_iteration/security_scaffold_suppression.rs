@@ -7,11 +7,12 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstStatement, ProcessedOptimization,
+        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstStatement, AstOptimizationKind,
         WrappedAstStatement,
     },
     prelude::DecompileError,
 };
+use crate::pattern_matching::AstPattern;
 
 const SUPPRESSED_SYMBOLS: &[&str] = &["__stack_chk_fail", "__cfi_check", "__cfi_slowpath"];
 
@@ -41,7 +42,7 @@ pub(crate) fn suppress_security_scaffolds(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::PatternMatching);
+            .push(AstOptimizationKind::PatternMatching(Box::new(AstPattern::predefined_pattern("security-scaffold-suppression.fb").unwrap())));
     }
 
     Ok(())

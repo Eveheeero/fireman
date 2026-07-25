@@ -7,7 +7,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId,
-        AstFunctionVersion, AstLiteral, AstStatement, AstUnaryOperator, ProcessedOptimization,
+        AstFunctionVersion, AstLiteral, AstStatement, AstUnaryOperator, AstOptimizationKind,
         Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
@@ -39,7 +39,7 @@ pub(crate) fn canonicalize_operators(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::OperatorCanonicalization);
+            .push(AstOptimizationKind::OperatorCanonicalization);
     }
 
     Ok(())

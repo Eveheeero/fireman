@@ -40,15 +40,15 @@ pub struct AstOptimizationConfig {
     /// `.fb` pattern files for migrated passes
     pub use_embedded_passes: bool,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ProcessedOptimization {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AstOptimizationKind {
     IrAnalyzation,
     ParameterAnalyzation,
     CallArgumentAnalyzation,
     ConstantFolding,
     ControlFlowCleanup,
     CollapseUnusedVariables,
-    PatternMatching,
+    PatternMatching(Box<AstPattern>),
     LoopAnalyzation,
     CopyPropagation,
     ExpressionInlining,

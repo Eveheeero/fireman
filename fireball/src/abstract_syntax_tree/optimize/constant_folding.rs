@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstStatement, AstValue, AstVariableId, ProcessedOptimization, Wrapped,
+        AstLiteral, AstStatement, AstValue, AstVariableId, AstOptimizationKind, Wrapped,
         WrappedAstStatement,
     },
     prelude::DecompileError,
@@ -37,7 +37,7 @@ pub(super) fn fold_constants(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::ConstantFolding);
+            .push(AstOptimizationKind::ConstantFolding);
     }
 
     Ok(())

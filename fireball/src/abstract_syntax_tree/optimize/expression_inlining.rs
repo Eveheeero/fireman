@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstStatement, AstVariableId, ProcessedOptimization, Wrapped, WrappedAstStatement,
+        AstStatement, AstVariableId, AstOptimizationKind, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -35,7 +35,7 @@ pub(super) fn inline_expressions(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::ExpressionInlining);
+            .push(AstOptimizationKind::ExpressionInlining);
     }
 
     Ok(())
