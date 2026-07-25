@@ -6,7 +6,7 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement, ProcessedOptimization,
+        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement, AstOptimizationKind,
         WrappedAstStatement,
     },
     prelude::DecompileError,
@@ -38,7 +38,7 @@ pub(crate) fn reverse_if_conversion(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::IfConversionReversal);
+            .push(AstOptimizationKind::IfConversionReversal);
     }
 
     Ok(())

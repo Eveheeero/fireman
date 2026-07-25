@@ -4,7 +4,7 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstStatement, ProcessedOptimization,
+        Ast, AstFunctionId, AstFunctionVersion, AstStatement, AstOptimizationKind,
         WrappedAstStatement,
     },
     prelude::DecompileError,
@@ -36,7 +36,7 @@ pub(crate) fn prune_empty_else(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::ControlFlowCleanup);
+            .push(AstOptimizationKind::ControlFlowCleanup);
     }
 
     Ok(())

@@ -216,7 +216,7 @@
 - `ArcAstVariableMap` (type) - `fireball/src/abstract_syntax_tree/objects/etc.rs`
 - `AstPrintConfig` - `fireball/src/abstract_syntax_tree/objects/print_config.rs`
 - `AstOptimizationConfig` - `fireball/src/abstract_syntax_tree/objects/optimization.rs`
-- `ProcessedOptimization` (enum) - `fireball/src/abstract_syntax_tree/objects/optimization.rs`
+- `AstOptimizationKind` (enum) - `fireball/src/abstract_syntax_tree/objects/optimization.rs`
 - `WrappedAstStatement` - `fireball/src/abstract_syntax_tree/objects/wrapper.rs`
 - `Wrapped<T>` - `fireball/src/abstract_syntax_tree/objects/wrapper.rs`
 - `AstDescriptor` - `fireball/src/abstract_syntax_tree/objects/wrapper.rs`

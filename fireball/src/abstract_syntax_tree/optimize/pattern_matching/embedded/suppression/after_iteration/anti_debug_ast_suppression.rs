@@ -7,12 +7,13 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstStatement, ProcessedOptimization,
+        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstStatement, AstOptimizationKind,
         WrappedAstStatement,
     },
     prelude::DecompileError,
 };
 use hashbrown::HashMap;
+use crate::pattern_matching::AstPattern;
 
 const SUPPRESSED_SYMBOLS: &[&str] = &[
     "IsDebuggerPresent",
@@ -48,7 +49,7 @@ pub(crate) fn suppress_anti_debug_ast(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::PatternMatching);
+            .push(AstOptimizationKind::PatternMatching(Box::new(AstPattern::predefined_pattern("anti-debug-ast-suppression.fb").unwrap())));
     }
 
     Ok(())

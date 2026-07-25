@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstStatement, AstVariableId, ProcessedOptimization, Wrapped, WrappedAstStatement,
+        AstStatement, AstVariableId, AstOptimizationKind, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -36,7 +36,7 @@ pub(super) fn propagate_copies(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::CopyPropagation);
+            .push(AstOptimizationKind::CopyPropagation);
     }
 
     Ok(())

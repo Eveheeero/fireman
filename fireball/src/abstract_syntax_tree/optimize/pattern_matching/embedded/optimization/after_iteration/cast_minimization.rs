@@ -8,7 +8,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstStatement, AstUnaryOperator, AstValueType, ProcessedOptimization, Wrapped,
+        AstLiteral, AstStatement, AstUnaryOperator, AstValueType, AstOptimizationKind, Wrapped,
         WrappedAstStatement,
     },
     prelude::DecompileError,
@@ -40,7 +40,7 @@ pub(crate) fn minimize_casts(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::CastMinimization);
+            .push(AstOptimizationKind::CastMinimization);
     }
 
     Ok(())

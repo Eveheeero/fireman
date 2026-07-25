@@ -11,7 +11,7 @@ pub struct AstFunction {
     pub variables: ArcAstVariableMap,
     pub body: Vec<WrappedAstStatement>,
 
-    pub processed_optimizations: Vec<ProcessedOptimization>,
+    pub processed_optimizations: Vec<AstOptimizationKind>,
 }
 
 impl AstFunction {

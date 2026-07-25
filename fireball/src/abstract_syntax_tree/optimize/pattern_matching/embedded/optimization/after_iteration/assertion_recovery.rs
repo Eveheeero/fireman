@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstCall, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement,
-        ProcessedOptimization, WrappedAstStatement,
+        AstOptimizationKind, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -34,7 +34,7 @@ pub(crate) fn recover_assertions(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::AssertionRecovery);
+            .push(AstOptimizationKind::AssertionRecovery);
     }
 
     Ok(())

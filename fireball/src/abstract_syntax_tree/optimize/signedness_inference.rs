@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstStatement, AstUnaryOperator, AstValueType, AstVariableId, ProcessedOptimization,
+        AstStatement, AstUnaryOperator, AstValueType, AstVariableId, AstOptimizationKind,
         Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
@@ -104,7 +104,7 @@ pub(super) fn infer_signedness(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::SignednessInference);
+            .push(AstOptimizationKind::SignednessInference);
     }
 
     Ok(())
