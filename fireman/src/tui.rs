@@ -27,9 +27,9 @@ struct TuiApp {
     data: TuiData<'static>,
 }
 #[derive(Default)]
-struct TuiData<'data> {
-    navigate_input: navigate_input::TuiNavigateInputData<'data>,
-    tab: tab::TuiTabData,
+struct TuiData<'tui> {
+    navigate_input: navigate_input::TuiNavigateInputData<'tui>,
+    tab: tab::TuiTabData<'tui>,
 }
 
 #[derive(PartialEq)]

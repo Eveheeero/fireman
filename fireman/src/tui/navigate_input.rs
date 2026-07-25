@@ -3,17 +3,17 @@ use crossterm::event;
 use ratatui::{Frame, style, text, widgets};
 use std::path::{Path, PathBuf};
 
-pub struct TuiNavigateInputData<'list> {
+pub struct TuiNavigateInputData<'tui> {
     init: bool,
     previous_input: String,
     pub input: String,
     input_index: usize,
     dir_content: Vec<PathBuf>,
-    list: widgets::List<'list>,
+    list: widgets::List<'tui>,
     list_cursor: widgets::ListState,
 }
 
-impl<'list> Default for TuiNavigateInputData<'list> {
+impl<'tui> Default for TuiNavigateInputData<'tui> {
     fn default() -> Self {
         let current_dir = std::env::current_dir()
             .unwrap()
