@@ -57,16 +57,7 @@ pub(crate) mod suppression {
     }
 
     pub(crate) mod before_ir_analyzation {
-        pub(crate) mod alloca_suppression;
         pub(crate) mod anti_debug_suppression;
-        pub(crate) mod atomic_fence_suppression;
-        pub(crate) mod bare_metal_startup_suppression;
-        pub(crate) mod loader_stub_suppression;
-        pub(crate) mod plt_resolver_suppression;
-        pub(crate) mod timing_check_suppression;
-        pub(crate) mod tls_access_suppression;
-        pub(crate) mod trampoline_suppression;
-        pub(crate) mod veneer_suppression;
     }
 }
 

@@ -7,7 +7,7 @@ use super::{
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
-        AstStatement, ProcessedOptimization, WrappedAstStatement,
+        AstStatement, AstOptimizationKind, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -41,7 +41,7 @@ pub(super) fn reconstruct_switches(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::SwitchReconstruction);
+            .push(AstOptimizationKind::SwitchReconstruction);
     }
 
     Ok(())

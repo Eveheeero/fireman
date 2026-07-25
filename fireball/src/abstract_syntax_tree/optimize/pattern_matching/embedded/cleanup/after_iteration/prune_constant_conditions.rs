@@ -11,7 +11,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral, AstStatement,
-        AstUnaryOperator, ProcessedOptimization, WrappedAstStatement,
+        AstUnaryOperator, AstOptimizationKind, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -49,7 +49,7 @@ pub(crate) fn prune_constant_conditions(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::ControlFlowCleanup);
+            .push(AstOptimizationKind::ControlFlowCleanup);
     }
 
     Ok(())

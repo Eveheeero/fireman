@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget, AstStatement,
-        AstUnaryOperator, AstValueOrigin, ProcessedOptimization, Wrapped, WrappedAstStatement,
+        AstUnaryOperator, AstValueOrigin, AstOptimizationKind, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -34,7 +34,7 @@ pub(super) fn contain_gotos(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::GotoContainment);
+            .push(AstOptimizationKind::GotoContainment);
     }
 
     Ok(())
