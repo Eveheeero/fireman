@@ -93,3 +93,109 @@ fn refresh_tab_widget(app: &mut TuiApp) {
     let tabs = widgets::Tabs::new(tabs);
     app.data.tab.tab_widget = tabs;
 }
+fn refresh_decompile(app: &mut TuiApp) {
+    // TODO
+}
+
+/// handles tab, n
+///
+/// ### Returns
+/// bool -> true if handled
+fn handle_turn_tab(app: &mut TuiApp, event: &event::Event) -> bool {
+    fn next(app: &mut TuiApp) {
+        if app.data.tab.current_tab_index < app.data.tab.tabs.len() - 1 {
+            app.data.tab.current_tab_index += 1;
+        } else {
+            app.data.tab.current_tab_index = 0;
+        }
+    }
+    fn previous(app: &mut TuiApp) {
+        if app.data.tab.current_tab_index > 0 {
+            app.data.tab.current_tab_index -= 1;
+        } else {
+            app.data.tab.current_tab_index = app.data.tab.tabs.len() - 1;
+        }
+    }
+    // handle tab, shift tab, n, shift n
+    if let Some(event) = event.as_key_press_event() {
+        return match event.code {
+            event::KeyCode::Tab if event.modifiers == event::KeyModifiers::SHIFT => {
+                previous(app);
+                true
+            }
+            event::KeyCode::Tab => {
+                next(app);
+                true
+            }
+            event::KeyCode::Char('n') | event::KeyCode::Char('N')
+                if event.modifiers == event::KeyModifiers::SHIFT =>
+            {
+                previous(app);
+                true
+            }
+            event::KeyCode::Char('n') | event::KeyCode::Char('N') => {
+                next(app);
+                true
+            }
+            _ => false,
+        };
+    }
+    false
+}
+
+/// handles d, o
+///
+/// ### Returns
+/// bool -> true if handled
+fn handle_new_tab(app: &mut TuiApp, event: &event::Event) -> bool {
+    // handle o, d
+    let Some(event) = event.as_key_press_event() else {
+        return false;
+    };
+    match event.code {
+        event::KeyCode::Char('d') => {
+            app.data.tab.current_tab_index += 1;
+            app.data.tab.tabs.insert(
+                app.data.tab.current_tab_index,
+                TuiTab::DisplayCurrentAST(Box::new(DisplayCurrentASTData {})),
+            );
+            refresh_tab_widget(app);
+            true
+        }
+        event::KeyCode::Char('o') => {
+            app.data.tab.current_tab_index += 1;
+            app.data.tab.tabs.insert(
+                app.data.tab.current_tab_index,
+                TuiTab::SelectOptimization(Box::new(SelectOptimizationData {})),
+            );
+            refresh_tab_widget(app);
+            true
+        }
+        _ => false,
+    }
+}
+
+/// handles D
+///
+/// ### Returns
+/// bool -> true if handled
+fn handle_del_tab(app: &mut TuiApp, event: &event::Event) -> bool {
+    // handle D
+    if let Some(event) = event.as_key_press_event()
+        && event.code == event::KeyCode::Char('D')
+    {
+        let current_tab_index = app.data.tab.current_tab_index;
+        if current_tab_index == 0 {
+            return false;
+        }
+        app.data.tab.tabs.remove(app.data.tab.current_tab_index);
+        if current_tab_index == app.data.tab.tabs.len() {
+            app.data.tab.current_tab_index -= 1;
+        }
+        refresh_tab_widget(app);
+        refresh_decompile(app);
+        true
+    } else {
+        false
+    }
+}
