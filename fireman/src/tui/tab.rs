@@ -1,6 +1,6 @@
 mod display_current_ast;
 mod select_optimization;
-mod select_target_section;
+mod select_target_block;
 
 use crate::tui::TuiApp;
 use crossterm::event;
@@ -9,23 +9,25 @@ use ratatui::{Frame, widgets};
 #[derive(Default)]
 pub struct TuiTabData<'tui> {
     init: bool,
-    tabs: Vec<TuiTab>,
+    tabs: Vec<TuiTab<'tui>>,
     tab_widget: widgets::Tabs<'tui>,
     current_tab_index: usize,
 }
-enum TuiTab {
-    SelectTargetSection(Box<SelectTargetSectionData>), // tabs[0]
+enum TuiTab<'tui> {
+    SelectTargetBlock(Box<SelectTargetBlockData<'tui>>), // tabs[0]
     SelectOptimization(Box<SelectOptimizationData>),
     DisplayCurrentAST(Box<DisplayCurrentASTData>),
 }
 
-struct SelectTargetSectionData {
+struct SelectTargetBlockData<'tui> {
     input: String,
-    sections: Vec<SelectTargetSectionDataSection>,
+    blocks: Vec<SelectTargetBlockDataBlock>,
+    blocks_list: widgets::List<'tui>,
+    state: widgets::ListState,
 }
-struct SelectTargetSectionDataSection {
-    start_address: usize,
-    end_address: Option<usize>,
+struct SelectTargetBlockDataBlock {
+    start_address: u64,
+    end_address: Option<u64>,
     analyzed: bool,
     selected: bool,
 }
@@ -45,7 +47,7 @@ pub fn draw(app: &mut TuiApp, terminal: &mut Frame) {
     terminal.render_widget(&app.data.tab.tab_widget, tab_widget_area);
     let current_tab = &mut app.data.tab.tabs[current_tab_index];
     match current_tab {
-        TuiTab::SelectTargetSection(data) => select_target_section::draw(data, area, terminal),
+        TuiTab::SelectTargetBlock(data) => select_target_block::draw(data, area, terminal),
         TuiTab::SelectOptimization(data) => select_optimization::draw(data, area, terminal),
         TuiTab::DisplayCurrentAST(data) => display_current_ast::draw(data, area, terminal),
     }
@@ -54,7 +56,7 @@ pub fn handle_event(app: &mut TuiApp, event: event::Event) {
     let current_tab_index = app.data.tab.current_tab_index;
     let current_tab = &mut app.data.tab.tabs[current_tab_index];
     match current_tab {
-        TuiTab::SelectTargetSection(_) => select_target_section::handle_event(app, event),
+        TuiTab::SelectTargetBlock(_) => select_target_block::handle_event(app, event),
         TuiTab::SelectOptimization(_) => select_optimization::handle_event(app, event),
         TuiTab::DisplayCurrentAST(_) => display_current_ast::handle_event(app, event),
     }
@@ -66,15 +68,17 @@ fn init(app: &mut TuiApp) {
     }
     app.data.tab.init = true;
 
-    let data = SelectTargetSectionData {
+    let data = SelectTargetBlockData {
         input: String::new(),
-        sections: Vec::new(),
+        blocks: Vec::new(),
+        blocks_list: widgets::List::default(),
+        state: widgets::ListState::default(),
     };
 
     app.data
         .tab
         .tabs
-        .push(TuiTab::SelectTargetSection(Box::new(data)));
+        .push(TuiTab::SelectTargetBlock(Box::new(data)));
     refresh_tab_widget(app);
 }
 
@@ -85,7 +89,7 @@ fn refresh_tab_widget(app: &mut TuiApp) {
         .tabs
         .iter()
         .map(|tab| match tab {
-            TuiTab::SelectTargetSection(_) => "S",
+            TuiTab::SelectTargetBlock(_) => "S",
             TuiTab::SelectOptimization(_) => "O",
             TuiTab::DisplayCurrentAST(_) => "D",
         })
@@ -94,7 +98,7 @@ fn refresh_tab_widget(app: &mut TuiApp) {
     app.data.tab.tab_widget = tabs;
 }
 fn refresh_decompile(app: &mut TuiApp) {
-    // TODO
+    // TODO 현재 탭 이후의 내용을 디컴파일함
 }
 
 /// handles tab, n
