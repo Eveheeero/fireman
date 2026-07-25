@@ -9,11 +9,12 @@ use ratatui::{Frame, widgets};
 #[derive(Default)]
 pub struct TuiTabData<'tui> {
     init: bool,
-    tabs: Vec<TuiTab<'tui>>,
+    pub tabs: Vec<TuiTab<'tui>>,
     tab_widget: widgets::Tabs<'tui>,
     current_tab_index: usize,
 }
-enum TuiTab<'tui> {
+#[allow(private_interfaces)]
+pub enum TuiTab<'tui> {
     SelectTargetBlock(Box<SelectTargetBlockData<'tui>>), // tabs[0]
     SelectOptimization(Box<SelectOptimizationData>),
     DisplayCurrentAST(Box<DisplayCurrentASTData>),
@@ -97,7 +98,7 @@ fn refresh_tab_widget(app: &mut TuiApp) {
     let tabs = widgets::Tabs::new(tabs);
     app.data.tab.tab_widget = tabs;
 }
-fn refresh_decompile(app: &mut TuiApp) {
+fn refresh_decompile(_app: &mut TuiApp) {
     // TODO 현재 탭 이후의 내용을 디컴파일함
 }
 
