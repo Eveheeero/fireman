@@ -8,13 +8,13 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstStatement, AstOptimizationKind,
+        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
         WrappedAstStatement,
     },
+    pattern_matching::AstPattern,
     prelude::DecompileError,
 };
 use hashbrown::HashMap;
-use crate::pattern_matching::AstPattern;
 
 const SUPPRESSED_SYMBOLS: &[&str] = &[
     "NSLog",
@@ -51,7 +51,9 @@ pub(crate) fn suppress_logging(
         function.body = body;
         function
             .processed_optimizations
-            .push(AstOptimizationKind::PatternMatching(Box::new(AstPattern::predefined_pattern("logging-suppression.fb").unwrap())));
+            .push(AstOptimizationKind::PatternMatching(Box::new(
+                AstPattern::predefined_pattern("logging-suppression.fb").unwrap(),
+            )));
     }
 
     Ok(())

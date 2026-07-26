@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstStatement, AstVariableId, AstOptimizationKind, Wrapped, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, AstVariableId, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };

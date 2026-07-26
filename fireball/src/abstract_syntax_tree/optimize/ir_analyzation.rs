@@ -5,9 +5,9 @@ mod convert;
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstDescriptor, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue, AstValueOrigin,
-        AstValueType, AstVariable, AstVariableId, PrintWithConfig, AstOptimizationKind, Wrapped,
-        WrappedAstStatement,
+        AstLiteral, AstOptimizationKind, AstStatement, AstStatementOrigin, AstUnaryOperator,
+        AstValue, AstValueOrigin, AstValueType, AstVariable, AstVariableId, PrintWithConfig,
+        Wrapped, WrappedAstStatement,
         optimize::ir_analyzation::convert::{
             convert_expr, convert_stmt, resolve_constant, wdn, ws,
         },

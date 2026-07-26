@@ -2,8 +2,8 @@
 
 use crate::{
     abstract_syntax_tree::{
-        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement,
-        GetRelatedVariables, AstOptimizationKind, WrappedAstStatement,
+        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion,
+        AstOptimizationKind, AstStatement, GetRelatedVariables, WrappedAstStatement,
     },
     ir::data::IrData,
     prelude::{DecompileError, *},

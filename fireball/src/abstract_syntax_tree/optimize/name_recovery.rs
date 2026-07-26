@@ -3,8 +3,8 @@
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId,
-        AstFunctionVersion, AstLiteral, AstStatement, AstVariableId, AstOptimizationKind,
-        Wrapped, WrappedAstStatement,
+        AstFunctionVersion, AstLiteral, AstOptimizationKind, AstStatement, AstVariableId, Wrapped,
+        WrappedAstStatement,
     },
     prelude::DecompileError,
 };

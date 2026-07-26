@@ -5,7 +5,7 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstStatement, AstOptimizationKind,
+        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
         WrappedAstStatement,
     },
     prelude::DecompileError,
