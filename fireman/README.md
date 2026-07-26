@@ -20,20 +20,13 @@ fireman example.exe --json preset.json
 fireman --jsonsample
 ```
 
-### CLI Features
+![cli default](resources/cli1.png)
 
-- [ ] Help menu
-- [ ] Custom script support
-- [ ] Json support
-
-### CLI TODO
-
-- [ ] Establish json structure
-- [ ] Help menu
-- [ ] Json preset support
-- [ ] Print decompile result with args
+![cli json sample](resources/cli2.png)
 
 ## TUI
+
+F1 to helps
 
 ```bash
 fireman --tui
@@ -51,12 +44,15 @@ fireman --tui --json preset.json
 fireman --tui --json preset.json -i example.exe
 ```
 
-### TUI Features
+![tui select target block page](resources/tui1.png)
 
-- [ ] Load preset from json
-- [ ] Navigate input path
-- [ ] Tabs for manipulate decompile steps
+![tui optimization select page](resources/tui2.png)
 
-### TUI TODO
+![tui decompile result page](resources/tui3.png)
 
-- [ ] ???
+### TUI known issues
+
+- Multi tabs take too much memory
+- No help text for optimizations
+- Custom script and pattern matching from args doesn't work
+- Crashes sometimes...

@@ -100,6 +100,13 @@ fn init(app: &mut TuiApp) {
         .tabs
         .push(TuiTab::SelectTargetBlock(Box::new(data)));
     default_tabs::default_tabs(app);
+    app.data
+        .tab
+        .tabs
+        .push(TuiTab::DisplayCurrentAST(Box::new(DisplayCurrentASTData {
+            list: Default::default(),
+            state: Default::default(),
+        })));
     refresh_tab_widget(app);
     refresh_decompile(app);
 }
