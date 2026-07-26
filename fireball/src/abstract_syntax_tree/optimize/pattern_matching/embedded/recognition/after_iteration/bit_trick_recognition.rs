@@ -12,7 +12,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstStatement, AstUnaryOperator, AstValueOrigin, ProcessedOptimization, Wrapped,
+        AstLiteral, AstOptimizationKind, AstStatement, AstUnaryOperator, AstValueOrigin, Wrapped,
         WrappedAstStatement,
     },
     prelude::DecompileError,
@@ -46,7 +46,7 @@ pub(crate) fn recognize_rotation_and_strength_reduction(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::BitTrickRecognition);
+            .push(AstOptimizationKind::BitTrickRecognition);
     }
 
     Ok(())

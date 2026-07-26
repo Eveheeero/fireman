@@ -9,8 +9,8 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement, AstUnaryOperator,
-        AstValueOrigin, ProcessedOptimization, Wrapped, WrappedAstStatement, optimize::opt_utils,
+        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
+        AstUnaryOperator, AstValueOrigin, Wrapped, WrappedAstStatement, optimize::opt_utils,
     },
     prelude::DecompileError,
 };
@@ -44,7 +44,7 @@ pub(crate) fn cleanup_tail_calls_and_branches(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::ControlFlowCleanup);
+            .push(AstOptimizationKind::ControlFlowCleanup);
     }
 
     Ok(())

@@ -5,7 +5,7 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstStatement, ProcessedOptimization,
+        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
         WrappedAstStatement,
     },
     prelude::DecompileError,
@@ -37,7 +37,7 @@ pub(crate) fn normalize_early_returns(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::EarlyReturnNormalization);
+            .push(AstOptimizationKind::EarlyReturnNormalization);
     }
 
     Ok(())

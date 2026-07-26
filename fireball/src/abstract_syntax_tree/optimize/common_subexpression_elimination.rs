@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
-        AstStatement, AstVariableId, ProcessedOptimization, Wrapped, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, AstVariableId, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -52,7 +52,7 @@ pub(super) fn eliminate_common_subexpressions(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::CommonSubexpressionElimination);
+            .push(AstOptimizationKind::CommonSubexpressionElimination);
     }
 
     Ok(())

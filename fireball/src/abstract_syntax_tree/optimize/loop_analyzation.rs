@@ -3,8 +3,8 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstJumpTarget, AstLiteral, AstStatement, AstUnaryOperator, AstValueOrigin, AstVariableId,
-        ProcessedOptimization, Wrapped, WrappedAstStatement,
+        AstJumpTarget, AstLiteral, AstOptimizationKind, AstStatement, AstUnaryOperator,
+        AstValueOrigin, AstVariableId, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -42,7 +42,7 @@ pub(super) fn analyze_loops(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::LoopAnalyzation);
+            .push(AstOptimizationKind::LoopAnalyzation);
     }
 
     Ok(())

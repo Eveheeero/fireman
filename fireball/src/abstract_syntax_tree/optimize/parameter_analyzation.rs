@@ -2,8 +2,8 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstParameter, AstVariableAccessType, AstVariableId,
-        GetRelatedVariables, ProcessedOptimization,
+        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstParameter,
+        AstVariableAccessType, AstVariableId, GetRelatedVariables,
     },
     ir::{
         Register,
@@ -150,7 +150,7 @@ pub(super) fn analyze_parameters(
             .unwrap();
         function
             .processed_optimizations
-            .push(ProcessedOptimization::ParameterAnalyzation);
+            .push(AstOptimizationKind::ParameterAnalyzation);
         function.parameters = parameters;
         function.body = body;
     }

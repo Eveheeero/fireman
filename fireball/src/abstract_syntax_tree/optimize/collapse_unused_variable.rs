@@ -2,8 +2,8 @@
 
 use crate::{
     abstract_syntax_tree::{
-        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement,
-        GetRelatedVariables, ProcessedOptimization, WrappedAstStatement,
+        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion,
+        AstOptimizationKind, AstStatement, GetRelatedVariables, WrappedAstStatement,
     },
     ir::data::IrData,
     prelude::{DecompileError, *},
@@ -212,7 +212,7 @@ pub(super) fn collapse_unused_variables(
             .unwrap();
         function
             .processed_optimizations
-            .push(ProcessedOptimization::CollapseUnusedVariables);
+            .push(AstOptimizationKind::CollapseUnusedVariables);
         function.body = new_body;
     }
     Ok(())

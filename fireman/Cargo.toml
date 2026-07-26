@@ -14,14 +14,7 @@ clap.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 ratatui = "0.30"
-tracing-subscriber.workspace = true
-tracing = { workspace = true, features = [
-  "max_level_trace",
-  "release_max_level_debug",
-] }
 crossterm = "0.29"
-chrono = { version = "0.4", features = ["clock"] }
-rhai = "1.23"
 
 [features]
 default = []

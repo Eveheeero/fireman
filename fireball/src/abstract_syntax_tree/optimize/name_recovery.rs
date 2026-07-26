@@ -3,8 +3,8 @@
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId,
-        AstFunctionVersion, AstLiteral, AstStatement, AstVariableId, ProcessedOptimization,
-        Wrapped, WrappedAstStatement,
+        AstFunctionVersion, AstLiteral, AstOptimizationKind, AstStatement, AstVariableId, Wrapped,
+        WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -55,7 +55,7 @@ pub(super) fn recover_names(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::NameRecovery);
+            .push(AstOptimizationKind::NameRecovery);
     }
 
     Ok(())

@@ -6,9 +6,9 @@ mod register_maps;
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunction,
-        AstFunctionId, AstFunctionVersion, AstJumpTarget, AstParameter, AstParameterLocation,
-        AstStatement, AstStatementOrigin, AstValueOrigin, AstValueType, AstVariable, AstVariableId,
-        ProcessedOptimization, Wrapped, WrappedAstStatement,
+        AstFunctionId, AstFunctionVersion, AstJumpTarget, AstOptimizationKind, AstParameter,
+        AstParameterLocation, AstStatement, AstStatementOrigin, AstValueOrigin, AstValueType,
+        AstVariable, AstVariableId, Wrapped, WrappedAstStatement,
     },
     ir::{
         Architecture, Register, VirtualMachine,
@@ -136,7 +136,7 @@ pub(super) fn analyze_call_arguments(
             .unwrap();
         function
             .processed_optimizations
-            .push(ProcessedOptimization::CallArgumentAnalyzation);
+            .push(AstOptimizationKind::CallArgumentAnalyzation);
         if let Some(name) = external_import_thunks.get(&function_id) {
             function.name = Some(external_symbol_identifier(name));
             function.parameters.clear();

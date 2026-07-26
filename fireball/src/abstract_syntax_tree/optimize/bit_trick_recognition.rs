@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstStatement, ProcessedOptimization, Wrapped, WrappedAstStatement,
+        AstLiteral, AstOptimizationKind, AstStatement, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -34,7 +34,7 @@ pub(super) fn recognize_bit_tricks(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::BitTrickRecognition);
+            .push(AstOptimizationKind::BitTrickRecognition);
     }
 
     Ok(())

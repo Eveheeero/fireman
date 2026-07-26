@@ -3,8 +3,9 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstStatement, ProcessedOptimization, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, WrappedAstStatement,
     },
+    pattern_matching::AstPattern,
     prelude::DecompileError,
 };
 
@@ -37,7 +38,9 @@ pub(crate) fn recover_clamp(
         // For now, using PatternMatching to avoid adding to enum every time.
         function
             .processed_optimizations
-            .push(ProcessedOptimization::PatternMatching);
+            .push(AstOptimizationKind::PatternMatching(Box::new(
+                AstPattern::predefined_pattern("clamp-recovery.fb").unwrap(),
+            )));
     }
 
     Ok(())

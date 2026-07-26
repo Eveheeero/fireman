@@ -13,8 +13,8 @@ use super::{
 };
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstStatement, AstStatementOrigin,
-        ProcessedOptimization, WrappedAstStatement,
+        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
+        AstStatementOrigin, WrappedAstStatement,
     },
     ir::statements::IrStatement,
     prelude::DecompileError,
@@ -84,9 +84,11 @@ pub(in crate::abstract_syntax_tree::optimize) fn apply_patterns(
             .and_then(|x| x.get_mut(&function_version))
             .unwrap();
         function.body = body;
-        function
-            .processed_optimizations
-            .push(ProcessedOptimization::PatternMatching);
+        for pattern in resolve_patterns(patterns) {
+            function
+                .processed_optimizations
+                .push(AstOptimizationKind::PatternMatching(Box::new(pattern)));
+        }
     }
 
     Ok(())

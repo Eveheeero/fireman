@@ -5,9 +5,9 @@ mod convert;
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstDescriptor, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstStatement, AstStatementOrigin, AstUnaryOperator, AstValue, AstValueOrigin,
-        AstValueType, AstVariable, AstVariableId, PrintWithConfig, ProcessedOptimization, Wrapped,
-        WrappedAstStatement,
+        AstLiteral, AstOptimizationKind, AstStatement, AstStatementOrigin, AstUnaryOperator,
+        AstValue, AstValueOrigin, AstValueType, AstVariable, AstVariableId, PrintWithConfig,
+        Wrapped, WrappedAstStatement,
         optimize::ir_analyzation::convert::{
             convert_expr, convert_stmt, resolve_constant, wdn, ws,
         },
@@ -41,7 +41,7 @@ pub(super) fn analyze_ir_function(
         // if analyzed, pass
         if function
             .processed_optimizations
-            .contains(&ProcessedOptimization::IrAnalyzation)
+            .contains(&AstOptimizationKind::IrAnalyzation)
         {
             return Ok(());
         }
@@ -284,7 +284,7 @@ pub(super) fn analyze_ir_function(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::IrAnalyzation);
+            .push(AstOptimizationKind::IrAnalyzation);
     }
     Ok(())
 }

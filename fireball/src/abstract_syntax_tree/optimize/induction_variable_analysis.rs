@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
-        AstStatement, AstVariableId, ProcessedOptimization, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, AstVariableId, WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -34,7 +34,7 @@ pub(super) fn analyze_induction_variables(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::InductionVariableAnalysis);
+            .push(AstOptimizationKind::InductionVariableAnalysis);
     }
 
     Ok(())

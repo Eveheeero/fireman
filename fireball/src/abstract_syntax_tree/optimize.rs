@@ -202,7 +202,7 @@ impl Ast {
             || config.constant_folding
             || config.control_flow_cleanup
             || config.pattern_matching_enabled
-            || config.collapse_unused_varaible
+            || config.collapse_unused_variable
             || config.dead_store_elimination
             || config.copy_propagation
             || config.expression_inlining
@@ -335,7 +335,7 @@ impl Ast {
                     }
                 }
 
-                if config.collapse_unused_varaible {
+                if config.collapse_unused_variable {
                     for (function_id, to_version) in versions.iter().copied() {
                         if !has_function_version(&ast, function_id, to_version) {
                             continue;
@@ -978,7 +978,7 @@ impl Ast {
         }
 
         // Variable coalescing: merge non-interfering same-type variables.
-        if config.collapse_unused_varaible {
+        if config.collapse_unused_variable {
             for (function_id, to_version) in versions.iter().copied() {
                 if !has_function_version(&ast, function_id, to_version) {
                     continue;
@@ -1022,6 +1022,7 @@ impl Ast {
             }
         }
 
+        ast.shrink();
         Ok(ast)
     }
 }

@@ -5,7 +5,7 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement, ProcessedOptimization,
+        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
         Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
@@ -37,7 +37,7 @@ pub(crate) fn recover_ternary(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::TernaryRecovery);
+            .push(AstOptimizationKind::TernaryRecovery);
     }
 
     Ok(())

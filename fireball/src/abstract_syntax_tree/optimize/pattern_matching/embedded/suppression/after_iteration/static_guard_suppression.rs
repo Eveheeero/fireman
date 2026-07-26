@@ -7,9 +7,10 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstStatement, ProcessedOptimization,
+        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
         WrappedAstStatement,
     },
+    pattern_matching::AstPattern,
     prelude::DecompileError,
 };
 use hashbrown::HashMap;
@@ -48,7 +49,9 @@ pub(crate) fn suppress_static_guards(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::PatternMatching);
+            .push(AstOptimizationKind::PatternMatching(Box::new(
+                AstPattern::predefined_pattern("static-guard-suppression.fb").unwrap(),
+            )));
     }
 
     Ok(())

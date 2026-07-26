@@ -2,8 +2,9 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstCall, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral, AstStatement,
-        AstUnaryOperator, AstValueOrigin, ProcessedOptimization, Wrapped, WrappedAstStatement,
+        Ast, AstCall, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
+        AstOptimizationKind, AstStatement, AstUnaryOperator, AstValueOrigin, Wrapped,
+        WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -47,7 +48,7 @@ pub(super) fn cleanup_control_flow(
         function.body = body;
         function
             .processed_optimizations
-            .push(ProcessedOptimization::ControlFlowCleanup);
+            .push(AstOptimizationKind::ControlFlowCleanup);
     }
 
     Ok(())
