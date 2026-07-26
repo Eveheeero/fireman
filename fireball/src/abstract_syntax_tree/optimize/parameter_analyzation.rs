@@ -2,8 +2,8 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstParameter, AstVariableAccessType, AstVariableId,
-        GetRelatedVariables, AstOptimizationKind,
+        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstParameter,
+        AstVariableAccessType, AstVariableId, GetRelatedVariables,
     },
     ir::{
         Register,

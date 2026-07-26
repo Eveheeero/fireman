@@ -6,9 +6,9 @@ mod register_maps;
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunction,
-        AstFunctionId, AstFunctionVersion, AstJumpTarget, AstParameter, AstParameterLocation,
-        AstStatement, AstStatementOrigin, AstValueOrigin, AstValueType, AstVariable, AstVariableId,
-        AstOptimizationKind, Wrapped, WrappedAstStatement,
+        AstFunctionId, AstFunctionVersion, AstJumpTarget, AstOptimizationKind, AstParameter,
+        AstParameterLocation, AstStatement, AstStatementOrigin, AstValueOrigin, AstValueType,
+        AstVariable, AstVariableId, Wrapped, WrappedAstStatement,
     },
     ir::{
         Architecture, Register, VirtualMachine,
