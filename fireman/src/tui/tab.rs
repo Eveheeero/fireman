@@ -22,7 +22,7 @@ pub struct TuiTabData<'tui> {
 pub enum TuiTab<'tui> {
     SelectTargetBlock(Box<SelectTargetBlockData<'tui>>), // tabs[0]
     SelectOptimization(Box<SelectOptimizationData<'tui>>),
-    DisplayCurrentAST(Box<DisplayCurrentASTData>),
+    DisplayCurrentAST(Box<DisplayCurrentASTData<'tui>>),
 }
 
 struct SelectTargetBlockData<'tui> {
@@ -48,7 +48,10 @@ struct SelectOptimizationData<'tui> {
     custom_y_cursor: widgets::ListState,
     focus: u8, // 0-list, 1-path, 2-buf
 }
-struct DisplayCurrentASTData {}
+struct DisplayCurrentASTData<'tui> {
+    list: widgets::List<'tui>,
+    state: widgets::ListState,
+}
 
 pub fn draw(app: &mut TuiApp, terminal: &mut Frame) {
     init(app);
@@ -96,6 +99,7 @@ fn init(app: &mut TuiApp) {
         .tabs
         .push(TuiTab::SelectTargetBlock(Box::new(data)));
     refresh_tab_widget(app);
+    refresh_decompile(app);
 }
 
 fn refresh_tab_widget(app: &mut TuiApp) {
@@ -146,10 +150,18 @@ fn refresh_decompile(app: &mut TuiApp) {
             TuiTab::SelectOptimization(dat) => {
                 let opt = select_optimization::selected_to_ast_optimization_kind(dat);
                 let previous = data.ast_and_tab_index.last().unwrap();
-                let ast = previous.0.optimize(Some(opt.into())).unwrap();
-                data.ast_and_tab_index.push((ast, current_tab));
+                let ast = previous.0.optimize(Some(opt.into()));
+                if let Ok(ast) = ast {
+                    data.ast_and_tab_index.push((ast, current_tab));
+                }
             }
-            TuiTab::DisplayCurrentAST(_) => {}
+            TuiTab::DisplayCurrentAST(dat) => {
+                let ast = &data.ast_and_tab_index.last().unwrap().0;
+                let ast = ast.print(Some(app.print_config));
+                dat.list = widgets::List::new(ast.split("\n").map(|x| x.to_string()))
+                    .highlight_style(style::Style::new().fg(style::Color::Blue))
+                    .block(widgets::Block::bordered());
+            }
         }
     }
 }
@@ -214,9 +226,13 @@ fn handle_new_tab(app: &mut TuiApp, event: &event::Event) -> bool {
             app.data.tab.current_tab_index += 1;
             app.data.tab.tabs.insert(
                 app.data.tab.current_tab_index,
-                TuiTab::DisplayCurrentAST(Box::new(DisplayCurrentASTData {})),
+                TuiTab::DisplayCurrentAST(Box::new(DisplayCurrentASTData {
+                    list: Default::default(),
+                    state: Default::default(),
+                })),
             );
             refresh_tab_widget(app);
+            refresh_decompile(app);
             true
         }
         event::KeyCode::Char('o') => {
@@ -255,6 +271,7 @@ fn handle_new_tab(app: &mut TuiApp, event: &event::Event) -> bool {
                 })),
             );
             refresh_tab_widget(app);
+            refresh_decompile(app);
             true
         }
         _ => false,
@@ -274,12 +291,21 @@ fn handle_del_tab(app: &mut TuiApp, event: &event::Event) -> bool {
         if current_tab_index == 0 {
             return false;
         }
-        app.data.tab.tabs.remove(app.data.tab.current_tab_index);
+        let removed = app.data.tab.tabs.remove(current_tab_index);
         if current_tab_index == app.data.tab.tabs.len() {
             app.data.tab.current_tab_index -= 1;
         }
         refresh_tab_widget(app);
-        refresh_decompile(app);
+        if matches!(removed, TuiTab::DisplayCurrentAST(_)) {
+            // display tab does not affect decompile sequence, only shift indices
+            for (_, tab_index) in app.data.tab.ast_and_tab_index.iter_mut() {
+                if *tab_index > current_tab_index {
+                    *tab_index -= 1;
+                }
+            }
+        } else {
+            refresh_decompile(app);
+        }
         true
     } else {
         false
