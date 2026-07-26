@@ -7,7 +7,7 @@ pub struct AstOptimizationConfig {
     pub call_argument_analyzation: bool,
     pub constant_folding: bool,
     pub control_flow_cleanup: bool,
-    pub collapse_unused_varaible: bool,
+    pub collapse_unused_variable: bool,
     pub dead_store_elimination: bool,
     pub pattern_matching_enabled: bool,
     pub pattern_matching: Vec<AstPattern>,
@@ -80,7 +80,7 @@ impl AstOptimizationConfig {
             call_argument_analyzation: true,
             constant_folding: true,
             control_flow_cleanup: true,
-            collapse_unused_varaible: true,
+            collapse_unused_variable: true,
             dead_store_elimination: true,
             pattern_matching_enabled: true,
             pattern_matching: AstPattern::predefined_patterns(),
@@ -119,7 +119,7 @@ impl AstOptimizationConfig {
             call_argument_analyzation: false,
             constant_folding: false,
             control_flow_cleanup: false,
-            collapse_unused_varaible: false,
+            collapse_unused_variable: false,
             dead_store_elimination: false,
             pattern_matching_enabled: false,
             pattern_matching: Vec::new(),
@@ -181,7 +181,7 @@ impl AstOptimizationConfig {
         self
     }
     pub fn collapse_unused_varaible(mut self, value: bool) -> Self {
-        self.collapse_unused_varaible = value;
+        self.collapse_unused_variable = value;
         self
     }
     pub fn collapse_unused_variable(self, value: bool) -> Self {
@@ -318,7 +318,7 @@ impl Default for AstOptimizationConfig {
             call_argument_analyzation: true,
             constant_folding: true,
             control_flow_cleanup: true,
-            collapse_unused_varaible: true,
+            collapse_unused_variable: true,
             dead_store_elimination: true,
             pattern_matching_enabled: true,
             pattern_matching: AstPattern::predefined_patterns(),
@@ -349,5 +349,88 @@ impl Default for AstOptimizationConfig {
             max_pass_iterations: 3,
             use_embedded_passes: false,
         }
+    }
+}
+
+impl From<AstOptimizationKind> for AstOptimizationConfig {
+    fn from(value: AstOptimizationKind) -> Self {
+        let mut n = AstOptimizationConfig::none();
+        match value {
+            AstOptimizationKind::IrAnalyzation => {
+                n.ir_analyzation = true;
+            }
+            AstOptimizationKind::ParameterAnalyzation => {
+                n.parameter_analyzation = true;
+            }
+            AstOptimizationKind::CallArgumentAnalyzation => {
+                n.call_argument_analyzation = true;
+            }
+            AstOptimizationKind::ConstantFolding => {
+                n.constant_folding = true;
+            }
+            AstOptimizationKind::ControlFlowCleanup => {
+                n.control_flow_cleanup = true;
+            }
+            AstOptimizationKind::CollapseUnusedVariables => {
+                n.collapse_unused_variable = true;
+            }
+            AstOptimizationKind::PatternMatching(p) => {
+                n.pattern_matching = Vec::from([*p]);
+                n.pattern_matching_enabled = true;
+            }
+            AstOptimizationKind::LoopAnalyzation => {
+                n.loop_analyzation = true;
+            }
+            AstOptimizationKind::CopyPropagation => {
+                n.copy_propagation = true;
+            }
+            AstOptimizationKind::ExpressionInlining => {
+                n.expression_inlining = true;
+            }
+            AstOptimizationKind::TernaryRecovery => {
+                n.ternary_recovery = true;
+            }
+            AstOptimizationKind::IfConversionReversal => {
+                n.if_conversion_reversal = true;
+            }
+            AstOptimizationKind::BooleanRecovery => {
+                n.boolean_recovery = true;
+            }
+            AstOptimizationKind::SwitchReconstruction => {
+                n.switch_reconstruction = true;
+            }
+            AstOptimizationKind::OperatorCanonicalization => {
+                n.operator_canonicalization = true;
+            }
+            AstOptimizationKind::BitTrickRecognition => {
+                n.bit_trick_recognition = true;
+            }
+            AstOptimizationKind::CastMinimization => {
+                n.cast_minimization = true;
+            }
+            AstOptimizationKind::MagicDivisionRecovery => {
+                n.magic_division_recovery = true;
+            }
+            AstOptimizationKind::LifetimeScoping => {
+                n.lifetime_scoping = true;
+            }
+            AstOptimizationKind::SignednessInference => {
+                n.signedness_inference = true;
+            }
+            AstOptimizationKind::NameRecovery => {
+                n.name_recovery = true;
+            }
+            AstOptimizationKind::EarlyReturnNormalization => {
+                n.early_return_normalization = true;
+            }
+            AstOptimizationKind::AssertionRecovery => {
+                n.assertion_recovery = true;
+            }
+            AstOptimizationKind::DoWhileRecovery => {
+                n.do_while_recovery = true;
+            }
+            _ => {}
+        }
+        n
     }
 }
