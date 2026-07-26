@@ -30,7 +30,17 @@ pub fn draw(app: &mut TuiApp, terminal: &mut Frame) {
                 "shift+a: analyze all block",
             ]
             .into(),
-            TuiTab::SelectOptimization(..) => [].into(),
+            TuiTab::SelectOptimization(..) => [
+                "tab/shift+tab/n/shift+n: navigate tabs (when focused on list)",
+                "o: new optimization tab (when focused on list)",
+                "d: new display ast tab (when focused on list)",
+                "D: delete current tab (when focused on list)",
+                "up/down/pu/pd: navigate list",
+                "space: select optimization",
+                "enter: focus to custom path or custom script input",
+                "esc: focus to list or custom path",
+            ]
+            .into(),
             TuiTab::DisplayCurrentAST(..) => [].into(),
         },
         TuiState::Help { .. } => Vec::new(),

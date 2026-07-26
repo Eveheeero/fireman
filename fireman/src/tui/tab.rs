@@ -37,7 +37,10 @@ struct SelectOptimizationData<'tui> {
     list: widgets::List<'tui>,
     state: widgets::ListState,
     custom_path: String,
-    custom: String,
+    custom: Vec<String>,
+    custom_list: widgets::List<'tui>,
+    custom_x_cursor: usize,
+    custom_y_cursor: widgets::ListState,
     focus: u8, // 0-list, 1-path, 2-buf
 }
 struct DisplayCurrentASTData {}
@@ -183,7 +186,18 @@ fn handle_new_tab(app: &mut TuiApp, event: &event::Event) -> bool {
                     list: widgets::List::new(
                         select_optimization::OPTIMIZATION_KIND
                             .iter()
-                            .map(|kind| format!("[ ] {}", kind))
+                            .enumerate()
+                            .map(|(i, kind)| {
+                                format!(
+                                    "[{}] {}",
+                                    if i == select_optimization::CUSTOM_PATTERN_INDEX {
+                                        "v"
+                                    } else {
+                                        " "
+                                    },
+                                    kind
+                                )
+                            })
                             .collect::<Vec<_>>(),
                     )
                     .highlight_style(style::Style::new().fg(style::Color::Blue))
@@ -191,7 +205,10 @@ fn handle_new_tab(app: &mut TuiApp, event: &event::Event) -> bool {
                     state: widgets::ListState::default()
                         .with_selected(Some(select_optimization::CUSTOM_PATTERN_INDEX)),
                     custom_path: "".to_string(),
-                    custom: "".to_string(),
+                    custom: ["".to_string()].into(),
+                    custom_list: widgets::List::new([""]),
+                    custom_x_cursor: 0,
+                    custom_y_cursor: widgets::ListState::default().with_selected(Some(0)),
                     focus: 0,
                 })),
             );
