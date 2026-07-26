@@ -33,6 +33,8 @@ While using snowman back in high school, I often imagined a decompiler that woul
     - [ ] Complex Loop Analysis
   - [X] Merged Block Variable Analysis
 - [ ] Simulation Routine
+  1. simulate asm block with argument with unicorn then mapping and display member value of ir and ast
+  2. change some asm with keystone for a faster simulation routine
 - [X] Generate C like Code
   - [X] Optimization
 - [ ] GUI decompiler
