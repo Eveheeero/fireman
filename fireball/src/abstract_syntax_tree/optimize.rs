@@ -1022,6 +1022,7 @@ impl Ast {
             }
         }
 
+        ast.shrink();
         Ok(ast)
     }
 }
