@@ -9,8 +9,8 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstStatement, AstUnaryOperator,
-        AstValueOrigin, AstOptimizationKind, Wrapped, WrappedAstStatement, optimize::opt_utils,
+        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
+        AstUnaryOperator, AstValueOrigin, Wrapped, WrappedAstStatement, optimize::opt_utils,
     },
     prelude::DecompileError,
 };

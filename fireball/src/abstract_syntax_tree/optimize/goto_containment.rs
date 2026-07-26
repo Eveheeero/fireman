@@ -2,8 +2,8 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget, AstStatement,
-        AstUnaryOperator, AstValueOrigin, AstOptimizationKind, Wrapped, WrappedAstStatement,
+        Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget, AstOptimizationKind,
+        AstStatement, AstUnaryOperator, AstValueOrigin, Wrapped, WrappedAstStatement,
     },
     prelude::DecompileError,
 };

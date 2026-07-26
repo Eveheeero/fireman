@@ -12,7 +12,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstStatement, AstUnaryOperator, AstValueOrigin, AstOptimizationKind, Wrapped,
+        AstLiteral, AstOptimizationKind, AstStatement, AstUnaryOperator, AstValueOrigin, Wrapped,
         WrappedAstStatement,
     },
     prelude::DecompileError,

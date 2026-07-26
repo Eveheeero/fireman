@@ -8,7 +8,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstStatement, AstUnaryOperator, AstValueType, AstOptimizationKind, Wrapped,
+        AstLiteral, AstOptimizationKind, AstStatement, AstUnaryOperator, AstValueType, Wrapped,
         WrappedAstStatement,
     },
     prelude::DecompileError,
