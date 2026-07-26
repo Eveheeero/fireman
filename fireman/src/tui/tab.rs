@@ -1,3 +1,4 @@
+mod default_tabs;
 mod display_current_ast;
 mod select_optimization;
 mod select_target_block;
@@ -98,6 +99,7 @@ fn init(app: &mut TuiApp) {
         .tab
         .tabs
         .push(TuiTab::SelectTargetBlock(Box::new(data)));
+    default_tabs::default_tabs(app);
     refresh_tab_widget(app);
     refresh_decompile(app);
 }
