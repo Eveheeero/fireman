@@ -4,7 +4,7 @@ mod select_target_block;
 
 use crate::tui::TuiApp;
 use crossterm::event;
-use ratatui::{Frame, widgets};
+use ratatui::{Frame, style, widgets};
 
 #[derive(Default)]
 pub struct TuiTabData<'tui> {
@@ -16,7 +16,7 @@ pub struct TuiTabData<'tui> {
 #[allow(private_interfaces)]
 pub enum TuiTab<'tui> {
     SelectTargetBlock(Box<SelectTargetBlockData<'tui>>), // tabs[0]
-    SelectOptimization(Box<SelectOptimizationData>),
+    SelectOptimization(Box<SelectOptimizationData<'tui>>),
     DisplayCurrentAST(Box<DisplayCurrentASTData>),
 }
 
@@ -32,7 +32,14 @@ struct SelectTargetBlockDataBlock {
     analyzed: bool,
     selected: bool,
 }
-struct SelectOptimizationData {}
+struct SelectOptimizationData<'tui> {
+    selected: usize,
+    list: widgets::List<'tui>,
+    state: widgets::ListState,
+    custom_path: String,
+    custom: String,
+    focus: u8, // 0-list, 1-path, 2-buf
+}
 struct DisplayCurrentASTData {}
 
 pub fn draw(app: &mut TuiApp, terminal: &mut Frame) {
@@ -171,7 +178,22 @@ fn handle_new_tab(app: &mut TuiApp, event: &event::Event) -> bool {
             app.data.tab.current_tab_index += 1;
             app.data.tab.tabs.insert(
                 app.data.tab.current_tab_index,
-                TuiTab::SelectOptimization(Box::new(SelectOptimizationData {})),
+                TuiTab::SelectOptimization(Box::new(SelectOptimizationData {
+                    selected: select_optimization::CUSTOM_PATTERN_INDEX,
+                    list: widgets::List::new(
+                        select_optimization::OPTIMIZATION_KIND
+                            .iter()
+                            .map(|kind| format!("[ ] {}", kind))
+                            .collect::<Vec<_>>(),
+                    )
+                    .highlight_style(style::Style::new().fg(style::Color::Blue))
+                    .block(widgets::Block::bordered()),
+                    state: widgets::ListState::default()
+                        .with_selected(Some(select_optimization::CUSTOM_PATTERN_INDEX)),
+                    custom_path: "".to_string(),
+                    custom: "".to_string(),
+                    focus: 0,
+                })),
             );
             refresh_tab_widget(app);
             true
