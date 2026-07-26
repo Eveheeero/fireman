@@ -1,7 +1,9 @@
-use crate::tui::tab::refresh_decompile;
 use crate::tui::{
     TuiApp,
-    tab::{SelectOptimizationData, TuiTab, handle_del_tab, handle_new_tab, handle_turn_tab},
+    tab::{
+        SelectOptimizationData, TuiTab, handle_del_tab, handle_new_tab, handle_turn_tab,
+        refresh_decompile,
+    },
 };
 use crossterm::event;
 use fireball::{abstract_syntax_tree::AstOptimizationKind, pattern_matching::AstPattern};
@@ -177,7 +179,7 @@ pub const OPTIMIZATION_KIND: &[&str] = &[
     "DoWhile Recovery",
 ];
 pub const CUSTOM_PATTERN_INDEX: usize = 6;
-fn selected_to_ast_optimization_kind(data: &mut SelectOptimizationData) -> AstOptimizationKind {
+pub fn selected_to_ast_optimization_kind(data: &mut SelectOptimizationData) -> AstOptimizationKind {
     let selected = data.selected;
     let custom_pattern = if selected == CUSTOM_PATTERN_INDEX {
         if Path::new(&data.custom_path).is_file() {

@@ -241,7 +241,7 @@ fn refresh_list(data: &mut SelectTargetBlockData) {
         .iter()
         .map(|x| {
             format!(
-                "{} 0x{:06x}",
+                "{} 0x{:06x}{}",
                 if x.selected {
                     "[v]"
                 } else if x.analyzed {
@@ -249,7 +249,12 @@ fn refresh_list(data: &mut SelectTargetBlockData) {
                 } else {
                     "   "
                 },
-                x.start_address
+                x.start_address,
+                if let Some(end_address) = x.end_address {
+                    format!(" - 0x{:06x}", end_address)
+                } else {
+                    "".to_string()
+                }
             )
         })
         .collect();

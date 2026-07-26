@@ -351,3 +351,86 @@ impl Default for AstOptimizationConfig {
         }
     }
 }
+
+impl From<AstOptimizationKind> for AstOptimizationConfig {
+    fn from(value: AstOptimizationKind) -> Self {
+        let mut n = AstOptimizationConfig::none();
+        match value {
+            AstOptimizationKind::IrAnalyzation => {
+                n.ir_analyzation = true;
+            }
+            AstOptimizationKind::ParameterAnalyzation => {
+                n.parameter_analyzation = true;
+            }
+            AstOptimizationKind::CallArgumentAnalyzation => {
+                n.call_argument_analyzation = true;
+            }
+            AstOptimizationKind::ConstantFolding => {
+                n.constant_folding = true;
+            }
+            AstOptimizationKind::ControlFlowCleanup => {
+                n.control_flow_cleanup = true;
+            }
+            AstOptimizationKind::CollapseUnusedVariables => {
+                n.collapse_unused_variable = true;
+            }
+            AstOptimizationKind::PatternMatching(p) => {
+                n.pattern_matching = Vec::from([*p]);
+                n.pattern_matching_enabled = true;
+            }
+            AstOptimizationKind::LoopAnalyzation => {
+                n.loop_analyzation = true;
+            }
+            AstOptimizationKind::CopyPropagation => {
+                n.copy_propagation = true;
+            }
+            AstOptimizationKind::ExpressionInlining => {
+                n.expression_inlining = true;
+            }
+            AstOptimizationKind::TernaryRecovery => {
+                n.ternary_recovery = true;
+            }
+            AstOptimizationKind::IfConversionReversal => {
+                n.if_conversion_reversal = true;
+            }
+            AstOptimizationKind::BooleanRecovery => {
+                n.boolean_recovery = true;
+            }
+            AstOptimizationKind::SwitchReconstruction => {
+                n.switch_reconstruction = true;
+            }
+            AstOptimizationKind::OperatorCanonicalization => {
+                n.operator_canonicalization = true;
+            }
+            AstOptimizationKind::BitTrickRecognition => {
+                n.bit_trick_recognition = true;
+            }
+            AstOptimizationKind::CastMinimization => {
+                n.cast_minimization = true;
+            }
+            AstOptimizationKind::MagicDivisionRecovery => {
+                n.magic_division_recovery = true;
+            }
+            AstOptimizationKind::LifetimeScoping => {
+                n.lifetime_scoping = true;
+            }
+            AstOptimizationKind::SignednessInference => {
+                n.signedness_inference = true;
+            }
+            AstOptimizationKind::NameRecovery => {
+                n.name_recovery = true;
+            }
+            AstOptimizationKind::EarlyReturnNormalization => {
+                n.early_return_normalization = true;
+            }
+            AstOptimizationKind::AssertionRecovery => {
+                n.assertion_recovery = true;
+            }
+            AstOptimizationKind::DoWhileRecovery => {
+                n.do_while_recovery = true;
+            }
+            _ => {}
+        }
+        n
+    }
+}

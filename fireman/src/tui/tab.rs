@@ -4,12 +4,17 @@ mod select_target_block;
 
 use crate::tui::TuiApp;
 use crossterm::event;
+use fireball::{
+    abstract_syntax_tree::Ast,
+    core::{Address, FireRaw},
+};
 use ratatui::{Frame, style, widgets};
 
 #[derive(Default)]
 pub struct TuiTabData<'tui> {
     init: bool,
     pub tabs: Vec<TuiTab<'tui>>,
+    ast_and_tab_index: Vec<(Ast, usize)>,
     tab_widget: widgets::Tabs<'tui>,
     current_tab_index: usize,
 }
@@ -108,8 +113,45 @@ fn refresh_tab_widget(app: &mut TuiApp) {
     let tabs = widgets::Tabs::new(tabs);
     app.data.tab.tab_widget = tabs;
 }
-fn refresh_decompile(_app: &mut TuiApp) {
-    // TODO 현재 탭 이후의 내용을 디컴파일함
+/// decompile sequence from current tab
+fn refresh_decompile(app: &mut TuiApp) {
+    let data = &mut app.data.tab;
+    let fireball = app.fireball.as_ref().unwrap();
+    data.ast_and_tab_index
+        .retain(|(_, tab_index)| *tab_index < data.current_tab_index);
+
+    for current_tab in data.current_tab_index..data.tabs.len() {
+        match &mut data.tabs[current_tab] {
+            TuiTab::SelectTargetBlock(dat) => {
+                let blocks = &dat.blocks;
+                let selected_blocks = blocks
+                    .iter()
+                    .filter(|block| block.selected)
+                    .collect::<Vec<_>>();
+                let sections = fireball.get_sections();
+                let blocks = fireball.get_blocks();
+                let mut v = Vec::new();
+                for selected_block in selected_blocks {
+                    let address =
+                        Address::from_virtual_address(&sections, selected_block.start_address);
+                    v.push(blocks.get_by_start_address(&address).unwrap());
+                }
+                let ast = fireball::ir::analyze::generate_ast_with_pre_defined_symbols(
+                    v,
+                    fireball.get_defined(),
+                )
+                .unwrap();
+                data.ast_and_tab_index.push((ast, current_tab));
+            }
+            TuiTab::SelectOptimization(dat) => {
+                let opt = select_optimization::selected_to_ast_optimization_kind(dat);
+                let previous = data.ast_and_tab_index.last().unwrap();
+                let ast = previous.0.optimize(Some(opt.into())).unwrap();
+                data.ast_and_tab_index.push((ast, current_tab));
+            }
+            TuiTab::DisplayCurrentAST(_) => {}
+        }
+    }
 }
 
 /// handles tab, n
