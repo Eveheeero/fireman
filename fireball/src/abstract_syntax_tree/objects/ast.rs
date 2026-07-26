@@ -143,4 +143,9 @@ impl Ast {
             )))
         }
     }
+    pub fn shrink(&mut self) {
+        self.function_versions.shrink_to_fit();
+        self.last_variable_id.shrink_to_fit();
+        self.pre_defined_symbols.shrink_to_fit();
+    }
 }
