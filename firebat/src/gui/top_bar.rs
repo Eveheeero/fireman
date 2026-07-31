@@ -1,4 +1,4 @@
-use crate::Firebat;
+use crate::{Firebat, gui::board::select_target_block};
 use eframe::egui;
 use fireball::Fireball;
 
@@ -20,6 +20,14 @@ pub fn ui(app: &mut Firebat, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
                             if let Some(path) = rfd::FileDialog::new().pick_file() {
                                 app.fireball =
                                     Fireball::from_path(path.as_os_str().to_str().unwrap()).ok();
+                                if app.fireball.is_some() {
+                                    tracing::info!("opened {}", path.display());
+                                    app.board.add_window(select_target_block::window(egui::pos2(
+                                        0.0, 0.0,
+                                    )));
+                                } else {
+                                    tracing::warn!("failed to open {}", path.display());
+                                }
                             }
                         }
                     }

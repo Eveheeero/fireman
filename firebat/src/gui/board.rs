@@ -1,5 +1,8 @@
+pub mod select_target_block;
+
 use crate::Firebat;
 use egui::emath::TSTransform;
+use select_target_block::SelectTargetBlockData;
 use std::collections::HashMap;
 
 const ZOOM_RANGE: std::ops::RangeInclusive<f32> = 0.01..=4.0;
@@ -9,6 +12,9 @@ const ZOOM_SPEED: f32 = 0.005;
 
 /// Size of the arrow head drawn in the middle of a connection.
 const ARROW_SIZE: f32 = 10.0;
+
+/// Shown while no window is open.
+const EMPTY_HINT: &str = "No window is open, load a binary with File > Open.";
 
 pub struct BoardData {
     scene_rect: egui::Rect,
@@ -24,25 +30,31 @@ pub struct BoardWindow {
     pos: egui::Pos2,
     /// Identifiers of the windows this one points to.
     connected_to: Vec<String>,
-    content: BoardWindowContent,
+    /// Whether the window shows a close button.
+    closable: bool,
+    /// Content of the window, holding its own state.
+    kind: BoardWindowKind,
 }
 
-/// Draws the body of a board window, with mutable access to the whole application.
-pub type BoardWindowContent = Box<dyn FnMut(&mut Firebat, &mut egui::Ui)>;
+/// Every kind of window the board can show, with the data it owns.
+pub enum BoardWindowKind {
+    SelectTargetBlock(SelectTargetBlockData),
+}
 
 impl BoardWindow {
     pub fn new(
         id: impl Into<String>,
         title: impl Into<String>,
         pos: egui::Pos2,
-        content: impl FnMut(&mut Firebat, &mut egui::Ui) + 'static,
+        kind: BoardWindowKind,
     ) -> Self {
         Self {
             id: id.into(),
             title: title.into(),
             pos,
             connected_to: Vec::new(),
-            content: Box::new(content),
+            closable: true,
+            kind,
         }
     }
 
@@ -50,24 +62,36 @@ impl BoardWindow {
         self.connected_to = ids.into_iter().map(Into::into).collect();
         self
     }
+
+    pub fn closable(mut self, closable: bool) -> Self {
+        self.closable = closable;
+        self
+    }
+}
+
+impl BoardWindowKind {
+    fn ui(&mut self, app: &mut Firebat, ui: &mut egui::Ui) {
+        match self {
+            Self::SelectTargetBlock(data) => select_target_block::ui(app, data, ui),
+        }
+    }
+}
+
+impl BoardData {
+    /// Adds a window, unless one with the same id is already open.
+    pub fn add_window(&mut self, window: BoardWindow) {
+        if self.windows.iter().any(|it| it.id == window.id) {
+            return;
+        }
+        self.windows.push(window);
+    }
 }
 
 impl Default for BoardData {
     fn default() -> Self {
         Self {
             scene_rect: egui::Rect::ZERO,
-            windows: vec![
-                BoardWindow::new("window_1", "test", egui::pos2(0.0, 0.0), |_app, ui| {
-                    ui.label("test2");
-                })
-                .connected_to(["window_2"]),
-                BoardWindow::new("window_2", "test3", egui::pos2(240.0, 120.0), |app, ui| {
-                    ui.label("test4");
-                    if ui.button("test5").clicked() {
-                        tracing::debug!("loaded: {}", app.fireball.is_some());
-                    }
-                }),
-            ],
+            windows: Vec::new(),
         }
     }
 }
@@ -110,21 +134,32 @@ fn windows(
 
     // The windows are taken out of the application, so that their content can borrow it mutably.
     let mut windows = std::mem::take(&mut app.board.windows);
+    if windows.is_empty() {
+        ui.label(EMPTY_HINT);
+        return Vec::new();
+    }
+
     let mut layers = Vec::with_capacity(windows.len());
     let mut rects = HashMap::with_capacity(windows.len());
+    let mut closed = Vec::new();
     for it in windows.iter_mut() {
-        let (layer, rect) = window(&ctx, scene_layer, outer_rect, to_global, app, it);
+        let (layer, rect, open) = window(&ctx, scene_layer, outer_rect, to_global, app, it);
         layers.push(layer);
         rects.insert(it.id.clone(), rect);
+        if !open {
+            closed.push(it.id.clone());
+        }
     }
     connections(ui, &windows, &rects);
+
+    windows.retain(|it| !closed.contains(&it.id));
     windows.append(&mut app.board.windows);
     app.board.windows = windows;
 
     layers
 }
 
-/// Draws a single scene bound window, returning the layer it lives on and its scene rect.
+/// Draws a single scene bound window, returning its layer, scene rect and whether it stays open.
 fn window(
     ctx: &egui::Context,
     scene_layer: egui::LayerId,
@@ -132,12 +167,13 @@ fn window(
     to_global: TSTransform,
     app: &mut Firebat,
     window: &mut BoardWindow,
-) -> (egui::LayerId, egui::Rect) {
+) -> (egui::LayerId, egui::Rect, bool) {
     let BoardWindow {
         id,
         title,
         pos,
-        content,
+        closable,
+        kind,
         ..
     } = window;
 
@@ -151,20 +187,36 @@ fn window(
             // The area is clipped in screen coordinates, so the visible part of the scene has to
             // be mapped back into scene coordinates, otherwise the window gets cut off.
             ui.set_clip_rect(to_global.inverse() * outer_rect);
-            egui::Frame::window(ui.style()).show(ui, |ui| {
-                let header = ui.add(
-                    egui::Label::new(egui::RichText::new(title.as_str()).strong())
-                        .sense(egui::Sense::drag())
-                        .selectable(false),
-                );
-                *pos += header.drag_delta() / to_global.scaling;
-                ui.separator();
-                content(app, ui);
-            });
+            egui::Frame::window(ui.style())
+                .show(ui, |ui| {
+                    let mut open = true;
+                    ui.horizontal(|ui| {
+                        let header = ui.add(
+                            egui::Label::new(egui::RichText::new(title.as_str()).strong())
+                                .sense(egui::Sense::drag())
+                                .selectable(false),
+                        );
+                        *pos += header.drag_delta() / to_global.scaling;
+                        if *closable {
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if ui.small_button("x").clicked() {
+                                        open = false;
+                                    }
+                                },
+                            );
+                        }
+                    });
+                    ui.separator();
+                    kind.ui(app, ui);
+                    open
+                })
+                .inner
         });
     ctx.set_sublayer(scene_layer, area.response.layer_id);
     ctx.set_transform_layer(area.response.layer_id, to_global);
-    (area.response.layer_id, area.response.rect)
+    (area.response.layer_id, area.response.rect, area.inner)
 }
 
 /// Draws an arrowed line between every connected window.
