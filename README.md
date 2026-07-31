@@ -6,6 +6,10 @@
 
 While using snowman back in high school, I often imagined a decompiler that would allow me to manually tweak the Intermediate Representation (IR) through a GUI and see the C decompilation results update accordingly. fireman is the realization of that dream, more than a decade later. Because this project is the fulfillment of a long-held personal vision, I chose to build it as a standalone tool rather than a plugin for existing decompilers.
 
+## GUI
+
+![gui decompile](firebat/resources/gui2.png)
+
 ## CLI
 
 ![cli default](fireman/resources/cli1.png)
@@ -37,10 +41,10 @@ While using snowman back in high school, I often imagined a decompiler that woul
   2. change some asm with keystone for a faster simulation routine
 - [X] Generate C like Code
   - [X] Optimization
-- [ ] GUI decompiler
-  - [ ] Inspect IR
+- [x] GUI decompiler
+  - [x] Inspect IR
   - [ ] Modify IR or Instruction
-  - [ ] Generate C like Code
+  - [x] Generate C like Code
   - [ ] Simulate With Memory / Register
 - [X] TUI decompiler
 - [X] CLI decompiler

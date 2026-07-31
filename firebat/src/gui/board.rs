@@ -442,6 +442,21 @@ fn windows(
     }
     connections(ui, &windows, &rects);
 
+    for id in &closed {
+        let children = inherited_children(&windows, &closed, id);
+        for parent in windows.iter_mut() {
+            let Some(index) = parent.connected_to.iter().position(|it| it == id) else {
+                continue;
+            };
+            parent.connected_to.remove(index);
+            for child in &children {
+                if child == &parent.id || parent.connected_to.contains(child) {
+                    continue;
+                }
+                parent.connected_to.push(child.clone());
+            }
+        }
+    }
     windows.retain(|it| !closed.contains(&it.id));
     for (parent, spawn) in spawned {
         if let Some(parent) = windows.iter_mut().find(|it| it.id == parent) {
@@ -453,6 +468,30 @@ fn windows(
     app.board.windows = windows;
 
     layers
+}
+
+/// Collects the surviving windows a closed window was pointing at, so its parents can adopt them.
+/// Closed children are traversed as well, which keeps chains of removals connected.
+fn inherited_children(windows: &[BoardWindow], closed: &[String], id: &str) -> Vec<String> {
+    let mut children = Vec::new();
+    let mut visited = HashSet::from([id.to_owned()]);
+    let mut queue = VecDeque::from([id.to_owned()]);
+    while let Some(current) = queue.pop_front() {
+        let Some(window) = windows.iter().find(|it| it.id == current) else {
+            continue;
+        };
+        for child in &window.connected_to {
+            if !visited.insert(child.clone()) {
+                continue;
+            }
+            if closed.iter().any(|it| it == child) {
+                queue.push_back(child.clone());
+            } else {
+                children.push(child.clone());
+            }
+        }
+    }
+    children
 }
 
 /// What a single window produced during a frame.
