@@ -3,6 +3,7 @@ mod log_bar;
 mod top_bar;
 
 use crate::Firebat;
+pub use board::BoardData;
 use eframe::egui;
 pub use log_bar::{LogBarData, init_tracing};
 

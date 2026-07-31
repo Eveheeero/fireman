@@ -2,11 +2,12 @@
 
 mod gui;
 
+use crate::gui::{BoardData, LogBarData};
 use fireball::Fireball;
-use gui::LogBarData;
 
 struct Firebat {
     fireball: Option<Fireball>,
+    board: BoardData,
     log_bar: LogBarData,
 }
 
@@ -27,6 +28,7 @@ impl Firebat {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Self {
             fireball: None,
+            board: BoardData::default(),
             log_bar: LogBarData::default(),
         }
     }
