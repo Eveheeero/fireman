@@ -1,6 +1,6 @@
 # Fireman
 
-![Logo](firebat/icons/icon.png)
+![Logo](firebat/resources/icons/icon.png)
 
 ## Why fireman?
 
