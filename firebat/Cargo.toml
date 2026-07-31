@@ -12,6 +12,8 @@ homepage = "https://crates.io/crates/firebat"
 fireball.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
 chrono = { version = "0.4", default-features = true, features = ["clock"] }
 eframe = "0.35"
 egui = "0.35"

@@ -4,13 +4,14 @@ mod top_bar;
 
 use crate::Firebat;
 use eframe::egui;
+pub use log_bar::{LogBarData, init_tracing};
 
 impl eframe::App for Firebat {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         top_bar::ui(self, ui, frame);
 
-        board::ui(self, ui, frame);
-
         log_bar::ui(self, ui, frame);
+
+        board::ui(self, ui, frame);
     }
 }
