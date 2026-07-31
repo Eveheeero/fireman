@@ -1,3 +1,4 @@
+pub mod default_tabs;
 pub mod display_current_ast;
 pub mod select_optimization;
 pub mod select_target_block;
@@ -187,6 +188,17 @@ impl BoardData {
             return;
         }
         self.windows.push(window);
+    }
+
+    /// Points a window to another one, so the ast flows from the first to the second.
+    fn connect(&mut self, from: &str, to: &str) {
+        let Some(window) = self.windows.iter_mut().find(|it| it.id == from) else {
+            return;
+        };
+        if window.connected_to.iter().any(|it| it == to) {
+            return;
+        }
+        window.connected_to.push(to.to_owned());
     }
 
     /// Marks every cached ast as stale, since the binary they were built from changed.

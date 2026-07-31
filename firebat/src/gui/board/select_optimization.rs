@@ -82,13 +82,28 @@ impl SelectOptimizationData {
     }
 }
 
+/// Index of the optimization shown under the given name.
+pub fn index_of(name: &str) -> Option<usize> {
+    OPTIMIZATION_KIND.iter().position(|it| *it == name)
+}
+
 /// Creates the window which picks a single optimization step.
 pub fn window(id: impl Into<String>, pos: egui::Pos2) -> BoardWindow {
+    window_with(id, pos, CUSTOM_PATTERN_INDEX)
+}
+
+/// Creates the window with the given optimization already picked.
+pub fn window_with(id: impl Into<String>, pos: egui::Pos2, selected: usize) -> BoardWindow {
     BoardWindow::new(
         id,
         "Select Optimization",
         pos,
-        BoardWindowKind::SelectOptimization(SelectOptimizationData::default()),
+        BoardWindowKind::SelectOptimization(SelectOptimizationData {
+            choice: SelectOptimizationChoice {
+                selected,
+                ..Default::default()
+            },
+        }),
     )
 }
 

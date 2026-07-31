@@ -1,4 +1,7 @@
-use crate::{Firebat, gui::board::select_target_block};
+use crate::{
+    Firebat,
+    gui::board::{default_tabs, select_target_block},
+};
 use eframe::egui;
 use fireball::Fireball;
 
@@ -23,9 +26,13 @@ pub fn ui(app: &mut Firebat, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
                                 if app.fireball.is_some() {
                                     tracing::info!("opened {}", path.display());
                                     app.board.invalidate();
-                                    app.board.add_window(select_target_block::window(egui::pos2(
-                                        0.0, 0.0,
-                                    )));
+                                    let root_pos = egui::pos2(0.0, 0.0);
+                                    app.board.add_window(select_target_block::window(root_pos));
+                                    default_tabs::default_tabs(
+                                        &mut app.board,
+                                        select_target_block::WINDOW_ID,
+                                        root_pos,
+                                    );
                                 } else {
                                     tracing::warn!("failed to open {}", path.display());
                                 }
