@@ -11,14 +11,14 @@ fn main() {
         if target_os == "windows" {
             // Embed Windows icon into executable
             let mut res = winres::WindowsResource::new();
-            res.set_icon("icons/icon.ico");
+            res.set_icon("resources/icons/icon.ico");
             res.set_language(0x0409); // English (US)
             res.compile().expect("Failed to compile Windows resources");
         }
     }
 
     // Re-run if icon files change
-    println!("cargo:rerun-if-changed=icons/icon.ico");
-    println!("cargo:rerun-if-changed=icons/icon.icns");
-    println!("cargo:rerun-if-changed=icons/icon.png");
+    println!("cargo:rerun-if-changed=resources/icons/icon.ico");
+    println!("cargo:rerun-if-changed=resources/icons/icon.icns");
+    println!("cargo:rerun-if-changed=resources/icons/icon.png");
 }
