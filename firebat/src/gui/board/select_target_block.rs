@@ -33,6 +33,8 @@ pub fn window(pos: egui::Pos2) -> BoardWindow {
 }
 
 pub fn ui(app: &mut Firebat, data: &mut SelectTargetBlockData, ui: &mut egui::Ui) {
+    let mut changed = false;
+
     ui.horizontal(|ui| {
         ui.add(
             egui::TextEdit::singleline(&mut data.input)
@@ -41,14 +43,17 @@ pub fn ui(app: &mut Firebat, data: &mut SelectTargetBlockData, ui: &mut egui::Ui
         );
         if ui.button("Analyze").clicked() {
             analyze_input(app, data);
+            changed = true;
         }
     });
     ui.horizontal(|ui| {
         if ui.button("Entry").clicked() {
             analyze_entry(app, data);
+            changed = true;
         }
         if ui.button("All").clicked() {
             analyze_all(app, data);
+            changed = true;
         }
     });
 
@@ -62,7 +67,7 @@ pub fn ui(app: &mut Firebat, data: &mut SelectTargetBlockData, ui: &mut egui::Ui
                 None => format!("0x{:06x}", block.start_address),
             };
             if block.analyzed {
-                ui.checkbox(&mut block.selected, label);
+                changed |= ui.checkbox(&mut block.selected, label).changed();
             } else {
                 ui.label(label);
                 if ui.small_button("analyze").clicked() {
@@ -74,6 +79,17 @@ pub fn ui(app: &mut Firebat, data: &mut SelectTargetBlockData, ui: &mut egui::Ui
 
     if let Some(address) = requested {
         analyze_address(app, data, address);
+        changed = true;
+    }
+
+    if changed {
+        let blocks = data
+            .blocks
+            .iter()
+            .filter(|it| it.analyzed && it.selected)
+            .map(|it| it.start_address)
+            .collect();
+        app.board.pipeline.set_blocks(blocks);
     }
 }
 

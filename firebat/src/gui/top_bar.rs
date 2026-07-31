@@ -22,6 +22,7 @@ pub fn ui(app: &mut Firebat, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
                                     Fireball::from_path(path.as_os_str().to_str().unwrap()).ok();
                                 if app.fireball.is_some() {
                                     tracing::info!("opened {}", path.display());
+                                    app.board.invalidate();
                                     app.board.add_window(select_target_block::window(egui::pos2(
                                         0.0, 0.0,
                                     )));
@@ -35,6 +36,11 @@ pub fn ui(app: &mut Firebat, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
                         ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 });
+
+                if menu_area(ui, "Decompile").clicked() {
+                    app.board.decompile_requested = true;
+                    tracing::debug!("decompilation requested");
+                }
             });
         });
 }

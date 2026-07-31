@@ -1,9 +1,25 @@
+pub mod display_current_ast;
+pub mod select_optimization;
 pub mod select_target_block;
 
 use crate::Firebat;
+use display_current_ast::DisplayCurrentAstData;
 use egui::emath::TSTransform;
+use fireball::{
+    Fireball,
+    abstract_syntax_tree::Ast,
+    core::{Address, FireRaw},
+};
+use select_optimization::{SelectOptimizationChoice, SelectOptimizationData};
 use select_target_block::SelectTargetBlockData;
-use std::collections::HashMap;
+use std::{
+    collections::{HashMap, HashSet, VecDeque, hash_map::DefaultHasher},
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
+
+/// Ast owned by a window and reused by the ones connected to it.
+pub type SharedAst = Arc<Ast>;
 
 const ZOOM_RANGE: std::ops::RangeInclusive<f32> = 0.01..=4.0;
 
@@ -13,12 +29,23 @@ const ZOOM_SPEED: f32 = 0.005;
 /// Size of the arrow head drawn in the middle of a connection.
 const ARROW_SIZE: f32 = 10.0;
 
+/// Distance between a window and the one spawned from it, in scene coordinates.
+const SPAWN_OFFSET: egui::Vec2 = egui::vec2(320.0, 0.0);
+
+/// Distance between two windows spawned from the same one, in scene coordinates.
+const SPAWN_STEP: egui::Vec2 = egui::vec2(0.0, 120.0);
+
 /// Shown while no window is open.
 const EMPTY_HINT: &str = "No window is open, load a binary with File > Open.";
 
 pub struct BoardData {
     scene_rect: egui::Rect,
     windows: Vec<BoardWindow>,
+    pub pipeline: BoardPipeline,
+    /// Raised by the top bar, consumed at the beginning of the next frame.
+    pub decompile_requested: bool,
+    /// Bumped whenever another binary is loaded, invalidating every cached ast.
+    binary_generation: u64,
 }
 
 /// A single window living inside the board scene.
@@ -32,6 +59,10 @@ pub struct BoardWindow {
     connected_to: Vec<String>,
     /// Whether the window shows a close button.
     closable: bool,
+    /// Ast this window produced, reused by the windows it points to.
+    ast: Option<SharedAst>,
+    /// Inputs the currently held ast was built from, used to skip untouched windows.
+    fingerprint: Option<BoardWindowFingerprint>,
     /// Content of the window, holding its own state.
     kind: BoardWindowKind,
 }
@@ -39,6 +70,25 @@ pub struct BoardWindow {
 /// Every kind of window the board can show, with the data it owns.
 pub enum BoardWindowKind {
     SelectTargetBlock(SelectTargetBlockData),
+    SelectOptimization(SelectOptimizationData),
+    DisplayCurrentAst(DisplayCurrentAstData),
+}
+
+/// Inputs a window ast depends on, so an unchanged window can keep the ast it already holds.
+#[derive(Clone, PartialEq, Eq)]
+struct BoardWindowFingerprint {
+    /// Identity of the ast inherited from the parent window, if any.
+    parent: Option<usize>,
+    /// Settings owned by the window itself.
+    own: String,
+}
+
+/// Decompile sequence shared by the windows, mirroring the tui tab chain.
+#[derive(Default)]
+pub struct BoardPipeline {
+    /// Amount of windows spawned so far, used to build unique identifiers.
+    spawned: u64,
+    blocks: Vec<u64>,
 }
 
 impl BoardWindow {
@@ -54,13 +104,10 @@ impl BoardWindow {
             pos,
             connected_to: Vec::new(),
             closable: true,
+            ast: None,
+            fingerprint: None,
             kind,
         }
-    }
-
-    pub fn connected_to(mut self, ids: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.connected_to = ids.into_iter().map(Into::into).collect();
-        self
     }
 
     pub fn closable(mut self, closable: bool) -> Self {
@@ -70,10 +117,66 @@ impl BoardWindow {
 }
 
 impl BoardWindowKind {
-    fn ui(&mut self, app: &mut Firebat, ui: &mut egui::Ui) {
+    fn ui(&mut self, app: &mut Firebat, id: &str, ui: &mut egui::Ui) {
         match self {
             Self::SelectTargetBlock(data) => select_target_block::ui(app, data, ui),
+            Self::SelectOptimization(data) => select_optimization::ui(app, id, data, ui),
+            Self::DisplayCurrentAst(data) => display_current_ast::ui(app, id, data, ui),
         }
+    }
+}
+
+impl BoardPipeline {
+    /// Replaces the blocks the decompilation starts from.
+    pub fn set_blocks(&mut self, blocks: Vec<u64>) {
+        self.blocks = blocks;
+    }
+
+    /// Identifier for a window spawned from the given parent.
+    fn spawn_id(&mut self, parent: &str, kind: &str) -> String {
+        self.spawned += 1;
+        format!("{parent}::{kind}::{}", self.spawned)
+    }
+
+    /// Builds the ast every chain of windows starts from.
+    fn generate_ast(&self, fireball: Option<&Fireball>) -> Result<SharedAst, String> {
+        let Some(fireball) = fireball else {
+            return Err("no binary is loaded".to_owned());
+        };
+        if self.blocks.is_empty() {
+            return Err("no block is selected".to_owned());
+        }
+
+        let sections = fireball.get_sections();
+        let known = fireball.get_blocks();
+        let mut targets = Vec::with_capacity(self.blocks.len());
+        for address in &self.blocks {
+            let address = Address::from_virtual_address(&sections, *address);
+            let Some(block) = known.get_by_start_address(&address) else {
+                continue;
+            };
+            targets.push(block);
+        }
+
+        fireball::ir::analyze::generate_ast_with_pre_defined_symbols(
+            targets,
+            fireball.get_defined(),
+        )
+        .map(Arc::new)
+        .map_err(|error| format!("ast generation failed: {error:?}"))
+    }
+
+    /// Applies the given optimization on the ast of the parent window.
+    fn optimize(
+        &self,
+        id: &str,
+        choice: &SelectOptimizationChoice,
+        ast: &SharedAst,
+    ) -> Result<SharedAst, String> {
+        let kind = select_optimization::choice_to_ast_optimization_kind(choice);
+        ast.optimize(Some(kind.into()))
+            .map(Arc::new)
+            .map_err(|error| format!("optimization of {id} failed: {error:?}"))
     }
 }
 
@@ -85,6 +188,172 @@ impl BoardData {
         }
         self.windows.push(window);
     }
+
+    /// Marks every cached ast as stale, since the binary they were built from changed.
+    pub fn invalidate(&mut self) {
+        self.binary_generation += 1;
+    }
+
+    /// Rebuilds the ast of the windows whose inputs changed, keeping the ones already up to date.
+    fn decompile(&mut self, fireball: Option<&Fireball>) {
+        let mut errors: HashMap<String, String> = HashMap::with_capacity(self.windows.len());
+
+        for id in self.propagation_order() {
+            let parent = self.parent_of(&id);
+            let inherited = parent.map(|it| (it.id.clone(), it.ast.clone()));
+            let (parent_id, parent_ast) = match inherited {
+                Some((parent_id, ast)) => (Some(parent_id), ast),
+                None => (None, None),
+            };
+            let choice = self.optimization_of(&id);
+            let Some(index) = self.windows.iter().position(|it| it.id == id) else {
+                continue;
+            };
+
+            let fingerprint = BoardWindowFingerprint {
+                parent: parent_ast.as_ref().map(|it| Arc::as_ptr(it) as usize),
+                own: match &self.windows[index].kind {
+                    BoardWindowKind::SelectTargetBlock(_) => {
+                        format!("{}:{:?}", self.binary_generation, self.pipeline.blocks)
+                    }
+                    BoardWindowKind::SelectOptimization(_) => match &choice {
+                        Some(choice) => choice_fingerprint(choice),
+                        None => String::new(),
+                    },
+                    BoardWindowKind::DisplayCurrentAst(_) => String::new(),
+                },
+            };
+
+            // A window whose parent ast and own settings are untouched keeps the ast it holds,
+            // which in turn keeps the identity its children compare themselves against.
+            if self.windows[index].ast.is_some()
+                && self.windows[index].fingerprint.as_ref() == Some(&fingerprint)
+            {
+                tracing::debug!("skipping {id}, its inputs did not change");
+                continue;
+            }
+
+            let pipeline = &self.pipeline;
+            let window = &mut self.windows[index];
+            window.ast = None;
+            window.fingerprint = None;
+            tracing::debug!("decompiling {id} after {parent_id:?}");
+            let result = match &mut window.kind {
+                BoardWindowKind::SelectTargetBlock(_) => pipeline.generate_ast(fireball),
+                BoardWindowKind::SelectOptimization(_) => match (&parent_ast, &choice) {
+                    // A failing optimization is not fatal, the window simply hands the ast it
+                    // received over to the windows below it.
+                    (Some(ast), Some(choice)) => Ok(match pipeline.optimize(&id, choice, ast) {
+                        Ok(optimized) => optimized,
+                        Err(error) => {
+                            tracing::warn!("{error}, keeping the ast of the parent");
+                            ast.clone()
+                        }
+                    }),
+                    (Some(ast), None) => Ok(ast.clone()),
+                    (None, _) => Err(missing_ast(parent_id.as_deref(), &errors)),
+                },
+                BoardWindowKind::DisplayCurrentAst(data) => match &parent_ast {
+                    Some(ast) => {
+                        data.set_ast(ast.print(None));
+                        Ok(ast.clone())
+                    }
+                    None => {
+                        let error = missing_ast(parent_id.as_deref(), &errors);
+                        data.set_ast(error.clone());
+                        Err(error)
+                    }
+                },
+            };
+
+            match result {
+                Ok(ast) => {
+                    window.ast = Some(ast);
+                    window.fingerprint = Some(fingerprint);
+                }
+                Err(error) => {
+                    tracing::warn!("{id}: {error}");
+                    errors.insert(id, error);
+                }
+            }
+        }
+    }
+
+    /// Windows ordered so that every one of them comes after the window it hangs from.
+    fn propagation_order(&self) -> Vec<String> {
+        let mut order = Vec::with_capacity(self.windows.len());
+        let mut visited = HashSet::with_capacity(self.windows.len());
+        let mut queue: VecDeque<String> = self
+            .windows
+            .iter()
+            .filter(|it| self.parent_of(&it.id).is_none())
+            .map(|it| it.id.clone())
+            .collect();
+
+        while let Some(id) = queue.pop_front() {
+            if !visited.insert(id.clone()) {
+                continue;
+            }
+            let Some(window) = self.windows.iter().find(|it| it.id == id) else {
+                continue;
+            };
+            queue.extend(window.connected_to.iter().cloned());
+            order.push(id);
+        }
+
+        order
+    }
+
+    /// Optimization picked by the given window, taken from the data it owns.
+    fn optimization_of(&self, id: &str) -> Option<SelectOptimizationChoice> {
+        let window = self.windows.iter().find(|it| it.id == id)?;
+        match &window.kind {
+            BoardWindowKind::SelectOptimization(data) => Some(data.choice().clone()),
+            _ => None,
+        }
+    }
+
+    /// Window the given one hangs from, if any.
+    fn parent_of(&self, id: &str) -> Option<&BoardWindow> {
+        self.windows
+            .iter()
+            .find(|it| it.connected_to.iter().any(|target| target == id))
+    }
+}
+
+/// Settings of an optimization window, as a value which can be compared between frames.
+fn choice_fingerprint(choice: &SelectOptimizationChoice) -> String {
+    // The body of the pattern is part of the fingerprint, so editing the file the path points to
+    // also rebuilds the ast, not only picking another path.
+    let source = if choice.selected == select_optimization::CUSTOM_PATTERN_INDEX {
+        choice.custom_pattern_source()
+    } else {
+        String::new()
+    };
+    format!(
+        "{}:{}:{:x}",
+        choice.selected,
+        choice.custom_path,
+        hash_of(&source)
+    )
+}
+
+/// Stable hash of a pattern body, keeping the fingerprint small.
+fn hash_of(source: &str) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    source.hash(&mut hasher);
+    hasher.finish()
+}
+
+/// Reason why a window could not inherit an ast.
+fn missing_ast(parent: Option<&str>, errors: &HashMap<String, String>) -> String {
+    let Some(parent) = parent else {
+        return "no window feeds this one".to_owned();
+    };
+    match errors.get(parent) {
+        Some(error) => error.clone(),
+        None => format!("{parent} produced no ast"),
+    }
 }
 
 impl Default for BoardData {
@@ -92,11 +361,18 @@ impl Default for BoardData {
         Self {
             scene_rect: egui::Rect::ZERO,
             windows: Vec::new(),
+            pipeline: BoardPipeline::default(),
+            decompile_requested: false,
+            binary_generation: 0,
         }
     }
 }
 
 pub fn ui(app: &mut Firebat, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    if std::mem::take(&mut app.board.decompile_requested) {
+        app.board.decompile(app.fireball.as_ref());
+    }
+
     let outer_rect = ui.available_rect_before_wrap();
     if app.board.scene_rect.size() == egui::Vec2::ZERO {
         // Same size as the visible area, which means a zoom of exactly 1.
@@ -142,24 +418,41 @@ fn windows(
     let mut layers = Vec::with_capacity(windows.len());
     let mut rects = HashMap::with_capacity(windows.len());
     let mut closed = Vec::new();
+    let mut spawned = Vec::new();
     for it in windows.iter_mut() {
-        let (layer, rect, open) = window(&ctx, scene_layer, outer_rect, to_global, app, it);
-        layers.push(layer);
-        rects.insert(it.id.clone(), rect);
-        if !open {
+        let output = window(&ctx, scene_layer, outer_rect, to_global, app, it);
+        layers.push(output.layer);
+        rects.insert(it.id.clone(), output.rect);
+        if !output.open {
             closed.push(it.id.clone());
         }
+        spawned.extend(output.spawned);
     }
     connections(ui, &windows, &rects);
 
     windows.retain(|it| !closed.contains(&it.id));
+    for (parent, spawn) in spawned {
+        if let Some(parent) = windows.iter_mut().find(|it| it.id == parent) {
+            parent.connected_to.push(spawn.id.clone());
+        }
+        windows.push(spawn);
+    }
     windows.append(&mut app.board.windows);
     app.board.windows = windows;
 
     layers
 }
 
-/// Draws a single scene bound window, returning its layer, scene rect and whether it stays open.
+/// What a single window produced during a frame.
+struct BoardWindowOutput {
+    layer: egui::LayerId,
+    rect: egui::Rect,
+    open: bool,
+    /// Windows created during the frame, along with the identifier of their parent.
+    spawned: Vec<(String, BoardWindow)>,
+}
+
+/// Draws a single scene bound window.
 fn window(
     ctx: &egui::Context,
     scene_layer: egui::LayerId,
@@ -167,15 +460,19 @@ fn window(
     to_global: TSTransform,
     app: &mut Firebat,
     window: &mut BoardWindow,
-) -> (egui::LayerId, egui::Rect, bool) {
+) -> BoardWindowOutput {
     let BoardWindow {
         id,
         title,
         pos,
+        connected_to,
         closable,
+        ast: _,
+        fingerprint: _,
         kind,
-        ..
     } = window;
+    let mut open = true;
+    let mut spawned = Vec::new();
 
     // A window lives on the middle order, which cannot become a sublayer of the background
     // ordered scene, so the window frame is drawn by hand inside an area.
@@ -187,36 +484,79 @@ fn window(
             // The area is clipped in screen coordinates, so the visible part of the scene has to
             // be mapped back into scene coordinates, otherwise the window gets cut off.
             ui.set_clip_rect(to_global.inverse() * outer_rect);
-            egui::Frame::window(ui.style())
-                .show(ui, |ui| {
-                    let mut open = true;
-                    ui.horizontal(|ui| {
-                        let header = ui.add(
-                            egui::Label::new(egui::RichText::new(title.as_str()).strong())
-                                .sense(egui::Sense::drag())
-                                .selectable(false),
+            egui::Frame::window(ui.style()).show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    let header = ui.add(
+                        egui::Label::new(egui::RichText::new(title.as_str()).strong())
+                            .sense(egui::Sense::drag())
+                            .selectable(false),
+                    );
+                    *pos += header.drag_delta() / to_global.scaling;
+                    let spawn_pos = *pos + SPAWN_OFFSET + SPAWN_STEP * connected_to.len() as f32;
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        header_actions(
+                            app,
+                            ui,
+                            id,
+                            spawn_pos,
+                            kind,
+                            *closable,
+                            &mut open,
+                            &mut spawned,
                         );
-                        *pos += header.drag_delta() / to_global.scaling;
-                        if *closable {
-                            ui.with_layout(
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    if ui.small_button("x").clicked() {
-                                        open = false;
-                                    }
-                                },
-                            );
-                        }
                     });
-                    ui.separator();
-                    kind.ui(app, ui);
-                    open
-                })
-                .inner
+                });
+                ui.separator();
+                kind.ui(app, id, ui);
+            });
         });
     ctx.set_sublayer(scene_layer, area.response.layer_id);
     ctx.set_transform_layer(area.response.layer_id, to_global);
-    (area.response.layer_id, area.response.rect, area.inner)
+
+    BoardWindowOutput {
+        layer: area.response.layer_id,
+        rect: area.response.rect,
+        open,
+        spawned,
+    }
+}
+
+/// Buttons drawn at the right side of the window header.
+#[allow(clippy::too_many_arguments)]
+fn header_actions(
+    app: &mut Firebat,
+    ui: &mut egui::Ui,
+    id: &str,
+    spawn_pos: egui::Pos2,
+    kind: &BoardWindowKind,
+    closable: bool,
+    open: &mut bool,
+    spawned: &mut Vec<(String, BoardWindow)>,
+) {
+    if closable && ui.small_button("x").clicked() {
+        *open = false;
+    }
+
+    // Only the windows feeding the pipeline may spawn the next step of the chain.
+    if matches!(
+        kind,
+        BoardWindowKind::SelectTargetBlock(_) | BoardWindowKind::SelectOptimization(_)
+    ) {
+        if ui.small_button("AST").clicked() {
+            let spawn_id = app.board.pipeline.spawn_id(id, "ast");
+            spawned.push((
+                id.to_owned(),
+                display_current_ast::window(spawn_id, spawn_pos),
+            ));
+        }
+        if ui.small_button("Opt").clicked() {
+            let spawn_id = app.board.pipeline.spawn_id(id, "optimization");
+            spawned.push((
+                id.to_owned(),
+                select_optimization::window(spawn_id, spawn_pos),
+            ));
+        }
+    }
 }
 
 /// Draws an arrowed line between every connected window.
