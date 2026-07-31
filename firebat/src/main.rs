@@ -2,7 +2,11 @@
 
 mod gui;
 
-struct Firebat {}
+use fireball::Fireball;
+
+struct Firebat {
+    fireball: Option<Fireball>,
+}
 
 fn main() {
     let mut options = eframe::NativeOptions::default();
@@ -18,6 +22,6 @@ fn main() {
 
 impl Firebat {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        Self {}
+        Self { fireball: None }
     }
 }
