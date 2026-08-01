@@ -43,12 +43,6 @@ impl Pe {
         // Create Capstone object
         let capstone = arch::build_capstone(architecture)?;
 
-        let image_base = gl
-            .header
-            .optional_header
-            .map(|opt| opt.windows_fields.image_base)
-            .unwrap_or(0);
-
         // Generate predefined binary offset information
         let defined = {
             let defined = PreDefinedOffsets::new();

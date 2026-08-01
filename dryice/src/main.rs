@@ -2,7 +2,7 @@ use clap::{Parser, ValueEnum};
 use fireball::{
     Fireball,
     abstract_syntax_tree::{
-        AstFunction, AstOptimizationConfig, AstParameterLocation, AstPrintConfig, PrintWithConfig,
+        AstFunction, AstParameterLocation, AstPrintConfig, PrintWithConfig,
         pattern_matching::{
             AstPattern, FbzFunction, FbzParameter, FbzSymbol, FbzVariable, encode_fbz_functions,
         },
