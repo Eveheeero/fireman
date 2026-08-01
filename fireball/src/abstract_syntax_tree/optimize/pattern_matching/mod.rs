@@ -1,10 +1,4 @@
-//! Pattern matching constraints:
-//! - Do not hardcode AST text specializations like `some([])` or `block([])`.
-//! - AST/IR matching must rely on generic `...` wildcard semantics.
-//! - Keep AST/IR pattern payloads typed; avoid adding `source: String` mirrors.
-
 mod apply;
-pub(crate) mod embedded;
 mod fb_gz;
 mod fb_parser;
 pub(crate) mod fbz;
@@ -855,9 +849,6 @@ pub struct AstPatternRange {
     pub start: usize,
     pub end_exclusive: usize,
 }
-
-#[cfg(test)]
-mod file_tests;
 
 #[cfg(test)]
 mod tests;

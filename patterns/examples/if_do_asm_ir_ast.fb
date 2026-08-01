@@ -1,8 +1,0 @@
-if:
-  at beforeIrAnalyzation
-  asm mov rsp, 8
-  ast comment seed-comment
-do:
-  asm mov esp, 8
-  ir halt
-  ast comment replaced-from-01

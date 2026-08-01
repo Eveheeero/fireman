@@ -1,8 +1,0 @@
-if:
-  at afterIrAnalyzation
-  asm push rbp
-  skip asm 0..8
-  skip ast 0..8
-  skip ir 0..8
-do:
-  ir undefined

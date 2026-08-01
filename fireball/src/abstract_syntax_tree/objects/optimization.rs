@@ -5,35 +5,8 @@ pub struct AstOptimizationConfig {
     pub ir_analyzation: bool,
     pub parameter_analyzation: bool,
     pub constant_folding: bool,
-    pub control_flow_cleanup: bool,
     pub collapse_unused_variable: bool,
-    pub dead_store_elimination: bool,
-    pub pattern_matching_enabled: bool,
     pub pattern_matching: Vec<AstPattern>,
-    pub loop_analyzation: bool,
-    pub copy_propagation: bool,
-    pub expression_inlining: bool,
-    pub operator_canonicalization: bool,
-    pub magic_division_recovery: bool,
-    pub identity_simplification: bool,
-    pub bit_trick_recognition: bool,
-    pub cast_minimization: bool,
-    pub ternary_recovery: bool,
-    pub boolean_recovery: bool,
-    pub assertion_recovery: bool,
-    pub do_while_recovery: bool,
-    pub clamp_recovery: bool,
-    pub loop_cleanup: bool,
-    pub if_conversion_reversal: bool,
-    pub switch_reconstruction: bool,
-    pub lifetime_scoping: bool,
-    pub signedness_inference: bool,
-    pub name_recovery: bool,
-    pub early_return_normalization: bool,
-    pub anti_debug_ast_suppression: bool,
-    pub logging_suppression: bool,
-    pub static_guard_suppression: bool,
-    pub security_scaffold_suppression: bool,
     pub max_pass_iterations: usize,
     /// When true, use the original embedded Rust implementations instead of
     /// `.fb` pattern files for migrated passes
@@ -43,33 +16,9 @@ pub struct AstOptimizationConfig {
 pub enum AstOptimizationKind {
     IrAnalyzation,
     ParameterAnalyzation,
-    CallArgumentAnalyzation,
     ConstantFolding,
-    ControlFlowCleanup,
     CollapseUnusedVariables,
     PatternMatching(Box<AstPattern>),
-    LoopAnalyzation,
-    CopyPropagation,
-    ExpressionInlining,
-    TernaryRecovery,
-    IfConversionReversal,
-    BooleanRecovery,
-    SwitchReconstruction,
-    OperatorCanonicalization,
-    CommonSubexpressionElimination,
-    BitTrickRecognition,
-    CastMinimization,
-    MagicDivisionRecovery,
-    GotoContainment,
-    InductionVariableAnalysis,
-    TemporaryElimination,
-    LifetimeScoping,
-    VariableCoalescing,
-    SignednessInference,
-    NameRecovery,
-    EarlyReturnNormalization,
-    AssertionRecovery,
-    DoWhileRecovery,
 }
 impl AstOptimizationConfig {
     pub fn all() -> Self {
@@ -77,35 +26,8 @@ impl AstOptimizationConfig {
             ir_analyzation: true,
             parameter_analyzation: true,
             constant_folding: true,
-            control_flow_cleanup: true,
             collapse_unused_variable: true,
-            dead_store_elimination: true,
-            pattern_matching_enabled: true,
             pattern_matching: AstPattern::predefined_patterns(),
-            loop_analyzation: true,
-            copy_propagation: true,
-            expression_inlining: true,
-            operator_canonicalization: true,
-            magic_division_recovery: true,
-            identity_simplification: true,
-            bit_trick_recognition: true,
-            cast_minimization: true,
-            ternary_recovery: true,
-            boolean_recovery: true,
-            assertion_recovery: true,
-            do_while_recovery: true,
-            clamp_recovery: true,
-            loop_cleanup: true,
-            if_conversion_reversal: true,
-            switch_reconstruction: true,
-            lifetime_scoping: true,
-            signedness_inference: true,
-            name_recovery: true,
-            early_return_normalization: true,
-            anti_debug_ast_suppression: true,
-            logging_suppression: true,
-            static_guard_suppression: true,
-            security_scaffold_suppression: true,
             max_pass_iterations: 3,
             use_embedded_passes: false,
         }
@@ -115,35 +37,8 @@ impl AstOptimizationConfig {
             ir_analyzation: false,
             parameter_analyzation: false,
             constant_folding: false,
-            control_flow_cleanup: false,
             collapse_unused_variable: false,
-            dead_store_elimination: false,
-            pattern_matching_enabled: false,
             pattern_matching: Vec::new(),
-            loop_analyzation: false,
-            copy_propagation: false,
-            expression_inlining: false,
-            operator_canonicalization: false,
-            magic_division_recovery: false,
-            identity_simplification: false,
-            bit_trick_recognition: false,
-            cast_minimization: false,
-            ternary_recovery: false,
-            boolean_recovery: false,
-            assertion_recovery: false,
-            do_while_recovery: false,
-            clamp_recovery: false,
-            loop_cleanup: false,
-            if_conversion_reversal: false,
-            switch_reconstruction: false,
-            lifetime_scoping: false,
-            signedness_inference: false,
-            name_recovery: false,
-            early_return_normalization: false,
-            anti_debug_ast_suppression: false,
-            logging_suppression: false,
-            static_guard_suppression: false,
-            security_scaffold_suppression: false,
             max_pass_iterations: 1,
             use_embedded_passes: false,
         }
@@ -159,139 +54,14 @@ impl AstOptimizationConfig {
     }
     pub fn constant_folding(mut self, value: bool) -> Self {
         self.constant_folding = value;
-        if value {
-            self.operator_canonicalization = true;
-            self.magic_division_recovery = true;
-            self.identity_simplification = true;
-            self.bit_trick_recognition = true;
-            self.cast_minimization = true;
-            self.if_conversion_reversal = true;
-        }
         self
     }
-    pub fn control_flow_cleanup(mut self, value: bool) -> Self {
-        self.control_flow_cleanup = value;
-        self
-    }
-    pub fn collapse_unused_varaible(mut self, value: bool) -> Self {
+    pub fn collapse_unused_variable(mut self, value: bool) -> Self {
         self.collapse_unused_variable = value;
-        self
-    }
-    pub fn collapse_unused_variable(self, value: bool) -> Self {
-        self.collapse_unused_varaible(value)
-    }
-    pub fn dead_store_elimination(mut self, value: bool) -> Self {
-        self.dead_store_elimination = value;
-        self
-    }
-    pub fn pattern_matching_enabled(mut self, value: bool) -> Self {
-        self.pattern_matching_enabled = value;
         self
     }
     pub fn pattern_matching(mut self, value: Vec<AstPattern>) -> Self {
         self.pattern_matching = value;
-        self
-    }
-    pub fn loop_analyzation(mut self, value: bool) -> Self {
-        self.loop_analyzation = value;
-        self
-    }
-    pub fn copy_propagation(mut self, value: bool) -> Self {
-        self.copy_propagation = value;
-        self
-    }
-    pub fn expression_inlining(mut self, value: bool) -> Self {
-        self.expression_inlining = value;
-        self
-    }
-    pub fn operator_canonicalization(mut self, value: bool) -> Self {
-        self.operator_canonicalization = value;
-        self
-    }
-    pub fn magic_division_recovery(mut self, value: bool) -> Self {
-        self.magic_division_recovery = value;
-        self
-    }
-    pub fn identity_simplification(mut self, value: bool) -> Self {
-        self.identity_simplification = value;
-        self
-    }
-    pub fn bit_trick_recognition(mut self, value: bool) -> Self {
-        self.bit_trick_recognition = value;
-        self
-    }
-    pub fn cast_minimization(mut self, value: bool) -> Self {
-        self.cast_minimization = value;
-        self
-    }
-    pub fn ternary_recovery(mut self, value: bool) -> Self {
-        self.ternary_recovery = value;
-        if value {
-            self.assertion_recovery = true;
-            self.do_while_recovery = true;
-            self.clamp_recovery = true;
-            self.loop_cleanup = true;
-        }
-        self
-    }
-    pub fn boolean_recovery(mut self, value: bool) -> Self {
-        self.boolean_recovery = value;
-        self
-    }
-    pub fn assertion_recovery(mut self, value: bool) -> Self {
-        self.assertion_recovery = value;
-        self
-    }
-    pub fn do_while_recovery(mut self, value: bool) -> Self {
-        self.do_while_recovery = value;
-        self
-    }
-    pub fn clamp_recovery(mut self, value: bool) -> Self {
-        self.clamp_recovery = value;
-        self
-    }
-    pub fn loop_cleanup(mut self, value: bool) -> Self {
-        self.loop_cleanup = value;
-        self
-    }
-    pub fn if_conversion_reversal(mut self, value: bool) -> Self {
-        self.if_conversion_reversal = value;
-        self
-    }
-    pub fn switch_reconstruction(mut self, value: bool) -> Self {
-        self.switch_reconstruction = value;
-        self
-    }
-    pub fn lifetime_scoping(mut self, value: bool) -> Self {
-        self.lifetime_scoping = value;
-        self
-    }
-    pub fn signedness_inference(mut self, value: bool) -> Self {
-        self.signedness_inference = value;
-        self
-    }
-    pub fn name_recovery(mut self, value: bool) -> Self {
-        self.name_recovery = value;
-        self
-    }
-    pub fn early_return_normalization(mut self, value: bool) -> Self {
-        self.early_return_normalization = value;
-        self
-    }
-    pub fn anti_debug_ast_suppression(mut self, value: bool) -> Self {
-        self.anti_debug_ast_suppression = value;
-        self
-    }
-    pub fn logging_suppression(mut self, value: bool) -> Self {
-        self.logging_suppression = value;
-        self
-    }
-    pub fn static_guard_suppression(mut self, value: bool) -> Self {
-        self.static_guard_suppression = value;
-        self
-    }
-    pub fn security_scaffold_suppression(mut self, value: bool) -> Self {
-        self.security_scaffold_suppression = value;
         self
     }
     pub fn max_pass_iterations(mut self, value: usize) -> Self {
@@ -309,35 +79,8 @@ impl Default for AstOptimizationConfig {
             ir_analyzation: true,
             parameter_analyzation: true,
             constant_folding: true,
-            control_flow_cleanup: true,
             collapse_unused_variable: true,
-            dead_store_elimination: true,
-            pattern_matching_enabled: true,
             pattern_matching: AstPattern::predefined_patterns(),
-            loop_analyzation: true,
-            copy_propagation: true,
-            expression_inlining: true,
-            operator_canonicalization: true,
-            magic_division_recovery: true,
-            identity_simplification: true,
-            bit_trick_recognition: true,
-            cast_minimization: true,
-            ternary_recovery: true,
-            boolean_recovery: true,
-            assertion_recovery: true,
-            do_while_recovery: true,
-            clamp_recovery: true,
-            loop_cleanup: true,
-            if_conversion_reversal: true,
-            switch_reconstruction: true,
-            lifetime_scoping: true,
-            signedness_inference: true,
-            name_recovery: true,
-            early_return_normalization: true,
-            anti_debug_ast_suppression: false,
-            logging_suppression: false,
-            static_guard_suppression: false,
-            security_scaffold_suppression: true,
             max_pass_iterations: 3,
             use_embedded_passes: false,
         }
@@ -357,68 +100,12 @@ impl From<AstOptimizationKind> for AstOptimizationConfig {
             AstOptimizationKind::ConstantFolding => {
                 n.constant_folding = true;
             }
-            AstOptimizationKind::ControlFlowCleanup => {
-                n.control_flow_cleanup = true;
-            }
             AstOptimizationKind::CollapseUnusedVariables => {
                 n.collapse_unused_variable = true;
             }
             AstOptimizationKind::PatternMatching(p) => {
                 n.pattern_matching = Vec::from([*p]);
-                n.pattern_matching_enabled = true;
             }
-            AstOptimizationKind::LoopAnalyzation => {
-                n.loop_analyzation = true;
-            }
-            AstOptimizationKind::CopyPropagation => {
-                n.copy_propagation = true;
-            }
-            AstOptimizationKind::ExpressionInlining => {
-                n.expression_inlining = true;
-            }
-            AstOptimizationKind::TernaryRecovery => {
-                n.ternary_recovery = true;
-            }
-            AstOptimizationKind::IfConversionReversal => {
-                n.if_conversion_reversal = true;
-            }
-            AstOptimizationKind::BooleanRecovery => {
-                n.boolean_recovery = true;
-            }
-            AstOptimizationKind::SwitchReconstruction => {
-                n.switch_reconstruction = true;
-            }
-            AstOptimizationKind::OperatorCanonicalization => {
-                n.operator_canonicalization = true;
-            }
-            AstOptimizationKind::BitTrickRecognition => {
-                n.bit_trick_recognition = true;
-            }
-            AstOptimizationKind::CastMinimization => {
-                n.cast_minimization = true;
-            }
-            AstOptimizationKind::MagicDivisionRecovery => {
-                n.magic_division_recovery = true;
-            }
-            AstOptimizationKind::LifetimeScoping => {
-                n.lifetime_scoping = true;
-            }
-            AstOptimizationKind::SignednessInference => {
-                n.signedness_inference = true;
-            }
-            AstOptimizationKind::NameRecovery => {
-                n.name_recovery = true;
-            }
-            AstOptimizationKind::EarlyReturnNormalization => {
-                n.early_return_normalization = true;
-            }
-            AstOptimizationKind::AssertionRecovery => {
-                n.assertion_recovery = true;
-            }
-            AstOptimizationKind::DoWhileRecovery => {
-                n.do_while_recovery = true;
-            }
-            _ => {}
         }
         n
     }
