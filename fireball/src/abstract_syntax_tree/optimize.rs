@@ -41,17 +41,12 @@ impl Ast {
             versions.push((function_id, to_version));
         }
 
-        for (function_id, to_version) in versions.iter().copied() {
-            if !has_function_version(&ast, function_id, to_version) {
-                continue;
-            }
-            apply_custom_patterns(
-                &mut ast,
-                &versions,
-                &config.pattern_matching,
-                AstPatternApplyPhase::BeforeIrAnalyzation,
-            )?;
-        }
+        apply_custom_patterns(
+            &mut ast,
+            &versions,
+            &config.pattern_matching,
+            AstPatternApplyPhase::BeforeIrAnalyzation,
+        )?;
 
         if config.ir_analyzation {
             for (function_id, to_version) in versions.iter().copied() {
@@ -60,17 +55,12 @@ impl Ast {
                 }
                 ir_analyzation::analyze_ir_function(&mut ast, function_id, to_version)?;
             }
-            for (function_id, to_version) in versions.iter().copied() {
-                if !has_function_version(&ast, function_id, to_version) {
-                    continue;
-                }
-                apply_custom_patterns(
-                    &mut ast,
-                    &versions,
-                    &config.pattern_matching,
-                    AstPatternApplyPhase::AfterIrAnalyzation,
-                )?;
-            }
+            apply_custom_patterns(
+                &mut ast,
+                &versions,
+                &config.pattern_matching,
+                AstPatternApplyPhase::AfterIrAnalyzation,
+            )?;
         }
         if config.parameter_analyzation {
             for (function_id, to_version) in versions.iter().copied() {
