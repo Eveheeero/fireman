@@ -37,7 +37,7 @@ pub(crate) fn suppress_anti_debug(
     }
 
     body.retain(|stmt| {
-        if let AstStatement::Assembly(asm_text) = &stmt.statement {
+        if let AstStatement::Assembly(asm_text) = &stmt.item {
             !ANTI_DEBUG_SYMBOLS.iter().any(|sym| asm_text.contains(sym))
         } else {
             true

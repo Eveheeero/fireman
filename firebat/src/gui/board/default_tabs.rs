@@ -63,12 +63,6 @@ fn default_optimizations(config: &AstOptimizationConfig) -> Vec<&'static str> {
     if config.parameter_analyzation {
         names.push("Parameter Analyzation");
     }
-    if config.call_argument_analyzation {
-        names.push("Call Argument Analyzation");
-        if config.constant_folding {
-            names.push("Constant Folding");
-        }
-    }
 
     let run_iterative_passes = config.loop_analyzation
         || config.constant_folding

@@ -9,7 +9,6 @@ use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
         AstLiteral, AstOptimizationKind, AstStatement, AstUnaryOperator, AstValueType, Wrapped,
-        WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -46,7 +45,7 @@ pub(crate) fn minimize_casts(
     Ok(())
 }
 
-fn minimize_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn minimize_statement_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
         minimize_statement(stmt);
     }
@@ -63,15 +62,13 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
-            AstExpression::Cast(
-                AstValueType::Int32,
-                Box::new(wrap_expression(AstExpression::Cast(
-                    AstValueType::Int16,
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-                ))),
-            ),
-        ))))];
+        let body = vec![wrap(AstStatement::Return(Some(wrap(AstExpression::Cast(
+            AstValueType::Int32,
+            Box::new(wrap(AstExpression::Cast(
+                AstValueType::Int16,
+                Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
+            ))),
+        )))))];
 
         let (fb, embed) = run_parity(
             "optimization/after-iteration/cast-minimization.fb",
@@ -87,12 +84,10 @@ mod tests {
         let fid = AstFunctionId { address: 0x9000 };
         let (_ids, vm) = make_var_map(fid, &["x"]);
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
-            AstExpression::Cast(
-                AstValueType::Int32,
-                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(42)))),
-            ),
-        ))))];
+        let body = vec![wrap(AstStatement::Return(Some(wrap(AstExpression::Cast(
+            AstValueType::Int32,
+            Box::new(wrap(AstExpression::Literal(AstLiteral::Int(42)))),
+        )))))];
 
         let (fb, embed) = run_parity(
             "optimization/after-iteration/cast-minimization.fb",
@@ -112,12 +107,12 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        let body = vec![wrap(AstStatement::Return(Some(wrap(
             AstExpression::UnaryOp(
                 AstUnaryOperator::CastSigned,
-                Box::new(wrap_expression(AstExpression::UnaryOp(
+                Box::new(wrap(AstExpression::UnaryOp(
                     AstUnaryOperator::CastSigned,
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
                 ))),
             ),
         ))))];
@@ -135,8 +130,8 @@ mod tests {
     }
 }
 
-fn minimize_statement(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
+fn minimize_statement(stmt: &mut Wrapped<AstStatement>) {
+    match &mut stmt.item {
         AstStatement::Declaration(_lhs, rhs) => {
             if let Some(rhs) = rhs {
                 minimize_expression(rhs);

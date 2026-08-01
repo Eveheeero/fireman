@@ -951,10 +951,9 @@ fn rhai_script_from_source_syntax_error() {
 
 #[test]
 fn rhai_ast_stmt_kind() {
-    use crate::abstract_syntax_tree::{AstStatementOrigin, WrappedAstStatement};
-    let wrapped = WrappedAstStatement {
-        statement: AstStatement::Comment("hello".to_string()),
-        origin: AstStatementOrigin::Unknown,
+    use crate::abstract_syntax_tree::Wrapped;
+    let wrapped = Wrapped {
+        item: AstStatement::Comment("hello".to_string()),
         comment: None,
     };
     let rhai_stmt = rhai_types::RhaiAstStmt::from_wrapped(&wrapped);
@@ -963,19 +962,15 @@ fn rhai_ast_stmt_kind() {
 
 #[test]
 fn rhai_ast_stmt_all_kinds() {
-    use crate::abstract_syntax_tree::{
-        AstCall, AstExpression, AstStatementOrigin, AstValueOrigin, Wrapped, WrappedAstStatement,
-    };
-    let w = |s: AstStatement| -> WrappedAstStatement {
-        WrappedAstStatement {
-            statement: s,
-            origin: AstStatementOrigin::Unknown,
+    use crate::abstract_syntax_tree::{AstCall, AstExpression, Wrapped};
+    let w = |s: AstStatement| -> Wrapped<AstStatement> {
+        Wrapped {
+            item: s,
             comment: None,
         }
     };
     let dummy_expr = || Wrapped {
         item: AstExpression::Unknown,
-        origin: AstValueOrigin::Unknown,
         comment: None,
     };
 

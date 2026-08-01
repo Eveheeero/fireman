@@ -1,7 +1,5 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AstPrintConfig {
-    pub print_instruction: bool,
-    pub print_ir: bool,
     pub print_empty_statement: bool,
     pub replace_constant: bool,
     pub parameter_usage_comment: bool,
@@ -10,8 +8,6 @@ pub struct AstPrintConfig {
 }
 impl AstPrintConfig {
     pub const DEFAULT: Self = Self {
-        print_instruction: false,
-        print_ir: false,
         print_empty_statement: false,
         replace_constant: true,
         parameter_usage_comment: true,
@@ -19,8 +15,6 @@ impl AstPrintConfig {
         hide_unused_declarations: true,
     };
     pub const ALL: Self = Self {
-        print_instruction: true,
-        print_ir: true,
         print_empty_statement: true,
         replace_constant: true,
         parameter_usage_comment: true,
@@ -28,8 +22,6 @@ impl AstPrintConfig {
         hide_unused_declarations: true,
     };
     pub const NONE: Self = Self {
-        print_instruction: false,
-        print_ir: false,
         print_empty_statement: false,
         replace_constant: false,
         parameter_usage_comment: false,
@@ -37,14 +29,6 @@ impl AstPrintConfig {
         hide_unused_declarations: false,
     };
 
-    pub fn print_instruction(mut self, value: bool) -> Self {
-        self.print_instruction = value;
-        self
-    }
-    pub fn print_ir(mut self, value: bool) -> Self {
-        self.print_ir = value;
-        self
-    }
     pub fn print_empty_statement(mut self, value: bool) -> Self {
         self.print_empty_statement = value;
         self

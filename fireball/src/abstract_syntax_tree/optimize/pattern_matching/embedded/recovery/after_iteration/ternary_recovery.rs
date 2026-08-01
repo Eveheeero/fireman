@@ -6,7 +6,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
-        Wrapped, WrappedAstStatement,
+        Wrapped,
     },
     prelude::DecompileError,
 };
@@ -43,10 +43,10 @@ pub(crate) fn recover_ternary(
     Ok(())
 }
 
-fn recover_ternary_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn recover_ternary_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // First recurse into nested structures
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 recover_ternary_in_list(bt);
                 if let Some(bf) = bf {
@@ -70,8 +70,8 @@ fn recover_ternary_in_list(stmts: &mut Vec<WrappedAstStatement>) {
 ///   if (cond) { v = expr_a; } else { v = expr_b; }
 /// and rewrite to:
 ///   v = cond ? expr_a : expr_b;
-fn try_convert_to_ternary(stmt: &mut WrappedAstStatement) {
-    let AstStatement::If(cond, branch_true, Some(branch_false)) = &stmt.statement else {
+fn try_convert_to_ternary(stmt: &mut Wrapped<AstStatement>) {
+    let AstStatement::If(cond, branch_true, Some(branch_false)) = &stmt.item else {
         return;
     };
 
@@ -81,7 +81,7 @@ fn try_convert_to_ternary(stmt: &mut WrappedAstStatement) {
     }
 
     // Both must be assignments to the same plain variable
-    let (true_var, true_rhs) = match &branch_true[0].statement {
+    let (true_var, true_rhs) = match &branch_true[0].item {
         AstStatement::Assignment(lhs, rhs) => {
             if let AstExpression::Variable(_, var_id) = &lhs.item {
                 (*var_id, rhs)
@@ -92,7 +92,7 @@ fn try_convert_to_ternary(stmt: &mut WrappedAstStatement) {
         _ => return,
     };
 
-    let (false_var, false_rhs) = match &branch_false[0].statement {
+    let (false_var, false_rhs) = match &branch_false[0].item {
         AstStatement::Assignment(lhs, rhs) => {
             if let AstExpression::Variable(_, var_id) = &lhs.item {
                 (*var_id, rhs)
@@ -116,7 +116,7 @@ fn try_convert_to_ternary(stmt: &mut WrappedAstStatement) {
     );
 
     // Get the LHS from the true branch (it has the variable map we need)
-    let lhs = match &branch_true[0].statement {
+    let lhs = match &branch_true[0].item {
         AstStatement::Assignment(lhs, _) => lhs.clone(),
         _ => unreachable!(),
     };
@@ -124,11 +124,10 @@ fn try_convert_to_ternary(stmt: &mut WrappedAstStatement) {
     let _ = target_var_id;
     let ternary_wrapped = Wrapped {
         item: ternary_expr,
-        origin: cond.origin.clone(),
         comment: None,
     };
 
-    stmt.statement = AstStatement::Assignment(lhs, ternary_wrapped);
+    stmt.item = AstStatement::Assignment(lhs, ternary_wrapped);
 }
 
 #[cfg(test)]
@@ -144,15 +143,15 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["cond", "result"]);
         let (cond, result) = (ids[0], ids[1]);
 
-        let body = vec![wrap_statement(AstStatement::If(
-            wrap_expression(AstExpression::Variable(vm.clone(), cond)),
-            vec![wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), result)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+        let body = vec![wrap(AstStatement::If(
+            wrap(AstExpression::Variable(vm.clone(), cond)),
+            vec![wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), result)),
+                wrap(AstExpression::Literal(AstLiteral::Int(1))),
             ))],
-            Some(vec![wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), result)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+            Some(vec![wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), result)),
+                wrap(AstExpression::Literal(AstLiteral::Int(2))),
             ))]),
         ))];
 

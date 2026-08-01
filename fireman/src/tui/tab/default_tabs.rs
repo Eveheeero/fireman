@@ -37,12 +37,6 @@ pub fn default_tabs(app: &mut TuiApp) {
     if config.parameter_analyzation {
         insert_tab(app, "Parameter Analyzation");
     }
-    if config.call_argument_analyzation {
-        insert_tab(app, "Call Argument Analyzation");
-        if config.constant_folding {
-            insert_tab(app, "Constant Folding");
-        }
-    }
 
     let run_iterative_passes = config.loop_analyzation
         || config.constant_folding

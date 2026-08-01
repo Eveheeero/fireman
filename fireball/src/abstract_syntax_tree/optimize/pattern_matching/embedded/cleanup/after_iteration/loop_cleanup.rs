@@ -2,8 +2,7 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
-        WrappedAstStatement,
+        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -40,9 +39,9 @@ pub(crate) fn cleanup_loops(
     Ok(())
 }
 
-fn cleanup_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn cleanup_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 cleanup_in_list(bt);
                 if let Some(bf) = bf {
@@ -71,12 +70,12 @@ fn cleanup_in_list(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
-fn try_remove_last_continue(body: &mut Vec<WrappedAstStatement>) {
+fn try_remove_last_continue(body: &mut Vec<Wrapped<AstStatement>>) {
     if body.is_empty() {
         return;
     }
     let last_idx = body.len() - 1;
-    if matches!(body[last_idx].statement, AstStatement::Continue) {
+    if matches!(body[last_idx].item, AstStatement::Continue) {
         body.remove(last_idx);
     }
 }
@@ -95,14 +94,14 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["cond", "x"]);
         let (cond, x) = (ids[0], ids[1]);
 
-        let body = vec![wrap_statement(AstStatement::While(
-            wrap_expression(AstExpression::Variable(vm.clone(), cond)),
+        let body = vec![wrap(AstStatement::While(
+            wrap(AstExpression::Variable(vm.clone(), cond)),
             vec![
-                wrap_statement(AstStatement::Assignment(
-                    wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                    wrap_expression(AstExpression::Literal(AstLiteral::Int(7))),
+                wrap(AstStatement::Assignment(
+                    wrap(AstExpression::Variable(vm.clone(), x)),
+                    wrap(AstExpression::Literal(AstLiteral::Int(7))),
                 )),
-                wrap_statement(AstStatement::Continue),
+                wrap(AstStatement::Continue),
             ],
         ))];
 

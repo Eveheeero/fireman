@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstCall, AstExpression, AstFunctionId, AstFunctionVersion, AstOptimizationKind,
-        AstStatement, WrappedAstStatement,
+        AstStatement, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -40,9 +40,9 @@ pub(crate) fn recover_assertions(
     Ok(())
 }
 
-fn recover_assertions_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn recover_assertions_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 recover_assertions_in_list(bt);
                 if let Some(bf) = bf {
@@ -63,8 +63,8 @@ fn recover_assertions_in_list(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
-fn try_recover_assertion(stmt: &mut WrappedAstStatement) {
-    let AstStatement::If(cond, branch_true, None) = &stmt.statement else {
+fn try_recover_assertion(stmt: &mut Wrapped<AstStatement>) {
+    let AstStatement::If(cond, branch_true, None) = &stmt.item else {
         return;
     };
 
@@ -72,7 +72,7 @@ fn try_recover_assertion(stmt: &mut WrappedAstStatement) {
         return;
     }
 
-    let AstStatement::Call(call) = &branch_true[0].statement else {
+    let AstStatement::Call(call) = &branch_true[0].item else {
         return;
     };
 
@@ -96,13 +96,11 @@ fn try_recover_assertion(stmt: &mut WrappedAstStatement) {
                     crate::abstract_syntax_tree::AstUnaryOperator::Not,
                     Box::new(cond.clone()),
                 ),
-                origin: cond.origin.clone(),
                 comment: None,
             }
         };
 
-        stmt.statement =
-            AstStatement::Call(AstCall::Unknown("assert".to_string(), vec![final_cond]));
+        stmt.item = AstStatement::Call(AstCall::Unknown("assert".to_string(), vec![final_cond]));
     }
 }
 
@@ -118,12 +116,12 @@ mod tests {
         let cond = ids[0];
 
         // if (!cond) abort();
-        let body = vec![wrap_statement(AstStatement::If(
-            wrap_expression(AstExpression::UnaryOp(
+        let body = vec![wrap(AstStatement::If(
+            wrap(AstExpression::UnaryOp(
                 crate::abstract_syntax_tree::AstUnaryOperator::Not,
-                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), cond))),
+                Box::new(wrap(AstExpression::Variable(vm.clone(), cond))),
             )),
-            vec![wrap_statement(AstStatement::Call(AstCall::Unknown(
+            vec![wrap(AstStatement::Call(AstCall::Unknown(
                 "abort".to_string(),
                 vec![],
             )))],

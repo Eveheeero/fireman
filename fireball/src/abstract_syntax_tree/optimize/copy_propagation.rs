@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstOptimizationKind, AstStatement, AstVariableId, Wrapped, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, AstVariableId, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -56,7 +56,7 @@ fn resolve(env: &HashMap<AstVariableId, AstVariableId>, mut id: AstVariableId) -
 }
 
 fn propagate_statement_list(
-    stmts: &mut Vec<WrappedAstStatement>,
+    stmts: &mut Vec<Wrapped<AstStatement>>,
     env: &mut HashMap<AstVariableId, AstVariableId>,
 ) {
     for stmt in stmts.iter_mut() {
@@ -65,10 +65,10 @@ fn propagate_statement_list(
 }
 
 fn propagate_statement(
-    stmt: &mut WrappedAstStatement,
+    stmt: &mut Wrapped<AstStatement>,
     env: &mut HashMap<AstVariableId, AstVariableId>,
 ) {
-    match &mut stmt.statement {
+    match &mut stmt.item {
         AstStatement::Assignment(lhs, rhs) => {
             // First, apply substitutions to the RHS (reads)
             substitute_expression(rhs, env);
@@ -139,7 +139,7 @@ fn propagate_statement(
             // Pre-scan loop body + update for written variables; only invalidate those
             let mut written = HashSet::new();
             collect_written_vars_list(body, &mut written);
-            collect_written_vars_stmt(&update.statement, &mut written);
+            collect_written_vars_stmt(&update.item, &mut written);
             invalidate_written(env, &written);
             substitute_expression(cond, env);
             let mut env_body = env.clone();
@@ -292,9 +292,9 @@ fn invalidate_source(env: &mut HashMap<AstVariableId, AstVariableId>, source: As
 }
 
 /// Collect all variable IDs that are written (assigned/declared) in a statement list.
-fn collect_written_vars_list(stmts: &[WrappedAstStatement], out: &mut HashSet<AstVariableId>) {
+fn collect_written_vars_list(stmts: &[Wrapped<AstStatement>], out: &mut HashSet<AstVariableId>) {
     for stmt in stmts {
-        collect_written_vars_stmt(&stmt.statement, out);
+        collect_written_vars_stmt(&stmt.item, out);
     }
 }
 
@@ -318,8 +318,8 @@ fn collect_written_vars_stmt(stmt: &AstStatement, out: &mut HashSet<AstVariableI
             collect_written_vars_list(body, out);
         }
         AstStatement::For(init, _, update, body) => {
-            collect_written_vars_stmt(&init.statement, out);
-            collect_written_vars_stmt(&update.statement, out);
+            collect_written_vars_stmt(&init.item, out);
+            collect_written_vars_stmt(&update.item, out);
             collect_written_vars_list(body, out);
         }
         AstStatement::Switch(_, cases, default) => {

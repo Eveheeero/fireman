@@ -7,7 +7,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
-        WrappedAstStatement,
+        Wrapped,
     },
     prelude::DecompileError,
 };
@@ -44,9 +44,9 @@ pub(crate) fn reverse_if_conversion(
     Ok(())
 }
 
-fn reverse_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn reverse_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, branch_true, branch_false) => {
                 reverse_in_list(branch_true);
                 if let Some(branch_false) = branch_false {
@@ -78,15 +78,15 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["cond", "result"]);
         let (cond, result) = (ids[0], ids[1]);
 
-        let body = vec![wrap_statement(AstStatement::Assignment(
-            wrap_expression(AstExpression::Variable(vm.clone(), result)),
-            wrap_expression(AstExpression::Ternary(
-                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), cond))),
-                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(1)))),
-                Box::new(wrap_expression(AstExpression::Ternary(
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), cond))),
-                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(2)))),
-                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(3)))),
+        let body = vec![wrap(AstStatement::Assignment(
+            wrap(AstExpression::Variable(vm.clone(), result)),
+            wrap(AstExpression::Ternary(
+                Box::new(wrap(AstExpression::Variable(vm.clone(), cond))),
+                Box::new(wrap(AstExpression::Literal(AstLiteral::Int(1)))),
+                Box::new(wrap(AstExpression::Ternary(
+                    Box::new(wrap(AstExpression::Variable(vm.clone(), cond))),
+                    Box::new(wrap(AstExpression::Literal(AstLiteral::Int(2)))),
+                    Box::new(wrap(AstExpression::Literal(AstLiteral::Int(3)))),
                 ))),
             )),
         ))];
@@ -113,8 +113,8 @@ mod tests {
     }
 }
 
-fn try_expand_nested_ternary_assignment(stmt: &mut WrappedAstStatement) {
-    let AstStatement::Assignment(lhs, rhs) = &stmt.statement else {
+fn try_expand_nested_ternary_assignment(stmt: &mut Wrapped<AstStatement>) {
+    let AstStatement::Assignment(lhs, rhs) = &stmt.item else {
         return;
     };
     if !matches!(lhs.item, AstExpression::Variable(_, _)) {
@@ -130,7 +130,7 @@ fn try_expand_nested_ternary_assignment(stmt: &mut WrappedAstStatement) {
         return;
     }
 
-    stmt.statement = AstStatement::If(
+    stmt.item = AstStatement::If(
         cond.as_ref().clone(),
         vec![build_assignment_branch(
             lhs.clone(),
@@ -148,11 +148,11 @@ fn try_expand_nested_ternary_assignment(stmt: &mut WrappedAstStatement) {
 fn build_assignment_branch(
     lhs: crate::abstract_syntax_tree::Wrapped<AstExpression>,
     rhs: crate::abstract_syntax_tree::Wrapped<AstExpression>,
-    template: &WrappedAstStatement,
-) -> WrappedAstStatement {
+    template: &Wrapped<AstStatement>,
+) -> Wrapped<AstStatement> {
     match rhs.item {
-        AstExpression::Ternary(cond, true_expr, false_expr) => WrappedAstStatement {
-            statement: AstStatement::If(
+        AstExpression::Ternary(cond, true_expr, false_expr) => Wrapped {
+            item: AstStatement::If(
                 cond.as_ref().clone(),
                 vec![build_assignment_branch(
                     lhs.clone(),
@@ -165,12 +165,10 @@ fn build_assignment_branch(
                     template,
                 )]),
             ),
-            origin: template.origin.clone(),
             comment: None,
         },
-        _ => WrappedAstStatement {
-            statement: AstStatement::Assignment(lhs, rhs),
-            origin: template.origin.clone(),
+        _ => Wrapped {
+            item: AstStatement::Assignment(lhs, rhs),
             comment: None,
         },
     }

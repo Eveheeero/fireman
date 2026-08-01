@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstOptimizationKind, AstStatement, Wrapped, WrappedAstStatement,
+        AstLiteral, AstOptimizationKind, AstStatement, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -40,14 +40,14 @@ pub(super) fn recognize_bit_tricks(
     Ok(())
 }
 
-fn recognize_in_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn recognize_in_statement_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
         recognize_in_statement(stmt);
     }
 }
 
-fn recognize_in_statement(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
+fn recognize_in_statement(stmt: &mut Wrapped<AstStatement>) {
+    match &mut stmt.item {
         AstStatement::Declaration(_lhs, rhs) => {
             if let Some(rhs) = rhs {
                 recognize_in_expression(rhs);
@@ -245,21 +245,18 @@ fn build_mul(
     x: &Wrapped<AstExpression>,
     multiplier: u64,
 ) -> Wrapped<AstExpression> {
-    use crate::abstract_syntax_tree::{AstValueOrigin, Wrapped};
+    use crate::abstract_syntax_tree::Wrapped;
 
     let x_clone = Box::new(Wrapped {
         item: x.item.clone(),
-        origin: x.origin.clone(),
         comment: None,
     });
     let mul_lit = Box::new(Wrapped {
         item: AstExpression::Literal(to_literal_u64(multiplier)),
-        origin: AstValueOrigin::Unknown,
         comment: None,
     });
     Wrapped {
         item: AstExpression::BinaryOp(AstBinaryOperator::Mul, x_clone, mul_lit),
-        origin: source.origin.clone(),
         comment: source.comment.clone(),
     }
 }
@@ -328,19 +325,16 @@ fn try_match_rotation(
     // Build the replacement: __builtin_rotate_{right,left}(x, n)
     let x_arg = Wrapped {
         item: x1.item.clone(),
-        origin: x1.origin.clone(),
         comment: None,
     };
     let n_arg = Wrapped {
         item: AstExpression::Literal(to_literal_u64(n)),
-        origin: n_expr.origin.clone(),
         comment: None,
     };
 
     let call = AstCall::Unknown(builtin_name.into(), vec![x_arg, n_arg]);
     Some(Wrapped {
         item: AstExpression::Call(call),
-        origin: source.origin.clone(),
         comment: source.comment.clone(),
     })
 }

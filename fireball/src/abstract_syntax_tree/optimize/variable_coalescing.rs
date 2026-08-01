@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstOptimizationKind, AstStatement, AstVariableId, Wrapped, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, AstVariableId, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -53,7 +53,7 @@ pub(super) fn coalesce_variables(
     Ok(())
 }
 
-fn coalesce_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn coalesce_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Step 1: Collect declared variable types from the top-level statement list.
     let declared_types = collect_declared_types(stmts);
 
@@ -135,7 +135,7 @@ fn coalesce_in_list(stmts: &mut Vec<WrappedAstStatement>) {
         .iter()
         .enumerate()
         .filter_map(|(idx, stmt)| {
-            if let AstStatement::Declaration(var, _) = &stmt.statement {
+            if let AstStatement::Declaration(var, _) = &stmt.item {
                 if merged_away.contains(&var.id) {
                     return Some(idx);
                 }
@@ -162,11 +162,11 @@ fn coalesce_in_list(stmts: &mut Vec<WrappedAstStatement>) {
 // Live range computation
 // ---------------------------------------------------------------------------
 
-fn compute_var_ranges(stmts: &[WrappedAstStatement]) -> HashMap<AstVariableId, VarRange> {
+fn compute_var_ranges(stmts: &[Wrapped<AstStatement>]) -> HashMap<AstVariableId, VarRange> {
     let mut ranges: HashMap<AstVariableId, VarRange> = HashMap::new();
     for (idx, stmt) in stmts.iter().enumerate() {
         let mut vars = HashSet::new();
-        collect_all_variables_in_statement(&stmt.statement, &mut vars);
+        collect_all_variables_in_statement(&stmt.item, &mut vars);
         for var_id in vars {
             ranges
                 .entry(var_id)
@@ -189,11 +189,11 @@ fn ranges_overlap(a: &VarRange, b: &VarRange) -> bool {
 // ---------------------------------------------------------------------------
 
 fn collect_declared_types(
-    stmts: &[WrappedAstStatement],
+    stmts: &[Wrapped<AstStatement>],
 ) -> HashMap<AstVariableId, crate::abstract_syntax_tree::AstValueType> {
     let mut types = HashMap::new();
     for stmt in stmts {
-        if let AstStatement::Declaration(var, _) = &stmt.statement {
+        if let AstStatement::Declaration(var, _) = &stmt.item {
             types.entry(var.id).or_insert_with(|| var.var_type.clone());
         }
     }
@@ -228,9 +228,9 @@ fn collect_all_variables_in_statement(stmt: &AstStatement, out: &mut HashSet<Ast
             collect_all_variables_in_list(body, out);
         }
         AstStatement::For(init, cond, update, body) => {
-            collect_all_variables_in_statement(&init.statement, out);
+            collect_all_variables_in_statement(&init.item, out);
             super::opt_utils::collect_expr_variables(&cond.item, out);
-            collect_all_variables_in_statement(&update.statement, out);
+            collect_all_variables_in_statement(&update.item, out);
             collect_all_variables_in_list(body, out);
         }
         AstStatement::Switch(discrim, cases, default) => {
@@ -266,9 +266,12 @@ fn collect_all_variables_in_statement(stmt: &AstStatement, out: &mut HashSet<Ast
     }
 }
 
-fn collect_all_variables_in_list(stmts: &[WrappedAstStatement], out: &mut HashSet<AstVariableId>) {
+fn collect_all_variables_in_list(
+    stmts: &[Wrapped<AstStatement>],
+    out: &mut HashSet<AstVariableId>,
+) {
     for stmt in stmts {
-        collect_all_variables_in_statement(&stmt.statement, out);
+        collect_all_variables_in_statement(&stmt.item, out);
     }
 }
 
@@ -316,7 +319,7 @@ fn collect_all_variables_in_call(call: &AstCall, out: &mut HashSet<AstVariableId
 // ---------------------------------------------------------------------------
 
 fn apply_renames(
-    stmts: &mut Vec<WrappedAstStatement>,
+    stmts: &mut Vec<Wrapped<AstStatement>>,
     rename_map: &HashMap<AstVariableId, AstVariableId>,
 ) {
     for stmt in stmts.iter_mut() {
@@ -325,10 +328,10 @@ fn apply_renames(
 }
 
 fn rename_in_statement(
-    stmt: &mut WrappedAstStatement,
+    stmt: &mut Wrapped<AstStatement>,
     rename_map: &HashMap<AstVariableId, AstVariableId>,
 ) {
-    match &mut stmt.statement {
+    match &mut stmt.item {
         AstStatement::Declaration(var, rhs) => {
             if let Some(&new_id) = rename_map.get(&var.id) {
                 var.id = new_id;
@@ -392,7 +395,7 @@ fn rename_in_statement(
 }
 
 fn rename_in_list(
-    stmts: &mut Vec<WrappedAstStatement>,
+    stmts: &mut Vec<Wrapped<AstStatement>>,
     rename_map: &HashMap<AstVariableId, AstVariableId>,
 ) {
     for stmt in stmts.iter_mut() {

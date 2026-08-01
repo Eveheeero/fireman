@@ -151,7 +151,6 @@ struct JsonPreset {
 struct JsonPresetOptimizationConfig {
     ir_analyzation: bool,
     parameter_analyzation: bool,
-    call_argument_analyzation: bool,
     constant_folding: bool,
     control_flow_cleanup: bool,
     collapse_unused_variable: bool,
@@ -193,7 +192,6 @@ impl JsonPresetOptimizationConfig {
         fireball::abstract_syntax_tree::AstOptimizationConfig {
             ir_analyzation: self.ir_analyzation,
             parameter_analyzation: self.parameter_analyzation,
-            call_argument_analyzation: self.call_argument_analyzation,
             constant_folding: self.constant_folding,
             control_flow_cleanup: self.control_flow_cleanup,
             collapse_unused_variable: self.collapse_unused_variable,
@@ -238,7 +236,6 @@ impl JsonPresetOptimizationConfig {
         Self {
             ir_analyzation: o.ir_analyzation,
             parameter_analyzation: o.parameter_analyzation,
-            call_argument_analyzation: o.call_argument_analyzation,
             constant_folding: o.constant_folding,
             control_flow_cleanup: o.control_flow_cleanup,
             collapse_unused_variable: o.collapse_unused_variable,
@@ -290,8 +287,6 @@ impl Default for JsonPresetOptimizationConfig {
 /// see [fireball::abstract_syntax_tree::AstPrintConfig]
 #[derive(Serialize, Deserialize)]
 struct JsonPresetPrintConfig {
-    print_instruction: bool,
-    print_ir: bool,
     print_empty_statement: bool,
     replace_constant: bool,
     parameter_usage_comment: bool,
@@ -302,8 +297,6 @@ struct JsonPresetPrintConfig {
 impl JsonPresetPrintConfig {
     fn to_fireball_print_config(self) -> fireball::abstract_syntax_tree::AstPrintConfig {
         fireball::abstract_syntax_tree::AstPrintConfig {
-            print_instruction: self.print_instruction,
-            print_ir: self.print_ir,
             print_empty_statement: self.print_empty_statement,
             replace_constant: self.replace_constant,
             parameter_usage_comment: self.parameter_usage_comment,
@@ -313,8 +306,6 @@ impl JsonPresetPrintConfig {
     }
     fn from_fireball_print_config(o: fireball::abstract_syntax_tree::AstPrintConfig) -> Self {
         Self {
-            print_instruction: o.print_instruction,
-            print_ir: o.print_ir,
             print_empty_statement: o.print_empty_statement,
             replace_constant: o.replace_constant,
             parameter_usage_comment: o.parameter_usage_comment,

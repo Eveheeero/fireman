@@ -289,7 +289,7 @@ fn export_fb_inner(
 
     ordered_functions.sort_by_key(|function| {
         function
-            .ir
+            .origin_ir
             .get_ir()
             .first()
             .map(|ir| ir.address.get_virtual_address())
@@ -355,7 +355,7 @@ fn build_fbz_function(
     function: &AstFunction,
 ) -> Result<FbzFunction, String> {
     let entry_ir = function
-        .ir
+        .origin_ir
         .get_ir()
         .first()
         .ok_or_else(|| format!("function {} has no IR", function.name()))?;
@@ -364,7 +364,7 @@ fn build_fbz_function(
 
     // Assembly seeds (all instructions)
     let asm_seeds = function
-        .ir
+        .origin_ir
         .get_instructions()
         .iter()
         .map(|i| i.inner().to_string())
@@ -372,7 +372,7 @@ fn build_fbz_function(
 
     // IR seeds (all statements)
     let ir_seeds = function
-        .ir
+        .origin_ir
         .get_ir()
         .iter()
         .filter_map(|ir| ir.statements)
@@ -416,7 +416,7 @@ fn build_fbz_function(
     // Symbols in function range
     let function_start = entry_va;
     let function_end = function
-        .ir
+        .origin_ir
         .get_ir()
         .last()
         .map(|ir| ir.address.get_virtual_address())
@@ -460,7 +460,7 @@ fn render_function_rules(
     function: &AstFunction,
 ) -> Result<String, String> {
     let entry_ir = function
-        .ir
+        .origin_ir
         .get_ir()
         .first()
         .ok_or_else(|| format!("function {} has no IR", function.name()))?;
@@ -468,14 +468,14 @@ fn render_function_rules(
     let entry_file_offset = entry_ir.address.get_file_offset();
 
     let assembly_seeds = function
-        .ir
+        .origin_ir
         .get_instructions()
         .iter()
         .map(|instruction| instruction.inner().to_string())
         .collect::<Vec<_>>();
 
     let ir_seeds = function
-        .ir
+        .origin_ir
         .get_ir()
         .iter()
         .filter_map(|ir| ir.statements)
@@ -516,7 +516,7 @@ fn render_function_rules(
 
     let function_start = entry_va;
     let function_end = function
-        .ir
+        .origin_ir
         .get_ir()
         .last()
         .map(|ir| ir.address.get_virtual_address())

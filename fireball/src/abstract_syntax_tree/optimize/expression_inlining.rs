@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstOptimizationKind, AstStatement, AstVariableId, Wrapped, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, AstVariableId, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -130,12 +130,12 @@ fn count_reads_in_statement(stmt: &AstStatement, target: AstVariableId) -> usize
         AstStatement::If(cond, bt, bf) => {
             count_reads_in_expr(&cond.item, target)
                 + bt.iter()
-                    .map(|s| count_reads_in_statement(&s.statement, target))
+                    .map(|s| count_reads_in_statement(&s.item, target))
                     .sum::<usize>()
                 + bf.as_ref()
                     .map(|fb| {
                         fb.iter()
-                            .map(|s| count_reads_in_statement(&s.statement, target))
+                            .map(|s| count_reads_in_statement(&s.item, target))
                             .sum::<usize>()
                     })
                     .unwrap_or(0)
@@ -144,16 +144,16 @@ fn count_reads_in_statement(stmt: &AstStatement, target: AstVariableId) -> usize
             count_reads_in_expr(&cond.item, target)
                 + body
                     .iter()
-                    .map(|s| count_reads_in_statement(&s.statement, target))
+                    .map(|s| count_reads_in_statement(&s.item, target))
                     .sum::<usize>()
         }
         AstStatement::For(init, cond, update, body) => {
-            count_reads_in_statement(&init.statement, target)
+            count_reads_in_statement(&init.item, target)
                 + count_reads_in_expr(&cond.item, target)
-                + count_reads_in_statement(&update.statement, target)
+                + count_reads_in_statement(&update.item, target)
                 + body
                     .iter()
-                    .map(|s| count_reads_in_statement(&s.statement, target))
+                    .map(|s| count_reads_in_statement(&s.item, target))
                     .sum::<usize>()
         }
         AstStatement::Switch(discrim, cases, default) => {
@@ -161,20 +161,20 @@ fn count_reads_in_statement(stmt: &AstStatement, target: AstVariableId) -> usize
                 + cases
                     .iter()
                     .flat_map(|(_, body)| body.iter())
-                    .map(|s| count_reads_in_statement(&s.statement, target))
+                    .map(|s| count_reads_in_statement(&s.item, target))
                     .sum::<usize>()
                 + default
                     .as_ref()
                     .map(|d| {
                         d.iter()
-                            .map(|s| count_reads_in_statement(&s.statement, target))
+                            .map(|s| count_reads_in_statement(&s.item, target))
                             .sum::<usize>()
                     })
                     .unwrap_or(0)
         }
         AstStatement::Block(body) => body
             .iter()
-            .map(|s| count_reads_in_statement(&s.statement, target))
+            .map(|s| count_reads_in_statement(&s.item, target))
             .sum(),
         AstStatement::Return(expr) => expr
             .as_ref()
@@ -347,7 +347,7 @@ fn substitute_in_statement(
         }
         AstStatement::Block(body) => {
             for s in body.iter_mut() {
-                substitute_in_statement(&mut s.statement, target, replacement);
+                substitute_in_statement(&mut s.item, target, replacement);
             }
         }
         _ => {}
@@ -362,8 +362,8 @@ const INLINE_WINDOW: usize = 4;
 /// the rhs is pure, and no deps are written before the condition is evaluated.
 fn can_inline_into_if_condition(
     cond: &Wrapped<AstExpression>,
-    bt: &[WrappedAstStatement],
-    bf: &Option<Vec<WrappedAstStatement>>,
+    bt: &[Wrapped<AstStatement>],
+    bf: &Option<Vec<Wrapped<AstStatement>>>,
     var_id: AstVariableId,
 ) -> bool {
     let cond_reads = count_reads_in_expr(&cond.item, var_id);
@@ -372,7 +372,7 @@ fn can_inline_into_if_condition(
     }
     let branch_reads: usize = bt
         .iter()
-        .map(|s| count_reads_in_statement(&s.statement, var_id))
+        .map(|s| count_reads_in_statement(&s.item, var_id))
         .sum();
     if branch_reads != 0 {
         return false;
@@ -380,7 +380,7 @@ fn can_inline_into_if_condition(
     if let Some(bf) = bf {
         let else_reads: usize = bf
             .iter()
-            .map(|s| count_reads_in_statement(&s.statement, var_id))
+            .map(|s| count_reads_in_statement(&s.item, var_id))
             .sum();
         if else_reads != 0 {
             return false;
@@ -389,10 +389,10 @@ fn can_inline_into_if_condition(
     true
 }
 
-fn inline_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn inline_statement_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Process nested structures first
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 inline_statement_list(bt);
                 if let Some(bf) = bf {
@@ -411,7 +411,7 @@ fn inline_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
     let mut i = 0;
     while i + 1 < stmts.len() {
         // Extract candidate: Assignment(Variable(_, var_id), rhs) or Declaration(var, Some(rhs))
-        let candidate = match &stmts[i].statement {
+        let candidate = match &stmts[i].item {
             AstStatement::Assignment(lhs, rhs) => {
                 if let AstExpression::Variable(_, var_id) = &lhs.item {
                     if is_safe_to_inline(&rhs.item) {
@@ -446,7 +446,7 @@ fn inline_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
 
         for j in (i + 1)..window_end {
             // Check if stmts[j] writes var_id (def killed)
-            if let Some(written) = get_written_var(&stmts[j].statement) {
+            if let Some(written) = get_written_var(&stmts[j].item) {
                 if written == var_id {
                     break;
                 }
@@ -459,20 +459,20 @@ fn inline_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
             // Allow inlining into If conditions: if the stmt is an If and the var
             // is read exactly once in the condition (not in branches), treat it as
             // a valid target for inlining into the condition expression.
-            if let AstStatement::If(cond, bt, bf) = &stmts[j].statement {
+            if let AstStatement::If(cond, bt, bf) = &stmts[j].item {
                 if is_safe_to_inline(&rhs_expr.item)
                     && can_inline_into_if_condition(cond, bt, bf, var_id)
                 {
                     // No deps written before condition evaluation (condition is first)
                     let mut deps_ok = true;
                     for dep in &expr_deps {
-                        if get_written_var(&stmts[j].statement) == Some(*dep) {
+                        if get_written_var(&stmts[j].item) == Some(*dep) {
                             deps_ok = false;
                             break;
                         }
                     }
                     if deps_ok {
-                        if let AstStatement::If(cond, _, _) = &mut stmts[j].statement {
+                        if let AstStatement::If(cond, _, _) = &mut stmts[j].item {
                             substitute_in_expr(cond, var_id, &rhs_expr);
                         }
                         removals.push(i);
@@ -485,14 +485,14 @@ fn inline_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
             }
 
             // Standard barrier check (excluding If which we handle above)
-            if is_barrier(&stmts[j].statement) {
+            if is_barrier(&stmts[j].item) {
                 break;
             }
 
-            let read_count = count_reads_in_statement(&stmts[j].statement, var_id);
+            let read_count = count_reads_in_statement(&stmts[j].item, var_id);
             if read_count == 1 {
                 // Single read: inline
-                substitute_in_statement(&mut stmts[j].statement, var_id, &rhs_expr);
+                substitute_in_statement(&mut stmts[j].item, var_id, &rhs_expr);
                 removals.push(i);
                 inlined = true;
                 break;

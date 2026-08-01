@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstOptimizationKind, AstStatement, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, Wrapped,
     },
     pattern_matching::AstPattern,
     prelude::DecompileError,
@@ -46,9 +46,9 @@ pub(crate) fn recover_clamp(
     Ok(())
 }
 
-fn recover_clamp_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn recover_clamp_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 recover_clamp_in_list(bt);
                 if let Some(bf) = bf {
@@ -93,21 +93,21 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
-            AstExpression::Call(AstCall::Unknown(
+        let body = vec![wrap(AstStatement::Return(Some(wrap(AstExpression::Call(
+            AstCall::Unknown(
                 "min".to_string(),
                 vec![
-                    wrap_expression(AstExpression::Call(AstCall::Unknown(
+                    wrap(AstExpression::Call(AstCall::Unknown(
                         "max".to_string(),
                         vec![
-                            wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                            wrap_expression(AstExpression::Literal(AstLiteral::Int(3))),
+                            wrap(AstExpression::Variable(vm.clone(), x)),
+                            wrap(AstExpression::Literal(AstLiteral::Int(3))),
                         ],
                     ))),
-                    wrap_expression(AstExpression::Literal(AstLiteral::Int(10))),
+                    wrap(AstExpression::Literal(AstLiteral::Int(10))),
                 ],
-            )),
-        ))))];
+            ),
+        )))))];
 
         let (fb, embed) = run_parity(
             "optimization/after-iteration/clamp-recovery.fb",
@@ -135,8 +135,8 @@ mod tests {
     }
 }
 
-fn try_recover_clamp_in_stmt(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
+fn try_recover_clamp_in_stmt(stmt: &mut Wrapped<AstStatement>) {
+    match &mut stmt.item {
         AstStatement::Assignment(_, rhs) | AstStatement::Return(Some(rhs)) => {
             try_recover_clamp_in_expr(&mut rhs.item);
         }

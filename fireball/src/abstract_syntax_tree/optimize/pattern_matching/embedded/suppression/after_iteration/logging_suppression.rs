@@ -8,8 +8,7 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
-        WrappedAstStatement,
+        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement, Wrapped,
     },
     pattern_matching::AstPattern,
     prelude::DecompileError,
@@ -60,13 +59,13 @@ pub(crate) fn suppress_logging(
 }
 
 fn suppress_calls_in_list(
-    stmts: &mut Vec<WrappedAstStatement>,
+    stmts: &mut Vec<Wrapped<AstStatement>>,
     function_versions: &HashMap<AstFunctionId, AstFunctionVersion>,
     functions: &crate::abstract_syntax_tree::ArcAstFunctionMap,
 ) {
     // Recurse into nested structures
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 suppress_calls_in_list(bt, function_versions, functions);
                 if let Some(bf) = bf {
@@ -94,7 +93,7 @@ fn suppress_calls_in_list(
     }
 
     stmts.retain(|stmt| {
-        if let AstStatement::Call(call) = &stmt.statement {
+        if let AstStatement::Call(call) = &stmt.item {
             !call_matches_any(call, function_versions, functions)
         } else {
             true
@@ -139,7 +138,7 @@ mod tests {
             AstFunction, AstParameter, AstStatement, AstValueType,
             optimize::pattern_matching::embedded::test_utils::test_utils::*,
         },
-        ir::analyze::IrFunction,
+        ir::IrBlock,
         utils::version_map::VersionMap,
     };
     use std::sync::{Arc, RwLock};
@@ -157,7 +156,7 @@ mod tests {
                 AstFunction {
                     name: Some(name.to_string()),
                     id: target,
-                    ir: Arc::new(IrFunction::new(Vec::new().into(), Vec::new(), Vec::new())),
+                    origin_ir: Arc::new(IrBlock::new(Vec::new(), Vec::new().into())),
                     return_type: AstValueType::Int,
                     parameters: Vec::<AstParameter>::new(),
                     variables: Arc::new(RwLock::new(HashMap::new())),
@@ -175,11 +174,11 @@ mod tests {
         let (_ids, vm) = make_var_map(fid, &[]);
 
         let body = vec![
-            wrap_statement(AstStatement::Call(AstCall::Unknown(
+            wrap(AstStatement::Call(AstCall::Unknown(
                 "syslog".to_string(),
                 vec![],
             ))),
-            wrap_statement(AstStatement::Call(AstCall::Unknown(
+            wrap(AstStatement::Call(AstCall::Unknown(
                 "real_work".to_string(),
                 vec![],
             ))),

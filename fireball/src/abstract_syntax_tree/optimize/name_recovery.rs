@@ -4,7 +4,6 @@ use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId,
         AstFunctionVersion, AstLiteral, AstOptimizationKind, AstStatement, AstVariableId, Wrapped,
-        WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -68,7 +67,7 @@ pub(super) fn recover_names(
 const LOOP_COUNTER_NAMES: &[&str] = &["i", "j", "k"];
 
 fn collect_hints_from_statement_list(
-    stmts: &[WrappedAstStatement],
+    stmts: &[Wrapped<AstStatement>],
     hints: &mut HashMap<AstVariableId, NameHint>,
     loop_counter_index: &mut usize,
     ast: &Ast,
@@ -79,15 +78,15 @@ fn collect_hints_from_statement_list(
 }
 
 fn collect_hints_from_statement(
-    stmt: &WrappedAstStatement,
+    stmt: &Wrapped<AstStatement>,
     hints: &mut HashMap<AstVariableId, NameHint>,
     loop_counter_index: &mut usize,
     ast: &Ast,
 ) {
-    match &stmt.statement {
+    match &stmt.item {
         AstStatement::For(init, cond, update, body) => {
             // The variable assigned in init or update is likely a loop counter.
-            if let Some(var_id) = extract_assigned_variable(&init.statement) {
+            if let Some(var_id) = extract_assigned_variable(&init.item) {
                 let name = if *loop_counter_index < LOOP_COUNTER_NAMES.len() {
                     LOOP_COUNTER_NAMES[*loop_counter_index]
                 } else {
@@ -96,7 +95,7 @@ fn collect_hints_from_statement(
                 *loop_counter_index += 1;
                 insert_hint(hints, var_id, name, 0);
             }
-            if let Some(var_id) = extract_assigned_variable(&update.statement) {
+            if let Some(var_id) = extract_assigned_variable(&update.item) {
                 // Only hint the update variable if it differs from init (avoid
                 // double-hinting the same counter).
                 if !hints.contains_key(&var_id) {

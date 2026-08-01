@@ -4,7 +4,6 @@ use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
         AstLiteral, AstOptimizationKind, AstStatement, AstValue, AstVariableId, Wrapped,
-        WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -44,7 +43,7 @@ pub(super) fn fold_constants(
 }
 
 fn fold_statement_list(
-    stmts: &mut Vec<WrappedAstStatement>,
+    stmts: &mut Vec<Wrapped<AstStatement>>,
     const_env: &mut HashMap<AstVariableId, AstLiteral>,
 ) {
     for stmt in stmts.iter_mut() {
@@ -53,10 +52,10 @@ fn fold_statement_list(
 }
 
 fn fold_statement(
-    stmt: &mut WrappedAstStatement,
+    stmt: &mut Wrapped<AstStatement>,
     const_env: &mut HashMap<AstVariableId, AstLiteral>,
 ) {
-    match &mut stmt.statement {
+    match &mut stmt.item {
         AstStatement::Declaration(lhs, rhs) => {
             if let Some(rhs) = rhs {
                 fold_expression(rhs, const_env, true);
@@ -104,7 +103,7 @@ fn fold_statement(
                     let mut env_true = const_env.clone();
                     fold_statement_list(branch_true, &mut env_true);
                     let body = std::mem::take(branch_true);
-                    stmt.statement = AstStatement::Block(body);
+                    stmt.item = AstStatement::Block(body);
                     *const_env = env_true;
                 } else {
                     // if (false) { ... } else { else_body } → Block(else_body)
@@ -113,10 +112,10 @@ fn fold_statement(
                         let mut env_false = const_env.clone();
                         fold_statement_list(branch_false, &mut env_false);
                         let body = std::mem::take(branch_false);
-                        stmt.statement = AstStatement::Block(body);
+                        stmt.item = AstStatement::Block(body);
                         *const_env = env_false;
                     } else {
-                        stmt.statement = AstStatement::Empty;
+                        stmt.item = AstStatement::Empty;
                     }
                 }
                 return;
@@ -357,7 +356,6 @@ fn wrap_with_source(
 ) -> Wrapped<AstExpression> {
     Wrapped {
         item,
-        origin: source.origin.clone(),
         comment: source.comment.clone(),
     }
 }

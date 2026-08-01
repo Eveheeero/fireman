@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub(crate) mod test_utils {
     use crate::{
-        abstract_syntax_tree::*, ir::analyze::IrFunction, pattern_matching::AstPattern,
+        abstract_syntax_tree::*, ir::IrBlock, pattern_matching::AstPattern,
         utils::version_map::VersionMap,
     };
     use hashbrown::HashMap;
@@ -10,18 +10,9 @@ pub(crate) mod test_utils {
         sync::{Arc, RwLock},
     };
 
-    pub fn wrap_expression(item: AstExpression) -> Wrapped<AstExpression> {
+    pub fn wrap<T>(item: T) -> Wrapped<T> {
         Wrapped {
             item,
-            origin: AstValueOrigin::Unknown,
-            comment: None,
-        }
-    }
-
-    pub fn wrap_statement(statement: AstStatement) -> WrappedAstStatement {
-        WrappedAstStatement {
-            statement,
-            origin: AstStatementOrigin::Unknown,
             comment: None,
         }
     }
@@ -57,15 +48,15 @@ pub(crate) mod test_utils {
 
     fn build_test_function(
         function_id: AstFunctionId,
-        body: Vec<WrappedAstStatement>,
+        body: Vec<Wrapped<AstStatement>>,
         variables: Arc<RwLock<HashMap<AstVariableId, AstVariable>>>,
     ) -> AstFunction {
         let instructions: Arc<[crate::core::Instruction]> = Vec::new().into();
-        let ir = Arc::new(IrFunction::new(instructions, Vec::new(), Vec::new()));
+        let ir = Arc::new(IrBlock::new(Vec::new(), instructions));
         AstFunction {
             name: Some("test_fn".to_string()),
             id: function_id,
-            ir,
+            origin_ir: ir,
             return_type: AstValueType::Int,
             parameters: Vec::new(),
             variables,
@@ -75,7 +66,7 @@ pub(crate) mod test_utils {
     }
 
     fn build_ast(
-        body: Vec<WrappedAstStatement>,
+        body: Vec<Wrapped<AstStatement>>,
         vm: Arc<RwLock<HashMap<AstVariableId, AstVariable>>>,
     ) -> Ast {
         let fid = AstFunctionId { address: 0x9000 };
@@ -111,7 +102,7 @@ pub(crate) mod test_utils {
 
     pub fn run_parity(
         relative_path: &str,
-        body: Vec<WrappedAstStatement>,
+        body: Vec<Wrapped<AstStatement>>,
         vm: Arc<RwLock<HashMap<AstVariableId, AstVariable>>>,
         config_fn: impl Fn(AstOptimizationConfig) -> AstOptimizationConfig,
     ) -> (String, String) {
@@ -138,7 +129,7 @@ pub(crate) mod test_utils {
         (fb_result.print(print_cfg), embed_result.print(print_cfg))
     }
 
-    pub fn run_direct_embedded_pass<F>(body: Vec<WrappedAstStatement>, pass: F) -> String
+    pub fn run_direct_embedded_pass<F>(body: Vec<Wrapped<AstStatement>>, pass: F) -> String
     where
         F: FnOnce(
             &mut Ast,
@@ -167,9 +158,9 @@ pub(crate) mod test_utils {
         ) -> Result<(), crate::prelude::DecompileError>,
     {
         let body = vec![
-            wrap_statement(AstStatement::Comment("keep-comment".to_string())),
-            wrap_statement(AstStatement::Assembly(trigger.to_string())),
-            wrap_statement(AstStatement::Assembly(retained.to_string())),
+            wrap(AstStatement::Comment("keep-comment".to_string())),
+            wrap(AstStatement::Assembly(trigger.to_string())),
+            wrap(AstStatement::Assembly(retained.to_string())),
         ];
         let printed = run_direct_embedded_pass(body.clone(), pass);
         let fb_pattern = file_backed_pattern(relative_path);

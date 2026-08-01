@@ -10,7 +10,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
-        AstUnaryOperator, AstValueOrigin, Wrapped, WrappedAstStatement, optimize::opt_utils,
+        AstUnaryOperator, Wrapped, optimize::opt_utils,
     },
     prelude::DecompileError,
 };
@@ -52,10 +52,10 @@ pub(crate) fn cleanup_tail_calls_and_branches(
 
 /// Merge a trailing `Call(c); Return(None)` pair into `Return(Some(Call(c)))`,
 /// making the tail-call explicit in the AST.
-pub(crate) fn merge_trailing_call_return(stmts: &mut Vec<WrappedAstStatement>) {
+pub(crate) fn merge_trailing_call_return(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Recurse into nested structures first.
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 merge_trailing_call_return(bt);
                 if let Some(bf) = bf {
@@ -86,7 +86,7 @@ pub(crate) fn merge_trailing_call_return(stmts: &mut Vec<WrappedAstStatement>) {
     let meaningful: Vec<usize> = stmts
         .iter()
         .enumerate()
-        .filter(|(_, s)| !matches!(&s.statement, AstStatement::Comment(_) | AstStatement::Empty))
+        .filter(|(_, s)| !matches!(&s.item, AstStatement::Comment(_) | AstStatement::Empty))
         .map(|(i, _)| i)
         .collect();
 
@@ -97,22 +97,20 @@ pub(crate) fn merge_trailing_call_return(stmts: &mut Vec<WrappedAstStatement>) {
     let call_idx = meaningful[meaningful.len() - 2];
     let ret_idx = meaningful[meaningful.len() - 1];
 
-    let is_call = matches!(&stmts[call_idx].statement, AstStatement::Call(_));
-    let is_return_none = matches!(&stmts[ret_idx].statement, AstStatement::Return(None));
+    let is_call = matches!(&stmts[call_idx].item, AstStatement::Call(_));
+    let is_return_none = matches!(&stmts[ret_idx].item, AstStatement::Return(None));
 
     if is_call && is_return_none {
         // Remove the Return(None) first (higher index), then the Call.
         stmts.remove(ret_idx);
         let removed_call = stmts.remove(call_idx);
 
-        if let AstStatement::Call(call) = removed_call.statement {
-            let return_stmt = WrappedAstStatement {
-                statement: AstStatement::Return(Some(Wrapped {
+        if let AstStatement::Call(call) = removed_call.item {
+            let return_stmt = Wrapped {
+                item: AstStatement::Return(Some(Wrapped {
                     item: AstExpression::Call(call),
-                    origin: AstValueOrigin::Unknown,
                     comment: None,
                 })),
-                origin: removed_call.origin,
                 comment: removed_call.comment,
             };
             stmts.insert(call_idx, return_stmt);
@@ -122,9 +120,9 @@ pub(crate) fn merge_trailing_call_return(stmts: &mut Vec<WrappedAstStatement>) {
 
 /// Invert `if(!cond) { A } else { B }` -> `if(cond) { B } else { A }` when doing
 /// so keeps the larger branch on the positive path and improves readability.
-pub(crate) fn invert_negated_branches(stmts: &mut Vec<WrappedAstStatement>) {
+pub(crate) fn invert_negated_branches(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(cond, bt, bf) => {
                 invert_negated_branches(bt);
                 if let Some(bf) = bf {
@@ -161,15 +159,10 @@ pub(crate) fn invert_negated_branches(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
-pub(crate) fn meaningful_statement_count(stmts: &[WrappedAstStatement]) -> usize {
+pub(crate) fn meaningful_statement_count(stmts: &[Wrapped<AstStatement>]) -> usize {
     stmts
         .iter()
-        .filter(|stmt| {
-            !matches!(
-                &stmt.statement,
-                AstStatement::Comment(_) | AstStatement::Empty
-            )
-        })
+        .filter(|stmt| !matches!(&stmt.item, AstStatement::Comment(_) | AstStatement::Empty))
         .count()
 }
 
@@ -204,10 +197,10 @@ pub(crate) fn merge_same_condition_ifs(
     Ok(())
 }
 
-fn merge_consecutive_same_condition_ifs(stmts: &mut Vec<WrappedAstStatement>) {
+fn merge_consecutive_same_condition_ifs(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Recurse into nested structures first.
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 merge_consecutive_same_condition_ifs(bt);
                 if let Some(bf) = bf {
@@ -235,8 +228,8 @@ fn merge_consecutive_same_condition_ifs(stmts: &mut Vec<WrappedAstStatement>) {
     while i + 1 < stmts.len() {
         let should_merge = {
             let (first, rest) = stmts.split_at(i + 1);
-            let first_stmt = &first[i].statement;
-            let next_stmt = &rest[0].statement;
+            let first_stmt = &first[i].item;
+            let next_stmt = &rest[0].item;
             match (first_stmt, next_stmt) {
                 (AstStatement::If(cond1, _, None), AstStatement::If(cond2, _, None)) => {
                     opt_utils::is_pure_expression(&cond1.item)
@@ -249,8 +242,8 @@ fn merge_consecutive_same_condition_ifs(stmts: &mut Vec<WrappedAstStatement>) {
 
         if should_merge {
             let removed = stmts.remove(i + 1);
-            if let AstStatement::If(_, mut body2, _) = removed.statement {
-                if let AstStatement::If(_, body1, _) = &mut stmts[i].statement {
+            if let AstStatement::If(_, mut body2, _) = removed.item {
+                if let AstStatement::If(_, body1, _) = &mut stmts[i].item {
                     body1.append(&mut body2);
                 }
             }
@@ -267,7 +260,7 @@ mod tests {
     use crate::abstract_syntax_tree::{
         AstCall, AstExpression, AstFunctionId, AstLiteral, AstUnaryOperator,
         optimize::pattern_matching::embedded::test_utils::test_utils::{
-            make_var_map, run_parity, wrap_expression, wrap_statement,
+            make_var_map, run_parity, wrap,
         },
     };
 
@@ -277,27 +270,27 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["cond", "x", "y"]);
         let (cond, x, y) = (ids[0], ids[1], ids[2]);
 
-        let body = vec![wrap_statement(AstStatement::If(
-            wrap_expression(AstExpression::UnaryOp(
+        let body = vec![wrap(AstStatement::If(
+            wrap(AstExpression::UnaryOp(
                 AstUnaryOperator::Not,
-                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), cond))),
+                Box::new(wrap(AstExpression::Variable(vm.clone(), cond))),
             )),
-            vec![wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            vec![wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), x)),
+                wrap(AstExpression::Literal(AstLiteral::Int(1))),
             ))],
             Some(vec![
-                wrap_statement(AstStatement::Assignment(
-                    wrap_expression(AstExpression::Variable(vm.clone(), y)),
-                    wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+                wrap(AstStatement::Assignment(
+                    wrap(AstExpression::Variable(vm.clone(), y)),
+                    wrap(AstExpression::Literal(AstLiteral::Int(2))),
                 )),
-                wrap_statement(AstStatement::Assignment(
-                    wrap_expression(AstExpression::Variable(vm.clone(), y)),
-                    wrap_expression(AstExpression::Literal(AstLiteral::Int(3))),
+                wrap(AstStatement::Assignment(
+                    wrap(AstExpression::Variable(vm.clone(), y)),
+                    wrap(AstExpression::Literal(AstLiteral::Int(3))),
                 )),
-                wrap_statement(AstStatement::Assignment(
-                    wrap_expression(AstExpression::Variable(vm.clone(), y)),
-                    wrap_expression(AstExpression::Literal(AstLiteral::Int(4))),
+                wrap(AstStatement::Assignment(
+                    wrap(AstExpression::Variable(vm.clone(), y)),
+                    wrap(AstExpression::Literal(AstLiteral::Int(4))),
                 )),
             ]),
         ))];
@@ -317,11 +310,11 @@ mod tests {
         let (_ids, vm) = make_var_map(fid, &["x"]);
 
         let body = vec![
-            wrap_statement(AstStatement::Call(AstCall::Unknown(
+            wrap(AstStatement::Call(AstCall::Unknown(
                 "target".to_string(),
-                vec![wrap_expression(AstExpression::Literal(AstLiteral::Int(7)))],
+                vec![wrap(AstExpression::Literal(AstLiteral::Int(7)))],
             ))),
-            wrap_statement(AstStatement::Return(None)),
+            wrap(AstStatement::Return(None)),
         ];
 
         let (fb, embed) = run_parity(
@@ -340,19 +333,19 @@ mod tests {
         let (cond, x, y) = (ids[0], ids[1], ids[2]);
 
         let body = vec![
-            wrap_statement(AstStatement::If(
-                wrap_expression(AstExpression::Variable(vm.clone(), cond)),
-                vec![wrap_statement(AstStatement::Assignment(
-                    wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                    wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            wrap(AstStatement::If(
+                wrap(AstExpression::Variable(vm.clone(), cond)),
+                vec![wrap(AstStatement::Assignment(
+                    wrap(AstExpression::Variable(vm.clone(), x)),
+                    wrap(AstExpression::Literal(AstLiteral::Int(1))),
                 ))],
                 None,
             )),
-            wrap_statement(AstStatement::If(
-                wrap_expression(AstExpression::Variable(vm.clone(), cond)),
-                vec![wrap_statement(AstStatement::Assignment(
-                    wrap_expression(AstExpression::Variable(vm.clone(), y)),
-                    wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+            wrap(AstStatement::If(
+                wrap(AstExpression::Variable(vm.clone(), cond)),
+                vec![wrap(AstStatement::Assignment(
+                    wrap(AstExpression::Variable(vm.clone(), y)),
+                    wrap(AstExpression::Literal(AstLiteral::Int(2))),
                 ))],
                 None,
             )),

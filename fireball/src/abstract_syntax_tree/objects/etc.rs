@@ -16,9 +16,6 @@ pub enum AstJumpTarget {
     Function {
         target: AstFunctionId,
     },
-    Instruction {
-        target: AstDescriptor,
-    },
     Unknown(String),
 }
 

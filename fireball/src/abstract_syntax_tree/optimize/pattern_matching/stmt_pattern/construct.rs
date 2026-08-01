@@ -4,8 +4,7 @@ use super::{
 };
 use crate::abstract_syntax_tree::{
     ArcAstVariableMap, AstBinaryOperator, AstCall, AstExpression, AstLiteral, AstStatement,
-    AstStatementOrigin, AstUnaryOperator, AstValueOrigin, AstValueType, AstVariableId, Wrapped,
-    WrappedAstStatement,
+    AstUnaryOperator, AstValueType, AstVariableId, Wrapped,
 };
 
 // ---------------------------------------------------------------------------
@@ -144,11 +143,8 @@ pub(super) fn construct_wrapped_expr(
         },
         PatTree::Node { name, children } => {
             let expr = construct_expr_node(*name, children, caps)?;
-            // Find an origin from any captured expression to use
-            let origin = find_any_origin(caps);
             Some(Wrapped {
                 item: expr,
-                origin,
                 comment: None,
             })
         }
@@ -400,22 +396,20 @@ fn construct_binary_op(pat: &PatTree, caps: &Captures) -> Option<AstBinaryOperat
     }
 }
 
-fn construct_stmt_list(pat: &PatTree, caps: &Captures) -> Option<Vec<WrappedAstStatement>> {
+fn construct_stmt_list(pat: &PatTree, caps: &Captures) -> Option<Vec<Wrapped<AstStatement>>> {
     match pat {
         PatTree::Capture(name) => match caps.get(name)? {
             Captured::StmtList(l) => Some(l.clone()),
-            Captured::Statement(stmt) => Some(vec![WrappedAstStatement {
-                statement: stmt.clone(),
-                origin: AstStatementOrigin::Unknown,
+            Captured::Statement(stmt) => Some(vec![Wrapped {
+                item: stmt.clone(),
                 comment: None,
             }]),
             _ => None,
         },
         PatTree::Node { .. } => {
             let stmt = construct_statement(pat, caps)?;
-            Some(vec![WrappedAstStatement {
-                statement: stmt,
-                origin: AstStatementOrigin::Unknown,
+            Some(vec![Wrapped {
+                item: stmt,
                 comment: None,
             }])
         }
@@ -423,9 +417,8 @@ fn construct_stmt_list(pat: &PatTree, caps: &Captures) -> Option<Vec<WrappedAstS
             let mut result = Vec::new();
             for p in pats {
                 let stmt = construct_statement(p, caps)?;
-                result.push(WrappedAstStatement {
-                    statement: stmt,
-                    origin: AstStatementOrigin::Unknown,
+                result.push(Wrapped {
+                    item: stmt,
                     comment: None,
                 });
             }
@@ -438,7 +431,7 @@ fn construct_stmt_list(pat: &PatTree, caps: &Captures) -> Option<Vec<WrappedAstS
 fn construct_opt_stmt_list(
     pat: &PatTree,
     caps: &Captures,
-) -> Option<Option<Vec<WrappedAstStatement>>> {
+) -> Option<Option<Vec<Wrapped<AstStatement>>>> {
     match pat {
         PatTree::Capture(name) => match caps.get(name)? {
             Captured::OptStmtList(l) => Some(l.clone()),
@@ -495,19 +488,8 @@ pub fn inject_captures_into_rhai_scope(caps: &Captures, scope: &mut rhai::Scope<
     }
 }
 
-fn find_any_origin(caps: &Captures) -> AstValueOrigin {
-    for v in caps.values() {
-        match v {
-            Captured::Expression(e) => return e.origin.clone(),
-            Captured::ExpressionBox(e) => return e.origin.clone(),
-            _ => {}
-        }
-    }
-    AstValueOrigin::Unknown
-}
-
 // ---------------------------------------------------------------------------
-// Construct a Vec<WrappedAstStatement> from a capture (for emit_after)
+// Construct a Vec<Wrapped<AstStatement>> from a capture (for emit_after)
 // ---------------------------------------------------------------------------
 
 /// Construct a list of statements from a pattern and captures.
@@ -515,6 +497,6 @@ fn find_any_origin(caps: &Captures) -> AstValueOrigin {
 pub fn construct_emit_after_list(
     pat: &PatTree,
     caps: &Captures,
-) -> Option<Vec<WrappedAstStatement>> {
+) -> Option<Vec<Wrapped<AstStatement>>> {
     construct_stmt_list(pat, caps)
 }

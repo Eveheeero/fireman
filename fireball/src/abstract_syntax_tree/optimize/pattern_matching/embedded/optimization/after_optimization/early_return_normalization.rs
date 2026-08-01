@@ -5,8 +5,7 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
-        WrappedAstStatement,
+        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -43,10 +42,10 @@ pub(crate) fn normalize_early_returns(
     Ok(())
 }
 
-fn normalize_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn normalize_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Recurse into nested structures first.
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 normalize_in_list(bt);
                 if let Some(bf) = bf {
@@ -93,8 +92,8 @@ fn normalize_in_list(stmts: &mut Vec<WrappedAstStatement>) {
 /// - Must have an else branch
 /// - Else-branch must NOT contain `Label` or `Goto` (preserves jump targets)
 /// - Else-branch must NOT contain `Declaration` (avoids scope/shadowing)
-fn try_normalize_early_return(stmts: &mut Vec<WrappedAstStatement>, idx: usize) -> bool {
-    let AstStatement::If(_, branch_true, Some(branch_false)) = &stmts[idx].statement else {
+fn try_normalize_early_return(stmts: &mut Vec<Wrapped<AstStatement>>, idx: usize) -> bool {
+    let AstStatement::If(_, branch_true, Some(branch_false)) = &stmts[idx].item else {
         return false;
     };
 
@@ -102,7 +101,7 @@ fn try_normalize_early_return(stmts: &mut Vec<WrappedAstStatement>, idx: usize) 
     if branch_true.len() != 1 {
         return false;
     }
-    if !matches!(&branch_true[0].statement, AstStatement::Return(_)) {
+    if !matches!(&branch_true[0].item, AstStatement::Return(_)) {
         return false;
     }
 
@@ -113,17 +112,15 @@ fn try_normalize_early_return(stmts: &mut Vec<WrappedAstStatement>, idx: usize) 
 
     // Safe to transform: extract the else body and splice it after the if.
     let AstStatement::If(cond, branch_true, Some(branch_false)) =
-        std::mem::replace(&mut stmts[idx].statement, AstStatement::Empty)
+        std::mem::replace(&mut stmts[idx].item, AstStatement::Empty)
     else {
         unreachable!();
     };
-    let origin = stmts[idx].origin.clone();
     let comment = stmts[idx].comment.clone();
 
     // Rebuild the if without else.
-    stmts[idx] = WrappedAstStatement {
-        statement: AstStatement::If(cond, branch_true, None),
-        origin,
+    stmts[idx] = Wrapped {
+        item: AstStatement::If(cond, branch_true, None),
         comment,
     };
 
@@ -137,9 +134,9 @@ fn try_normalize_early_return(stmts: &mut Vec<WrappedAstStatement>, idx: usize) 
 }
 
 /// Check if a statement list contains Label, Goto, or Declaration at any depth.
-fn branch_contains_unsafe_stmts(stmts: &[WrappedAstStatement]) -> bool {
+fn branch_contains_unsafe_stmts(stmts: &[Wrapped<AstStatement>]) -> bool {
     for stmt in stmts {
-        match &stmt.statement {
+        match &stmt.item {
             AstStatement::Label(_) | AstStatement::Goto(_) | AstStatement::Declaration(_, _) => {
                 return true;
             }
@@ -199,19 +196,20 @@ mod tests {
         let (cond, x) = (ids[0], ids[1]);
 
         let body = vec![
-            wrap_statement(AstStatement::If(
-                wrap_expression(AstExpression::Variable(vm.clone(), cond)),
-                vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+            wrap(AstStatement::If(
+                wrap(AstExpression::Variable(vm.clone(), cond)),
+                vec![wrap(AstStatement::Return(Some(wrap(
                     AstExpression::Literal(AstLiteral::Int(1)),
                 ))))],
-                Some(vec![wrap_statement(AstStatement::Assignment(
-                    wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                    wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+                Some(vec![wrap(AstStatement::Assignment(
+                    wrap(AstExpression::Variable(vm.clone(), x)),
+                    wrap(AstExpression::Literal(AstLiteral::Int(2))),
                 ))]),
             )),
-            wrap_statement(AstStatement::Return(Some(wrap_expression(
-                AstExpression::Variable(vm.clone(), x),
-            )))),
+            wrap(AstStatement::Return(Some(wrap(AstExpression::Variable(
+                vm.clone(),
+                x,
+            ))))),
         ];
 
         let (fb, embed) = run_parity(

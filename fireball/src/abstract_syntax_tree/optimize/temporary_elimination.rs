@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstOptimizationKind, AstStatement, AstVariableId, Wrapped, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, AstVariableId, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -137,12 +137,12 @@ fn count_reads_in_statement(stmt: &AstStatement, target: AstVariableId) -> usize
         AstStatement::If(cond, bt, bf) => {
             count_reads_in_expr(&cond.item, target)
                 + bt.iter()
-                    .map(|s| count_reads_in_statement(&s.statement, target))
+                    .map(|s| count_reads_in_statement(&s.item, target))
                     .sum::<usize>()
                 + bf.as_ref()
                     .map(|fb| {
                         fb.iter()
-                            .map(|s| count_reads_in_statement(&s.statement, target))
+                            .map(|s| count_reads_in_statement(&s.item, target))
                             .sum::<usize>()
                     })
                     .unwrap_or(0)
@@ -151,16 +151,16 @@ fn count_reads_in_statement(stmt: &AstStatement, target: AstVariableId) -> usize
             count_reads_in_expr(&cond.item, target)
                 + body
                     .iter()
-                    .map(|s| count_reads_in_statement(&s.statement, target))
+                    .map(|s| count_reads_in_statement(&s.item, target))
                     .sum::<usize>()
         }
         AstStatement::For(init, cond, update, body) => {
-            count_reads_in_statement(&init.statement, target)
+            count_reads_in_statement(&init.item, target)
                 + count_reads_in_expr(&cond.item, target)
-                + count_reads_in_statement(&update.statement, target)
+                + count_reads_in_statement(&update.item, target)
                 + body
                     .iter()
-                    .map(|s| count_reads_in_statement(&s.statement, target))
+                    .map(|s| count_reads_in_statement(&s.item, target))
                     .sum::<usize>()
         }
         AstStatement::Switch(discrim, cases, default) => {
@@ -168,20 +168,20 @@ fn count_reads_in_statement(stmt: &AstStatement, target: AstVariableId) -> usize
                 + cases
                     .iter()
                     .flat_map(|(_, body)| body.iter())
-                    .map(|s| count_reads_in_statement(&s.statement, target))
+                    .map(|s| count_reads_in_statement(&s.item, target))
                     .sum::<usize>()
                 + default
                     .as_ref()
                     .map(|d| {
                         d.iter()
-                            .map(|s| count_reads_in_statement(&s.statement, target))
+                            .map(|s| count_reads_in_statement(&s.item, target))
                             .sum::<usize>()
                     })
                     .unwrap_or(0)
         }
         AstStatement::Block(body) => body
             .iter()
-            .map(|s| count_reads_in_statement(&s.statement, target))
+            .map(|s| count_reads_in_statement(&s.item, target))
             .sum(),
         AstStatement::Return(expr) => expr
             .as_ref()
@@ -358,7 +358,7 @@ fn substitute_in_statement(
         }
         AstStatement::Block(body) => {
             for s in body.iter_mut() {
-                substitute_in_statement(&mut s.statement, target, replacement);
+                substitute_in_statement(&mut s.item, target, replacement);
             }
         }
         _ => {}
@@ -367,8 +367,8 @@ fn substitute_in_statement(
 
 /// Recursively process nested structures, then perform temporary elimination on a
 /// flat statement list. Only inlines into the IMMEDIATELY next statement (window = 1).
-fn eliminate_in_statement(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
+fn eliminate_in_statement(stmt: &mut Wrapped<AstStatement>) {
+    match &mut stmt.item {
         AstStatement::If(_, bt, bf) => {
             eliminate_in_list(bt);
             if let Some(bf) = bf {
@@ -382,7 +382,7 @@ fn eliminate_in_statement(stmt: &mut WrappedAstStatement) {
     }
 }
 
-fn eliminate_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn eliminate_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Recurse into nested structures first
     for stmt in stmts.iter_mut() {
         eliminate_in_statement(stmt);
@@ -391,21 +391,21 @@ fn eliminate_in_list(stmts: &mut Vec<WrappedAstStatement>) {
     let mut removals: Vec<usize> = Vec::new();
     let mut i = 0;
     while i + 1 < stmts.len() {
-        let candidate = extract_candidate(&stmts[i].statement);
+        let candidate = extract_candidate(&stmts[i].item);
         if let Some((var_id, rhs)) = candidate {
             // Only inline into the IMMEDIATELY next statement (no window)
             let next = &stmts[i + 1];
             // Don't inline across barriers
-            if !is_barrier_for_inline(&next.statement) {
-                let read_count = count_reads_in_statement(&next.statement, var_id);
+            if !is_barrier_for_inline(&next.item) {
+                let read_count = count_reads_in_statement(&next.item, var_id);
                 if read_count == 1 {
                     // Check that next statement doesn't write any variable read by rhs
                     let mut rhs_deps = HashSet::new();
                     super::opt_utils::collect_expr_variables(&rhs.item, &mut rhs_deps);
-                    let written = get_written_var(&stmts[i + 1].statement);
+                    let written = get_written_var(&stmts[i + 1].item);
                     let deps_ok = written.map_or(true, |w| !rhs_deps.contains(&w));
                     if deps_ok {
-                        substitute_in_statement(&mut stmts[i + 1].statement, var_id, &rhs);
+                        substitute_in_statement(&mut stmts[i + 1].item, var_id, &rhs);
                         removals.push(i);
                         i += 2;
                         continue;

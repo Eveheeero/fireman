@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstOptimizationKind, AstStatement, GetRelatedVariables, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, GetRelatedVariables, Wrapped,
     },
     ir::data::IrData,
     prelude::{DecompileError, *},
@@ -31,10 +31,10 @@ pub(super) fn collapse_unused_variables(
     }
 
     let mut overwritten_locations: HashSet<Aos<IrData>> = HashSet::new();
-    let mut new_body: Vec<WrappedAstStatement> = Vec::new();
+    let mut new_body: Vec<Wrapped<AstStatement>> = Vec::new();
     for mut stmt in body.into_iter().rev() {
-        if let AstStatement::Call(_) = &stmt.statement {
-            for (_, var_id) in stmt.statement.get_related_variables() {
+        if let AstStatement::Call(_) = &stmt.item {
+            for (_, var_id) in stmt.item.get_related_variables() {
                 if let Some(location) = super::utils::var_id_to_access_location(&variables, var_id)
                 {
                     overwritten_locations.remove(&location);
@@ -44,7 +44,7 @@ pub(super) fn collapse_unused_variables(
             continue;
         }
 
-        match &mut stmt.statement {
+        match &mut stmt.item {
             /* removable */
             AstStatement::Declaration(lhs, _rhs) => {
                 let data_access_count: usize = lhs
@@ -222,7 +222,7 @@ pub(super) fn collapse_unused_variables(
 fn collapse(
     variables: &ArcAstVariableMap,
     overwritten_locations: &mut HashSet<Aos<IrData>>,
-    stmts: &mut Vec<WrappedAstStatement>,
+    stmts: &mut Vec<Wrapped<AstStatement>>,
 ) {
     let mut i = stmts.len();
     while i > 0 {
@@ -230,8 +230,8 @@ fn collapse(
         let mut drop_needed = false;
         let stmt = &mut stmts[i];
 
-        if let AstStatement::Call(_) = &stmt.statement {
-            for (_, var_id) in stmt.statement.get_related_variables() {
+        if let AstStatement::Call(_) = &stmt.item {
+            for (_, var_id) in stmt.item.get_related_variables() {
                 if let Some(location) = super::utils::var_id_to_access_location(variables, var_id) {
                     overwritten_locations.remove(&location);
                 }
@@ -240,7 +240,7 @@ fn collapse(
         }
 
         'inner: {
-            match &mut stmt.statement {
+            match &mut stmt.item {
                 /* removable */
                 AstStatement::Declaration(lhs, _rhs) => {
                     let data_access_count: usize = lhs

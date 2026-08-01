@@ -1,5 +1,4 @@
 mod bit_trick_recognition;
-mod call_argument_analyzation;
 pub(crate) mod call_graph;
 mod collapse_unused_variable;
 mod common_subexpression_elimination;
@@ -114,69 +113,6 @@ impl Ast {
                         to_version,
                         &config.pattern_matching,
                         pattern_matching::AstPatternApplyPhase::AfterParameterAnalyzation,
-                    )?;
-                }
-            }
-        }
-        if config.call_argument_analyzation {
-            for (function_id, to_version) in versions.iter().copied() {
-                if !has_function_version(&ast, function_id, to_version) {
-                    continue;
-                }
-                call_argument_analyzation::analyze_call_arguments(
-                    &mut ast,
-                    function_id,
-                    to_version,
-                )?;
-            }
-
-            // Call argument analyzation inlines callee bodies and creates new
-            // split-tail functions, both of which can contain if(true) blocks
-            // from IR analyzation. Run constant folding to eliminate dead branches.
-            // This covers: (1) functions in `versions` whose bodies were modified
-            // by inlining, (2) newly created split-tail functions, and (3)
-            // functions that were removed (inlined) then re-created as split-tails
-            // at a different version than tracked in `versions`.
-            if config.constant_folding {
-                let tracked: std::collections::HashMap<AstFunctionId, AstFunctionVersion> =
-                    versions.iter().copied().collect();
-                let all_funcs: Vec<(AstFunctionId, AstFunctionVersion)> = ast
-                    .function_versions
-                    .iter()
-                    .map(|(&fid, &fver)| {
-                        if let Some(&tracked_ver) = tracked.get(&fid) {
-                            // Function existed before; use the tracked version if it
-                            // still exists, otherwise fall back to the current version
-                            // (the function was re-created as a split-tail).
-                            if has_function_version(&ast, fid, tracked_ver) {
-                                (fid, tracked_ver)
-                            } else {
-                                (fid, fver)
-                            }
-                        } else {
-                            // Newly created function (split-tail).
-                            (fid, fver)
-                        }
-                    })
-                    .collect();
-                for (fid, ver_to_fold) in all_funcs {
-                    if has_function_version(&ast, fid, ver_to_fold) {
-                        constant_folding::fold_constants(&mut ast, fid, ver_to_fold)?;
-                    }
-                }
-            }
-
-            if config.pattern_matching_enabled {
-                for (function_id, to_version) in versions.iter().copied() {
-                    if !has_function_version(&ast, function_id, to_version) {
-                        continue;
-                    }
-                    pattern_matching::apply_patterns(
-                        &mut ast,
-                        function_id,
-                        to_version,
-                        &config.pattern_matching,
-                        pattern_matching::AstPatternApplyPhase::AfterCallArgumentAnalyzation,
                     )?;
                 }
             }

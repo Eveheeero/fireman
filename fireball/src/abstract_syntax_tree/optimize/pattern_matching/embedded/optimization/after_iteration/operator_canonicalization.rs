@@ -8,7 +8,7 @@ use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId,
         AstFunctionVersion, AstLiteral, AstOptimizationKind, AstStatement, AstUnaryOperator,
-        Wrapped, WrappedAstStatement,
+        Wrapped,
     },
     prelude::DecompileError,
 };
@@ -50,7 +50,7 @@ pub(crate) fn canonicalize_condition_expression(expr: &mut Wrapped<AstExpression
     simplify_condition_zero_cmp(expr);
 }
 
-fn canonicalize_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn canonicalize_statement_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
         canonicalize_statement(stmt);
     }
@@ -67,11 +67,11 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        let body = vec![wrap(AstStatement::Return(Some(wrap(
             AstExpression::BinaryOp(
                 AstBinaryOperator::Add,
-                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(5)))),
-                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                Box::new(wrap(AstExpression::Literal(AstLiteral::Int(5)))),
+                Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
             ),
         ))))];
 
@@ -93,12 +93,12 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        let body = vec![wrap(AstStatement::Return(Some(wrap(
             AstExpression::UnaryOp(
                 AstUnaryOperator::Not,
-                Box::new(wrap_expression(AstExpression::UnaryOp(
+                Box::new(wrap(AstExpression::UnaryOp(
                     AstUnaryOperator::Not,
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
                 ))),
             ),
         ))))];
@@ -121,13 +121,13 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        let body = vec![wrap(AstStatement::Return(Some(wrap(
             AstExpression::UnaryOp(
                 AstUnaryOperator::Not,
-                Box::new(wrap_expression(AstExpression::BinaryOp(
+                Box::new(wrap(AstExpression::BinaryOp(
                     AstBinaryOperator::Equal,
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(0)))),
+                    Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap(AstExpression::Literal(AstLiteral::Int(0)))),
                 ))),
             ),
         ))))];
@@ -150,11 +150,11 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        let body = vec![wrap(AstStatement::Return(Some(wrap(
             AstExpression::BinaryOp(
                 AstBinaryOperator::Less,
-                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(5)))),
-                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                Box::new(wrap(AstExpression::Literal(AstLiteral::Int(5)))),
+                Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
             ),
         ))))];
 
@@ -171,8 +171,8 @@ mod tests {
     }
 }
 
-fn canonicalize_statement(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
+fn canonicalize_statement(stmt: &mut Wrapped<AstStatement>) {
+    match &mut stmt.item {
         AstStatement::Declaration(_lhs, rhs) => {
             if let Some(rhs) = rhs {
                 canonicalize_expression(rhs);

@@ -7,8 +7,7 @@ use super::{
     },
 };
 use crate::abstract_syntax_tree::{
-    AstCall, AstExpression, AstLiteral, AstStatement, AstUnaryOperator, AstValueType,
-    WrappedAstStatement,
+    AstCall, AstExpression, AstLiteral, AstStatement, AstUnaryOperator, AstValueType, Wrapped,
 };
 
 fn parse_capture_ref(value: &str) -> CaptureRef {
@@ -803,39 +802,39 @@ fn value_type_to_fits_type(ty: &AstValueType) -> Option<FitsTypeName> {
 }
 
 /// Check if a statement list contains Label, Goto, or Declaration at any nesting depth.
-fn branch_contains_unsafe_stmts(stmts: &[WrappedAstStatement]) -> bool {
+fn branch_contains_unsafe_stmts(stmts: &[Wrapped<AstStatement>]) -> bool {
     for stmt in stmts {
-        if stmt_contains_unsafe(&stmt.statement) {
+        if stmt_contains_unsafe(&stmt.item) {
             return true;
         }
     }
     false
 }
 
-fn stmt_list_is_empty(stmts: &[WrappedAstStatement]) -> bool {
+fn stmt_list_is_empty(stmts: &[Wrapped<AstStatement>]) -> bool {
     stmts.is_empty()
 }
 
-fn stmt_list_ends_with_continue(stmts: &[WrappedAstStatement]) -> bool {
-    matches!(stmts.last(), Some(last) if matches!(last.statement, AstStatement::Continue))
+fn stmt_list_ends_with_continue(stmts: &[Wrapped<AstStatement>]) -> bool {
+    matches!(stmts.last(), Some(last) if matches!(last.item, AstStatement::Continue))
 }
 
-fn stmt_list_ends_with_break(stmts: &[WrappedAstStatement]) -> bool {
-    matches!(stmts.last(), Some(last) if matches!(last.statement, AstStatement::Break))
+fn stmt_list_ends_with_break(stmts: &[Wrapped<AstStatement>]) -> bool {
+    matches!(stmts.last(), Some(last) if matches!(last.item, AstStatement::Break))
 }
 
-fn stmt_list_ends_with_return(stmts: &[WrappedAstStatement]) -> bool {
-    matches!(stmts.last(), Some(last) if matches!(last.statement, AstStatement::Return(_)))
+fn stmt_list_ends_with_return(stmts: &[Wrapped<AstStatement>]) -> bool {
+    matches!(stmts.last(), Some(last) if matches!(last.item, AstStatement::Return(_)))
 }
 
-fn stmt_list_ends_with_if_not_cond_break(stmts: &[WrappedAstStatement]) -> bool {
+fn stmt_list_ends_with_if_not_cond_break(stmts: &[Wrapped<AstStatement>]) -> bool {
     let Some(last) = stmts.last() else {
         return false;
     };
-    match &last.statement {
+    match &last.item {
         AstStatement::If(inner_cond, branch_true, None) => {
             branch_true.len() == 1
-                && matches!(branch_true[0].statement, AstStatement::Break)
+                && matches!(branch_true[0].item, AstStatement::Break)
                 && matches!(
                     inner_cond.item,
                     AstExpression::UnaryOp(AstUnaryOperator::Not, _)
@@ -845,15 +844,15 @@ fn stmt_list_ends_with_if_not_cond_break(stmts: &[WrappedAstStatement]) -> bool 
     }
 }
 
-fn stmt_list_ends_with_if_cond_else_break(stmts: &[WrappedAstStatement]) -> bool {
+fn stmt_list_ends_with_if_cond_else_break(stmts: &[Wrapped<AstStatement>]) -> bool {
     let Some(last) = stmts.last() else {
         return false;
     };
-    match &last.statement {
+    match &last.item {
         AstStatement::If(_, branch_true, Some(branch_false)) => {
             branch_true.is_empty()
                 && branch_false.len() == 1
-                && matches!(branch_false[0].statement, AstStatement::Break)
+                && matches!(branch_false[0].item, AstStatement::Break)
         }
         _ => false,
     }
@@ -872,8 +871,8 @@ fn stmt_contains_unsafe(stmt: &AstStatement) -> bool {
         | AstStatement::DoWhile(_, body)
         | AstStatement::Block(body) => branch_contains_unsafe_stmts(body),
         AstStatement::For(init, _, update, body) => {
-            stmt_contains_unsafe(&init.statement)
-                || stmt_contains_unsafe(&update.statement)
+            stmt_contains_unsafe(&init.item)
+                || stmt_contains_unsafe(&update.item)
                 || branch_contains_unsafe_stmts(body)
         }
         AstStatement::Switch(_, cases, default) => {

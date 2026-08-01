@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstOptimizationKind, AstStatement, AstVariableId, Wrapped, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, AstVariableId, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -52,10 +52,10 @@ pub(super) fn narrow_lifetimes(
 
 /// Process a statement list: recurse into nested structures, then merge
 /// declarations with their first assignment.
-fn narrow_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn narrow_statement_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Recurse into nested structures first (bottom-up).
     for stmt in stmts.iter_mut() {
-        narrow_nested(&mut stmt.statement);
+        narrow_nested(&mut stmt.item);
     }
 
     // Merge uninitialized declarations with their first assignment.
@@ -90,17 +90,17 @@ fn narrow_nested(stmt: &mut AstStatement) {
 // Step 3: merge Declaration(var, None) with the first subsequent assignment
 // ---------------------------------------------------------------------------
 
-fn merge_declaration_with_first_assignment(stmts: &mut Vec<WrappedAstStatement>) {
+fn merge_declaration_with_first_assignment(stmts: &mut Vec<Wrapped<AstStatement>>) {
     let mut i = 0;
     while i < stmts.len() {
-        if let AstStatement::Declaration(var, None) = &stmts[i].statement {
+        if let AstStatement::Declaration(var, None) = &stmts[i].item {
             let var_id = var.id;
             // Find first use after i
             let mut first_assign = None;
             let has_read_before_assign = false;
             for j in (i + 1)..stmts.len() {
-                let reads = count_reads_in_statement(&stmts[j].statement, var_id);
-                let writes = get_written_var(&stmts[j].statement);
+                let reads = count_reads_in_statement(&stmts[j].item, var_id);
+                let writes = get_written_var(&stmts[j].item);
                 if writes == Some(var_id) && reads == 0 && !has_read_before_assign {
                     first_assign = Some(j);
                     break;
@@ -109,15 +109,15 @@ fn merge_declaration_with_first_assignment(stmts: &mut Vec<WrappedAstStatement>)
                     break;
                 }
                 // Check for barriers
-                if is_barrier(&stmts[j].statement) {
+                if is_barrier(&stmts[j].item) {
                     break;
                 }
             }
             if let Some(assign_idx) = first_assign {
                 // Merge: Declaration(var, None) + Assignment(var, rhs) -> Declaration(var, Some(rhs))
-                if let AstStatement::Assignment(_, rhs) = &stmts[assign_idx].statement {
+                if let AstStatement::Assignment(_, rhs) = &stmts[assign_idx].item {
                     let rhs = rhs.clone();
-                    if let AstStatement::Declaration(_, init) = &mut stmts[i].statement {
+                    if let AstStatement::Declaration(_, init) = &mut stmts[i].item {
                         *init = Some(rhs);
                     }
                     stmts.remove(assign_idx);
@@ -214,12 +214,12 @@ fn count_reads_in_statement(stmt: &AstStatement, target: AstVariableId) -> usize
         AstStatement::If(cond, bt, bf) => {
             count_reads_in_expr(&cond.item, target)
                 + bt.iter()
-                    .map(|s| count_reads_in_statement(&s.statement, target))
+                    .map(|s| count_reads_in_statement(&s.item, target))
                     .sum::<usize>()
                 + bf.as_ref()
                     .map(|fb| {
                         fb.iter()
-                            .map(|s| count_reads_in_statement(&s.statement, target))
+                            .map(|s| count_reads_in_statement(&s.item, target))
                             .sum::<usize>()
                     })
                     .unwrap_or(0)
@@ -228,16 +228,16 @@ fn count_reads_in_statement(stmt: &AstStatement, target: AstVariableId) -> usize
             count_reads_in_expr(&cond.item, target)
                 + body
                     .iter()
-                    .map(|s| count_reads_in_statement(&s.statement, target))
+                    .map(|s| count_reads_in_statement(&s.item, target))
                     .sum::<usize>()
         }
         AstStatement::For(init, cond, update, body) => {
-            count_reads_in_statement(&init.statement, target)
+            count_reads_in_statement(&init.item, target)
                 + count_reads_in_expr(&cond.item, target)
-                + count_reads_in_statement(&update.statement, target)
+                + count_reads_in_statement(&update.item, target)
                 + body
                     .iter()
-                    .map(|s| count_reads_in_statement(&s.statement, target))
+                    .map(|s| count_reads_in_statement(&s.item, target))
                     .sum::<usize>()
         }
         AstStatement::Switch(discrim, cases, default) => {
@@ -245,20 +245,20 @@ fn count_reads_in_statement(stmt: &AstStatement, target: AstVariableId) -> usize
                 + cases
                     .iter()
                     .flat_map(|(_, body)| body.iter())
-                    .map(|s| count_reads_in_statement(&s.statement, target))
+                    .map(|s| count_reads_in_statement(&s.item, target))
                     .sum::<usize>()
                 + default
                     .as_ref()
                     .map(|d| {
                         d.iter()
-                            .map(|s| count_reads_in_statement(&s.statement, target))
+                            .map(|s| count_reads_in_statement(&s.item, target))
                             .sum::<usize>()
                     })
                     .unwrap_or(0)
         }
         AstStatement::Block(body) => body
             .iter()
-            .map(|s| count_reads_in_statement(&s.statement, target))
+            .map(|s| count_reads_in_statement(&s.item, target))
             .sum(),
         AstStatement::Return(expr) => expr
             .as_ref()

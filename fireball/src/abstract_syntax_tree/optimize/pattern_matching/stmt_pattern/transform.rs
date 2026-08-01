@@ -6,7 +6,7 @@ use super::{
 };
 use crate::abstract_syntax_tree::{
     AstBinaryOperator, AstBuiltinFunctionArgument, AstCall, AstExpression, AstLiteral,
-    AstStatement, Wrapped, WrappedAstStatement,
+    AstStatement, Wrapped,
 };
 
 // ---------------------------------------------------------------------------
@@ -17,7 +17,7 @@ use crate::abstract_syntax_tree::{
 /// `match_pat` with `predicates`. If matched, construct the replacement from
 /// `replace_pat` and swap it in-place. Returns `true` if any replacement was made.
 pub fn transform_expressions_in_stmts(
-    stmts: &mut [WrappedAstStatement],
+    stmts: &mut [Wrapped<AstStatement>],
     match_pat: &PatTree,
     predicates: &[WherePredicate],
     replace_pat: &PatTree,
@@ -30,12 +30,12 @@ pub fn transform_expressions_in_stmts(
 }
 
 fn transform_expressions_in_statement(
-    stmt: &mut WrappedAstStatement,
+    stmt: &mut Wrapped<AstStatement>,
     match_pat: &PatTree,
     predicates: &[WherePredicate],
     replace_pat: &PatTree,
 ) -> bool {
-    match &mut stmt.statement {
+    match &mut stmt.item {
         AstStatement::Declaration(_lhs, rhs) => {
             if let Some(rhs) = rhs {
                 transform_expression(rhs, match_pat, predicates, replace_pat)
@@ -227,7 +227,7 @@ fn transform_expression(
 /// `match_pat` with `predicates`. If matched, call the builtin function with captured
 /// args to produce the replacement. Returns `true` if any replacement was made.
 pub fn transform_expressions_in_stmts_builtin(
-    stmts: &mut [WrappedAstStatement],
+    stmts: &mut [Wrapped<AstStatement>],
     match_pat: &PatTree,
     predicates: &[WherePredicate],
     func: &str,
@@ -243,13 +243,13 @@ pub fn transform_expressions_in_stmts_builtin(
 }
 
 fn transform_expressions_in_statement_builtin(
-    stmt: &mut WrappedAstStatement,
+    stmt: &mut Wrapped<AstStatement>,
     match_pat: &PatTree,
     predicates: &[WherePredicate],
     func: &str,
     arg_names: &[String],
 ) -> bool {
-    match &mut stmt.statement {
+    match &mut stmt.item {
         AstStatement::Declaration(_lhs, rhs) => {
             if let Some(rhs) = rhs {
                 transform_expression_builtin(rhs, match_pat, predicates, func, arg_names)
@@ -498,7 +498,6 @@ fn eval_builtin_fn(
             let result = opt_utils::eval_binary(op, lhs, rhs)?;
             Some(Wrapped {
                 item: AstExpression::Literal(result),
-                origin: source.origin.clone(),
                 comment: source.comment.clone(),
             })
         }
@@ -517,7 +516,6 @@ fn eval_builtin_fn(
             let result = opt_utils::eval_unary(op, val)?;
             Some(Wrapped {
                 item: AstExpression::Literal(result),
-                origin: source.origin.clone(),
                 comment: source.comment.clone(),
             })
         }
@@ -549,11 +547,9 @@ fn eval_builtin_fn(
                     Box::new(x.clone()),
                     Box::new(Wrapped {
                         item: AstExpression::Literal(folded),
-                        origin: source.origin.clone(),
                         comment: None,
                     }),
                 ),
-                origin: source.origin.clone(),
                 comment: source.comment.clone(),
             })
         }
@@ -584,12 +580,10 @@ fn eval_builtin_fn(
                     op.clone(),
                     Box::new(Wrapped {
                         item: AstExpression::Literal(folded),
-                        origin: source.origin.clone(),
                         comment: None,
                     }),
                     Box::new(x.clone()),
                 ),
-                origin: source.origin.clone(),
                 comment: source.comment.clone(),
             })
         }
@@ -609,7 +603,6 @@ fn eval_builtin_fn(
                     name.to_string(),
                     vec![x.clone(), n.clone()],
                 )),
-                origin: source.origin.clone(),
                 comment: source.comment.clone(),
             })
         }
@@ -636,11 +629,9 @@ fn eval_builtin_fn(
                     Box::new(x.clone()),
                     Box::new(Wrapped {
                         item: AstExpression::Literal(AstLiteral::Int(multiplier)),
-                        origin: source.origin.clone(),
                         comment: None,
                     }),
                 ),
-                origin: source.origin.clone(),
                 comment: source.comment.clone(),
             })
         }
@@ -679,11 +670,9 @@ fn eval_builtin_fn(
                             Box::new(x.clone()),
                             Box::new(Wrapped {
                                 item: AstExpression::Literal(lit),
-                                origin: source.origin.clone(),
                                 comment: None,
                             }),
                         ),
-                        origin: source.origin.clone(),
                         comment: source.comment.clone(),
                     });
                 }
@@ -708,11 +697,9 @@ fn eval_builtin_fn(
                     Box::new(x.clone()),
                     Box::new(Wrapped {
                         item: AstExpression::Literal(lit),
-                        origin: source.origin.clone(),
                         comment: None,
                     }),
                 ),
-                origin: source.origin.clone(),
                 comment: source.comment.clone(),
             })
         }
@@ -736,11 +723,9 @@ fn eval_builtin_fn(
                     Box::new(x.clone()),
                     Box::new(Wrapped {
                         item: AstExpression::Literal(AstLiteral::Int(multiplier)),
-                        origin: source.origin.clone(),
                         comment: None,
                     }),
                 ),
-                origin: source.origin.clone(),
                 comment: source.comment.clone(),
             })
         }

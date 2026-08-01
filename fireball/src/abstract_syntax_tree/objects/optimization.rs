@@ -4,7 +4,6 @@ use crate::abstract_syntax_tree::pattern_matching::AstPattern;
 pub struct AstOptimizationConfig {
     pub ir_analyzation: bool,
     pub parameter_analyzation: bool,
-    pub call_argument_analyzation: bool,
     pub constant_folding: bool,
     pub control_flow_cleanup: bool,
     pub collapse_unused_variable: bool,
@@ -77,7 +76,6 @@ impl AstOptimizationConfig {
         Self {
             ir_analyzation: true,
             parameter_analyzation: true,
-            call_argument_analyzation: true,
             constant_folding: true,
             control_flow_cleanup: true,
             collapse_unused_variable: true,
@@ -116,7 +114,6 @@ impl AstOptimizationConfig {
         Self {
             ir_analyzation: false,
             parameter_analyzation: false,
-            call_argument_analyzation: false,
             constant_folding: false,
             control_flow_cleanup: false,
             collapse_unused_variable: false,
@@ -158,10 +155,6 @@ impl AstOptimizationConfig {
     }
     pub fn parameter_analyzation(mut self, value: bool) -> Self {
         self.parameter_analyzation = value;
-        self
-    }
-    pub fn call_argument_analyzation(mut self, value: bool) -> Self {
-        self.call_argument_analyzation = value;
         self
     }
     pub fn constant_folding(mut self, value: bool) -> Self {
@@ -315,7 +308,6 @@ impl Default for AstOptimizationConfig {
         Self {
             ir_analyzation: true,
             parameter_analyzation: true,
-            call_argument_analyzation: true,
             constant_folding: true,
             control_flow_cleanup: true,
             collapse_unused_variable: true,
@@ -361,9 +353,6 @@ impl From<AstOptimizationKind> for AstOptimizationConfig {
             }
             AstOptimizationKind::ParameterAnalyzation => {
                 n.parameter_analyzation = true;
-            }
-            AstOptimizationKind::CallArgumentAnalyzation => {
-                n.call_argument_analyzation = true;
             }
             AstOptimizationKind::ConstantFolding => {
                 n.constant_folding = true;

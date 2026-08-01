@@ -692,7 +692,7 @@ impl AstPatternAsmData {
             .ok_or_else(|| format!("unsupported asm pattern `{value}`"))?;
         Ok(Self {
             source: value.to_string(),
-            statement: AstStatement::Ir(Box::new(statement)),
+            statement: AstStatement::Ir(Box::new((None, statement))),
         })
     }
 
@@ -775,7 +775,7 @@ impl AstPatternAstData {
             }
             AstPatternAstMatcher::IfAny => matches!(statement, AstStatement::If(_, _, _)),
             AstPatternAstMatcher::IrExact(expected_ir) => {
-                matches!(statement, AstStatement::Ir(actual_ir) if actual_ir.as_ref() == expected_ir.as_ref())
+                matches!(statement, AstStatement::Ir(actual_ir) if &actual_ir.1 == expected_ir.as_ref())
             }
             AstPatternAstMatcher::Unsupported => false,
         }

@@ -33,7 +33,6 @@ pub(crate) fn try_simplify_identity_op(
     let keep = |operand: &Wrapped<AstExpression>| -> Wrapped<AstExpression> {
         Wrapped {
             item: operand.item.clone(),
-            origin: expr.origin.clone(),
             comment: expr.comment.clone(),
         }
     };
@@ -103,11 +102,11 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        let body = vec![wrap(AstStatement::Return(Some(wrap(
             AstExpression::BinaryOp(
                 AstBinaryOperator::Add,
-                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(0)))),
+                Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
+                Box::new(wrap(AstExpression::Literal(AstLiteral::Int(0)))),
             ),
         ))))];
 

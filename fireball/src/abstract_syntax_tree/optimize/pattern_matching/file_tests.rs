@@ -1,13 +1,13 @@
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstExpression, AstFunction, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstOptimizationConfig, AstStatement, AstStatementOrigin, AstValueOrigin,
-        AstValueType, AstVariable, AstVariableId, Wrapped, WrappedAstStatement,
+        AstLiteral, AstOptimizationConfig, AstStatement, AstValueType, AstVariable, AstVariableId,
+        Wrapped,
         pattern_matching::{AstPattern, AstPatternInputType},
     },
     core::Instruction,
     ir::{
-        analyze::IrFunction,
+        IrBlock,
         data::{IrData, IrIntrinsic},
         statements::IrStatement,
     },
@@ -20,18 +20,9 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-fn wrap_statement(statement: AstStatement) -> WrappedAstStatement {
-    WrappedAstStatement {
-        statement,
-        origin: AstStatementOrigin::Unknown,
-        comment: None,
-    }
-}
-
-fn wrap_expression(item: AstExpression) -> Wrapped<AstExpression> {
+fn wrap<T>(item: T) -> Wrapped<T> {
     Wrapped {
         item,
-        origin: AstValueOrigin::Unknown,
         comment: None,
     }
 }
@@ -82,22 +73,25 @@ fn parse_asm_ir_statement(asm: &str) -> IrStatement {
         .unwrap_or(IrStatement::Undefined)
 }
 
-fn wrap_asm_ir(asm: &str) -> WrappedAstStatement {
-    wrap_statement(AstStatement::Ir(Box::new(parse_asm_ir_statement(asm))))
+fn wrap_asm_ir(asm: &str) -> Wrapped<AstStatement> {
+    wrap(AstStatement::Ir(Box::new((
+        None,
+        parse_asm_ir_statement(asm),
+    ))))
 }
 
 fn build_test_function(
     function_id: AstFunctionId,
     function_name: &str,
-    body: Vec<WrappedAstStatement>,
+    body: Vec<Wrapped<AstStatement>>,
     variables: Arc<RwLock<HashMap<AstVariableId, AstVariable>>>,
 ) -> AstFunction {
     let instructions: Arc<[Instruction]> = Vec::<Instruction>::new().into();
-    let ir = Arc::new(IrFunction::new(instructions, Vec::new(), Vec::new()));
+    let origin_ir = Arc::new(IrBlock::new(Vec::new(), instructions));
     AstFunction {
         name: Some(function_name.to_string()),
         id: function_id,
-        ir,
+        origin_ir,
         return_type: AstValueType::Int,
         parameters: Vec::new(),
         variables,
@@ -114,9 +108,9 @@ fn build_pattern_test_ast() -> (Ast, AstFunctionId) {
     let body = vec![
         wrap_asm_ir("mov rsp, 8"),
         wrap_asm_ir("push rbp"),
-        wrap_statement(AstStatement::Ir(Box::new(IrStatement::Undefined))),
-        wrap_statement(AstStatement::Comment("seed-comment".to_string())),
-        wrap_statement(AstStatement::Return(None)),
+        wrap(AstStatement::Ir(Box::new((None, IrStatement::Undefined)))),
+        wrap(AstStatement::Comment("seed-comment".to_string())),
+        wrap(AstStatement::Return(None)),
     ];
 
     let function = build_test_function(function_id, "pattern_examples_target", body, variable_map);
@@ -140,9 +134,9 @@ fn build_asm_contains_pattern_test_ast() -> (Ast, AstFunctionId) {
     let variable_map = Arc::new(RwLock::new(HashMap::new()));
 
     let body = vec![
-        wrap_statement(AstStatement::Assembly("call __stack_chk_fail".to_string())),
-        wrap_statement(AstStatement::Comment("replace-slot".to_string())),
-        wrap_statement(AstStatement::Return(None)),
+        wrap(AstStatement::Assembly("call __stack_chk_fail".to_string())),
+        wrap(AstStatement::Comment("replace-slot".to_string())),
+        wrap(AstStatement::Return(None)),
     ];
 
     let function = build_test_function(
@@ -171,17 +165,15 @@ fn build_ast_if_pattern_test_ast() -> (Ast, AstFunctionId) {
     let variable_map = Arc::new(RwLock::new(HashMap::new()));
 
     let body = vec![
-        wrap_statement(AstStatement::Comment("replace-slot".to_string())),
-        wrap_statement(AstStatement::If(
-            wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
-            vec![wrap_statement(AstStatement::Comment(
-                "true-branch".to_string(),
-            ))],
-            Some(vec![wrap_statement(AstStatement::Comment(
+        wrap(AstStatement::Comment("replace-slot".to_string())),
+        wrap(AstStatement::If(
+            wrap(AstExpression::Literal(AstLiteral::Int(1))),
+            vec![wrap(AstStatement::Comment("true-branch".to_string()))],
+            Some(vec![wrap(AstStatement::Comment(
                 "false-branch".to_string(),
             ))]),
         )),
-        wrap_statement(AstStatement::Return(None)),
+        wrap(AstStatement::Return(None)),
     ];
 
     let function = build_test_function(function_id, "pattern_ast_if_target", body, variable_map);
@@ -205,13 +197,16 @@ fn build_ir_if_pattern_test_ast() -> (Ast, AstFunctionId) {
     let variable_map = Arc::new(RwLock::new(HashMap::new()));
 
     let body = vec![
-        wrap_statement(AstStatement::Comment("replace-slot".to_string())),
-        wrap_statement(AstStatement::Ir(Box::new(IrStatement::Condition {
-            condition: IrData::Intrinsic(IrIntrinsic::Unknown).into(),
-            true_branch: vec![IrStatement::Halt].into_boxed_slice(),
-            false_branch: vec![IrStatement::Undefined].into_boxed_slice(),
-        }))),
-        wrap_statement(AstStatement::Return(None)),
+        wrap(AstStatement::Comment("replace-slot".to_string())),
+        wrap(AstStatement::Ir(Box::new((
+            None,
+            IrStatement::Condition {
+                condition: IrData::Intrinsic(IrIntrinsic::Unknown).into(),
+                true_branch: vec![IrStatement::Halt].into_boxed_slice(),
+                false_branch: vec![IrStatement::Undefined].into_boxed_slice(),
+            },
+        )))),
+        wrap(AstStatement::Return(None)),
     ];
 
     let function = build_test_function(function_id, "pattern_ir_if_target", body, variable_map);
@@ -235,19 +230,17 @@ fn build_predefined_pattern_test_ast() -> (Ast, AstFunctionId) {
     let variable_map = Arc::new(RwLock::new(HashMap::new()));
 
     let body = vec![
-        wrap_statement(AstStatement::Block(vec![wrap_statement(
-            AstStatement::Undefined,
-        )])),
-        wrap_statement(AstStatement::Empty),
-        wrap_statement(AstStatement::Block(Vec::new())),
-        wrap_statement(AstStatement::If(
-            wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
-            vec![wrap_statement(AstStatement::Comment("then".to_string()))],
+        wrap(AstStatement::Block(vec![wrap(AstStatement::Undefined)])),
+        wrap(AstStatement::Empty),
+        wrap(AstStatement::Block(Vec::new())),
+        wrap(AstStatement::If(
+            wrap(AstExpression::Literal(AstLiteral::Int(1))),
+            vec![wrap(AstStatement::Comment("then".to_string()))],
             Some(Vec::new()),
         )),
-        wrap_statement(AstStatement::Label("cleanup".to_string())),
-        wrap_statement(AstStatement::Comment("keep".to_string())),
-        wrap_statement(AstStatement::Return(None)),
+        wrap(AstStatement::Label("cleanup".to_string())),
+        wrap(AstStatement::Comment("keep".to_string())),
+        wrap(AstStatement::Return(None)),
     ];
 
     let function =
@@ -272,10 +265,10 @@ fn build_block_splice_pattern_test_ast() -> (Ast, AstFunctionId) {
     let variable_map = Arc::new(RwLock::new(HashMap::new()));
 
     let body = vec![
-        wrap_statement(AstStatement::Block(vec![wrap_statement(
-            AstStatement::Comment("flattened".to_string()),
-        )])),
-        wrap_statement(AstStatement::Return(None)),
+        wrap(AstStatement::Block(vec![wrap(AstStatement::Comment(
+            "flattened".to_string(),
+        ))])),
+        wrap(AstStatement::Return(None)),
     ];
 
     let function = build_test_function(
@@ -304,8 +297,8 @@ fn build_ast_sequence_pattern_test_ast() -> (Ast, AstFunctionId) {
     let variable_map = Arc::new(RwLock::new(HashMap::new()));
 
     let body = vec![
-        wrap_statement(AstStatement::Undefined),
-        wrap_statement(AstStatement::Return(None)),
+        wrap(AstStatement::Undefined),
+        wrap(AstStatement::Return(None)),
     ];
 
     let function = build_test_function(
@@ -334,10 +327,10 @@ fn build_multi_return_pattern_test_ast() -> (Ast, AstFunctionId) {
     let variable_map = Arc::new(RwLock::new(HashMap::new()));
 
     let body = vec![
-        wrap_statement(AstStatement::Return(None)),
-        wrap_statement(AstStatement::Comment("keep-me".to_string())),
-        wrap_statement(AstStatement::Return(None)),
-        wrap_statement(AstStatement::Return(None)),
+        wrap(AstStatement::Return(None)),
+        wrap(AstStatement::Comment("keep-me".to_string())),
+        wrap(AstStatement::Return(None)),
+        wrap(AstStatement::Return(None)),
     ];
 
     let function = build_test_function(
@@ -366,14 +359,17 @@ fn build_complex_pattern_test_ast() -> (Ast, AstFunctionId) {
     let variable_map = Arc::new(RwLock::new(HashMap::new()));
 
     let body = vec![
-        wrap_statement(AstStatement::Comment("seed-comment".to_string())),
-        wrap_statement(AstStatement::Assembly("push rbp".to_string())),
-        wrap_statement(AstStatement::Ir(Box::new(IrStatement::Condition {
-            condition: IrData::Intrinsic(IrIntrinsic::Unknown).into(),
-            true_branch: vec![IrStatement::Halt].into_boxed_slice(),
-            false_branch: vec![IrStatement::Undefined].into_boxed_slice(),
-        }))),
-        wrap_statement(AstStatement::Return(None)),
+        wrap(AstStatement::Comment("seed-comment".to_string())),
+        wrap(AstStatement::Assembly("push rbp".to_string())),
+        wrap(AstStatement::Ir(Box::new((
+            None,
+            IrStatement::Condition {
+                condition: IrData::Intrinsic(IrIntrinsic::Unknown).into(),
+                true_branch: vec![IrStatement::Halt].into_boxed_slice(),
+                false_branch: vec![IrStatement::Undefined].into_boxed_slice(),
+            },
+        )))),
+        wrap(AstStatement::Return(None)),
     ];
 
     let function = build_test_function(function_id, "pattern_complex_target", body, variable_map);
@@ -415,7 +411,7 @@ fn temp_pattern_path(file: &str) -> PathBuf {
     std::env::temp_dir().join(unique)
 }
 
-fn optimized_function_body(ast: &Ast, function_id: AstFunctionId) -> Vec<WrappedAstStatement> {
+fn optimized_function_body(ast: &Ast, function_id: AstFunctionId) -> Vec<Wrapped<AstStatement>> {
     let optimized_version = *ast
         .function_versions
         .get(&function_id)
@@ -430,16 +426,14 @@ fn optimized_function_body(ast: &Ast, function_id: AstFunctionId) -> Vec<Wrapped
     function.body.clone()
 }
 
-fn comment_count(body: &[WrappedAstStatement], text: &str) -> usize {
+fn comment_count(body: &[Wrapped<AstStatement>], text: &str) -> usize {
     body.iter()
-        .filter(|stmt| matches!(&stmt.statement, AstStatement::Comment(comment) if comment == text))
+        .filter(|stmt| matches!(&stmt.item, AstStatement::Comment(comment) if comment == text))
         .count()
 }
 
-fn statement_debug_lines(body: &[WrappedAstStatement]) -> Vec<String> {
-    body.iter()
-        .map(|stmt| format!("{:?}", stmt.statement))
-        .collect()
+fn statement_debug_lines(body: &[Wrapped<AstStatement>]) -> Vec<String> {
+    body.iter().map(|stmt| format!("{:?}", stmt.item)).collect()
 }
 
 type TestAstBuilder = fn() -> (Ast, AstFunctionId);
@@ -456,7 +450,7 @@ fn fixture_builder_for_pattern_input(input_type: AstPatternInputType) -> TestAst
 fn optimize_with_file_backed_pattern(
     pattern: AstPattern,
     max_pass_iterations: usize,
-) -> Vec<WrappedAstStatement> {
+) -> Vec<Wrapped<AstStatement>> {
     let pattern_name = pattern.name().to_string();
     let build_ast = fixture_builder_for_pattern_input(pattern.input_type());
     let (ast, function_id) = build_ast();
@@ -584,14 +578,14 @@ fn pattern_matching_actions_example_applies_key_actions() {
 
     assert!(
         function.body.iter().any(|stmt| matches!(
-            &stmt.statement,
-            AstStatement::Ir(ir_stmt) if matches!(ir_stmt.as_ref(), IrStatement::Halt)
+            &stmt.item,
+            AstStatement::Ir(ir_stmt) if matches!(&ir_stmt.1, IrStatement::Halt)
         )),
         "actions example must apply `do: ir halt` action"
     );
     assert!(
         function.body.iter().any(|stmt| matches!(
-            &stmt.statement,
+            &stmt.item,
             AstStatement::Comment(text) if text == "replaced-from-01"
         )),
         "actions example must apply `do: ast comment replaced-from-01` action"
@@ -604,9 +598,9 @@ fn pattern_matching_label_cleanup_matches_label_statements() {
     let version = AstFunctionVersion(1);
     let variable_map = Arc::new(RwLock::new(HashMap::new()));
     let body = vec![
-        wrap_statement(AstStatement::Comment("seed-comment".to_string())),
-        wrap_statement(AstStatement::Label("cleanup".to_string())),
-        wrap_statement(AstStatement::Return(None)),
+        wrap(AstStatement::Comment("seed-comment".to_string())),
+        wrap(AstStatement::Label("cleanup".to_string())),
+        wrap(AstStatement::Return(None)),
     ];
     let function = build_test_function(function_id, "pattern_label_target", body, variable_map);
     let mut functions = HashMap::new();
@@ -679,7 +673,7 @@ do:
     assert!(
         !body
             .iter()
-            .any(|stmt| matches!(&stmt.statement, AstStatement::Block(_))),
+            .any(|stmt| matches!(&stmt.item, AstStatement::Block(_))),
         "splice-block should remove matched standalone blocks from the current statement list"
     );
 }
@@ -835,7 +829,7 @@ do:
     let body = optimized_function_body(&optimized, function_id);
     assert_eq!(
         body.iter()
-            .filter(|stmt| matches!(&stmt.statement, AstStatement::Return(_)))
+            .filter(|stmt| matches!(&stmt.item, AstStatement::Return(_)))
             .count(),
         0,
         "single optimizer iteration should consume all matching `ast return` statements"
@@ -931,18 +925,18 @@ fn pattern_matching_predefined_patterns_apply_without_explicit_pattern_list() {
     assert!(
         !body
             .iter()
-            .any(|stmt| matches!(&stmt.statement, AstStatement::Block(block) if block.is_empty())),
+            .any(|stmt| matches!(&stmt.item, AstStatement::Block(block) if block.is_empty())),
         "predefined collapse-empty-blocks should remove empty blocks"
     );
     assert!(
         body.iter()
-            .any(|stmt| matches!(&stmt.statement, AstStatement::Undefined)),
+            .any(|stmt| matches!(&stmt.item, AstStatement::Undefined)),
         "predefined flatten-blocks should splice non-empty standalone blocks"
     );
     assert!(
         !body
             .iter()
-            .any(|stmt| matches!(&stmt.statement, AstStatement::Block(_))),
+            .any(|stmt| matches!(&stmt.item, AstStatement::Block(_))),
         "predefined cleanup patterns should leave no standalone top-level block statements in this fixture"
     );
     // Check that empty else branches are removed.
@@ -950,13 +944,13 @@ fn pattern_matching_predefined_patterns_apply_without_explicit_pattern_list() {
     // via prune-constant-conditions (replacing if(constant) with then block).
     let has_if_without_else = body.iter().any(|stmt| {
         matches!(
-            &stmt.statement,
+            &stmt.item,
             AstStatement::If(_, _, branch_false) if branch_false.is_none()
         )
     });
     let has_then_block_content = body
         .iter()
-        .any(|stmt| matches!(&stmt.statement, AstStatement::Comment(c) if c == "then"));
+        .any(|stmt| matches!(&stmt.item, AstStatement::Comment(c) if c == "then"));
     assert!(
         has_if_without_else || has_then_block_content,
         "empty else branches should be removed (either via prune-empty-else or prune-constant-conditions)"
@@ -1042,7 +1036,7 @@ do:
 
     assert!(
         function.body.iter().any(|stmt| matches!(
-            &stmt.statement,
+            &stmt.item,
             AstStatement::Comment(text) if text == "replaced-from-inline"
         )),
         "inline pattern from AstPattern::new must be parsed and applied"
@@ -1276,30 +1270,28 @@ fn build_ternary_recovery_test_ast() -> (Ast, AstFunctionId) {
         parent: Some(function_id),
     };
 
-    let cond = wrap_expression(AstExpression::Variable(
+    let cond = wrap(AstExpression::Variable(
         variable_map.clone(),
         AstVariableId {
             index: 1,
             parent: Some(function_id),
         },
     ));
-    let val_a = wrap_expression(AstExpression::Literal(AstLiteral::Int(10)));
-    let val_b = wrap_expression(AstExpression::Literal(AstLiteral::Int(20)));
-    let lhs_true = wrap_expression(AstExpression::Variable(variable_map.clone(), var_id));
-    let lhs_false = wrap_expression(AstExpression::Variable(variable_map.clone(), var_id));
+    let val_a = wrap(AstExpression::Literal(AstLiteral::Int(10)));
+    let val_b = wrap(AstExpression::Literal(AstLiteral::Int(20)));
+    let lhs_true = wrap(AstExpression::Variable(variable_map.clone(), var_id));
+    let lhs_false = wrap(AstExpression::Variable(variable_map.clone(), var_id));
 
     let if_stmt = AstStatement::If(
         cond,
-        vec![wrap_statement(AstStatement::Assignment(lhs_true, val_a))],
-        Some(vec![wrap_statement(AstStatement::Assignment(
-            lhs_false, val_b,
-        ))]),
+        vec![wrap(AstStatement::Assignment(lhs_true, val_a))],
+        Some(vec![wrap(AstStatement::Assignment(lhs_false, val_b))]),
     );
 
     let body = vec![
-        wrap_statement(AstStatement::Comment("before-ternary".to_string())),
-        wrap_statement(if_stmt),
-        wrap_statement(AstStatement::Return(None)),
+        wrap(AstStatement::Comment("before-ternary".to_string())),
+        wrap(if_stmt),
+        wrap(AstStatement::Return(None)),
     ];
 
     let function = build_test_function(function_id, "ternary_test", body, variable_map);
@@ -1343,7 +1335,7 @@ do:
     let body = optimized_function_body(&optimized, function_id);
 
     // The If statement should be replaced with an Assignment containing a Ternary
-    let has_ternary = body.iter().any(|stmt| match &stmt.statement {
+    let has_ternary = body.iter().any(|stmt| match &stmt.item {
         AstStatement::Assignment(_, rhs) => matches!(rhs.item, AstExpression::Ternary(_, _, _)),
         _ => false,
     });
@@ -1355,7 +1347,7 @@ do:
     // The If statement should be gone
     let has_if = body
         .iter()
-        .any(|stmt| matches!(&stmt.statement, AstStatement::If(_, _, _)));
+        .any(|stmt| matches!(&stmt.item, AstStatement::If(_, _, _)));
     assert!(
         !has_if,
         "ternary recovery .fb pattern must remove the original If statement"
@@ -1364,11 +1356,11 @@ do:
     // Other statements (comment + return) must be preserved
     assert_eq!(body.len(), 3, "surrounding statements must be preserved");
     assert!(
-        matches!(&body[0].statement, AstStatement::Comment(s) if s == "before-ternary"),
+        matches!(&body[0].item, AstStatement::Comment(s) if s == "before-ternary"),
         "comment before must survive"
     );
     assert!(
-        matches!(&body[2].statement, AstStatement::Return(None)),
+        matches!(&body[2].item, AstStatement::Return(None)),
         "return after must survive"
     );
 }
@@ -1399,27 +1391,25 @@ do:
         parent: Some(function_id),
     };
 
-    let cond = wrap_expression(AstExpression::Variable(
+    let cond = wrap(AstExpression::Variable(
         variable_map.clone(),
         AstVariableId {
             index: 1,
             parent: Some(function_id),
         },
     ));
-    let lhs_true = wrap_expression(AstExpression::Variable(variable_map.clone(), var_id_x));
-    let lhs_false = wrap_expression(AstExpression::Variable(variable_map.clone(), var_id_y));
-    let val_a = wrap_expression(AstExpression::Literal(AstLiteral::Int(10)));
-    let val_b = wrap_expression(AstExpression::Literal(AstLiteral::Int(20)));
+    let lhs_true = wrap(AstExpression::Variable(variable_map.clone(), var_id_x));
+    let lhs_false = wrap(AstExpression::Variable(variable_map.clone(), var_id_y));
+    let val_a = wrap(AstExpression::Literal(AstLiteral::Int(10)));
+    let val_b = wrap(AstExpression::Literal(AstLiteral::Int(20)));
 
     let if_stmt = AstStatement::If(
         cond,
-        vec![wrap_statement(AstStatement::Assignment(lhs_true, val_a))],
-        Some(vec![wrap_statement(AstStatement::Assignment(
-            lhs_false, val_b,
-        ))]),
+        vec![wrap(AstStatement::Assignment(lhs_true, val_a))],
+        Some(vec![wrap(AstStatement::Assignment(lhs_false, val_b))]),
     );
 
-    let body = vec![wrap_statement(if_stmt)];
+    let body = vec![wrap(if_stmt)];
     let function = build_test_function(function_id, "ternary_reject", body, variable_map);
     let mut functions = HashMap::new();
     functions.insert(function_id, VersionMap::new(version, function));
@@ -1446,7 +1436,7 @@ do:
     // The If should NOT be converted because v1 != v2
     let has_if = body
         .iter()
-        .any(|stmt| matches!(&stmt.statement, AstStatement::If(_, _, _)));
+        .any(|stmt| matches!(&stmt.item, AstStatement::If(_, _, _)));
     assert!(
         has_if,
         "where eq($v1, $v2) must reject when variables differ"
@@ -1480,24 +1470,24 @@ do:
     };
 
     // Build: while(true) { if(c) { x = 1 } else { x = 2 } }
-    let inner_cond = wrap_expression(AstExpression::Variable(variable_map.clone(), cond_var));
+    let inner_cond = wrap(AstExpression::Variable(variable_map.clone(), cond_var));
     let inner_if = AstStatement::If(
         inner_cond,
-        vec![wrap_statement(AstStatement::Assignment(
-            wrap_expression(AstExpression::Variable(variable_map.clone(), var_id)),
-            wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+        vec![wrap(AstStatement::Assignment(
+            wrap(AstExpression::Variable(variable_map.clone(), var_id)),
+            wrap(AstExpression::Literal(AstLiteral::Int(1))),
         ))],
-        Some(vec![wrap_statement(AstStatement::Assignment(
-            wrap_expression(AstExpression::Variable(variable_map.clone(), var_id)),
-            wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+        Some(vec![wrap(AstStatement::Assignment(
+            wrap(AstExpression::Variable(variable_map.clone(), var_id)),
+            wrap(AstExpression::Literal(AstLiteral::Int(2))),
         ))]),
     );
     let while_stmt = AstStatement::While(
-        wrap_expression(AstExpression::Literal(AstLiteral::Bool(true))),
-        vec![wrap_statement(inner_if)],
+        wrap(AstExpression::Literal(AstLiteral::Bool(true))),
+        vec![wrap(inner_if)],
     );
 
-    let body = vec![wrap_statement(while_stmt)];
+    let body = vec![wrap(while_stmt)];
     let function = build_test_function(function_id, "ternary_nested", body, variable_map);
     let mut functions = HashMap::new();
     functions.insert(function_id, VersionMap::new(version, function));
@@ -1522,11 +1512,11 @@ do:
     let body = optimized_function_body(&optimized, function_id);
 
     // The while loop should contain an Assignment with Ternary, not an If
-    let while_body = match &body[0].statement {
+    let while_body = match &body[0].item {
         AstStatement::While(_, body) => body,
         other => panic!("expected While, got {other:?}"),
     };
-    let has_ternary = while_body.iter().any(|stmt| match &stmt.statement {
+    let has_ternary = while_body.iter().any(|stmt| match &stmt.item {
         AstStatement::Assignment(_, rhs) => matches!(rhs.item, AstExpression::Ternary(_, _, _)),
         _ => false,
     });
@@ -1556,22 +1546,22 @@ fn stmt_pattern_if_conversion_reversal_preserves_simple_ternary() {
 
     // x = c ? 10 : 20  (no nesting — should NOT be expanded)
     let simple_ternary = AstExpression::Ternary(
-        Box::new(wrap_expression(AstExpression::Variable(
+        Box::new(wrap(AstExpression::Variable(
             variable_map.clone(),
             AstVariableId {
                 index: 1,
                 parent: Some(function_id),
             },
         ))),
-        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(10)))),
-        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(20)))),
+        Box::new(wrap(AstExpression::Literal(AstLiteral::Int(10)))),
+        Box::new(wrap(AstExpression::Literal(AstLiteral::Int(20)))),
     );
     let assign = AstStatement::Assignment(
-        wrap_expression(AstExpression::Variable(variable_map.clone(), var_id)),
-        wrap_expression(simple_ternary),
+        wrap(AstExpression::Variable(variable_map.clone(), var_id)),
+        wrap(simple_ternary),
     );
 
-    let body = vec![wrap_statement(assign)];
+    let body = vec![wrap(assign)];
     let function = build_test_function(function_id, "if_conv_preserve", body, variable_map);
     let mut functions = HashMap::new();
     functions.insert(function_id, VersionMap::new(version, function));
@@ -1596,7 +1586,7 @@ fn stmt_pattern_if_conversion_reversal_preserves_simple_ternary() {
     let body = optimized_function_body(&optimized, function_id);
 
     // Simple ternary should NOT be expanded
-    let has_ternary_assign = body.iter().any(|stmt| match &stmt.statement {
+    let has_ternary_assign = body.iter().any(|stmt| match &stmt.item {
         AstStatement::Assignment(_, rhs) => matches!(rhs.item, AstExpression::Ternary(_, _, _)),
         _ => false,
     });
@@ -1634,27 +1624,27 @@ fn stmt_pattern_if_conversion_reversal_expands_nested_ternary() {
 
     // x = c1 ? (c2 ? 10 : 20) : 30
     let inner_ternary = AstExpression::Ternary(
-        Box::new(wrap_expression(AstExpression::Variable(
+        Box::new(wrap(AstExpression::Variable(
             variable_map.clone(),
             cond2_id,
         ))),
-        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(10)))),
-        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(20)))),
+        Box::new(wrap(AstExpression::Literal(AstLiteral::Int(10)))),
+        Box::new(wrap(AstExpression::Literal(AstLiteral::Int(20)))),
     );
     let outer_ternary = AstExpression::Ternary(
-        Box::new(wrap_expression(AstExpression::Variable(
+        Box::new(wrap(AstExpression::Variable(
             variable_map.clone(),
             cond1_id,
         ))),
-        Box::new(wrap_expression(inner_ternary)),
-        Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(30)))),
+        Box::new(wrap(inner_ternary)),
+        Box::new(wrap(AstExpression::Literal(AstLiteral::Int(30)))),
     );
     let assign = AstStatement::Assignment(
-        wrap_expression(AstExpression::Variable(variable_map.clone(), var_id)),
-        wrap_expression(outer_ternary),
+        wrap(AstExpression::Variable(variable_map.clone(), var_id)),
+        wrap(outer_ternary),
     );
 
-    let body = vec![wrap_statement(assign)];
+    let body = vec![wrap(assign)];
     let function = build_test_function(function_id, "if_conv_reversal_test", body, variable_map);
     let mut functions = HashMap::new();
     functions.insert(function_id, VersionMap::new(version, function));
@@ -1696,8 +1686,8 @@ fn stmt_pattern_if_conversion_reversal_expands_nested_ternary() {
 }
 
 // Helper to recursively check for If statements
-fn has_if_recursive(stmts: &[WrappedAstStatement]) -> bool {
-    stmts.iter().any(|stmt| match &stmt.statement {
+fn has_if_recursive(stmts: &[Wrapped<AstStatement>]) -> bool {
+    stmts.iter().any(|stmt| match &stmt.item {
         AstStatement::If(_, _, _) => true,
         AstStatement::Block(block) => has_if_recursive(block),
         AstStatement::While(_, body) => has_if_recursive(body),
@@ -1711,10 +1701,10 @@ fn has_if_recursive(stmts: &[WrappedAstStatement]) -> bool {
 }
 
 // Helper to recursively count Ternary expressions in statements
-fn count_ternary_in_stmts(stmts: &[WrappedAstStatement]) -> usize {
+fn count_ternary_in_stmts(stmts: &[Wrapped<AstStatement>]) -> usize {
     stmts
         .iter()
-        .map(|stmt| match &stmt.statement {
+        .map(|stmt| match &stmt.item {
             AstStatement::Assignment(_, rhs) => count_ternary_in_expr(&rhs.item),
             AstStatement::If(cond, then_body, else_body) => {
                 count_ternary_in_expr(&cond.item)

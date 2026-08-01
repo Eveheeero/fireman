@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
-        AstOptimizationKind, AstStatement, AstVariableId, Wrapped, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, AstVariableId, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -62,14 +62,14 @@ pub(super) fn eliminate_common_subexpressions(
 // Statement list / statement processing
 // ---------------------------------------------------------------------------
 
-fn cse_statement_list(stmts: &mut Vec<WrappedAstStatement>, env: &mut HashMap<u64, CachedExpr>) {
+fn cse_statement_list(stmts: &mut Vec<Wrapped<AstStatement>>, env: &mut HashMap<u64, CachedExpr>) {
     for stmt in stmts.iter_mut() {
         cse_statement(stmt, env);
     }
 }
 
-fn cse_statement(stmt: &mut WrappedAstStatement, env: &mut HashMap<u64, CachedExpr>) {
-    match &mut stmt.statement {
+fn cse_statement(stmt: &mut Wrapped<AstStatement>, env: &mut HashMap<u64, CachedExpr>) {
+    match &mut stmt.item {
         AstStatement::Assignment(lhs, rhs) => {
             // Try to replace RHS with a cached variable if it is a pure
             // duplicate, then record the new mapping.
@@ -96,7 +96,6 @@ fn cse_statement(stmt: &mut WrappedAstStatement, env: &mut HashMap<u64, CachedEx
                     if let AstExpression::Variable(vars, _) = &lhs.item {
                         let replacement = Wrapped {
                             item: AstExpression::Variable(vars.clone(), dst_id),
-                            origin: rhs.origin.clone(),
                             comment: None,
                         };
                         env.insert(
@@ -140,7 +139,6 @@ fn cse_statement(stmt: &mut WrappedAstStatement, env: &mut HashMap<u64, CachedEx
                     if let Some(vars) = extract_variable_map(&rhs.item) {
                         let replacement = Wrapped {
                             item: AstExpression::Variable(vars, var_id),
-                            origin: rhs.origin.clone(),
                             comment: None,
                         };
                         env.insert(
@@ -195,7 +193,7 @@ fn cse_statement(stmt: &mut WrappedAstStatement, env: &mut HashMap<u64, CachedEx
             let _ = cond;
             let mut written = HashSet::new();
             collect_written_vars_list(body, &mut written);
-            collect_written_vars_stmt(&update.statement, &mut written);
+            collect_written_vars_stmt(&update.item, &mut written);
             invalidate_written(env, &written);
             let mut env_body = env.clone();
             cse_statement_list(body, &mut env_body);
@@ -320,9 +318,9 @@ fn intersect_envs(
 // Collect written variables (reused from other passes' pattern)
 // ---------------------------------------------------------------------------
 
-fn collect_written_vars_list(stmts: &[WrappedAstStatement], out: &mut HashSet<AstVariableId>) {
+fn collect_written_vars_list(stmts: &[Wrapped<AstStatement>], out: &mut HashSet<AstVariableId>) {
     for stmt in stmts {
-        collect_written_vars_stmt(&stmt.statement, out);
+        collect_written_vars_stmt(&stmt.item, out);
     }
 }
 
@@ -346,8 +344,8 @@ fn collect_written_vars_stmt(stmt: &AstStatement, out: &mut HashSet<AstVariableI
             collect_written_vars_list(body, out);
         }
         AstStatement::For(init, _, update, body) => {
-            collect_written_vars_stmt(&init.statement, out);
-            collect_written_vars_stmt(&update.statement, out);
+            collect_written_vars_stmt(&init.item, out);
+            collect_written_vars_stmt(&update.item, out);
             collect_written_vars_list(body, out);
         }
         AstStatement::Switch(_, cases, default) => {

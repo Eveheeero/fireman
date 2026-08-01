@@ -4,7 +4,6 @@ use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
         AstOptimizationKind, AstStatement, AstUnaryOperator, AstValueType, AstVariableId, Wrapped,
-        WrappedAstStatement,
     },
     prelude::DecompileError,
 };
@@ -115,7 +114,7 @@ pub(super) fn infer_signedness(
 // ---------------------------------------------------------------------------
 
 fn collect_evidence_from_statement_list(
-    stmts: &[WrappedAstStatement],
+    stmts: &[Wrapped<AstStatement>],
     evidence: &mut HashMap<AstVariableId, Vec<SignEvidence>>,
 ) {
     for stmt in stmts.iter() {
@@ -124,10 +123,10 @@ fn collect_evidence_from_statement_list(
 }
 
 fn collect_evidence_from_statement(
-    stmt: &WrappedAstStatement,
+    stmt: &Wrapped<AstStatement>,
     evidence: &mut HashMap<AstVariableId, Vec<SignEvidence>>,
 ) {
-    match &stmt.statement {
+    match &stmt.item {
         AstStatement::Declaration(_var, rhs) => {
             if let Some(rhs) = rhs {
                 collect_evidence_from_expression(rhs, evidence);

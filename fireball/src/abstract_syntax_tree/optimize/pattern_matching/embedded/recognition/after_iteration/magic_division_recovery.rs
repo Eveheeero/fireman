@@ -7,7 +7,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
-        AstOptimizationKind, AstStatement, Wrapped, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -44,14 +44,14 @@ pub(crate) fn recover_magic_divisions(
     Ok(())
 }
 
-fn recover_in_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn recover_in_statement_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
         recover_in_statement(stmt);
     }
 }
 
-fn recover_in_statement(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
+fn recover_in_statement(stmt: &mut Wrapped<AstStatement>) {
+    match &mut stmt.item {
         AstStatement::Declaration(_, rhs) => {
             if let Some(rhs) = rhs {
                 recover_in_expression(rhs);
@@ -263,7 +263,6 @@ fn wrap_with_source(
 ) -> Wrapped<AstExpression> {
     Wrapped {
         item,
-        origin: source.origin.clone(),
         comment: source.comment.clone(),
     }
 }
@@ -274,7 +273,7 @@ mod tests {
     use crate::abstract_syntax_tree::{
         AstFunctionId,
         optimize::pattern_matching::embedded::test_utils::test_utils::{
-            make_var_map, run_parity, wrap_expression, wrap_statement,
+            make_var_map, run_parity, wrap,
         },
     };
 
@@ -284,17 +283,17 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        let body = vec![wrap(AstStatement::Return(Some(wrap(
             AstExpression::BinaryOp(
                 AstBinaryOperator::RightShift,
-                Box::new(wrap_expression(AstExpression::BinaryOp(
+                Box::new(wrap(AstExpression::BinaryOp(
                     AstBinaryOperator::Mul,
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(
+                    Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap(AstExpression::Literal(AstLiteral::UInt(
                         0x8000000000000000,
                     )))),
                 ))),
-                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(1)))),
+                Box::new(wrap(AstExpression::Literal(AstLiteral::UInt(1)))),
             ),
         ))))];
 
@@ -322,17 +321,17 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        let body = vec![wrap(AstStatement::Return(Some(wrap(
             AstExpression::BinaryOp(
                 AstBinaryOperator::RightShift,
-                Box::new(wrap_expression(AstExpression::BinaryOp(
+                Box::new(wrap(AstExpression::BinaryOp(
                     AstBinaryOperator::Mul,
-                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(
+                    Box::new(wrap(AstExpression::Literal(AstLiteral::UInt(
                         0x8000000000000000,
                     )))),
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
                 ))),
-                Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(1)))),
+                Box::new(wrap(AstExpression::Literal(AstLiteral::UInt(1)))),
             ),
         ))))];
 

@@ -1,7 +1,7 @@
 //! Build and query the inter-procedural call graph.
 
 use crate::abstract_syntax_tree::{
-    Ast, AstCall, AstExpression, AstFunctionId, AstStatement, WrappedAstStatement,
+    Ast, AstCall, AstExpression, AstFunctionId, AstStatement, Wrapped,
 };
 use hashbrown::{HashMap, HashSet};
 
@@ -39,9 +39,9 @@ pub fn build_call_graph(ast: &Ast) -> CallGraph {
     CallGraph { callees, callers }
 }
 
-fn collect_call_targets(stmts: &[WrappedAstStatement], out: &mut HashSet<AstFunctionId>) {
+fn collect_call_targets(stmts: &[Wrapped<AstStatement>], out: &mut HashSet<AstFunctionId>) {
     for stmt in stmts {
-        collect_call_targets_in_stmt(&stmt.statement, out);
+        collect_call_targets_in_stmt(&stmt.item, out);
     }
 }
 
@@ -61,9 +61,9 @@ fn collect_call_targets_in_stmt(stmt: &AstStatement, out: &mut HashSet<AstFuncti
             collect_call_targets(body, out);
         }
         AstStatement::For(init, cond, update, body) => {
-            collect_call_targets_in_stmt(&init.statement, out);
+            collect_call_targets_in_stmt(&init.item, out);
             collect_call_targets_in_expr(&cond.item, out);
-            collect_call_targets_in_stmt(&update.statement, out);
+            collect_call_targets_in_stmt(&update.item, out);
             collect_call_targets(body, out);
         }
         AstStatement::Switch(disc, cases, default) => {
@@ -276,9 +276,9 @@ pub fn infer_pure_functions(ast: &Ast, graph: &CallGraph) -> HashSet<AstFunction
 /// Check if a function body is locally pure (no writes through pointers, no
 /// impure expressions in statements). Calls are ignored — they're checked
 /// transitively via the call graph.
-fn body_is_locally_pure(stmts: &[WrappedAstStatement]) -> bool {
+fn body_is_locally_pure(stmts: &[Wrapped<AstStatement>]) -> bool {
     for stmt in stmts {
-        if !stmt_is_locally_pure(&stmt.statement) {
+        if !stmt_is_locally_pure(&stmt.item) {
             return false;
         }
     }
@@ -299,8 +299,8 @@ fn stmt_is_locally_pure(stmt: &AstStatement) -> bool {
         }
         AstStatement::While(_, body) | AstStatement::Block(body) => body_is_locally_pure(body),
         AstStatement::For(init, _, update, body) => {
-            stmt_is_locally_pure(&init.statement)
-                && stmt_is_locally_pure(&update.statement)
+            stmt_is_locally_pure(&init.item)
+                && stmt_is_locally_pure(&update.item)
                 && body_is_locally_pure(body)
         }
         AstStatement::Switch(_, cases, default) => {

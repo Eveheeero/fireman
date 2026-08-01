@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstStatement, AstVariableId, WrappedAstStatement,
+        AstStatement, AstVariableId, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -44,7 +44,7 @@ pub(super) fn eliminate_dead_stores(
     Ok(())
 }
 
-fn eliminate_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn eliminate_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Recurse into nested structures first
     for stmt in stmts.iter_mut() {
         eliminate_in_statement(stmt);
@@ -63,7 +63,7 @@ fn eliminate_in_list(stmts: &mut Vec<WrappedAstStatement>) {
 
     for i in (0..stmts.len()).rev() {
         let stmt = &stmts[i];
-        match &stmt.statement {
+        match &stmt.item {
             AstStatement::Assignment(lhs, rhs) => {
                 if let AstExpression::Variable(_, var_id) = &lhs.item {
                     let var_id = *var_id;
@@ -179,8 +179,8 @@ fn eliminate_in_list(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
-fn eliminate_in_statement(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
+fn eliminate_in_statement(stmt: &mut Wrapped<AstStatement>) {
+    match &mut stmt.item {
         AstStatement::If(_, bt, bf) => {
             eliminate_in_list(bt);
             if let Some(bf) = bf {
@@ -245,9 +245,9 @@ fn collect_reads_call(call: &AstCall, out: &mut HashSet<AstVariableId>) {
     }
 }
 
-fn collect_reads_list(stmts: &[WrappedAstStatement], out: &mut HashSet<AstVariableId>) {
+fn collect_reads_list(stmts: &[Wrapped<AstStatement>], out: &mut HashSet<AstVariableId>) {
     for stmt in stmts {
-        collect_reads_stmt(&stmt.statement, out);
+        collect_reads_stmt(&stmt.item, out);
     }
 }
 
@@ -280,9 +280,9 @@ fn collect_reads_stmt(stmt: &AstStatement, out: &mut HashSet<AstVariableId>) {
             collect_reads_list(body, out);
         }
         AstStatement::For(init, cond, update, body) => {
-            collect_reads_stmt(&init.statement, out);
+            collect_reads_stmt(&init.item, out);
             collect_reads_expr(&cond.item, out);
-            collect_reads_stmt(&update.statement, out);
+            collect_reads_stmt(&update.item, out);
             collect_reads_list(body, out);
         }
         AstStatement::Switch(discrim, cases, default) => {
@@ -308,8 +308,8 @@ fn collect_reads_stmt(stmt: &AstStatement, out: &mut HashSet<AstVariableId>) {
     }
 }
 
-fn list_contains_call(stmts: &[WrappedAstStatement]) -> bool {
-    stmts.iter().any(|s| stmt_contains_call(&s.statement))
+fn list_contains_call(stmts: &[Wrapped<AstStatement>]) -> bool {
+    stmts.iter().any(|s| stmt_contains_call(&s.item))
 }
 
 fn stmt_contains_call(stmt: &AstStatement) -> bool {
@@ -330,9 +330,9 @@ fn stmt_contains_call(stmt: &AstStatement) -> bool {
             expr_contains_call(&cond.item) || list_contains_call(body)
         }
         AstStatement::For(init, cond, update, body) => {
-            stmt_contains_call(&init.statement)
+            stmt_contains_call(&init.item)
                 || expr_contains_call(&cond.item)
-                || stmt_contains_call(&update.statement)
+                || stmt_contains_call(&update.item)
                 || list_contains_call(body)
         }
         AstStatement::Switch(discrim, cases, default) => {

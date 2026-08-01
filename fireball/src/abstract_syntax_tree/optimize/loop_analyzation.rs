@@ -4,7 +4,7 @@ use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
         AstJumpTarget, AstLiteral, AstOptimizationKind, AstStatement, AstUnaryOperator,
-        AstValueOrigin, AstVariableId, Wrapped, WrappedAstStatement,
+        AstVariableId, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -48,14 +48,14 @@ pub(super) fn analyze_loops(
     Ok(())
 }
 
-fn normalize_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn normalize_statement_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
         normalize_statement(stmt);
     }
 }
 
-fn normalize_statement(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
+fn normalize_statement(stmt: &mut Wrapped<AstStatement>) {
+    match &mut stmt.item {
         AstStatement::If(_, branch_true, branch_false) => {
             normalize_statement_list(branch_true);
             if let Some(branch_false) = branch_false {
@@ -70,7 +70,7 @@ fn normalize_statement(stmt: &mut WrappedAstStatement) {
             normalize_statement(update);
             normalize_statement_list(body);
             if is_noop_statement(init.as_ref()) && is_noop_statement(update.as_ref()) {
-                stmt.statement = AstStatement::While(cond.clone(), std::mem::take(body));
+                stmt.item = AstStatement::While(cond.clone(), std::mem::take(body));
             }
         }
         AstStatement::Switch(_, cases, default) => {
@@ -103,10 +103,10 @@ fn normalize_statement(stmt: &mut WrappedAstStatement) {
 
 /// Normalize rotated loops: convert `if(cond) { while(cond) { body; } }` → `while(cond) { body; }`
 /// when the condition is side-effect-free (pure).
-fn normalize_rotated_loops(stmts: &mut Vec<WrappedAstStatement>) {
+fn normalize_rotated_loops(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Recurse into nested structures first.
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 normalize_rotated_loops(bt);
                 if let Some(bf) = bf {
@@ -131,7 +131,7 @@ fn normalize_rotated_loops(stmts: &mut Vec<WrappedAstStatement>) {
 
     // Now look for `if(cond) { while(cond) { body } }` at this level.
     for stmt in stmts.iter_mut() {
-        let AstStatement::If(if_cond, branch_true, branch_false) = &mut stmt.statement else {
+        let AstStatement::If(if_cond, branch_true, branch_false) = &mut stmt.item else {
             continue;
         };
         // Must be if-without-else, and condition must be pure.
@@ -145,7 +145,7 @@ fn normalize_rotated_loops(stmts: &mut Vec<WrappedAstStatement>) {
         if branch_true.len() != 1 {
             continue;
         }
-        let AstStatement::While(while_cond, _) = &branch_true[0].statement else {
+        let AstStatement::While(while_cond, _) = &branch_true[0].item else {
             continue;
         };
         if !super::opt_utils::expr_structurally_equal(&if_cond.item, &while_cond.item) {
@@ -153,14 +153,14 @@ fn normalize_rotated_loops(stmts: &mut Vec<WrappedAstStatement>) {
         }
         // Safe to collapse: replace `if(cond) { while(cond) { body } }` with `while(cond) { body }`.
         let while_stmt = branch_true.remove(0);
-        stmt.statement = while_stmt.statement;
+        stmt.item = while_stmt.item;
     }
 }
 
 /// Normalize infinite loops: convert `while(1)` / `while(nonzero_literal)` to `while(true)`.
-fn normalize_infinite_loops(stmts: &mut Vec<WrappedAstStatement>) {
+fn normalize_infinite_loops(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::While(cond, body) => {
                 normalize_infinite_loops(body);
                 if is_always_true_literal(&cond.item) {
@@ -198,11 +198,8 @@ fn is_always_true_literal(expr: &AstExpression) -> bool {
     }
 }
 
-fn is_noop_statement(stmt: &WrappedAstStatement) -> bool {
-    matches!(
-        &stmt.statement,
-        AstStatement::Empty | AstStatement::Comment(_)
-    )
+fn is_noop_statement(stmt: &Wrapped<AstStatement>) -> bool {
+    matches!(&stmt.item, AstStatement::Empty | AstStatement::Comment(_))
 }
 
 fn get_assigned_var(stmt: &AstStatement) -> Option<AstVariableId> {
@@ -219,10 +216,10 @@ fn get_assigned_var(stmt: &AstStatement) -> Option<AstVariableId> {
     }
 }
 
-fn try_convert_while_to_for(stmts: &mut Vec<WrappedAstStatement>) {
+fn try_convert_while_to_for(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Recurse into nested statement bodies first
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, branch_true, branch_false) => {
                 try_convert_while_to_for(branch_true);
                 if let Some(branch_false) = branch_false {
@@ -253,7 +250,7 @@ fn try_convert_while_to_for(stmts: &mut Vec<WrappedAstStatement>) {
     // Now look for init-before-while patterns at this level
     let mut i = 0;
     while i + 1 < stmts.len() {
-        let init_var_id = match get_assigned_var(&stmts[i].statement) {
+        let init_var_id = match get_assigned_var(&stmts[i].item) {
             Some(id) => id,
             None => {
                 i += 1;
@@ -261,10 +258,10 @@ fn try_convert_while_to_for(stmts: &mut Vec<WrappedAstStatement>) {
             }
         };
 
-        let should_convert = if let AstStatement::While(cond, body) = &stmts[i + 1].statement {
+        let should_convert = if let AstStatement::While(cond, body) = &stmts[i + 1].item {
             if body.len() >= 2 {
                 let last = &body[body.len() - 1];
-                if let Some(update_var_id) = get_assigned_var(&last.statement) {
+                if let Some(update_var_id) = get_assigned_var(&last.item) {
                     if update_var_id == init_var_id {
                         let mut vars = hashbrown::HashSet::new();
                         super::opt_utils::collect_expr_variables(&cond.item, &mut vars);
@@ -285,10 +282,10 @@ fn try_convert_while_to_for(stmts: &mut Vec<WrappedAstStatement>) {
         if should_convert {
             let init_stmt = stmts.remove(i);
             if let AstStatement::While(cond, mut body) =
-                std::mem::replace(&mut stmts[i].statement, AstStatement::Empty)
+                std::mem::replace(&mut stmts[i].item, AstStatement::Empty)
             {
                 let update_stmt = body.pop().unwrap();
-                stmts[i].statement =
+                stmts[i].item =
                     AstStatement::For(Box::new(init_stmt), cond, Box::new(update_stmt), body);
             }
             // Don't increment i; re-check at the same index
@@ -299,9 +296,9 @@ fn try_convert_while_to_for(stmts: &mut Vec<WrappedAstStatement>) {
 }
 
 /// Convert `while(true) { ... if (!cond) break; }` into `do { ... } while(cond);`.
-fn try_convert_while_to_dowhile(stmts: &mut Vec<WrappedAstStatement>) {
+fn try_convert_while_to_dowhile(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, branch_true, branch_false) => {
                 try_convert_while_to_dowhile(branch_true);
                 if let Some(branch_false) = branch_false {
@@ -335,17 +332,19 @@ fn try_convert_while_to_dowhile(stmts: &mut Vec<WrappedAstStatement>) {
             continue;
         };
 
-        let AstStatement::While(_, body) = &mut stmt.statement else {
+        let AstStatement::While(_, body) = &mut stmt.item else {
             continue;
         };
         body.remove(break_index);
         let new_body = std::mem::take(body);
-        stmt.statement = AstStatement::DoWhile(loop_cond, new_body);
+        stmt.item = AstStatement::DoWhile(loop_cond, new_body);
     }
 }
 
-fn extract_dowhile_rewrite(stmt: &WrappedAstStatement) -> Option<(Wrapped<AstExpression>, usize)> {
-    let AstStatement::While(cond, body) = &stmt.statement else {
+fn extract_dowhile_rewrite(
+    stmt: &Wrapped<AstStatement>,
+) -> Option<(Wrapped<AstExpression>, usize)> {
+    let AstStatement::While(cond, body) = &stmt.item else {
         return None;
     };
 
@@ -359,11 +358,11 @@ fn extract_dowhile_rewrite(stmt: &WrappedAstStatement) -> Option<(Wrapped<AstExp
         return None;
     }
 
-    extract_dowhile_condition_from_break_guard(&break_guard.statement)
+    extract_dowhile_condition_from_break_guard(&break_guard.item)
         .map(|loop_cond| (loop_cond, break_index))
 }
 
-fn last_meaningful_statement_index(stmts: &[WrappedAstStatement]) -> Option<usize> {
+fn last_meaningful_statement_index(stmts: &[Wrapped<AstStatement>]) -> Option<usize> {
     stmts.iter().rposition(|stmt| !is_noop_statement(stmt))
 }
 
@@ -379,7 +378,7 @@ fn extract_dowhile_condition_from_break_guard(
     }
 
     let break_stmt = branch_true.first()?;
-    if break_stmt.comment.is_some() || !matches!(&break_stmt.statement, AstStatement::Break) {
+    if break_stmt.comment.is_some() || !matches!(&break_stmt.item, AstStatement::Break) {
         return None;
     }
 
@@ -396,7 +395,6 @@ fn extract_dowhile_condition_from_break_guard(
                     left.clone(),
                     right.clone(),
                 ),
-                origin: cond.origin.clone(),
                 comment: cond.comment.clone(),
             })
         }
@@ -418,11 +416,11 @@ fn is_false_literal(expr: &AstExpression) -> bool {
 // ---------------------------------------------------------------------------
 
 /// Classify a loop body as a known memory-operation pattern.
-fn classify_loop_body(body: &[WrappedAstStatement]) -> Option<&'static str> {
+fn classify_loop_body(body: &[Wrapped<AstStatement>]) -> Option<&'static str> {
     // Filter to non-empty/non-comment statements for pattern matching
     let stmts: Vec<&AstStatement> = body
         .iter()
-        .map(|s| &s.statement)
+        .map(|s| &s.item)
         .filter(|s| !matches!(s, AstStatement::Empty | AstStatement::Comment(_)))
         .collect();
 
@@ -454,12 +452,12 @@ fn classify_loop_body(body: &[WrappedAstStatement]) -> Option<&'static str> {
             if is_memory_compare_condition(&cond.item) {
                 let bt_terminates = bt
                     .first()
-                    .map(|s| matches!(s.statement, AstStatement::Return(_) | AstStatement::Goto(_)))
+                    .map(|s| matches!(s.item, AstStatement::Return(_) | AstStatement::Goto(_)))
                     .unwrap_or(false);
                 let bf_terminates = bf
                     .as_ref()
                     .and_then(|bf| bf.first())
-                    .map(|s| matches!(s.statement, AstStatement::Return(_) | AstStatement::Goto(_)))
+                    .map(|s| matches!(s.item, AstStatement::Return(_) | AstStatement::Goto(_)))
                     .unwrap_or(false);
                 if bt_terminates || bf_terminates {
                     return Some("likely memcmp/strcmp loop");
@@ -539,10 +537,10 @@ fn is_increment_expr(rhs: &AstExpression, lhs: &AstExpression) -> bool {
 // ---------------------------------------------------------------------------
 
 /// Replace simple memset-style loops with an equivalent `AstStatement::Call` to `memset`.
-fn replace_loop_with_call(stmts: &mut Vec<WrappedAstStatement>) {
+fn replace_loop_with_call(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
         // Recurse into nested structures first
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 replace_loop_with_call(bt);
                 if let Some(bf) = bf {
@@ -565,7 +563,7 @@ fn replace_loop_with_call(stmts: &mut Vec<WrappedAstStatement>) {
             _ => {}
         }
 
-        let loop_body = match &stmt.statement {
+        let loop_body = match &stmt.item {
             AstStatement::While(_, body) | AstStatement::For(_, _, _, body) => body,
             _ => continue,
         };
@@ -576,7 +574,7 @@ fn replace_loop_with_call(stmts: &mut Vec<WrappedAstStatement>) {
         // Extract the memset operands: dst[i] = const_val  or  *dst = const_val
         let meaningful: Vec<&AstStatement> = loop_body
             .iter()
-            .map(|s| &s.statement)
+            .map(|s| &s.item)
             .filter(|s| !matches!(s, AstStatement::Empty | AstStatement::Comment(_)))
             .collect();
 
@@ -597,17 +595,15 @@ fn replace_loop_with_call(stmts: &mut Vec<WrappedAstStatement>) {
         let dst_arg = extract_memset_dst(lhs);
         let val_arg = Wrapped {
             item: rhs.item.clone(),
-            origin: AstValueOrigin::Unknown,
             comment: None,
         };
         let count_arg = Wrapped {
             item: AstExpression::Unknown,
-            origin: AstValueOrigin::Unknown,
             comment: None,
         };
 
         let call = AstCall::Unknown("memset".into(), vec![dst_arg, val_arg, count_arg]);
-        stmt.statement = AstStatement::Call(call);
+        stmt.item = AstStatement::Call(call);
         stmt.comment = None;
     }
 }
@@ -617,12 +613,10 @@ fn extract_memset_dst(expr: &Wrapped<AstExpression>) -> Wrapped<AstExpression> {
     match &expr.item {
         AstExpression::ArrayAccess(base, _) | AstExpression::Deref(base) => Wrapped {
             item: base.item.clone(),
-            origin: AstValueOrigin::Unknown,
             comment: None,
         },
         _ => Wrapped {
             item: expr.item.clone(),
-            origin: AstValueOrigin::Unknown,
             comment: None,
         },
     }
@@ -633,9 +627,9 @@ fn extract_memset_dst(expr: &Wrapped<AstExpression>) -> Wrapped<AstExpression> {
 // ---------------------------------------------------------------------------
 
 /// Detect gotos inside loops that jump to the first label in the loop body (continue-like).
-fn annotate_continue_like_gotos(stmts: &mut Vec<WrappedAstStatement>) {
+fn annotate_continue_like_gotos(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 annotate_continue_like_gotos(bt);
                 if let Some(bf) = bf {
@@ -658,14 +652,14 @@ fn annotate_continue_like_gotos(stmts: &mut Vec<WrappedAstStatement>) {
             _ => {}
         }
 
-        let loop_body = match &mut stmt.statement {
+        let loop_body = match &mut stmt.item {
             AstStatement::While(_, body) | AstStatement::For(_, _, _, body) => body,
             _ => continue,
         };
 
         // Find the first label defined at the top of the loop body.
         let first_label = loop_body.iter().find_map(|s| {
-            if let AstStatement::Label(name) = &s.statement {
+            if let AstStatement::Label(name) = &s.item {
                 Some(name.clone())
             } else {
                 None
@@ -683,16 +677,16 @@ fn annotate_continue_like_gotos(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
-fn convert_loop_gotos_to_break_continue(stmts: &mut Vec<WrappedAstStatement>) {
+fn convert_loop_gotos_to_break_continue(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
         convert_loop_gotos_in_statement(stmt);
     }
 
     for index in 0..stmts.len() {
-        let continue_label = loop_continue_label(&stmts[index].statement);
+        let continue_label = loop_continue_label(&stmts[index].item);
         let break_label = next_loop_break_label(stmts, index + 1);
 
-        let Some(loop_body) = loop_body_mut(&mut stmts[index].statement) else {
+        let Some(loop_body) = loop_body_mut(&mut stmts[index].item) else {
             continue;
         };
 
@@ -706,8 +700,8 @@ fn convert_loop_gotos_to_break_continue(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
-fn convert_loop_gotos_in_statement(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
+fn convert_loop_gotos_in_statement(stmt: &mut Wrapped<AstStatement>) {
+    match &mut stmt.item {
         AstStatement::If(_, branch_true, branch_false) => {
             convert_loop_gotos_to_break_continue(branch_true);
             if let Some(branch_false) = branch_false {
@@ -745,7 +739,7 @@ fn loop_continue_label(stmt: &AstStatement) -> Option<String> {
     };
 
     loop_body.iter().find_map(|stmt| {
-        if let AstStatement::Label(name) = &stmt.statement {
+        if let AstStatement::Label(name) = &stmt.item {
             Some(name.clone())
         } else {
             None
@@ -753,9 +747,9 @@ fn loop_continue_label(stmt: &AstStatement) -> Option<String> {
     })
 }
 
-fn next_loop_break_label(stmts: &[WrappedAstStatement], start_index: usize) -> Option<String> {
+fn next_loop_break_label(stmts: &[Wrapped<AstStatement>], start_index: usize) -> Option<String> {
     for stmt in stmts.iter().skip(start_index) {
-        match &stmt.statement {
+        match &stmt.item {
             AstStatement::Empty | AstStatement::Comment(_) => continue,
             AstStatement::Label(name) => return Some(name.clone()),
             _ => return None,
@@ -765,7 +759,7 @@ fn next_loop_break_label(stmts: &[WrappedAstStatement], start_index: usize) -> O
     None
 }
 
-fn loop_body_mut(stmt: &mut AstStatement) -> Option<&mut Vec<WrappedAstStatement>> {
+fn loop_body_mut(stmt: &mut AstStatement) -> Option<&mut Vec<Wrapped<AstStatement>>> {
     match stmt {
         AstStatement::While(_, body)
         | AstStatement::DoWhile(_, body)
@@ -775,26 +769,26 @@ fn loop_body_mut(stmt: &mut AstStatement) -> Option<&mut Vec<WrappedAstStatement
 }
 
 fn rewrite_loop_gotos(
-    stmt: &mut WrappedAstStatement,
+    stmt: &mut Wrapped<AstStatement>,
     continue_label: Option<&str>,
     break_label: Option<&str>,
 ) {
-    if let AstStatement::Goto(AstJumpTarget::Unknown(name)) = &stmt.statement {
+    if let AstStatement::Goto(AstJumpTarget::Unknown(name)) = &stmt.item {
         if continue_label == Some(name.as_str())
             && stmt.comment.as_deref() == Some("continue-like back-edge")
         {
-            stmt.statement = AstStatement::Continue;
+            stmt.item = AstStatement::Continue;
             stmt.comment = None;
             return;
         }
 
         if break_label == Some(name.as_str()) {
-            stmt.statement = AstStatement::Break;
+            stmt.item = AstStatement::Break;
             return;
         }
     }
 
-    match &mut stmt.statement {
+    match &mut stmt.item {
         AstStatement::If(_, branch_true, branch_false) => {
             for stmt in branch_true.iter_mut() {
                 rewrite_loop_gotos(stmt, continue_label, break_label);
@@ -828,14 +822,14 @@ fn rewrite_loop_gotos(
     }
 }
 
-fn mark_gotos_as_continue(stmt: &mut WrappedAstStatement, label: &str) {
-    if let AstStatement::Goto(AstJumpTarget::Unknown(name)) = &stmt.statement {
+fn mark_gotos_as_continue(stmt: &mut Wrapped<AstStatement>, label: &str) {
+    if let AstStatement::Goto(AstJumpTarget::Unknown(name)) = &stmt.item {
         if name == label && stmt.comment.is_none() {
             stmt.comment = Some("continue-like back-edge".to_string());
         }
     }
     // Recurse into branches but not nested loops (their back-edges are their own).
-    match &mut stmt.statement {
+    match &mut stmt.item {
         AstStatement::If(_, bt, bf) => {
             for s in bt {
                 mark_gotos_as_continue(s, label);

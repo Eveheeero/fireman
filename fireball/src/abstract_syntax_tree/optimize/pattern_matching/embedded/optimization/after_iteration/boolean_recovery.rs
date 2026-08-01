@@ -7,8 +7,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
-        AstOptimizationKind, AstStatement, AstValueOrigin, AstVariableId, Wrapped,
-        WrappedAstStatement,
+        AstOptimizationKind, AstStatement, AstVariableId, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -45,10 +44,10 @@ pub(crate) fn recover_boolean(
     Ok(())
 }
 
-fn recover_boolean_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn recover_boolean_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Recurse into nested structures first
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 recover_boolean_in_list(bt);
                 if let Some(bf) = bf {
@@ -95,7 +94,7 @@ fn extract_and_chain(stmt: &AstStatement) -> Option<(AstVariableId, Vec<Wrapped<
     if branch_false.len() != 1 {
         return None;
     }
-    let (false_var, false_val) = match_bool_assignment(&branch_false[0].statement);
+    let (false_var, false_val) = match_bool_assignment(&branch_false[0].item);
     let target_var = false_var?;
     if false_val != Some(false) {
         return None;
@@ -107,7 +106,7 @@ fn extract_and_chain(stmt: &AstStatement) -> Option<(AstVariableId, Vec<Wrapped<
     }
 
     // Try recursive case: true branch is another AND-chain if-else
-    if let Some((inner_var, inner_conditions)) = extract_and_chain(&branch_true[0].statement) {
+    if let Some((inner_var, inner_conditions)) = extract_and_chain(&branch_true[0].item) {
         if inner_var == target_var {
             let mut conditions = vec![cond.clone()];
             conditions.extend(inner_conditions);
@@ -116,7 +115,7 @@ fn extract_and_chain(stmt: &AstStatement) -> Option<(AstVariableId, Vec<Wrapped<
     }
 
     // Base case: true branch is `v = true`
-    let (true_var, true_val) = match_bool_assignment(&branch_true[0].statement);
+    let (true_var, true_val) = match_bool_assignment(&branch_true[0].item);
     if true_var == Some(target_var) && true_val == Some(true) {
         return Some((target_var, vec![cond.clone()]));
     }
@@ -128,8 +127,8 @@ fn extract_and_chain(stmt: &AstStatement) -> Option<(AstVariableId, Vec<Wrapped<
 ///   if (a) { if (b) { ... { v = true; } else { v = false; } ... } else { v = false; } } else { v = false; }
 /// Rewrite to:
 ///   v = a && b && ...;
-fn try_recover_and(stmt: &mut WrappedAstStatement) {
-    let Some((_target_var, conditions)) = extract_and_chain(&stmt.statement) else {
+fn try_recover_and(stmt: &mut Wrapped<AstStatement>) {
+    let Some((_target_var, conditions)) = extract_and_chain(&stmt.item) else {
         return;
     };
 
@@ -138,16 +137,16 @@ fn try_recover_and(stmt: &mut WrappedAstStatement) {
     }
 
     // Find the lhs from the else branch (which is `v = false`)
-    let AstStatement::If(_, _, Some(branch_false)) = &stmt.statement else {
+    let AstStatement::If(_, _, Some(branch_false)) = &stmt.item else {
         return;
     };
-    let lhs = match &branch_false[0].statement {
+    let lhs = match &branch_false[0].item {
         AstStatement::Assignment(lhs, _) => lhs.clone(),
         _ => return,
     };
 
     let rhs = build_chain_expr(conditions, AstBinaryOperator::LogicAnd);
-    stmt.statement = AstStatement::Assignment(lhs, rhs);
+    stmt.item = AstStatement::Assignment(lhs, rhs);
 }
 
 /// Recursively extract an OR chain from nested if-else patterns.
@@ -168,7 +167,7 @@ fn extract_or_chain(stmt: &AstStatement) -> Option<(AstVariableId, Vec<Wrapped<A
     if branch_true.len() != 1 {
         return None;
     }
-    let (true_var, true_val) = match_bool_assignment(&branch_true[0].statement);
+    let (true_var, true_val) = match_bool_assignment(&branch_true[0].item);
     let target_var = true_var?;
     if true_val != Some(true) {
         return None;
@@ -180,7 +179,7 @@ fn extract_or_chain(stmt: &AstStatement) -> Option<(AstVariableId, Vec<Wrapped<A
     }
 
     // Try recursive case: false branch is another OR-chain if-else
-    if let Some((inner_var, inner_conditions)) = extract_or_chain(&branch_false[0].statement) {
+    if let Some((inner_var, inner_conditions)) = extract_or_chain(&branch_false[0].item) {
         if inner_var == target_var {
             let mut conditions = vec![cond.clone()];
             conditions.extend(inner_conditions);
@@ -189,7 +188,7 @@ fn extract_or_chain(stmt: &AstStatement) -> Option<(AstVariableId, Vec<Wrapped<A
     }
 
     // Base case: false branch is `v = false`
-    let (false_var, false_val) = match_bool_assignment(&branch_false[0].statement);
+    let (false_var, false_val) = match_bool_assignment(&branch_false[0].item);
     if false_var == Some(target_var) && false_val == Some(false) {
         return Some((target_var, vec![cond.clone()]));
     }
@@ -201,8 +200,8 @@ fn extract_or_chain(stmt: &AstStatement) -> Option<(AstVariableId, Vec<Wrapped<A
 ///   if (a) { v = true; } else { if (b) { v = true; } else { ... { v = false; } ... } }
 /// Rewrite to:
 ///   v = a || b || ...;
-fn try_recover_or(stmt: &mut WrappedAstStatement) {
-    let Some((_target_var, conditions)) = extract_or_chain(&stmt.statement) else {
+fn try_recover_or(stmt: &mut Wrapped<AstStatement>) {
+    let Some((_target_var, conditions)) = extract_or_chain(&stmt.item) else {
         return;
     };
 
@@ -211,16 +210,16 @@ fn try_recover_or(stmt: &mut WrappedAstStatement) {
     }
 
     // Find the lhs from the true branch (which is `v = true`)
-    let AstStatement::If(_, branch_true, _) = &stmt.statement else {
+    let AstStatement::If(_, branch_true, _) = &stmt.item else {
         return;
     };
-    let lhs = match &branch_true[0].statement {
+    let lhs = match &branch_true[0].item {
         AstStatement::Assignment(lhs, _) => lhs.clone(),
         _ => return,
     };
 
     let rhs = build_chain_expr(conditions, AstBinaryOperator::LogicOr);
-    stmt.statement = AstStatement::Assignment(lhs, rhs);
+    stmt.item = AstStatement::Assignment(lhs, rhs);
 }
 
 /// Build a left-associative chain expression from a list of conditions and a binary operator.
@@ -235,7 +234,6 @@ fn build_chain_expr(
     for cond in iter {
         result = Wrapped {
             item: AstExpression::BinaryOp(op.clone(), Box::new(result), Box::new(cond)),
-            origin: AstValueOrigin::Unknown,
             comment: None,
         };
     }
@@ -271,22 +269,22 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["a", "b", "v"]);
         let (a, b, v) = (ids[0], ids[1], ids[2]);
 
-        let body = vec![wrap_statement(AstStatement::If(
-            wrap_expression(AstExpression::Variable(vm.clone(), a)),
-            vec![wrap_statement(AstStatement::If(
-                wrap_expression(AstExpression::Variable(vm.clone(), b)),
-                vec![wrap_statement(AstStatement::Assignment(
-                    wrap_expression(AstExpression::Variable(vm.clone(), v)),
-                    wrap_expression(AstExpression::Literal(AstLiteral::Bool(true))),
+        let body = vec![wrap(AstStatement::If(
+            wrap(AstExpression::Variable(vm.clone(), a)),
+            vec![wrap(AstStatement::If(
+                wrap(AstExpression::Variable(vm.clone(), b)),
+                vec![wrap(AstStatement::Assignment(
+                    wrap(AstExpression::Variable(vm.clone(), v)),
+                    wrap(AstExpression::Literal(AstLiteral::Bool(true))),
                 ))],
-                Some(vec![wrap_statement(AstStatement::Assignment(
-                    wrap_expression(AstExpression::Variable(vm.clone(), v)),
-                    wrap_expression(AstExpression::Literal(AstLiteral::Bool(false))),
+                Some(vec![wrap(AstStatement::Assignment(
+                    wrap(AstExpression::Variable(vm.clone(), v)),
+                    wrap(AstExpression::Literal(AstLiteral::Bool(false))),
                 ))]),
             ))],
-            Some(vec![wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), v)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Bool(false))),
+            Some(vec![wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), v)),
+                wrap(AstExpression::Literal(AstLiteral::Bool(false))),
             ))]),
         ))];
 
@@ -305,21 +303,21 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["a", "b", "v"]);
         let (a, b, v) = (ids[0], ids[1], ids[2]);
 
-        let body = vec![wrap_statement(AstStatement::If(
-            wrap_expression(AstExpression::Variable(vm.clone(), a)),
-            vec![wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), v)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Bool(true))),
+        let body = vec![wrap(AstStatement::If(
+            wrap(AstExpression::Variable(vm.clone(), a)),
+            vec![wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), v)),
+                wrap(AstExpression::Literal(AstLiteral::Bool(true))),
             ))],
-            Some(vec![wrap_statement(AstStatement::If(
-                wrap_expression(AstExpression::Variable(vm.clone(), b)),
-                vec![wrap_statement(AstStatement::Assignment(
-                    wrap_expression(AstExpression::Variable(vm.clone(), v)),
-                    wrap_expression(AstExpression::Literal(AstLiteral::Bool(true))),
+            Some(vec![wrap(AstStatement::If(
+                wrap(AstExpression::Variable(vm.clone(), b)),
+                vec![wrap(AstStatement::Assignment(
+                    wrap(AstExpression::Variable(vm.clone(), v)),
+                    wrap(AstExpression::Literal(AstLiteral::Bool(true))),
                 ))],
-                Some(vec![wrap_statement(AstStatement::Assignment(
-                    wrap_expression(AstExpression::Variable(vm.clone(), v)),
-                    wrap_expression(AstExpression::Literal(AstLiteral::Bool(false))),
+                Some(vec![wrap(AstStatement::Assignment(
+                    wrap(AstExpression::Variable(vm.clone(), v)),
+                    wrap(AstExpression::Literal(AstLiteral::Bool(false))),
                 ))]),
             ))]),
         ))];

@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
-        AstOptimizationKind, AstStatement, AstVariableId, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, AstVariableId, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -40,14 +40,14 @@ pub(super) fn analyze_induction_variables(
     Ok(())
 }
 
-fn analyze_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn analyze_statement_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
         analyze_statement(stmt);
     }
 }
 
-fn analyze_statement(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
+fn analyze_statement(stmt: &mut Wrapped<AstStatement>) {
+    match &mut stmt.item {
         AstStatement::If(_, branch_true, branch_false) => {
             analyze_statement_list(branch_true);
             if let Some(branch_false) = branch_false {
@@ -66,7 +66,7 @@ fn analyze_statement(stmt: &mut WrappedAstStatement) {
             // (e.g. `for (i = 0; i != runtime; ++i)` where runtime could be
             // negative or wrapped).
 
-            if let Some(update_var) = get_update_var(&update.statement) {
+            if let Some(update_var) = get_update_var(&update.item) {
                 // Determine the replacement operator (if any) before mutating,
                 // so that borrows of `cond.item` are released first.
                 let new_op =
@@ -78,16 +78,16 @@ fn analyze_statement(stmt: &mut WrappedAstStatement) {
                             AstExpression::Variable(_, vid) if *vid == update_var
                         );
                         if cond_var_matches {
-                            let init_val = get_init_literal(&init.statement, update_var);
+                            let init_val = get_init_literal(&init.item, update_var);
                             let bound_val = get_literal_i128(&right.item);
                             match (init_val, bound_val) {
                                 (Some(start), Some(bound))
-                                    if is_increment_by_one(&update.statement) && start < bound =>
+                                    if is_increment_by_one(&update.item) && start < bound =>
                                 {
                                     Some(AstBinaryOperator::Less)
                                 }
                                 (Some(start), Some(bound))
-                                    if is_decrement_by_one(&update.statement) && start > bound =>
+                                    if is_decrement_by_one(&update.item) && start > bound =>
                                 {
                                     Some(AstBinaryOperator::Greater)
                                 }

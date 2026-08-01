@@ -7,8 +7,7 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
-        WrappedAstStatement,
+        Ast, AstCall, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement, Wrapped,
     },
     pattern_matching::AstPattern,
     prelude::DecompileError,
@@ -50,9 +49,9 @@ pub(crate) fn suppress_security_scaffolds(
     Ok(())
 }
 
-fn suppress_calls_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn suppress_calls_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 suppress_calls_in_list(bt);
                 if let Some(bf) = bf {
@@ -80,7 +79,7 @@ fn suppress_calls_in_list(stmts: &mut Vec<WrappedAstStatement>) {
     }
 
     stmts.retain(|stmt| {
-        if let AstStatement::Call(call) = &stmt.statement {
+        if let AstStatement::Call(call) = &stmt.item {
             !call_matches_any(call)
         } else {
             true
@@ -111,19 +110,19 @@ mod tests {
         let (_ids, vm) = make_var_map(fid, &[]);
 
         let body = vec![
-            wrap_statement(AstStatement::Call(AstCall::Unknown(
+            wrap(AstStatement::Call(AstCall::Unknown(
                 "__stack_chk_fail".to_string(),
                 vec![],
             ))),
-            wrap_statement(AstStatement::Call(AstCall::Unknown(
+            wrap(AstStatement::Call(AstCall::Unknown(
                 "real_work".to_string(),
                 vec![],
             ))),
-            wrap_statement(AstStatement::Call(AstCall::Unknown(
+            wrap(AstStatement::Call(AstCall::Unknown(
                 "__cfi_check".to_string(),
                 vec![],
             ))),
-            wrap_statement(AstStatement::Call(AstCall::Unknown(
+            wrap(AstStatement::Call(AstCall::Unknown(
                 "__cfi_slowpath".to_string(),
                 vec![],
             ))),

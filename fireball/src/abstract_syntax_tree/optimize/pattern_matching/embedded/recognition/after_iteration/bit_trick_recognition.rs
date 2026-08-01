@@ -12,8 +12,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstOptimizationKind, AstStatement, AstUnaryOperator, AstValueOrigin, Wrapped,
-        WrappedAstStatement,
+        AstLiteral, AstOptimizationKind, AstStatement, AstUnaryOperator, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -52,10 +51,10 @@ pub(crate) fn recognize_rotation_and_strength_reduction(
     Ok(())
 }
 
-fn recognize_in_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn recognize_in_statement_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Iterative worklist: collect all statements (including nested) and process
     // their expressions.  Statement nesting is traversed via an explicit stack.
-    let mut worklist: Vec<*mut WrappedAstStatement> = Vec::new();
+    let mut worklist: Vec<*mut Wrapped<AstStatement>> = Vec::new();
     for stmt in stmts.iter_mut() {
         worklist.push(stmt as *mut _);
     }
@@ -64,7 +63,7 @@ fn recognize_in_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
         // SAFETY: each pointer is derived from a unique &mut element and is
         // visited exactly once.
         let stmt = unsafe { &mut *stmt_ptr };
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::Declaration(_lhs, rhs) => {
                 if let Some(rhs) = rhs {
                     recognize_in_expression(rhs);
@@ -326,17 +325,14 @@ pub(crate) fn build_mul(
 ) -> Wrapped<AstExpression> {
     let x_clone = Box::new(Wrapped {
         item: x.item.clone(),
-        origin: x.origin.clone(),
         comment: None,
     });
     let mul_lit = Box::new(Wrapped {
         item: AstExpression::Literal(to_literal_u64(multiplier)),
-        origin: AstValueOrigin::Unknown,
         comment: None,
     });
     Wrapped {
         item: AstExpression::BinaryOp(AstBinaryOperator::Mul, x_clone, mul_lit),
-        origin: source.origin.clone(),
         comment: source.comment.clone(),
     }
 }
@@ -407,19 +403,16 @@ pub(crate) fn try_match_rotation(
     // Build the replacement: __builtin_rotate_{right,left}(x, n)
     let x_arg = Wrapped {
         item: x1.item.clone(),
-        origin: x1.origin.clone(),
         comment: None,
     };
     let n_arg = Wrapped {
         item: AstExpression::Literal(to_literal_u64(n)),
-        origin: n_expr.origin.clone(),
         comment: None,
     };
 
     let call = AstCall::Unknown(builtin_name.into(), vec![x_arg, n_arg]);
     Some(Wrapped {
         item: AstExpression::Call(call),
-        origin: source.origin.clone(),
         comment: source.comment.clone(),
     })
 }
@@ -474,13 +467,11 @@ pub(crate) fn try_recognize_abs(expr: &Wrapped<AstExpression>) -> Option<Wrapped
     {
         let x_arg = Wrapped {
             item: lt_left.item.clone(),
-            origin: lt_left.origin.clone(),
             comment: None,
         };
         let call = AstCall::Unknown("abs".into(), vec![x_arg]);
         return Some(Wrapped {
             item: AstExpression::Call(call),
-            origin: expr.origin.clone(),
             comment: expr.comment.clone(),
         });
     }
@@ -506,24 +497,20 @@ pub(crate) fn try_recognize_bitfield_extraction(
     // Build BITFIELD_GET(x, n, mask) call
     let x_arg = Wrapped {
         item: x.item.clone(),
-        origin: x.origin.clone(),
         comment: None,
     };
     let n_arg = Wrapped {
         item: n.item.clone(),
-        origin: n.origin.clone(),
         comment: None,
     };
     let mask_arg = Wrapped {
         item: mask.item.clone(),
-        origin: mask.origin.clone(),
         comment: None,
     };
 
     let call = AstCall::Unknown("BITFIELD_GET".into(), vec![x_arg, n_arg, mask_arg]);
     Some(Wrapped {
         item: AstExpression::Call(call),
-        origin: expr.origin.clone(),
         comment: expr.comment.clone(),
     })
 }
@@ -546,13 +533,11 @@ pub(crate) fn try_recognize_sign_bit_extract(
     if let AstExpression::BinaryOp(AstBinaryOperator::RightShift, x, _shift) = &left.item {
         let x_arg = Wrapped {
             item: x.item.clone(),
-            origin: x.origin.clone(),
             comment: None,
         };
         let call = AstCall::Unknown("sign_bit".into(), vec![x_arg]);
         return Some(Wrapped {
             item: AstExpression::Call(call),
-            origin: expr.origin.clone(),
             comment: expr.comment.clone(),
         });
     }
@@ -566,7 +551,7 @@ mod tests {
     use crate::abstract_syntax_tree::{
         AstBinaryOperator, AstFunctionId,
         optimize::pattern_matching::embedded::test_utils::test_utils::{
-            make_var_map, run_parity, wrap_expression, wrap_statement,
+            make_var_map, run_parity, wrap,
         },
     };
 
@@ -576,20 +561,18 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        let body = vec![wrap(AstStatement::Return(Some(wrap(
             AstExpression::BinaryOp(
                 AstBinaryOperator::BitOr,
-                Box::new(wrap_expression(AstExpression::BinaryOp(
+                Box::new(wrap(AstExpression::BinaryOp(
                     AstBinaryOperator::RightShift,
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(5)))),
+                    Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap(AstExpression::Literal(AstLiteral::UInt(5)))),
                 ))),
-                Box::new(wrap_expression(AstExpression::BinaryOp(
+                Box::new(wrap(AstExpression::BinaryOp(
                     AstBinaryOperator::LeftShift,
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(
-                        27,
-                    )))),
+                    Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap(AstExpression::Literal(AstLiteral::UInt(27)))),
                 ))),
             ),
         ))))];
@@ -609,22 +592,18 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        let body = vec![wrap(AstStatement::Return(Some(wrap(
             AstExpression::BinaryOp(
                 AstBinaryOperator::BitOr,
-                Box::new(wrap_expression(AstExpression::BinaryOp(
+                Box::new(wrap(AstExpression::BinaryOp(
                     AstBinaryOperator::LeftShift,
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(
-                        13,
-                    )))),
+                    Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap(AstExpression::Literal(AstLiteral::UInt(13)))),
                 ))),
-                Box::new(wrap_expression(AstExpression::BinaryOp(
+                Box::new(wrap(AstExpression::BinaryOp(
                     AstBinaryOperator::RightShift,
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::UInt(
-                        51,
-                    )))),
+                    Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap(AstExpression::Literal(AstLiteral::UInt(51)))),
                 ))),
             ),
         ))))];
@@ -644,14 +623,14 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        let body = vec![wrap(AstStatement::Return(Some(wrap(
             AstExpression::BinaryOp(
                 AstBinaryOperator::Add,
-                Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-                Box::new(wrap_expression(AstExpression::BinaryOp(
+                Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
+                Box::new(wrap(AstExpression::BinaryOp(
                     AstBinaryOperator::LeftShift,
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(2)))),
+                    Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap(AstExpression::Literal(AstLiteral::Int(2)))),
                 ))),
             ),
         ))))];
@@ -671,18 +650,18 @@ mod tests {
         let (ids, vm) = make_var_map(fid, &["x"]);
         let x = ids[0];
 
-        let body = vec![wrap_statement(AstStatement::Return(Some(wrap_expression(
+        let body = vec![wrap(AstStatement::Return(Some(wrap(
             AstExpression::BinaryOp(
                 AstBinaryOperator::Sub,
-                Box::new(wrap_expression(AstExpression::BinaryOp(
+                Box::new(wrap(AstExpression::BinaryOp(
                     AstBinaryOperator::LeftShift,
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(3)))),
+                    Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap(AstExpression::Literal(AstLiteral::Int(3)))),
                 ))),
-                Box::new(wrap_expression(AstExpression::BinaryOp(
+                Box::new(wrap(AstExpression::BinaryOp(
                     AstBinaryOperator::LeftShift,
-                    Box::new(wrap_expression(AstExpression::Variable(vm.clone(), x))),
-                    Box::new(wrap_expression(AstExpression::Literal(AstLiteral::Int(1)))),
+                    Box::new(wrap(AstExpression::Variable(vm.clone(), x))),
+                    Box::new(wrap(AstExpression::Literal(AstLiteral::Int(1)))),
                 ))),
             ),
         ))))];

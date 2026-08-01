@@ -3,8 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstCall, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
-        AstOptimizationKind, AstStatement, AstUnaryOperator, AstValueOrigin, Wrapped,
-        WrappedAstStatement,
+        AstOptimizationKind, AstStatement, AstUnaryOperator, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -55,7 +54,7 @@ pub(super) fn cleanup_control_flow(
 }
 
 fn cleanup_statement_list(
-    stmts: &mut Vec<WrappedAstStatement>,
+    stmts: &mut Vec<Wrapped<AstStatement>>,
     noreturn_targets: &HashSet<AstFunctionId>,
 ) {
     for stmt in stmts.iter_mut() {
@@ -72,12 +71,12 @@ fn cleanup_statement_list(
 
 /// Merge a trailing `Call(c); Return(None)` pair into `Return(Some(Call(c)))`,
 /// making the tail-call explicit in the AST.
-fn merge_trailing_call_return(stmts: &mut Vec<WrappedAstStatement>) {
+fn merge_trailing_call_return(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Find the indices of the last two meaningful (non-comment, non-empty) statements.
     let meaningful: Vec<usize> = stmts
         .iter()
         .enumerate()
-        .filter(|(_, s)| !matches!(&s.statement, AstStatement::Comment(_) | AstStatement::Empty))
+        .filter(|(_, s)| !matches!(&s.item, AstStatement::Comment(_) | AstStatement::Empty))
         .map(|(i, _)| i)
         .collect();
 
@@ -88,22 +87,20 @@ fn merge_trailing_call_return(stmts: &mut Vec<WrappedAstStatement>) {
     let call_idx = meaningful[meaningful.len() - 2];
     let ret_idx = meaningful[meaningful.len() - 1];
 
-    let is_call = matches!(&stmts[call_idx].statement, AstStatement::Call(_));
-    let is_return_none = matches!(&stmts[ret_idx].statement, AstStatement::Return(None));
+    let is_call = matches!(&stmts[call_idx].item, AstStatement::Call(_));
+    let is_return_none = matches!(&stmts[ret_idx].item, AstStatement::Return(None));
 
     if is_call && is_return_none {
         // Remove the Return(None) first (higher index), then the Call.
         stmts.remove(ret_idx);
         let removed_call = stmts.remove(call_idx);
 
-        if let AstStatement::Call(call) = removed_call.statement {
-            let return_stmt = WrappedAstStatement {
-                statement: AstStatement::Return(Some(Wrapped {
+        if let AstStatement::Call(call) = removed_call.item {
+            let return_stmt = Wrapped {
+                item: AstStatement::Return(Some(Wrapped {
                     item: AstExpression::Call(call),
-                    origin: AstValueOrigin::Unknown,
                     comment: None,
                 })),
-                origin: removed_call.origin,
                 comment: removed_call.comment,
             };
             stmts.insert(call_idx, return_stmt);
@@ -111,20 +108,15 @@ fn merge_trailing_call_return(stmts: &mut Vec<WrappedAstStatement>) {
     }
 }
 
-fn meaningful_statement_count(stmts: &[WrappedAstStatement]) -> usize {
+fn meaningful_statement_count(stmts: &[Wrapped<AstStatement>]) -> usize {
     stmts
         .iter()
-        .filter(|stmt| {
-            !matches!(
-                &stmt.statement,
-                AstStatement::Comment(_) | AstStatement::Empty
-            )
-        })
+        .filter(|stmt| !matches!(&stmt.item, AstStatement::Comment(_) | AstStatement::Empty))
         .count()
 }
 
-fn cleanup_statement(stmt: &mut WrappedAstStatement, noreturn_targets: &HashSet<AstFunctionId>) {
-    match &mut stmt.statement {
+fn cleanup_statement(stmt: &mut Wrapped<AstStatement>, noreturn_targets: &HashSet<AstFunctionId>) {
+    match &mut stmt.item {
         AstStatement::If(_, branch_true, branch_false) => {
             cleanup_statement_list(branch_true, noreturn_targets);
             if let Some(branch_false) = branch_false {
@@ -166,11 +158,11 @@ fn cleanup_statement(stmt: &mut WrappedAstStatement, noreturn_targets: &HashSet<
 }
 
 fn first_terminal_index(
-    stmts: &[WrappedAstStatement],
+    stmts: &[Wrapped<AstStatement>],
     noreturn_targets: &HashSet<AstFunctionId>,
 ) -> Option<(usize, TerminationOutcome)> {
     for (index, stmt) in stmts.iter().enumerate() {
-        let outcome = statement_outcome(&stmt.statement, noreturn_targets);
+        let outcome = statement_outcome(&stmt.item, noreturn_targets);
         if outcome == TerminationOutcome::NoTerminate {
             continue;
         }
@@ -178,7 +170,7 @@ fn first_terminal_index(
         let has_label_after = stmts
             .iter()
             .skip(index + 1)
-            .any(|next| matches!(&next.statement, AstStatement::Label(_)));
+            .any(|next| matches!(&next.item, AstStatement::Label(_)));
         if !has_label_after {
             return Some((index, outcome));
         }
@@ -250,7 +242,7 @@ fn statement_outcome(
 }
 
 fn statement_list_outcome(
-    stmts: &[WrappedAstStatement],
+    stmts: &[Wrapped<AstStatement>],
     noreturn_targets: &HashSet<AstFunctionId>,
 ) -> TerminationOutcome {
     first_terminal_index(stmts, noreturn_targets)
@@ -369,9 +361,9 @@ fn constant_condition_truth(expr: &AstExpression) -> Option<bool> {
     }
 }
 
-fn prune_constant_condition_branches(stmts: &mut Vec<WrappedAstStatement>) {
+fn prune_constant_condition_branches(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(cond, bt, bf) => {
                 prune_constant_condition_branches(bt);
                 if let Some(bf) = bf {
@@ -381,11 +373,11 @@ fn prune_constant_condition_branches(stmts: &mut Vec<WrappedAstStatement>) {
                 if let Some(is_true) = const_truth {
                     if is_true {
                         let body = std::mem::take(bt);
-                        stmt.statement = AstStatement::Block(body);
+                        stmt.item = AstStatement::Block(body);
                     } else if let Some(else_body) = bf.take() {
-                        stmt.statement = AstStatement::Block(else_body);
+                        stmt.item = AstStatement::Block(else_body);
                     } else {
-                        stmt.statement = AstStatement::Empty;
+                        stmt.item = AstStatement::Empty;
                     }
                 }
             }
@@ -410,10 +402,10 @@ fn prune_constant_condition_branches(stmts: &mut Vec<WrappedAstStatement>) {
 /// `if(cond) { A } if(cond) { B }` → `if(cond) { A; B }`
 ///
 /// Only merges when the condition is side-effect-free (pure) and the first if has no else branch.
-fn merge_consecutive_same_condition_ifs(stmts: &mut Vec<WrappedAstStatement>) {
+fn merge_consecutive_same_condition_ifs(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Recurse into nested structures first.
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 merge_consecutive_same_condition_ifs(bt);
                 if let Some(bf) = bf {
@@ -441,8 +433,8 @@ fn merge_consecutive_same_condition_ifs(stmts: &mut Vec<WrappedAstStatement>) {
     while i + 1 < stmts.len() {
         let should_merge = {
             let (first, rest) = stmts.split_at(i + 1);
-            let first_stmt = &first[i].statement;
-            let next_stmt = &rest[0].statement;
+            let first_stmt = &first[i].item;
+            let next_stmt = &rest[0].item;
             match (first_stmt, next_stmt) {
                 (AstStatement::If(cond1, _, None), AstStatement::If(cond2, _, _)) => {
                     conditions_are_equivalent(cond1, cond2)
@@ -453,8 +445,8 @@ fn merge_consecutive_same_condition_ifs(stmts: &mut Vec<WrappedAstStatement>) {
 
         if should_merge {
             let removed = stmts.remove(i + 1);
-            if let AstStatement::If(_, mut body2, else2) = removed.statement {
-                if let AstStatement::If(_, body1, else1) = &mut stmts[i].statement {
+            if let AstStatement::If(_, mut body2, else2) = removed.item {
+                if let AstStatement::If(_, body1, else1) = &mut stmts[i].item {
                     body1.append(&mut body2);
                     // If the second if had an else branch, adopt it.
                     if else2.is_some() && else1.is_none() {
@@ -492,9 +484,9 @@ fn conditions_are_equivalent(
 
 /// Invert `if(!cond) { A } else { B }` → `if(cond) { B } else { A }` when doing
 /// so keeps the larger branch on the positive path and improves readability.
-fn invert_negated_branches(stmts: &mut Vec<WrappedAstStatement>) {
+fn invert_negated_branches(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(cond, bt, bf) => {
                 invert_negated_branches(bt);
                 if let Some(bf) = bf {
@@ -535,10 +527,10 @@ fn invert_negated_branches(stmts: &mut Vec<WrappedAstStatement>) {
 /// `if(c) { A; T; } else { B; T; }` → `if(c) { A; } else { B; } T;`
 ///
 /// Recurses into nested structures first, then rewrites at each list level.
-fn factor_common_tails(stmts: &mut Vec<WrappedAstStatement>) {
+fn factor_common_tails(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Recurse into nested structures first.
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 factor_common_tails(bt);
                 if let Some(bf) = bf {
@@ -562,16 +554,16 @@ fn factor_common_tails(stmts: &mut Vec<WrappedAstStatement>) {
     }
 
     // Now look for if/else with common tails at this level and splice them out.
-    let mut insertions: Vec<(usize, Vec<WrappedAstStatement>)> = Vec::new();
+    let mut insertions: Vec<(usize, Vec<Wrapped<AstStatement>>)> = Vec::new();
     for (idx, stmt) in stmts.iter_mut().enumerate() {
-        let AstStatement::If(_, bt, Some(bf)) = &mut stmt.statement else {
+        let AstStatement::If(_, bt, Some(bf)) = &mut stmt.item else {
             continue;
         };
         let common = count_common_tail(bt, bf);
         if common == 0 {
             continue;
         }
-        let tail: Vec<WrappedAstStatement> = bt.drain(bt.len() - common..).collect();
+        let tail: Vec<Wrapped<AstStatement>> = bt.drain(bt.len() - common..).collect();
         bf.truncate(bf.len() - common);
         insertions.push((idx, tail));
     }
@@ -587,7 +579,7 @@ fn factor_common_tails(stmts: &mut Vec<WrappedAstStatement>) {
 
 /// Count how many trailing statements are structurally identical between two lists.
 /// Uses full 256-bit blake3 structural hashing for comparison.
-fn count_common_tail(a: &[WrappedAstStatement], b: &[WrappedAstStatement]) -> usize {
+fn count_common_tail(a: &[Wrapped<AstStatement>], b: &[Wrapped<AstStatement>]) -> usize {
     use super::pattern_matching::{Blake3StdHasher, hash_statement_list};
 
     let mut count = 0;

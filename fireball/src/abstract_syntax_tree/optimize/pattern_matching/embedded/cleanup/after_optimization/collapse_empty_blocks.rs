@@ -4,8 +4,7 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
-        WrappedAstStatement,
+        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -42,18 +41,18 @@ pub(crate) fn collapse_empty_blocks(
     Ok(())
 }
 
-fn collapse_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn collapse_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     let mut i = 0;
     while i < stmts.len() {
         let should_remove =
-            matches!(&stmts[i].statement, AstStatement::Block(inner) if inner.is_empty());
+            matches!(&stmts[i].item, AstStatement::Block(inner) if inner.is_empty());
 
         if should_remove {
             stmts.remove(i);
             // Don't increment i, check the new statement at this position
         } else {
             // Process nested structures
-            match &mut stmts[i].statement {
+            match &mut stmts[i].item {
                 AstStatement::If(_, bt, bf) => {
                     collapse_in_list(bt);
                     if let Some(bf) = bf {
@@ -99,15 +98,15 @@ mod tests {
         let x = ids[0];
 
         // Block([x = 1, Block([]), x = 2]) should collapse to x = 1; x = 2;
-        let body = vec![wrap_statement(AstStatement::Block(vec![
-            wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+        let body = vec![wrap(AstStatement::Block(vec![
+            wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), x)),
+                wrap(AstExpression::Literal(AstLiteral::Int(1))),
             )),
-            wrap_statement(AstStatement::Block(vec![])),
-            wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+            wrap(AstStatement::Block(vec![])),
+            wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), x)),
+                wrap(AstExpression::Literal(AstLiteral::Int(2))),
             )),
         ]))];
 

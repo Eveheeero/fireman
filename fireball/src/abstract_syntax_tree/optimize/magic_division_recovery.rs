@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
-        AstOptimizationKind, AstStatement, Wrapped, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -40,14 +40,14 @@ pub(super) fn recover_magic_divisions(
     Ok(())
 }
 
-fn recover_in_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn recover_in_statement_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
         recover_in_statement(stmt);
     }
 }
 
-fn recover_in_statement(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
+fn recover_in_statement(stmt: &mut Wrapped<AstStatement>) {
+    match &mut stmt.item {
         AstStatement::Declaration(_, rhs) => {
             if let Some(rhs) = rhs {
                 recover_in_expression(rhs);
@@ -319,7 +319,6 @@ fn wrap_with_source(
 ) -> Wrapped<AstExpression> {
     Wrapped {
         item,
-        origin: source.origin.clone(),
         comment: source.comment.clone(),
     }
 }

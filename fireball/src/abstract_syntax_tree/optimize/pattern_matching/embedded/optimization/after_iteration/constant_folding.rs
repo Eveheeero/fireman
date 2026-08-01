@@ -444,7 +444,6 @@ pub(crate) fn wrap_with_source(
 ) -> Wrapped<AstExpression> {
     Wrapped {
         item,
-        origin: source.origin.clone(),
         comment: source.comment.clone(),
     }
 }

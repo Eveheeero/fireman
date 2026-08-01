@@ -1,5 +1,5 @@
 use crate::{
-    abstract_syntax_tree::{ArcAstVariableMap, AstStatement, AstVariableId, WrappedAstStatement},
+    abstract_syntax_tree::{ArcAstVariableMap, AstStatement, AstVariableId, Wrapped},
     ir::data::IrData,
     utils::Aos,
 };
@@ -7,10 +7,10 @@ use crate::{
 /// ### Note
 /// the inner recursive call uses reversed iteration because it is likely to be at the back
 pub fn get_first_arg_undetectable_statement_index<'a>(
-    stmts: impl Iterator<Item = &'a WrappedAstStatement>,
+    stmts: impl Iterator<Item = &'a Wrapped<AstStatement>>,
 ) -> Option<usize> {
     for (i, stmt) in stmts.enumerate() {
-        match &stmt.statement {
+        match &stmt.item {
             AstStatement::Call(_)
             | AstStatement::Assembly(_)
             | AstStatement::Ir(_)

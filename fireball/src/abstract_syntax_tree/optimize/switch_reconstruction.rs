@@ -7,7 +7,7 @@ use super::{
 use crate::{
     abstract_syntax_tree::{
         Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
-        AstOptimizationKind, AstStatement, WrappedAstStatement,
+        AstOptimizationKind, AstStatement, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -47,10 +47,10 @@ pub(super) fn reconstruct_switches(
     Ok(())
 }
 
-fn reconstruct_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn reconstruct_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Recurse into nested structures first
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 reconstruct_in_list(bt);
                 if let Some(bf) = bf {
@@ -90,17 +90,17 @@ fn reconstruct_in_list(stmts: &mut Vec<WrappedAstStatement>) {
 
 /// Detect chains of `if (x == c1) { ... } else if (x == c2) { ... } else if (x == c3) { ... } else { ... }`
 /// and convert to `switch (x) { case c1: ...; case c2: ...; case c3: ...; default: ...; }`
-fn try_convert_to_switch(stmt: &mut WrappedAstStatement) {
-    let mut cases: Vec<(AstLiteral, Vec<WrappedAstStatement>)> = Vec::new();
+fn try_convert_to_switch(stmt: &mut Wrapped<AstStatement>) {
+    let mut cases: Vec<(AstLiteral, Vec<Wrapped<AstStatement>>)> = Vec::new();
     let mut discriminant_expr = None;
-    let mut default_body: Option<Vec<WrappedAstStatement>> = None;
+    let mut default_body: Option<Vec<Wrapped<AstStatement>>> = None;
 
     // Walk the if-else chain, collecting cases and the trailing default.
     // `pending_else` tracks the else body we're about to descend into. If we
     // break out of the loop due to a pattern mismatch, `pending_else` becomes
     // the default, preserving the remaining branches.
-    let mut current = &stmt.statement;
-    let mut pending_else: Option<&Vec<WrappedAstStatement>> = None;
+    let mut current = &stmt.item;
+    let mut pending_else: Option<&Vec<Wrapped<AstStatement>>> = None;
     loop {
         let AstStatement::If(cond, branch_true, branch_false) = current else {
             // `current` is not an If — the pending_else (which contained this
@@ -150,9 +150,9 @@ fn try_convert_to_switch(stmt: &mut WrappedAstStatement) {
         // Follow else chain
         match branch_false {
             Some(else_stmts) if else_stmts.len() == 1 => {
-                if matches!(&else_stmts[0].statement, AstStatement::If(..)) {
+                if matches!(&else_stmts[0].item, AstStatement::If(..)) {
                     pending_else = Some(else_stmts);
-                    current = &else_stmts[0].statement;
+                    current = &else_stmts[0].item;
                 } else {
                     // Single non-if statement in else: this is the default body
                     default_body = Some(else_stmts.clone());
@@ -179,30 +179,26 @@ fn try_convert_to_switch(stmt: &mut WrappedAstStatement) {
     let disc = discriminant_expr.unwrap();
     let disc_wrapped = crate::abstract_syntax_tree::Wrapped {
         item: disc,
-        origin: match &stmt.statement {
-            AstStatement::If(cond, _, _) => cond.origin.clone(),
-            _ => unreachable!(),
-        },
         comment: None,
     };
 
-    stmt.statement = AstStatement::Switch(disc_wrapped, cases, default_body);
+    stmt.item = AstStatement::Switch(disc_wrapped, cases, default_body);
 }
 
 /// Detect binary-search switch trees: nested if-else using `<`/`<=`/`>`/`>=` to split
 /// value ranges, with `==` equality checks in leaf branches. Collect all cases and
 /// build a switch statement.
-fn try_convert_binary_search_to_switch(stmt: &mut WrappedAstStatement) {
-    let AstStatement::If(_, _, _) = &stmt.statement else {
+fn try_convert_binary_search_to_switch(stmt: &mut Wrapped<AstStatement>) {
+    let AstStatement::If(_, _, _) = &stmt.item else {
         return;
     };
 
-    let mut cases: Vec<(AstLiteral, Vec<WrappedAstStatement>)> = Vec::new();
+    let mut cases: Vec<(AstLiteral, Vec<Wrapped<AstStatement>>)> = Vec::new();
     let mut discriminant_expr: Option<AstExpression> = None;
-    let mut default_body: Option<Vec<WrappedAstStatement>> = None;
+    let mut default_body: Option<Vec<Wrapped<AstStatement>>> = None;
 
     if !collect_binary_search_cases(
-        &stmt.statement,
+        &stmt.item,
         &mut discriminant_expr,
         &mut cases,
         &mut default_body,
@@ -217,17 +213,13 @@ fn try_convert_binary_search_to_switch(stmt: &mut WrappedAstStatement) {
     let disc = discriminant_expr.unwrap();
     let disc_wrapped = crate::abstract_syntax_tree::Wrapped {
         item: disc,
-        origin: match &stmt.statement {
-            AstStatement::If(cond, _, _) => cond.origin.clone(),
-            _ => unreachable!(),
-        },
         comment: None,
     };
 
     // Sort cases by literal value for consistent output
     cases.sort_by(|(a, _), (b, _)| cmp_literal(a, b));
 
-    stmt.statement = AstStatement::Switch(disc_wrapped, cases, default_body);
+    stmt.item = AstStatement::Switch(disc_wrapped, cases, default_body);
 }
 
 /// Recursively collect equality cases from a binary-search if-else tree.
@@ -235,8 +227,8 @@ fn try_convert_binary_search_to_switch(stmt: &mut WrappedAstStatement) {
 fn collect_binary_search_cases(
     stmt: &AstStatement,
     discriminant: &mut Option<AstExpression>,
-    cases: &mut Vec<(AstLiteral, Vec<WrappedAstStatement>)>,
-    default_body: &mut Option<Vec<WrappedAstStatement>>,
+    cases: &mut Vec<(AstLiteral, Vec<Wrapped<AstStatement>>)>,
+    default_body: &mut Option<Vec<Wrapped<AstStatement>>>,
 ) -> bool {
     let AstStatement::If(cond, branch_true, branch_false) = stmt else {
         return false;
@@ -257,9 +249,9 @@ fn collect_binary_search_cases(
             // Process else branch
             match branch_false {
                 Some(else_stmts) if else_stmts.len() == 1 => {
-                    if matches!(&else_stmts[0].statement, AstStatement::If(..)) {
+                    if matches!(&else_stmts[0].item, AstStatement::If(..)) {
                         collect_binary_search_cases(
-                            &else_stmts[0].statement,
+                            &else_stmts[0].item,
                             discriminant,
                             cases,
                             default_body,
@@ -314,19 +306,14 @@ fn collect_binary_search_cases(
 }
 
 fn collect_cases_from_branch(
-    stmts: &[WrappedAstStatement],
+    stmts: &[Wrapped<AstStatement>],
     discriminant: &mut Option<AstExpression>,
-    cases: &mut Vec<(AstLiteral, Vec<WrappedAstStatement>)>,
-    default_body: &mut Option<Vec<WrappedAstStatement>>,
+    cases: &mut Vec<(AstLiteral, Vec<Wrapped<AstStatement>>)>,
+    default_body: &mut Option<Vec<Wrapped<AstStatement>>>,
 ) -> bool {
     if stmts.len() == 1 {
-        if matches!(&stmts[0].statement, AstStatement::If(..)) {
-            return collect_binary_search_cases(
-                &stmts[0].statement,
-                discriminant,
-                cases,
-                default_body,
-            );
+        if matches!(&stmts[0].item, AstStatement::If(..)) {
+            return collect_binary_search_cases(&stmts[0].item, discriminant, cases, default_body);
         }
     }
     // Non-if branch in a binary search tree — could be default body
@@ -365,23 +352,18 @@ fn cmp_literal(a: &AstLiteral, b: &AstLiteral) -> std::cmp::Ordering {
 /// Only merges contiguous runs to preserve case ordering and fallthrough semantics.
 /// Uses full 256-bit blake3 structural hashing (which walks the full AST) for equality —
 /// collision probability is negligible (2^-128 for birthday attacks).
-fn cluster_switch_cases(stmt: &mut WrappedAstStatement) {
-    let AstStatement::Switch(_, cases, _) = &mut stmt.statement else {
+fn cluster_switch_cases(stmt: &mut Wrapped<AstStatement>) {
+    let AstStatement::Switch(_, cases, _) = &mut stmt.item else {
         return;
     };
     if cases.len() < 2 {
         return;
     }
 
-    fn body_digest(body: &[WrappedAstStatement]) -> Option<[u8; 32]> {
+    fn body_digest(body: &[Wrapped<AstStatement>]) -> Option<[u8; 32]> {
         let filtered: Vec<_> = body
             .iter()
-            .filter(|stmt| {
-                !matches!(
-                    &stmt.statement,
-                    AstStatement::Comment(_) | AstStatement::Empty
-                )
-            })
+            .filter(|stmt| !matches!(&stmt.item, AstStatement::Comment(_) | AstStatement::Empty))
             .cloned()
             .collect();
         if filtered.is_empty() {

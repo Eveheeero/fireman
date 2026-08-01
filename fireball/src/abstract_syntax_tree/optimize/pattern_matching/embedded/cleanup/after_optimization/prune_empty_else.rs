@@ -4,8 +4,7 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
-        WrappedAstStatement,
+        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -42,9 +41,9 @@ pub(crate) fn prune_empty_else(
     Ok(())
 }
 
-fn prune_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn prune_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 prune_in_list(bt);
                 // Check if else branch is Some([]) and remove it
@@ -91,11 +90,11 @@ mod tests {
         let (cond, x) = (ids[0], ids[1]);
 
         // if (cond) { x = 1; } else { } should become if (cond) { x = 1; }
-        let body = vec![wrap_statement(AstStatement::If(
-            wrap_expression(AstExpression::Variable(vm.clone(), cond)),
-            vec![wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+        let body = vec![wrap(AstStatement::If(
+            wrap(AstExpression::Variable(vm.clone(), cond)),
+            vec![wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), x)),
+                wrap(AstExpression::Literal(AstLiteral::Int(1))),
             ))],
             Some(vec![]), // Empty else branch
         ))];

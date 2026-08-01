@@ -4,8 +4,7 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
-        WrappedAstStatement,
+        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -42,10 +41,10 @@ pub(crate) fn flatten_blocks(
     Ok(())
 }
 
-fn flatten_in_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn flatten_in_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // First, recursively process nested structures
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(_, bt, bf) => {
                 flatten_in_list(bt);
                 if let Some(bf) = bf {
@@ -74,9 +73,9 @@ fn flatten_in_list(stmts: &mut Vec<WrappedAstStatement>) {
     // We need to use a worklist approach since we're modifying the vector
     let mut i = 0;
     while i < stmts.len() {
-        if matches!(&stmts[i].statement, AstStatement::Block(_)) {
+        if matches!(&stmts[i].item, AstStatement::Block(_)) {
             // Remove the Block wrapper and replace it with its contents
-            let inner_stmts = if let AstStatement::Block(inner) = &mut stmts[i].statement {
+            let inner_stmts = if let AstStatement::Block(inner) = &mut stmts[i].item {
                 std::mem::take(inner)
             } else {
                 unreachable!()
@@ -108,20 +107,20 @@ mod tests {
         let x = ids[0];
 
         // Block(Block(x = 1), x = 2) should flatten to x = 1; x = 2;
-        let inner_block = AstStatement::Block(vec![wrap_statement(AstStatement::Assignment(
-            wrap_expression(AstExpression::Variable(vm.clone(), x)),
-            wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+        let inner_block = AstStatement::Block(vec![wrap(AstStatement::Assignment(
+            wrap(AstExpression::Variable(vm.clone(), x)),
+            wrap(AstExpression::Literal(AstLiteral::Int(1))),
         ))]);
 
         let outer_block = AstStatement::Block(vec![
-            wrap_statement(inner_block),
-            wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+            wrap(inner_block),
+            wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), x)),
+                wrap(AstExpression::Literal(AstLiteral::Int(2))),
             )),
         ]);
 
-        let body = vec![wrap_statement(outer_block)];
+        let body = vec![wrap(outer_block)];
 
         let (fb, embed) = run_parity("cleanup/after-iteration/flatten-blocks.fb", body, vm, |c| c);
         assert!(

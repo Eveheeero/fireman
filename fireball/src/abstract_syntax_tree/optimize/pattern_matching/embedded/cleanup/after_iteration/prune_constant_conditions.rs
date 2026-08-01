@@ -11,7 +11,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral, AstOptimizationKind,
-        AstStatement, AstUnaryOperator, WrappedAstStatement,
+        AstStatement, AstUnaryOperator, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -69,9 +69,9 @@ fn constant_condition_truth(expr: &AstExpression) -> Option<bool> {
 }
 
 /// Recursively prune constant condition branches from statement lists.
-pub(crate) fn prune_constant_condition_branches(stmts: &mut Vec<WrappedAstStatement>) {
+pub(crate) fn prune_constant_condition_branches(stmts: &mut Vec<Wrapped<AstStatement>>) {
     for stmt in stmts.iter_mut() {
-        match &mut stmt.statement {
+        match &mut stmt.item {
             AstStatement::If(cond, bt, bf) => {
                 prune_constant_condition_branches(bt);
                 if let Some(bf) = bf {
@@ -81,11 +81,11 @@ pub(crate) fn prune_constant_condition_branches(stmts: &mut Vec<WrappedAstStatem
                 if let Some(is_true) = const_truth {
                     if is_true {
                         let body = std::mem::take(bt);
-                        stmt.statement = AstStatement::Block(body);
+                        stmt.item = AstStatement::Block(body);
                     } else if let Some(else_body) = bf.take() {
-                        stmt.statement = AstStatement::Block(else_body);
+                        stmt.item = AstStatement::Block(else_body);
                     } else {
-                        stmt.statement = AstStatement::Empty;
+                        stmt.item = AstStatement::Empty;
                     }
                 }
             }
@@ -122,15 +122,15 @@ mod tests {
         let x = ids[0];
 
         let if_stmt = AstStatement::If(
-            wrap_expression(AstExpression::Literal(AstLiteral::Int(0))),
-            vec![wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            wrap(AstExpression::Literal(AstLiteral::Int(0))),
+            vec![wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), x)),
+                wrap(AstExpression::Literal(AstLiteral::Int(1))),
             ))],
             None,
         );
 
-        let body = vec![wrap_statement(if_stmt)];
+        let body = vec![wrap(if_stmt)];
         let printed = run_direct_embedded_pass(body, |ast, fid, version| {
             prune_constant_conditions(ast, fid, version)
         });
@@ -156,15 +156,15 @@ mod tests {
         let x = ids[0];
 
         let if_stmt = AstStatement::If(
-            wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
-            vec![wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Int(2))),
+            wrap(AstExpression::Literal(AstLiteral::Int(1))),
+            vec![wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), x)),
+                wrap(AstExpression::Literal(AstLiteral::Int(2))),
             ))],
             None,
         );
 
-        let body = vec![wrap_statement(if_stmt)];
+        let body = vec![wrap(if_stmt)];
         let printed = run_direct_embedded_pass(body, |ast, fid, version| {
             prune_constant_conditions(ast, fid, version)
         });
@@ -184,18 +184,18 @@ mod tests {
         let x = ids[0];
 
         let if_stmt = AstStatement::If(
-            wrap_expression(AstExpression::Literal(AstLiteral::Int(0))),
-            vec![wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            wrap(AstExpression::Literal(AstLiteral::Int(0))),
+            vec![wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), x)),
+                wrap(AstExpression::Literal(AstLiteral::Int(1))),
             ))],
-            Some(vec![wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Int(3))),
+            Some(vec![wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), x)),
+                wrap(AstExpression::Literal(AstLiteral::Int(3))),
             ))]),
         );
 
-        let body = vec![wrap_statement(if_stmt)];
+        let body = vec![wrap(if_stmt)];
         let printed = run_direct_embedded_pass(body, |ast, fid, version| {
             prune_constant_conditions(ast, fid, version)
         });
@@ -220,21 +220,21 @@ mod tests {
         let x = ids[0];
 
         let inner_if = AstStatement::If(
-            wrap_expression(AstExpression::Literal(AstLiteral::Int(0))),
-            vec![wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            wrap(AstExpression::Literal(AstLiteral::Int(0))),
+            vec![wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), x)),
+                wrap(AstExpression::Literal(AstLiteral::Int(1))),
             ))],
             None,
         );
 
         let outer_if = AstStatement::If(
-            wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
-            vec![wrap_statement(inner_if)],
+            wrap(AstExpression::Literal(AstLiteral::Int(1))),
+            vec![wrap(inner_if)],
             None,
         );
 
-        let body = vec![wrap_statement(outer_if)];
+        let body = vec![wrap(outer_if)];
         let printed = run_direct_embedded_pass(body, |ast, fid, version| {
             prune_constant_conditions(ast, fid, version)
         });
@@ -254,15 +254,15 @@ mod tests {
         let x = ids[0];
 
         let if_stmt = AstStatement::If(
-            wrap_expression(AstExpression::Literal(AstLiteral::Bool(false))),
-            vec![wrap_statement(AstStatement::Assignment(
-                wrap_expression(AstExpression::Variable(vm.clone(), x)),
-                wrap_expression(AstExpression::Literal(AstLiteral::Int(1))),
+            wrap(AstExpression::Literal(AstLiteral::Bool(false))),
+            vec![wrap(AstStatement::Assignment(
+                wrap(AstExpression::Variable(vm.clone(), x)),
+                wrap(AstExpression::Literal(AstLiteral::Int(1))),
             ))],
             None,
         );
 
-        let body = vec![wrap_statement(if_stmt)];
+        let body = vec![wrap(if_stmt)];
         let printed = run_direct_embedded_pass(body, |ast, fid, version| {
             prune_constant_conditions(ast, fid, version)
         });

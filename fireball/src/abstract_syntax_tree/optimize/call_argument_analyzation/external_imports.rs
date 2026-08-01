@@ -56,7 +56,7 @@ pub(super) fn external_slot_address_from_jump_target(jump: &AstJumpTarget) -> Op
     }
 }
 
-fn meaningful_statements(body: &[WrappedAstStatement]) -> Vec<&WrappedAstStatement> {
+fn meaningful_statements(body: &[Wrapped<AstStatement>]) -> Vec<&Wrapped<AstStatement>> {
     body.iter()
         .filter(|stmt| {
             !matches!(
@@ -69,7 +69,7 @@ fn meaningful_statements(body: &[WrappedAstStatement]) -> Vec<&WrappedAstStateme
 
 pub(super) fn infer_external_import_symbol_from_body(
     ast: &Ast,
-    body: &[WrappedAstStatement],
+    body: &[Wrapped<AstStatement>],
 ) -> Option<String> {
     let meaningful = meaningful_statements(body);
     if meaningful.len() != 1 {
@@ -102,7 +102,7 @@ pub(super) fn collect_external_import_thunks(ast: &Ast) -> HashMap<AstFunctionId
 }
 
 pub(super) fn rewrite_external_import_calls_recursive(
-    body: &mut [WrappedAstStatement],
+    body: &mut [Wrapped<AstStatement>],
     external_thunks: &HashMap<AstFunctionId, String>,
 ) {
     for stmt in body.iter_mut() {

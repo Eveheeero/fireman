@@ -4,13 +4,10 @@ mod convert;
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstBinaryOperator, AstDescriptor, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstOptimizationKind, AstStatement, AstStatementOrigin, AstUnaryOperator,
-        AstValue, AstValueOrigin, AstValueType, AstVariable, AstVariableId, PrintWithConfig,
-        Wrapped, WrappedAstStatement,
-        optimize::ir_analyzation::convert::{
-            convert_expr, convert_stmt, resolve_constant, wdn, ws,
-        },
+        Ast, AstBinaryOperator, AstExpression, AstFunctionId, AstFunctionVersion, AstLiteral,
+        AstOptimizationKind, AstStatement, AstUnaryOperator, AstValue, AstValueType, AstVariable,
+        AstVariableId, PrintWithConfig, Wrapped,
+        optimize::ir_analyzation::convert::{convert_expr, convert_stmt, resolve_constant, w},
     },
     ir::{
         analyze::{DataType, variables::resolve_operand},
@@ -47,7 +44,7 @@ pub(super) fn analyze_ir_function(
         }
 
         body = std::mem::take(&mut function.body);
-        ir_function = function.ir.clone();
+        ir_function = function.origin_ir.clone();
     }
 
     let mut locals = HashMap::new();
@@ -164,21 +161,17 @@ pub(super) fn analyze_ir_function(
     {
         let mut last_calc: Option<(usize, Aos<IrData>, Vec<Aos<IrData>>)> = None;
         for (idx, item) in body.iter().enumerate() {
-            let AstStatement::Ir(stmt) = &item.statement else {
+            let AstStatement::Ir(stmt) = &item.item else {
                 continue;
             };
-            match stmt.as_ref() {
+            match &stmt.1 {
                 IrStatement::Special(IrStatementSpecial::CalcFlagsAutomatically {
                     operation,
                     flags,
                     ..
                 }) => {
                     // Resolve operand references using this instruction's args.
-                    let AstStatementOrigin::Ir(pos) = &item.origin else {
-                        continue;
-                    };
-                    let ir_idx = usize::try_from(pos.descriptor().ir_index())
-                        .expect("does your architecture smaller than 32bit?");
+                    let ir_idx = usize::try_from(stmt.0.unwrap()).unwrap();
                     let inst = &map[ir_idx];
                     let resolved_op = resolve_operand(operation, &inst.inner.arguments);
                     last_calc = Some((idx, resolved_op, flags.clone()));
@@ -214,15 +207,11 @@ pub(super) fn analyze_ir_function(
 
     // Phase 2: Convert IR statements to AST, with condition recovery for matched pairs.
     for (idx, item) in body.iter_mut().enumerate() {
-        let AstStatement::Ir(stmt) = &item.statement else {
-            continue;
-        };
-        let AstStatementOrigin::Ir(stmt_position) = &item.origin else {
+        let AstStatement::Ir(stmt) = &item.item else {
             continue;
         };
 
-        let instruction = &map[usize::try_from(stmt_position.descriptor().ir_index())
-            .expect("does your architecture smaller than 32bit?")];
+        let instruction = &map[usize::try_from(stmt.0.unwrap()).unwrap()];
         let instruction_args = &instruction.inner.arguments;
 
         // Try condition recovery for matched pairs.
@@ -231,7 +220,7 @@ pub(super) fn analyze_ir_function(
                 condition,
                 true_branch,
                 false_branch,
-            } = stmt.as_ref()
+            } = &stmt.1
             {
                 if let Some(mut recovered) = try_recover_condition_from_ir(
                     ast,
@@ -241,7 +230,6 @@ pub(super) fn analyze_ir_function(
                     true_branch,
                     false_branch,
                     &calc_op,
-                    stmt_position,
                     &var_map,
                     instruction_args,
                 )? {
@@ -259,8 +247,7 @@ pub(super) fn analyze_ir_function(
             ast,
             function_id,
             function_version,
-            stmt,
-            stmt_position,
+            &stmt.1,
             None,
             &var_map,
             instruction_args,
@@ -272,7 +259,7 @@ pub(super) fn analyze_ir_function(
     // Phase 3: Elide CalcFlagsAutomatically blocks whose semantics were folded
     // into recovered conditions.
     for idx in calc_to_elide {
-        body[idx].statement = AstStatement::Empty;
+        body[idx].item = AstStatement::Empty;
     }
 
     {
@@ -329,19 +316,11 @@ fn try_recover_condition_from_ir(
     true_branch: &[IrStatement],
     false_branch: &[IrStatement],
     calc_operation: &Aos<IrData>,
-    stmt_position: &AstDescriptor,
     var_map: &HashMap<Aos<IrData>, AstVariableId>,
     instruction_args: &[iceball::Argument],
-) -> Result<Option<WrappedAstStatement>, DecompileError> {
+) -> Result<Option<Wrapped<AstStatement>>, DecompileError> {
     // Convert the CalcFlags operation to an AST expression for use in comparisons.
-    let operation_expr = convert_expr(
-        ast,
-        function_id,
-        function_version,
-        calc_operation,
-        calc_operation,
-        var_map,
-    )?;
+    let operation_expr = convert_expr(ast, function_id, function_version, calc_operation, var_map)?;
 
     // Try to build a recovered comparison from the IR condition pattern.
     let Some(recovered_cond) = recover_ir_condition(condition, &operation_expr) else {
@@ -357,7 +336,6 @@ fn try_recover_condition_from_ir(
                 function_id,
                 function_version,
                 s,
-                stmt_position,
                 None,
                 var_map,
                 instruction_args,
@@ -372,7 +350,6 @@ fn try_recover_condition_from_ir(
                 function_id,
                 function_version,
                 s,
-                stmt_position,
                 None,
                 var_map,
                 instruction_args,
@@ -380,10 +357,11 @@ fn try_recover_condition_from_ir(
         })
         .collect::<Result<_, _>>()?;
 
-    Ok(Some(ws(
-        AstStatement::If(wdn(recovered_cond), then_b, Some(else_b)),
-        stmt_position.clone(),
-    )))
+    Ok(Some(w(AstStatement::If(
+        w(recovered_cond),
+        then_b,
+        Some(else_b),
+    ))))
 }
 
 /// Map an IR condition expression (built from flag registers) and a CalcFlags
@@ -422,7 +400,7 @@ fn recover_ir_condition(
                     let inner = recover_ir_condition(arg, operation_expr)?;
                     Some(AstExpression::UnaryOp(
                         AstUnaryOperator::Not,
-                        Box::new(wrap_expr(inner)),
+                        Box::new(w(inner)),
                     ))
                 }
             },
@@ -437,8 +415,8 @@ fn recover_ir_condition(
                 let rhs = recover_ir_condition(arg2, operation_expr)?;
                 Some(AstExpression::BinaryOp(
                     AstBinaryOperator::LogicAnd,
-                    Box::new(wrap_expr(lhs)),
-                    Box::new(wrap_expr(rhs)),
+                    Box::new(w(lhs)),
+                    Box::new(w(rhs)),
                 ))
             }
 
@@ -452,8 +430,8 @@ fn recover_ir_condition(
                 let rhs = recover_ir_condition(arg2, operation_expr)?;
                 Some(AstExpression::BinaryOp(
                     AstBinaryOperator::LogicOr,
-                    Box::new(wrap_expr(lhs)),
-                    Box::new(wrap_expr(rhs)),
+                    Box::new(w(lhs)),
+                    Box::new(w(rhs)),
                 ))
             }
 
@@ -497,8 +475,8 @@ fn recover_single_flag(
                 if op_name == "sub" {
                     return Some(AstExpression::BinaryOp(
                         cmp_op,
-                        Box::new(wrap_expr(lhs)),
-                        Box::new(wrap_expr(rhs)),
+                        Box::new(w(lhs)),
+                        Box::new(w(rhs)),
                     ));
                 }
             }
@@ -506,7 +484,7 @@ fn recover_single_flag(
             Some(AstExpression::BinaryOp(
                 cmp_op,
                 Box::new(operation.clone()),
-                Box::new(wrap_expr(AstExpression::Literal(AstLiteral::Int(0)))),
+                Box::new(w(AstExpression::Literal(AstLiteral::Int(0)))),
             ))
         }
         "sf" => {
@@ -519,7 +497,7 @@ fn recover_single_flag(
             Some(AstExpression::BinaryOp(
                 cmp_op,
                 Box::new(operation.clone()),
-                Box::new(wrap_expr(AstExpression::Literal(AstLiteral::Int(0)))),
+                Box::new(w(AstExpression::Literal(AstLiteral::Int(0)))),
             ))
         }
         "cf" => {
@@ -532,11 +510,11 @@ fn recover_single_flag(
             // For cmp (sub), CF means unsigned less-than
             Some(AstExpression::BinaryOp(
                 cmp_op,
-                Box::new(wrap_expr(AstExpression::UnaryOp(
+                Box::new(w(AstExpression::UnaryOp(
                     AstUnaryOperator::CastUnsigned,
                     Box::new(operation.clone()),
                 ))),
-                Box::new(wrap_expr(AstExpression::Literal(AstLiteral::Int(0)))),
+                Box::new(w(AstExpression::Literal(AstLiteral::Int(0)))),
             ))
         }
         // OF, AF, PF: too complex or rarely used as direct condition. Skip.
@@ -562,8 +540,8 @@ fn recover_flag_equality_ir(
         if op_name == "sub" {
             return Some(AstExpression::BinaryOp(
                 AstBinaryOperator::GreaterEqual,
-                Box::new(wrap_expr(lhs_operand)),
-                Box::new(wrap_expr(rhs_operand)),
+                Box::new(w(lhs_operand)),
+                Box::new(w(rhs_operand)),
             ));
         }
     }
@@ -610,8 +588,8 @@ fn simplify_self_operation(
             // For `sub`: the result is always 0, but the pattern from cmp is `a - b` not `a - a`
             Some(AstExpression::BinaryOp(
                 cmp_op.clone(),
-                Box::new(wrap_expr(lhs.clone())),
-                Box::new(wrap_expr(AstExpression::Literal(AstLiteral::Int(0)))),
+                Box::new(w(lhs.clone())),
+                Box::new(w(AstExpression::Literal(AstLiteral::Int(0)))),
             ))
         }
         // Also handle: CastSigned(var) or CastUnsigned(var) matching against bare var
@@ -624,8 +602,8 @@ fn simplify_self_operation(
                 {
                     Some(AstExpression::BinaryOp(
                         cmp_op.clone(),
-                        Box::new(wrap_expr(l_stripped.clone())),
-                        Box::new(wrap_expr(AstExpression::Literal(AstLiteral::Int(0)))),
+                        Box::new(w(l_stripped.clone())),
+                        Box::new(w(AstExpression::Literal(AstLiteral::Int(0)))),
                     ))
                 }
                 _ => None,
@@ -642,14 +620,5 @@ fn strip_cast(expr: &AstExpression) -> &AstExpression {
             inner,
         ) => strip_cast(&inner.item),
         _ => expr,
-    }
-}
-
-/// Wrap an expression in a Wrapped with Unknown origin.
-fn wrap_expr(item: AstExpression) -> Wrapped<AstExpression> {
-    Wrapped {
-        item,
-        origin: AstValueOrigin::Unknown,
-        comment: None,
     }
 }

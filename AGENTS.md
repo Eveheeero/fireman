@@ -187,8 +187,6 @@
 - `BlockGroup` - `fireball/src/ir/analyze/block_grouper.rs`
 - `KnownDataType` - `fireball/src/ir/analyze/datatype.rs`
 - `DataType` (enum) - `fireball/src/ir/analyze/datatype.rs`
-- `IrFunction` - `fireball/src/ir/analyze/ir_function.rs`
-- `IrFunctionVariable` - `fireball/src/ir/analyze/ir_function.rs`
 
 ### AST (`fireball/src/abstract_syntax_tree`)
 

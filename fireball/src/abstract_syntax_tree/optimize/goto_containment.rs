@@ -3,7 +3,7 @@
 use crate::{
     abstract_syntax_tree::{
         Ast, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget, AstOptimizationKind,
-        AstStatement, AstUnaryOperator, AstValueOrigin, Wrapped, WrappedAstStatement,
+        AstStatement, AstUnaryOperator, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -40,7 +40,7 @@ pub(super) fn contain_gotos(
     Ok(())
 }
 
-fn contain_gotos_in_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
+fn contain_gotos_in_statement_list(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // First, recurse into nested structures.
     for stmt in stmts.iter_mut() {
         contain_gotos_in_statement(stmt);
@@ -62,8 +62,8 @@ fn contain_gotos_in_statement_list(stmts: &mut Vec<WrappedAstStatement>) {
     // function's visible AST. Removing them would break control flow.
 }
 
-fn contain_gotos_in_statement(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
+fn contain_gotos_in_statement(stmt: &mut Wrapped<AstStatement>) {
+    match &mut stmt.item {
         AstStatement::If(_, branch_true, branch_false) => {
             contain_gotos_in_statement_list(branch_true);
             if let Some(branch_false) = branch_false {
@@ -107,15 +107,15 @@ fn contain_gotos_in_statement(stmt: &mut WrappedAstStatement) {
 /// Pattern: `if (cond) { goto L; } A; B; C; L:` => `if (!cond) { A; B; C; }`
 ///
 /// Returns `true` if any transformation was applied.
-fn try_convert_goto_to_if(stmts: &mut Vec<WrappedAstStatement>) -> bool {
+fn try_convert_goto_to_if(stmts: &mut Vec<Wrapped<AstStatement>>) -> bool {
     let mut changed = false;
     let mut i = 0;
     while i < stmts.len() {
         // Check if the current statement matches the pattern:
         //   if(cond) { goto L; }  (no else branch, single statement in body)
-        let label_name = match &stmts[i].statement {
+        let label_name = match &stmts[i].item {
             AstStatement::If(_, body_true, None) if body_true.len() == 1 => {
-                if let AstStatement::Goto(target) = &body_true[0].statement {
+                if let AstStatement::Goto(target) = &body_true[0].item {
                     jump_target_label(target)
                 } else {
                     None
@@ -136,21 +136,21 @@ fn try_convert_goto_to_if(stmts: &mut Vec<WrappedAstStatement>) -> bool {
         };
 
         // Collect all statements between the if and the label (exclusive).
-        let between: Vec<WrappedAstStatement> = stmts.drain((i + 1)..label_idx).collect();
+        let between: Vec<Wrapped<AstStatement>> = stmts.drain((i + 1)..label_idx).collect();
 
         // Extract the condition from the if-goto, negate it, and replace.
-        let cond = match &stmts[i].statement {
+        let cond = match &stmts[i].item {
             AstStatement::If(cond, _, _) => cond.clone(),
             _ => unreachable!(),
         };
         let negated_cond = negate_condition(cond);
-        stmts[i].statement = AstStatement::If(negated_cond, between, None);
+        stmts[i].item = AstStatement::If(negated_cond, between, None);
 
         // Remove the label if no other gotos reference it.
         // After the drain, the label is now at index i+1.
         if i + 1 < stmts.len() {
             let should_remove = matches!(
-                &stmts[i + 1].statement,
+                &stmts[i + 1].item,
                 AstStatement::Label(lbl) if lbl == &label_name
             ) && count_gotos_to_label(stmts, &label_name) == 0;
 
@@ -169,10 +169,10 @@ fn try_convert_goto_to_if(stmts: &mut Vec<WrappedAstStatement>) -> bool {
 /// forward to a label at the same nesting level. The statements between the
 /// goto and the label are dead code (already handled by control_flow_cleanup),
 /// so this mainly removes the goto itself and the label if unreferenced.
-fn remove_simple_forward_gotos(stmts: &mut Vec<WrappedAstStatement>) {
+fn remove_simple_forward_gotos(stmts: &mut Vec<Wrapped<AstStatement>>) {
     let mut i = 0;
     while i < stmts.len() {
-        if let AstStatement::Goto(target) = &stmts[i].statement {
+        if let AstStatement::Goto(target) = &stmts[i].item {
             if let Some(label_name) = jump_target_label(target) {
                 if find_label_index(stmts, i + 1, &label_name).is_some() {
                     // Remove the goto statement.
@@ -196,16 +196,14 @@ fn remove_simple_forward_gotos(stmts: &mut Vec<WrappedAstStatement>) {
 fn jump_target_label(target: &AstJumpTarget) -> Option<String> {
     match target {
         AstJumpTarget::Unknown(name) => Some(name.clone()),
-        AstJumpTarget::Variable { .. }
-        | AstJumpTarget::Function { .. }
-        | AstJumpTarget::Instruction { .. } => None,
+        AstJumpTarget::Variable { .. } | AstJumpTarget::Function { .. } => None,
     }
 }
 
 /// Find the index of a `Label(label)` statement in `stmts[from..]`.
-fn find_label_index(stmts: &[WrappedAstStatement], from: usize, label: &str) -> Option<usize> {
+fn find_label_index(stmts: &[Wrapped<AstStatement>], from: usize, label: &str) -> Option<usize> {
     for idx in from..stmts.len() {
-        if let AstStatement::Label(ref lbl) = stmts[idx].statement {
+        if let AstStatement::Label(ref lbl) = stmts[idx].item {
             if lbl == label {
                 return Some(idx);
             }
@@ -218,14 +216,13 @@ fn find_label_index(stmts: &[WrappedAstStatement], from: usize, label: &str) -> 
 fn negate_condition(cond: Wrapped<AstExpression>) -> Wrapped<AstExpression> {
     Wrapped {
         item: AstExpression::UnaryOp(AstUnaryOperator::Not, Box::new(cond)),
-        origin: AstValueOrigin::Unknown,
         comment: None,
     }
 }
 
 /// Count the number of `Goto` statements in the slice that target the given label.
 /// Recurses into nested structures.
-fn count_gotos_to_label(stmts: &[WrappedAstStatement], label: &str) -> usize {
+fn count_gotos_to_label(stmts: &[Wrapped<AstStatement>], label: &str) -> usize {
     let mut count = 0;
     for stmt in stmts {
         count += count_gotos_to_label_in_statement(stmt, label);
@@ -233,8 +230,8 @@ fn count_gotos_to_label(stmts: &[WrappedAstStatement], label: &str) -> usize {
     count
 }
 
-fn count_gotos_to_label_in_statement(stmt: &WrappedAstStatement, label: &str) -> usize {
-    match &stmt.statement {
+fn count_gotos_to_label_in_statement(stmt: &Wrapped<AstStatement>, label: &str) -> usize {
+    match &stmt.item {
         AstStatement::Goto(target) => {
             if jump_target_label(target).as_deref() == Some(label) {
                 1
@@ -286,12 +283,12 @@ fn count_gotos_to_label_in_statement(stmt: &WrappedAstStatement, label: &str) ->
 
 /// Remove labels that have no remaining goto references anywhere in the
 /// statement list (including nested structures).
-fn remove_unreferenced_labels(stmts: &mut Vec<WrappedAstStatement>) {
+fn remove_unreferenced_labels(stmts: &mut Vec<Wrapped<AstStatement>>) {
     // Collect all labels first, then check references.
     let labels: Vec<String> = stmts
         .iter()
         .filter_map(|s| {
-            if let AstStatement::Label(ref lbl) = s.statement {
+            if let AstStatement::Label(ref lbl) = s.item {
                 Some(lbl.clone())
             } else {
                 None
@@ -301,7 +298,7 @@ fn remove_unreferenced_labels(stmts: &mut Vec<WrappedAstStatement>) {
 
     for label in labels {
         if count_gotos_to_label(stmts, &label) == 0 {
-            stmts.retain(|s| !matches!(&s.statement, AstStatement::Label(lbl) if lbl == &label));
+            stmts.retain(|s| !matches!(&s.item, AstStatement::Label(lbl) if lbl == &label));
         }
     }
 }
