@@ -1,5 +1,7 @@
 use super::hello_world_binary;
+use crate::abstract_syntax_tree::AstPrintConfig;
 use crate::{
+    Fire,
     core::{Address, FireRaw, RelationType},
     pe::Pe,
     prelude::*,
@@ -330,5 +332,25 @@ fn pe_hello_world_print_assem_entry() {
              */
             println!("{}", inst);
         }
+    });
+}
+
+#[test]
+fn pe_hello_world_decom() {
+    let subscriber = test_log_subscriber_with_file("logs/fireball_pe_hello_world_decom.log");
+
+    tracing::dispatcher::with_default(&Dispatch::new(subscriber), || {
+        let binary = hello_world_binary();
+        let pe = Pe::from_binary(binary.to_vec()).unwrap();
+        let blocks = pe.analyze_all().unwrap();
+        let ast =
+            crate::ir::analyze::generate_ast_with_pre_defined_symbols(blocks, pe.get_defined())
+                .unwrap();
+        let ir_result = ast.print(None);
+        println!("{}", ir_result);
+        std::fs::write("logs/fireball_pe_hello_world_ir.log", ir_result).unwrap();
+        let ast_result = ast.optimize(None).unwrap().print(None);
+        println!("{}", ast_result);
+        std::fs::write("logs/fireball_pe_hello_world_ast.log", ast_result).unwrap();
     });
 }
