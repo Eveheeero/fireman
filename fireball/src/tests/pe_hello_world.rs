@@ -1,7 +1,5 @@
 use super::hello_world_binary;
-use crate::abstract_syntax_tree::AstPrintConfig;
 use crate::{
-    Fire,
     core::{Address, FireRaw, RelationType},
     pe::Pe,
     prelude::*,
