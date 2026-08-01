@@ -163,9 +163,7 @@ impl GetRelatedVariables for AstJumpTarget {
             AstJumpTarget::Variable { var_id, .. } => {
                 [(AstVariableAccessType::Read, var_id.clone())].into()
             }
-            AstJumpTarget::Function { .. }
-            | AstJumpTarget::Instruction { .. }
-            | AstJumpTarget::Unknown(_) => Vec::new(),
+            AstJumpTarget::Function { .. } | AstJumpTarget::Unknown(_) => Vec::new(),
         }
     }
 }

@@ -93,25 +93,6 @@ fn push_indented_lines(output: &mut String, indent: &str, content: &str) {
     }
 }
 
-fn collect_statement_ir_origins<'a>(
-    origin: &'a AstStatementOrigin,
-    out: &mut Vec<&'a AstDescriptor>,
-) {
-    match origin {
-        AstStatementOrigin::Ir(descriptor) => out.push(descriptor),
-        AstStatementOrigin::Combination(origins) => {
-            for origin in origins {
-                collect_statement_ir_origins(origin, out);
-            }
-        }
-        _ => {}
-    }
-}
-
-fn descriptor_source_key(descriptor: &AstDescriptor) -> usize {
-    std::sync::Arc::as_ptr(descriptor.ir()) as usize
-}
-
 impl Ast {
     pub fn print(&self, config: Option<AstPrintConfig>) -> String {
         let config = config.unwrap_or_default();
@@ -172,7 +153,7 @@ impl Ast {
                 let body_vars: Option<HashSet<AstVariableId>> = if config.hide_unused_declarations {
                     let mut vars = HashSet::new();
                     for stmt in &func.body {
-                        for (_, var_id) in stmt.statement.get_related_variables() {
+                        for (_, var_id) in stmt.item.get_related_variables() {
                             vars.insert(var_id);
                         }
                     }
@@ -273,43 +254,10 @@ impl Ast {
             }
 
             // Function body
-            let mut visited_ir = HashSet::new();
-            let mut prev_stmt = None;
             for stmt in &func.body {
                 let content = stmt.to_string_with_config(Some(config));
                 if content.is_empty() {
                     continue;
-                }
-                let mut origins = Vec::new();
-                collect_statement_ir_origins(&stmt.origin, &mut origins);
-                if config.print_instruction {
-                    for descriptor in &origins {
-                        let source_key = descriptor_source_key(descriptor);
-                        let ir_key = (source_key, descriptor.descriptor().ir_index());
-                        if !visited_ir.contains(&ir_key) {
-                            let instruction = &descriptor.ir().get_instructions()
-                                [descriptor.descriptor().ir_index() as usize];
-                            output.push_str(&format!("  // {}\n", instruction));
-                            visited_ir.insert(ir_key);
-                        }
-                    }
-                }
-                if config.print_ir {
-                    for descriptor in &origins {
-                        if let Some(statement_index) = descriptor.descriptor().statement_index() {
-                            let source_key = descriptor_source_key(descriptor);
-                            let descriptor_key = (source_key, *descriptor.descriptor());
-                            if prev_stmt != Some(descriptor_key) {
-                                let stmt = &descriptor.ir().get_ir()
-                                    [descriptor.descriptor().ir_index() as usize]
-                                    .statements
-                                    .as_ref()
-                                    .unwrap()[*statement_index as usize];
-                                output.push_str(&format!("    /* {} */\n", stmt));
-                                prev_stmt = Some(descriptor_key);
-                            }
-                        }
-                    }
                 }
                 push_indented_lines(&mut output, "    ", &content);
             }

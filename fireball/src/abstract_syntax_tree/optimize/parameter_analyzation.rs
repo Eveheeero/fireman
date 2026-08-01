@@ -42,7 +42,7 @@ pub(super) fn analyze_parameters(
     let first_arg_undetectable_statement_index =
         super::utils::get_first_arg_undetectable_statement_index(body.iter());
     for (i, stmt) in body.iter().enumerate() {
-        let stmt = &stmt.statement;
+        let stmt = &stmt.item;
         let related_vars = stmt.get_related_variables();
 
         /* analyze registers before undetectable statements */

@@ -5,11 +5,11 @@ use std::sync::Arc;
 pub struct AstFunction {
     pub name: Option<String>,
     pub id: AstFunctionId,
-    pub ir: Arc<IrFunction>,
+    pub origin_ir: Arc<IrFunction>,
     pub return_type: AstValueType,
     pub parameters: Vec<AstParameter>,
     pub variables: ArcAstVariableMap,
-    pub body: Vec<WrappedAstStatement>,
+    pub body: Vec<Wrapped<AstStatement>>,
 
     pub processed_optimizations: Vec<AstOptimizationKind>,
 }

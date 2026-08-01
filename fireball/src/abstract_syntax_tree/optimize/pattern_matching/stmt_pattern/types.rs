@@ -1,7 +1,7 @@
 use super::node_name::{CaptureRef, FitsTarget, NodeName};
 use crate::abstract_syntax_tree::{
     ArcAstVariableMap, AstBinaryOperator, AstCall, AstExpression, AstLiteral, AstStatement,
-    AstUnaryOperator, AstValueType, AstVariable, AstVariableId, Wrapped, WrappedAstStatement,
+    AstUnaryOperator, AstValueType, AstVariable, AstVariableId, Wrapped,
 };
 use std::collections::HashMap;
 
@@ -46,8 +46,8 @@ pub enum Captured {
     VariableId(AstVariableId),
     VariableMap(ArcAstVariableMap),
     Literal(AstLiteral),
-    StmtList(Vec<WrappedAstStatement>),
-    OptStmtList(Option<Vec<WrappedAstStatement>>),
+    StmtList(Vec<Wrapped<AstStatement>>),
+    OptStmtList(Option<Vec<Wrapped<AstStatement>>>),
     OptExpression(Option<Wrapped<AstExpression>>),
     UnaryOp(AstUnaryOperator),
     BinaryOp(AstBinaryOperator),

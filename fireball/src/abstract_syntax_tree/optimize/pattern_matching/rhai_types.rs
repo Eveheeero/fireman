@@ -1,25 +1,22 @@
 use crate::{
-    abstract_syntax_tree::{
-        AstCall, AstExpression, AstStatement, AstStatementOrigin, WrappedAstStatement,
-    },
+    abstract_syntax_tree::{AstCall, AstExpression, AstStatement, Wrapped},
     ir::{
         data::{IrData, IrDataOperation, IrIntrinsic},
         statements::IrStatement,
     },
 };
 use rhai::{Array, Dynamic, Engine};
-
 // ── AST Statement wrapper ──
 
 #[derive(Debug, Clone)]
 pub(super) struct RhaiAstStmt {
     pub(super) kind: &'static str,
-    wrapped: WrappedAstStatement,
+    wrapped: Wrapped<AstStatement>,
 }
 
 impl RhaiAstStmt {
-    pub fn from_wrapped(wrapped: &WrappedAstStatement) -> Self {
-        let kind = match &wrapped.statement {
+    pub fn from_wrapped(wrapped: &Wrapped<AstStatement>) -> Self {
+        let kind = match &wrapped.item {
             AstStatement::Declaration(_, _) => "declaration",
             AstStatement::Assignment(_, _) => "assignment",
             AstStatement::If(_, _, _) => "if",
@@ -49,7 +46,7 @@ impl RhaiAstStmt {
 
     #[inline]
     fn stmt(&self) -> &AstStatement {
-        &self.wrapped.statement
+        &self.wrapped.item
     }
 
     fn kind(&mut self) -> String {
@@ -57,17 +54,7 @@ impl RhaiAstStmt {
     }
 
     fn to_str(&mut self) -> String {
-        format!("{:?}", self.wrapped.statement)
-    }
-
-    fn origin(&mut self) -> String {
-        match &self.wrapped.origin {
-            AstStatementOrigin::UserInput => "user_input".to_string(),
-            AstStatementOrigin::PreDefined => "predefined".to_string(),
-            AstStatementOrigin::Ir(desc) => format!("ir({desc:?})"),
-            AstStatementOrigin::Combination(_) => "combination".to_string(),
-            AstStatementOrigin::Unknown => "unknown".to_string(),
-        }
+        format!("{:?}", self.wrapped.item)
     }
 
     fn wrapper_comment(&mut self) -> String {
@@ -75,79 +62,79 @@ impl RhaiAstStmt {
     }
 
     fn is_call(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Call(_))
+        matches!(self.wrapped.item, AstStatement::Call(_))
     }
 
     fn is_if(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::If(_, _, _))
+        matches!(self.wrapped.item, AstStatement::If(_, _, _))
     }
 
     fn is_return(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Return(_))
+        matches!(self.wrapped.item, AstStatement::Return(_))
     }
 
     fn is_comment(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Comment(_))
+        matches!(self.wrapped.item, AstStatement::Comment(_))
     }
 
     fn is_assignment(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Assignment(_, _))
+        matches!(self.wrapped.item, AstStatement::Assignment(_, _))
     }
 
     fn is_declaration(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Declaration(_, _))
+        matches!(self.wrapped.item, AstStatement::Declaration(_, _))
     }
 
     fn is_while(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::While(_, _))
+        matches!(self.wrapped.item, AstStatement::While(_, _))
     }
 
     fn is_for(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::For(_, _, _, _))
+        matches!(self.wrapped.item, AstStatement::For(_, _, _, _))
     }
 
     fn is_goto(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Goto(_))
+        matches!(self.wrapped.item, AstStatement::Goto(_))
     }
 
     fn is_label(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Label(_))
+        matches!(self.wrapped.item, AstStatement::Label(_))
     }
 
     fn is_block(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Block(_))
+        matches!(self.wrapped.item, AstStatement::Block(_))
     }
 
     fn is_switch(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Switch(_, _, _))
+        matches!(self.wrapped.item, AstStatement::Switch(_, _, _))
     }
 
     fn is_break(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Break)
+        matches!(self.wrapped.item, AstStatement::Break)
     }
 
     fn is_continue(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Continue)
+        matches!(self.wrapped.item, AstStatement::Continue)
     }
 
     fn is_dowhile(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::DoWhile(_, _))
+        matches!(self.wrapped.item, AstStatement::DoWhile(_, _))
     }
 
     fn is_empty(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Empty)
+        matches!(self.wrapped.item, AstStatement::Empty)
     }
 
     fn is_ir(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Ir(_))
+        matches!(self.wrapped.item, AstStatement::Ir(_))
     }
 
     fn is_assembly(&mut self) -> bool {
-        matches!(self.wrapped.statement, AstStatement::Assembly(_))
+        matches!(self.wrapped.item, AstStatement::Assembly(_))
     }
 
     fn call_name(&mut self) -> String {
-        match &self.wrapped.statement {
+        match &self.wrapped.item {
             AstStatement::Call(call) => match call {
                 AstCall::Unknown(name, _) => name.clone(),
                 AstCall::Variable { var_id, .. } => format!("{var_id:?}"),
@@ -159,25 +146,25 @@ impl RhaiAstStmt {
     }
 
     fn comment_text(&mut self) -> String {
-        match &self.wrapped.statement {
+        match &self.wrapped.item {
             AstStatement::Comment(text) => text.clone(),
             _ => String::new(),
         }
     }
 
     fn label_text(&mut self) -> String {
-        match &self.wrapped.statement {
+        match &self.wrapped.item {
             AstStatement::Label(text) => text.clone(),
             _ => String::new(),
         }
     }
 
     fn has_else(&mut self) -> bool {
-        matches!(&self.wrapped.statement, AstStatement::If(_, _, Some(_)))
+        matches!(&self.wrapped.item, AstStatement::If(_, _, Some(_)))
     }
 
     fn body_count(&mut self) -> i64 {
-        match &self.wrapped.statement {
+        match &self.wrapped.item {
             AstStatement::If(_, body, _) => body.len() as i64,
             AstStatement::While(_, body) => body.len() as i64,
             AstStatement::For(_, _, _, body) => body.len() as i64,
@@ -188,7 +175,7 @@ impl RhaiAstStmt {
     }
 
     fn else_count(&mut self) -> i64 {
-        match &self.wrapped.statement {
+        match &self.wrapped.item {
             AstStatement::If(_, _, Some(else_body)) => else_body.len() as i64,
             _ => 0,
         }
@@ -196,56 +183,55 @@ impl RhaiAstStmt {
 
     fn contains_call_to(&mut self, name: &str) -> bool {
         let needle = name.to_lowercase();
-        stmt_contains_call(&self.wrapped.statement, &needle)
+        stmt_contains_call(&self.wrapped.item, &needle)
     }
 
     // ── Comment modulation ──
 
     fn set_comment(&mut self, text: String) {
-        if matches!(self.wrapped.statement, AstStatement::Comment(_)) {
-            self.wrapped.statement = AstStatement::Comment(text);
+        if matches!(self.wrapped.item, AstStatement::Comment(_)) {
+            self.wrapped.item = AstStatement::Comment(text);
         }
     }
 
     fn prepend_comment(&mut self, prefix: String) {
-        if let AstStatement::Comment(ref mut text) = self.wrapped.statement {
+        if let AstStatement::Comment(ref mut text) = self.wrapped.item {
             *text = format!("{prefix}{text}");
         }
     }
 
     fn append_comment(&mut self, suffix: String) {
-        if let AstStatement::Comment(ref mut text) = self.wrapped.statement {
+        if let AstStatement::Comment(ref mut text) = self.wrapped.item {
             text.push_str(&suffix);
         }
     }
 
     fn replace_in_comment(&mut self, old: &str, new: &str) {
-        if let AstStatement::Comment(ref mut text) = self.wrapped.statement {
+        if let AstStatement::Comment(ref mut text) = self.wrapped.item {
             *text = text.replace(old, new);
         }
     }
 
     fn to_comment(&mut self) -> RhaiAstStmt {
-        let text = match &self.wrapped.statement {
+        let text = match &self.wrapped.item {
             AstStatement::Comment(t) => t.clone(),
             other => format!("{other:?}"),
         };
-        let wrapped = WrappedAstStatement {
-            statement: AstStatement::Comment(text),
-            origin: self.wrapped.origin.clone(),
+        let wrapped = Wrapped {
+            item: AstStatement::Comment(text),
             comment: self.wrapped.comment.clone(),
         };
         RhaiAstStmt::from_wrapped(&wrapped)
     }
 
     fn has_operator(&mut self, op_name: &str) -> bool {
-        stmt_has_operator(&self.wrapped.statement, op_name)
+        stmt_has_operator(&self.wrapped.item, op_name)
     }
 
     // ── Deep getters for statement fields ──
 
     fn condition(&mut self) -> String {
-        match &self.wrapped.statement {
+        match &self.wrapped.item {
             AstStatement::If(cond, _, _)
             | AstStatement::While(cond, _)
             | AstStatement::DoWhile(cond, _) => format!("{:?}", cond.item),
@@ -254,7 +240,7 @@ impl RhaiAstStmt {
     }
 
     fn body(&mut self) -> Array {
-        let stmts: &[WrappedAstStatement] = match &self.wrapped.statement {
+        let stmts: &[Wrapped<AstStatement>] = match &self.wrapped.item {
             AstStatement::If(_, body, _)
             | AstStatement::While(_, body)
             | AstStatement::DoWhile(_, body) => body,
@@ -269,7 +255,7 @@ impl RhaiAstStmt {
     }
 
     fn else_body(&mut self) -> Array {
-        match &self.wrapped.statement {
+        match &self.wrapped.item {
             AstStatement::If(_, _, Some(else_stmts)) => else_stmts
                 .iter()
                 .map(|s| Dynamic::from(RhaiAstStmt::from_wrapped(s)))
@@ -279,7 +265,7 @@ impl RhaiAstStmt {
     }
 
     fn lhs(&mut self) -> String {
-        match &self.wrapped.statement {
+        match &self.wrapped.item {
             AstStatement::Assignment(lhs, _) => format!("{:?}", lhs.item),
             AstStatement::Declaration(var, _) => format!("{var:?}"),
             _ => String::new(),
@@ -287,7 +273,7 @@ impl RhaiAstStmt {
     }
 
     fn rhs(&mut self) -> String {
-        match &self.wrapped.statement {
+        match &self.wrapped.item {
             AstStatement::Assignment(_, rhs) => format!("{:?}", rhs.item),
             AstStatement::Declaration(_, Some(init)) => format!("{:?}", init.item),
             _ => String::new(),
@@ -295,35 +281,35 @@ impl RhaiAstStmt {
     }
 
     fn return_expr(&mut self) -> String {
-        match &self.wrapped.statement {
+        match &self.wrapped.item {
             AstStatement::Return(Some(expr)) => format!("{:?}", expr.item),
             _ => String::new(),
         }
     }
 
     fn ir_stmt(&mut self) -> Dynamic {
-        match &self.wrapped.statement {
-            AstStatement::Ir(ir) => Dynamic::from(RhaiIrStmt::from_statement(ir)),
+        match &self.wrapped.item {
+            AstStatement::Ir(ir) => Dynamic::from(RhaiIrStmt::from_statement(&ir.1)),
             _ => Dynamic::UNIT,
         }
     }
 
     fn assembly_text(&mut self) -> String {
-        match &self.wrapped.statement {
+        match &self.wrapped.item {
             AstStatement::Assembly(text) => text.clone(),
             _ => String::new(),
         }
     }
 
     fn goto_target(&mut self) -> String {
-        match &self.wrapped.statement {
+        match &self.wrapped.item {
             AstStatement::Goto(target) => format!("{target:?}"),
             _ => String::new(),
         }
     }
 
     fn exception_text(&mut self) -> String {
-        match &self.wrapped.statement {
+        match &self.wrapped.item {
             AstStatement::Exception(text) => text.to_string(),
             _ => String::new(),
         }
@@ -703,7 +689,7 @@ fn stmt_contains_call(stmt: &AstStatement, needle: &str) -> bool {
     }
 
     // For container statements, use a worklist to search sub-bodies iteratively.
-    let mut worklist: Vec<&[WrappedAstStatement]> = Vec::new();
+    let mut worklist: Vec<&[Wrapped<AstStatement>]> = Vec::new();
     match stmt {
         AstStatement::If(_, body, else_body) => {
             worklist.push(body);
@@ -730,7 +716,7 @@ fn stmt_contains_call(stmt: &AstStatement, needle: &str) -> bool {
 
     while let Some(list) = worklist.pop() {
         for s in list {
-            match &s.statement {
+            match &s.item {
                 AstStatement::Call(call) => {
                     if call_matches(call, needle) {
                         return true;
@@ -849,7 +835,7 @@ fn rhai_count_calls(stmts: Array) -> i64 {
         .filter(|d| {
             Dynamic::clone(d)
                 .try_cast::<RhaiAstStmt>()
-                .is_some_and(|s| matches!(s.wrapped.statement, AstStatement::Call(_)))
+                .is_some_and(|s| matches!(s.wrapped.item, AstStatement::Call(_)))
         })
         .count() as i64
 }
@@ -860,7 +846,7 @@ fn rhai_count_assignments(stmts: Array) -> i64 {
         .filter(|d| {
             Dynamic::clone(d)
                 .try_cast::<RhaiAstStmt>()
-                .is_some_and(|s| matches!(s.wrapped.statement, AstStatement::Assignment(_, _)))
+                .is_some_and(|s| matches!(s.wrapped.item, AstStatement::Assignment(_, _)))
         })
         .count() as i64
 }
@@ -871,7 +857,7 @@ fn rhai_count_comments(stmts: Array) -> i64 {
         .filter(|d| {
             Dynamic::clone(d)
                 .try_cast::<RhaiAstStmt>()
-                .is_some_and(|s| matches!(s.wrapped.statement, AstStatement::Comment(_)))
+                .is_some_and(|s| matches!(s.wrapped.item, AstStatement::Comment(_)))
         })
         .count() as i64
 }
@@ -883,7 +869,7 @@ fn rhai_find_calls_to(stmts: Array, name: String) -> Array {
         .filter(|d| {
             Dynamic::clone(d)
                 .try_cast::<RhaiAstStmt>()
-                .is_some_and(|s| stmt_contains_call(&s.wrapped.statement, &needle))
+                .is_some_and(|s| stmt_contains_call(&s.wrapped.item, &needle))
         })
         .collect()
 }

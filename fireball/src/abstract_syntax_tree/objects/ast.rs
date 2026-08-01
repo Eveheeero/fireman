@@ -1,8 +1,5 @@
 use crate::{
-    abstract_syntax_tree::objects::*,
-    core::PreDefinedOffsets,
-    ir::{analyze::IrFunction, utils::IrStatementDescriptor},
-    prelude::*,
+    abstract_syntax_tree::objects::*, core::PreDefinedOffsets, ir::analyze::IrFunction, prelude::*,
     utils::version_map::VersionMap,
 };
 use hashbrown::HashMap;
@@ -57,25 +54,15 @@ impl Ast {
         {
             let ir_index = ir_index as u32;
             if let Some(stmts) = ir.statements {
-                for (stmt_index, stmt) in stmts.iter().enumerate() {
-                    let stmt_index = stmt_index as u8;
-                    let stmt_position = AstDescriptor::new(
-                        data.clone(),
-                        IrStatementDescriptor::new(ir_index, Some(stmt_index)),
-                    );
-                    body.push(WrappedAstStatement {
-                        statement: AstStatement::Ir(Box::new(stmt.clone())),
-                        origin: AstStatementOrigin::Ir(stmt_position),
+                for stmt in stmts.iter() {
+                    body.push(Wrapped {
+                        item: AstStatement::Ir(Box::new((Some(ir_index), stmt.clone()))),
                         comment: None,
                     });
                 }
             } else {
-                body.push(WrappedAstStatement {
-                    statement: AstStatement::Assembly(instruction.inner.to_string()),
-                    origin: AstStatementOrigin::Ir(AstDescriptor::new(
-                        data.clone(),
-                        IrStatementDescriptor::new(ir_index, None),
-                    )),
+                body.push(Wrapped {
+                    item: AstStatement::Assembly(instruction.inner.to_string()),
                     comment: None,
                 });
             }
@@ -83,7 +70,7 @@ impl Ast {
         let func = AstFunction {
             name: None,
             id,
-            ir: data,
+            origin_ir: data,
             return_type: AstValueType::Void,
             parameters: Vec::new(),
             variables: Arc::new(RwLock::new(HashMap::new())),

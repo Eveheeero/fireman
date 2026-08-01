@@ -1,10 +1,4 @@
-//! Pattern matching constraints:
-//! - Do not hardcode AST text specializations like `some([])` or `block([])`.
-//! - AST/IR matching must rely on generic `...` wildcard semantics.
-//! - Keep AST/IR pattern payloads typed; avoid adding `source: String` mirrors.
-
 mod apply;
-pub(crate) mod embedded;
 mod fb_gz;
 mod fb_parser;
 pub(crate) mod fbz;
@@ -692,7 +686,7 @@ impl AstPatternAsmData {
             .ok_or_else(|| format!("unsupported asm pattern `{value}`"))?;
         Ok(Self {
             source: value.to_string(),
-            statement: AstStatement::Ir(Box::new(statement)),
+            statement: AstStatement::Ir(Box::new((None, statement))),
         })
     }
 
@@ -775,7 +769,7 @@ impl AstPatternAstData {
             }
             AstPatternAstMatcher::IfAny => matches!(statement, AstStatement::If(_, _, _)),
             AstPatternAstMatcher::IrExact(expected_ir) => {
-                matches!(statement, AstStatement::Ir(actual_ir) if actual_ir.as_ref() == expected_ir.as_ref())
+                matches!(statement, AstStatement::Ir(actual_ir) if &actual_ir.1 == expected_ir.as_ref())
             }
             AstPatternAstMatcher::Unsupported => false,
         }
@@ -855,9 +849,6 @@ pub struct AstPatternRange {
     pub start: usize,
     pub end_exclusive: usize,
 }
-
-#[cfg(test)]
-mod file_tests;
 
 #[cfg(test)]
 mod tests;

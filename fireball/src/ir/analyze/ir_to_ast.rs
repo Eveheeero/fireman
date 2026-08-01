@@ -4,7 +4,7 @@ use crate::{
     ir::analyze::{BlockGrouper, ir_function::generate_ir_function},
     prelude::*,
 };
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 /// Generate AST from targets
 pub fn generate_ast(targets: impl IntoIterator<Item = Arc<Block>>) -> Result<Ast, DecompileError> {
@@ -27,20 +27,6 @@ pub fn generate_ast_with_pre_defined_symbols(
             continue;
         }
         merged_functions.push(merged);
-    }
-
-    let callee_summaries = merged_functions
-        .iter()
-        .filter_map(|merged| {
-            Some((
-                merged.get_entry_address()?,
-                merged.get_function_summary()?.clone(),
-            ))
-        })
-        .collect::<HashMap<_, _>>();
-
-    for merged in merged_functions.iter_mut() {
-        merged.apply_interprocedural_escape_propagation(&callee_summaries);
     }
 
     for merged in merged_functions.into_iter() {

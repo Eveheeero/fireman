@@ -151,37 +151,9 @@ struct JsonPreset {
 struct JsonPresetOptimizationConfig {
     ir_analyzation: bool,
     parameter_analyzation: bool,
-    call_argument_analyzation: bool,
     constant_folding: bool,
-    control_flow_cleanup: bool,
     collapse_unused_variable: bool,
-    dead_store_elimination: bool,
-    pattern_matching_enabled: bool,
     pattern_matching: Vec<String>, // if invalid name, ignore
-    loop_analyzation: bool,
-    copy_propagation: bool,
-    expression_inlining: bool,
-    operator_canonicalization: bool,
-    magic_division_recovery: bool,
-    identity_simplification: bool,
-    bit_trick_recognition: bool,
-    cast_minimization: bool,
-    ternary_recovery: bool,
-    boolean_recovery: bool,
-    assertion_recovery: bool,
-    do_while_recovery: bool,
-    clamp_recovery: bool,
-    loop_cleanup: bool,
-    if_conversion_reversal: bool,
-    switch_reconstruction: bool,
-    lifetime_scoping: bool,
-    signedness_inference: bool,
-    name_recovery: bool,
-    early_return_normalization: bool,
-    anti_debug_ast_suppression: bool,
-    logging_suppression: bool,
-    static_guard_suppression: bool,
-    security_scaffold_suppression: bool,
     max_pass_iterations: usize,
     use_embedded_passes: bool,
 }
@@ -193,41 +165,13 @@ impl JsonPresetOptimizationConfig {
         fireball::abstract_syntax_tree::AstOptimizationConfig {
             ir_analyzation: self.ir_analyzation,
             parameter_analyzation: self.parameter_analyzation,
-            call_argument_analyzation: self.call_argument_analyzation,
             constant_folding: self.constant_folding,
-            control_flow_cleanup: self.control_flow_cleanup,
             collapse_unused_variable: self.collapse_unused_variable,
-            dead_store_elimination: self.dead_store_elimination,
-            pattern_matching_enabled: self.pattern_matching_enabled,
             pattern_matching: self
                 .pattern_matching
                 .iter()
                 .filter_map(|x| AstPattern::predefined_pattern(&x))
                 .collect(),
-            loop_analyzation: self.loop_analyzation,
-            copy_propagation: self.copy_propagation,
-            expression_inlining: self.expression_inlining,
-            operator_canonicalization: self.operator_canonicalization,
-            magic_division_recovery: self.magic_division_recovery,
-            identity_simplification: self.identity_simplification,
-            bit_trick_recognition: self.bit_trick_recognition,
-            cast_minimization: self.cast_minimization,
-            ternary_recovery: self.ternary_recovery,
-            boolean_recovery: self.boolean_recovery,
-            assertion_recovery: self.assertion_recovery,
-            do_while_recovery: self.do_while_recovery,
-            clamp_recovery: self.clamp_recovery,
-            loop_cleanup: self.loop_cleanup,
-            if_conversion_reversal: self.if_conversion_reversal,
-            switch_reconstruction: self.switch_reconstruction,
-            lifetime_scoping: self.lifetime_scoping,
-            signedness_inference: self.signedness_inference,
-            name_recovery: self.name_recovery,
-            early_return_normalization: self.early_return_normalization,
-            anti_debug_ast_suppression: self.anti_debug_ast_suppression,
-            logging_suppression: self.logging_suppression,
-            static_guard_suppression: self.static_guard_suppression,
-            security_scaffold_suppression: self.security_scaffold_suppression,
             max_pass_iterations: self.max_pass_iterations,
             use_embedded_passes: self.use_embedded_passes,
         }
@@ -238,41 +182,13 @@ impl JsonPresetOptimizationConfig {
         Self {
             ir_analyzation: o.ir_analyzation,
             parameter_analyzation: o.parameter_analyzation,
-            call_argument_analyzation: o.call_argument_analyzation,
             constant_folding: o.constant_folding,
-            control_flow_cleanup: o.control_flow_cleanup,
             collapse_unused_variable: o.collapse_unused_variable,
-            dead_store_elimination: o.dead_store_elimination,
-            pattern_matching_enabled: o.pattern_matching_enabled,
             pattern_matching: o
                 .pattern_matching
                 .iter()
                 .map(|x| x.name().to_string())
                 .collect(),
-            loop_analyzation: o.loop_analyzation,
-            copy_propagation: o.copy_propagation,
-            expression_inlining: o.expression_inlining,
-            operator_canonicalization: o.operator_canonicalization,
-            magic_division_recovery: o.magic_division_recovery,
-            identity_simplification: o.identity_simplification,
-            bit_trick_recognition: o.bit_trick_recognition,
-            cast_minimization: o.cast_minimization,
-            ternary_recovery: o.ternary_recovery,
-            boolean_recovery: o.boolean_recovery,
-            assertion_recovery: o.assertion_recovery,
-            do_while_recovery: o.do_while_recovery,
-            clamp_recovery: o.clamp_recovery,
-            loop_cleanup: o.loop_cleanup,
-            if_conversion_reversal: o.if_conversion_reversal,
-            switch_reconstruction: o.switch_reconstruction,
-            lifetime_scoping: o.lifetime_scoping,
-            signedness_inference: o.signedness_inference,
-            name_recovery: o.name_recovery,
-            early_return_normalization: o.early_return_normalization,
-            anti_debug_ast_suppression: o.anti_debug_ast_suppression,
-            logging_suppression: o.logging_suppression,
-            static_guard_suppression: o.static_guard_suppression,
-            security_scaffold_suppression: o.security_scaffold_suppression,
             max_pass_iterations: o.max_pass_iterations,
             use_embedded_passes: o.use_embedded_passes,
         }
@@ -290,8 +206,6 @@ impl Default for JsonPresetOptimizationConfig {
 /// see [fireball::abstract_syntax_tree::AstPrintConfig]
 #[derive(Serialize, Deserialize)]
 struct JsonPresetPrintConfig {
-    print_instruction: bool,
-    print_ir: bool,
     print_empty_statement: bool,
     replace_constant: bool,
     parameter_usage_comment: bool,
@@ -302,8 +216,6 @@ struct JsonPresetPrintConfig {
 impl JsonPresetPrintConfig {
     fn to_fireball_print_config(self) -> fireball::abstract_syntax_tree::AstPrintConfig {
         fireball::abstract_syntax_tree::AstPrintConfig {
-            print_instruction: self.print_instruction,
-            print_ir: self.print_ir,
             print_empty_statement: self.print_empty_statement,
             replace_constant: self.replace_constant,
             parameter_usage_comment: self.parameter_usage_comment,
@@ -313,8 +225,6 @@ impl JsonPresetPrintConfig {
     }
     fn from_fireball_print_config(o: fireball::abstract_syntax_tree::AstPrintConfig) -> Self {
         Self {
-            print_instruction: o.print_instruction,
-            print_ir: o.print_ir,
             print_empty_statement: o.print_empty_statement,
             replace_constant: o.replace_constant,
             parameter_usage_comment: o.parameter_usage_comment,

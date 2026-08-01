@@ -85,12 +85,6 @@ impl Elf {
                 });
             }
 
-            // Load DWARF symbols if debug sections are present
-            if let Some(dwarf_info) = crate::pe::dwarf_parser::try_load_dwarf(&binary) {
-                // ELF addresses in DWARF are already virtual addresses (no image base)
-                crate::pe::dwarf_parser::merge_dwarf_symbols(&dwarf_info, &defined, &sections, 0);
-            }
-
             defined
         };
 

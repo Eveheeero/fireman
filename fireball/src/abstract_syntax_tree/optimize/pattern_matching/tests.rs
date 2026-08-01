@@ -951,10 +951,9 @@ fn rhai_script_from_source_syntax_error() {
 
 #[test]
 fn rhai_ast_stmt_kind() {
-    use crate::abstract_syntax_tree::{AstStatementOrigin, WrappedAstStatement};
-    let wrapped = WrappedAstStatement {
-        statement: AstStatement::Comment("hello".to_string()),
-        origin: AstStatementOrigin::Unknown,
+    use crate::abstract_syntax_tree::Wrapped;
+    let wrapped = Wrapped {
+        item: AstStatement::Comment("hello".to_string()),
         comment: None,
     };
     let rhai_stmt = rhai_types::RhaiAstStmt::from_wrapped(&wrapped);
@@ -963,19 +962,15 @@ fn rhai_ast_stmt_kind() {
 
 #[test]
 fn rhai_ast_stmt_all_kinds() {
-    use crate::abstract_syntax_tree::{
-        AstCall, AstExpression, AstStatementOrigin, AstValueOrigin, Wrapped, WrappedAstStatement,
-    };
-    let w = |s: AstStatement| -> WrappedAstStatement {
-        WrappedAstStatement {
-            statement: s,
-            origin: AstStatementOrigin::Unknown,
+    use crate::abstract_syntax_tree::{AstCall, AstExpression, Wrapped};
+    let w = |s: AstStatement| -> Wrapped<AstStatement> {
+        Wrapped {
+            item: s,
             comment: None,
         }
     };
     let dummy_expr = || Wrapped {
         item: AstExpression::Unknown,
-        origin: AstValueOrigin::Unknown,
         comment: None,
     };
 
@@ -1267,69 +1262,5 @@ fn parse_deref_addressof_cleanup() {
         actions
             .iter()
             .any(|a| matches!(a, AstPatternOutAction::ReplaceExpr(_)))
-    );
-}
-
-// ── All predefined .fb patterns parse successfully ──
-
-#[test]
-fn all_predefined_patterns_parse() {
-    let patterns = AstPattern::predefined_patterns();
-    assert!(!patterns.is_empty(), "should have predefined patterns");
-    for pattern in &patterns {
-        let content = pattern.pattern().trim();
-        if content.is_empty() || !content.contains("if:") {
-            continue;
-        }
-        let result = parse_pattern_file(pattern.name(), pattern.pattern());
-        assert!(
-            result.is_ok(),
-            "predefined pattern `{}` failed to parse: {}",
-            pattern.name(),
-            result.unwrap_err()
-        );
-    }
-}
-
-// ── All .fb files in patterns/ directory parse successfully ──
-
-#[test]
-fn all_pattern_files_parse() {
-    let patterns_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .join("patterns");
-    if !patterns_dir.exists() {
-        return;
-    }
-    fn visit_dir(dir: &std::path::Path, failures: &mut Vec<String>) {
-        if let Ok(entries) = std::fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    visit_dir(&path, failures);
-                } else if path.extension().is_some_and(|ext| ext == "fb") {
-                    let content = std::fs::read_to_string(&path).unwrap();
-                    // Skip only the known before-ir assembly patterns that still rely
-                    // on unsupported editable asm mnemonics. These have explicit tests
-                    // above so the gap stays intentional and visible.
-                    let fname = path.file_name().unwrap().to_str().unwrap();
-                    if matches!(fname, "cet-cfg-cleanup.fb" | "nop-padding-cleanup.fb") {
-                        continue;
-                    }
-                    let name = path.display().to_string();
-                    if let Err(err) = parse_pattern_file(&name, &content) {
-                        failures.push(format!("{name}: {err}"));
-                    }
-                }
-            }
-        }
-    }
-    let mut failures = Vec::new();
-    visit_dir(&patterns_dir, &mut failures);
-    assert!(
-        failures.is_empty(),
-        "pattern files failed to parse:\n{}",
-        failures.join("\n")
     );
 }

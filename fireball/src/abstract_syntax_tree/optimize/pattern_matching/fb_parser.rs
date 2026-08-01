@@ -1160,10 +1160,10 @@ pub(super) fn parse_ast_replacement(replacement: &str) -> Result<AstStatement, S
     } else if let Some(content) = text.strip_prefix("asm ") {
         let statement = parse_asm_statement(content.trim())
             .ok_or_else(|| format!("invalid ast asm replacement `{}`", content.trim()))?;
-        Ok(AstStatement::Ir(Box::new(statement)))
+        Ok(AstStatement::Ir(Box::new((None, statement))))
     } else if let Some(content) = text.strip_prefix("ir ") {
         Ok(parse_ir_statement(content.trim())
-            .map(|stmt| AstStatement::Ir(Box::new(stmt)))
+            .map(|stmt| AstStatement::Ir(Box::new((None, stmt))))
             .unwrap_or_else(|| AstStatement::Comment(text.to_string())))
     } else {
         Ok(AstStatement::Comment(text.to_string()))

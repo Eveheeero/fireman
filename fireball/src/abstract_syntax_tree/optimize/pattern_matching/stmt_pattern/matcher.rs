@@ -4,7 +4,7 @@ use super::{
 };
 use crate::abstract_syntax_tree::{
     ArcAstVariableMap, AstBinaryOperator, AstExpression, AstLiteral, AstStatement,
-    AstUnaryOperator, AstValueType, AstVariable, AstVariableId, Wrapped, WrappedAstStatement,
+    AstUnaryOperator, AstValueType, AstVariable, AstVariableId, Wrapped,
 };
 
 // ---------------------------------------------------------------------------
@@ -28,9 +28,9 @@ enum Work<'a> {
     /// Match a pattern tree against a `Box<Wrapped<AstExpression>>`.
     MatchBoxedWrappedExpr(&'a PatTree, &'a Box<Wrapped<AstExpression>>),
     /// Match a pattern tree against a statement list.
-    MatchStmtList(&'a PatTree, &'a Vec<WrappedAstStatement>),
+    MatchStmtList(&'a PatTree, &'a Vec<Wrapped<AstStatement>>),
     /// Match an optional statement list.
-    MatchOptStmtList(&'a PatTree, &'a Option<Vec<WrappedAstStatement>>),
+    MatchOptStmtList(&'a PatTree, &'a Option<Vec<Wrapped<AstStatement>>>),
     /// Match an optional wrapped expression.
     MatchOptWrappedExpr(&'a PatTree, &'a Option<Wrapped<AstExpression>>),
     /// Short-circuit guard: if `result` is false, skip the next `n` work items.
@@ -240,9 +240,9 @@ fn expand_match_stmt_node<'a>(
             push_and_chain(
                 stack,
                 &[
-                    Work::MatchStmt(&children[0], &init.statement),
+                    Work::MatchStmt(&children[0], &init.item),
                     Work::MatchWrappedExpr(&children[1], cond),
-                    Work::MatchStmt(&children[2], &update.statement),
+                    Work::MatchStmt(&children[2], &update.item),
                     Work::MatchStmtList(&children[3], body),
                 ],
             );
@@ -483,7 +483,7 @@ fn expand_match_expr_node<'a>(
 
 fn expand_match_stmt_list<'a>(
     pat: &'a PatTree,
-    stmts: &'a Vec<WrappedAstStatement>,
+    stmts: &'a Vec<Wrapped<AstStatement>>,
     stack: &mut Vec<Work<'a>>,
     result: &mut bool,
     caps: &mut Captures,
@@ -509,7 +509,7 @@ fn expand_match_stmt_list<'a>(
             let items: Vec<Work<'a>> = pats
                 .iter()
                 .zip(stmts.iter())
-                .map(|(p, s)| Work::MatchStmt(p, &s.statement))
+                .map(|(p, s)| Work::MatchStmt(p, &s.item))
                 .collect();
             push_and_chain(stack, &items);
             *result = true;
@@ -522,7 +522,7 @@ fn expand_match_stmt_list<'a>(
 
 fn expand_match_opt_stmt_list<'a>(
     pat: &'a PatTree,
-    opt: &'a Option<Vec<WrappedAstStatement>>,
+    opt: &'a Option<Vec<Wrapped<AstStatement>>>,
     stack: &mut Vec<Work<'a>>,
     result: &mut bool,
     caps: &mut Captures,

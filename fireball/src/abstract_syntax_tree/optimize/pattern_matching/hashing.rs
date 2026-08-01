@@ -1,7 +1,7 @@
 use crate::{
     abstract_syntax_tree::{
         AstBuiltinFunctionArgument, AstCall, AstExpression, AstJumpTarget, AstLiteral,
-        AstStatement, AstValue, AstValueType, AstVariable, Wrapped, WrappedAstStatement,
+        AstStatement, AstValue, AstValueType, AstVariable, Wrapped,
     },
     ir::statements::{IrStatement, IrStatementSpecial},
 };
@@ -52,15 +52,15 @@ impl Hasher for Blake3StdHasher {
 
 pub(in super::super) fn hash_statement_list(
     state: &mut Blake3StdHasher,
-    stmts: &[WrappedAstStatement],
+    stmts: &[Wrapped<AstStatement>],
 ) {
     stmts.len().hash(state);
     for stmt in stmts {
-        hash_statement(state, &stmt.statement);
+        hash_statement(state, &stmt.item);
     }
 }
 
-pub(in super::super) fn structural_statement_hash(stmts: &[WrappedAstStatement]) -> u64 {
+pub(in super::super) fn structural_statement_hash(stmts: &[Wrapped<AstStatement>]) -> u64 {
     let mut hasher = Blake3StdHasher::new();
     hash_statement_list(&mut hasher, stmts);
     hasher.finish64()
@@ -99,9 +99,9 @@ fn hash_statement(state: &mut Blake3StdHasher, stmt: &AstStatement) {
             hash_statement_list(state, body);
         }
         AstStatement::For(init, condition, update, body) => {
-            hash_statement(state, &init.statement);
+            hash_statement(state, &init.item);
             hash_wrapped_expression(state, condition);
-            hash_statement(state, &update.statement);
+            hash_statement(state, &update.item);
             hash_statement_list(state, body);
         }
         AstStatement::Return(value) => match value {
@@ -118,7 +118,7 @@ fn hash_statement(state: &mut Blake3StdHasher, stmt: &AstStatement) {
         AstStatement::Assembly(assembly) => assembly.hash(state),
         AstStatement::Exception(message) => message.hash(state),
         AstStatement::Comment(comment) => comment.hash(state),
-        AstStatement::Ir(ir) => hash_ir_statement(state, ir.as_ref()),
+        AstStatement::Ir(ir) => hash_ir_statement(state, &ir.1),
         AstStatement::Switch(discrim, cases, default) => {
             hash_wrapped_expression(state, discrim);
             cases.len().hash(state);
@@ -261,7 +261,6 @@ fn hash_jump_target(state: &mut Blake3StdHasher, target: &AstJumpTarget) {
             var_id.hash(state);
         }
         AstJumpTarget::Function { target } => target.hash(state),
-        AstJumpTarget::Instruction { target } => target.descriptor().hash(state),
         AstJumpTarget::Unknown(name) => name.hash(state),
     }
 }

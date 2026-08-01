@@ -13,8 +13,7 @@ use super::{
 };
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement,
-        AstStatementOrigin, WrappedAstStatement,
+        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement, Wrapped,
     },
     ir::statements::IrStatement,
     prelude::DecompileError,
@@ -37,7 +36,7 @@ struct AstPatternScriptContext<'a> {
     source: &'a str,
     statement_count: i64,
     asm_count: i64,
-    wrapped_statements: &'a [WrappedAstStatement],
+    wrapped_statements: &'a [Wrapped<AstStatement>],
     ir_statements: &'a [IrStatement],
     asm_lines: &'a [AstPatternNormalizedAsmLine],
 }
@@ -68,7 +67,7 @@ pub(in crate::abstract_syntax_tree::optimize) fn apply_patterns(
             .get_mut(&function_id)
             .and_then(|x| x.get_mut(&function_version))
             .unwrap();
-        function_ir_statements = collect_function_ir_statements(function.ir.get_ir());
+        function_ir_statements = collect_function_ir_statements(function.origin_ir.get_ir());
         body = std::mem::take(&mut function.body);
     }
 
@@ -171,7 +170,7 @@ mod tests {
 }
 
 fn apply_file_pattern_rules_recursive(
-    stmts: &mut Vec<WrappedAstStatement>,
+    stmts: &mut Vec<Wrapped<AstStatement>>,
     rules: &[AstPatternLoadedRule],
     function_ir_statements: &[IrStatement],
     phase: AstPatternApplyPhase,
@@ -198,7 +197,7 @@ fn apply_file_pattern_rules_recursive(
         }
 
         for stmt in stmts.iter_mut() {
-            match &mut stmt.statement {
+            match &mut stmt.item {
                 AstStatement::If(_, branch_true, branch_false) => {
                     pass_changed |= apply_file_pattern_rules_recursive(
                         branch_true,
@@ -311,7 +310,7 @@ fn apply_file_pattern_rules_recursive(
 }
 
 fn apply_single_file_rule(
-    stmts: &mut Vec<WrappedAstStatement>,
+    stmts: &mut Vec<Wrapped<AstStatement>>,
     rule: &AstPatternRule,
     input_type: AstPatternInputType,
     function_ir_statements: &[IrStatement],
@@ -398,7 +397,7 @@ fn apply_single_file_rule(
         } else {
             Vec::new()
         };
-        let wrapped_stmts_snapshot: Vec<WrappedAstStatement> = if need_script {
+        let wrapped_stmts_snapshot: Vec<Wrapped<AstStatement>> = if need_script {
             stmts.clone()
         } else {
             Vec::new()
@@ -471,7 +470,7 @@ fn apply_single_file_rule(
                             if let Some(replacement) =
                                 stmt_pattern::construct_statement(emit_pat, caps)
                             {
-                                stmts[start].statement = replacement;
+                                stmts[start].item = replacement;
                                 // For multi-statement matches, remove the
                                 // trailing statements that were part of the
                                 // sequence.
@@ -801,7 +800,7 @@ fn find_asm_match(
 
     let expected_asm = normalize_for_match(asm.as_match_text());
     let expected_ir = match &asm.statement {
-        AstStatement::Ir(ir_stmt) => normalize_for_match(&format!("{}", ir_stmt)),
+        AstStatement::Ir(ir_stmt) => normalize_for_match(&format!("{}", &ir_stmt.1)),
         _ => String::new(),
     };
     if expected_asm.is_empty() && expected_ir.is_empty() {
@@ -949,7 +948,7 @@ fn sequence_matches_ir(
 }
 
 fn apply_replace_asm(
-    stmts: &mut [WrappedAstStatement],
+    stmts: &mut [Wrapped<AstStatement>],
     matched: &AstPatternMatch,
     replacement: &AstPatternAsmData,
 ) {
@@ -959,86 +958,83 @@ fn apply_replace_asm(
 
     if let Some((start, end)) = matched.asm_statement_range {
         if let Some(first) = stmts.get_mut(start) {
-            first.statement = replacement.statement.clone();
+            first.item = replacement.statement.clone();
         }
         if end > start {
             for idx in (start + 1)..=end {
                 if let Some(stmt) = stmts.get_mut(idx) {
-                    stmt.statement = AstStatement::Empty;
+                    stmt.item = AstStatement::Empty;
                 }
             }
         }
         return;
     }
 
-    if let Some((idx, _)) = stmts.iter().enumerate().find(|(_, stmt)| {
-        matches!(
-            stmt.statement,
-            AstStatement::Assembly(_) | AstStatement::Ir(_)
-        )
-    }) {
+    if let Some((idx, _)) = stmts
+        .iter()
+        .enumerate()
+        .find(|(_, stmt)| matches!(stmt.item, AstStatement::Assembly(_) | AstStatement::Ir(_)))
+    {
         if let Some(stmt) = stmts.get_mut(idx) {
-            stmt.statement = replacement.statement.clone();
+            stmt.item = replacement.statement.clone();
         }
     }
 }
 
 fn apply_replace_ir(
-    stmts: &mut [WrappedAstStatement],
+    stmts: &mut [Wrapped<AstStatement>],
     matched: &AstPatternMatch,
     replacement: &AstPatternIrReplacement,
 ) {
     if let Some(ir_stmt) = &replacement.statement {
         if let Some(stmt) = stmts
             .iter_mut()
-            .find(|stmt| matches!(stmt.statement, AstStatement::Ir(_)))
+            .find(|stmt| matches!(stmt.item, AstStatement::Ir(_)))
         {
-            stmt.statement = AstStatement::Ir(Box::new(ir_stmt.clone()));
+            stmt.item = AstStatement::Ir(Box::new((None, ir_stmt.clone())));
             return;
         }
     }
 
     if let Some((start, _)) = matched.asm_statement_range {
         if let Some(stmt) = stmts.get_mut(start) {
-            stmt.statement = AstStatement::Comment(replacement.fallback_comment.clone());
+            stmt.item = AstStatement::Comment(replacement.fallback_comment.clone());
             return;
         }
     }
 
     if let Some(stmt) = stmts.first_mut() {
-        stmt.statement = AstStatement::Comment(replacement.fallback_comment.clone());
+        stmt.item = AstStatement::Comment(replacement.fallback_comment.clone());
     }
 }
 
 fn apply_replace_ast(
-    stmts: &mut [WrappedAstStatement],
+    stmts: &mut [Wrapped<AstStatement>],
     matched: &AstPatternMatch,
     replacement: &AstStatement,
 ) {
-    if let Some(stmt) = stmts.iter_mut().find(|stmt| {
-        matches!(
-            stmt.statement,
-            AstStatement::Comment(_) | AstStatement::Empty
-        )
-    }) {
-        stmt.statement = replacement.clone();
+    if let Some(stmt) = stmts
+        .iter_mut()
+        .find(|stmt| matches!(stmt.item, AstStatement::Comment(_) | AstStatement::Empty))
+    {
+        stmt.item = replacement.clone();
         return;
     }
 
     if let Some((start, _)) = matched.asm_statement_range {
         if let Some(stmt) = stmts.get_mut(start) {
-            stmt.statement = replacement.clone();
+            stmt.item = replacement.clone();
             return;
         }
     }
 
     if let Some(stmt) = stmts.first_mut() {
-        stmt.statement = replacement.clone();
+        stmt.item = replacement.clone();
     }
 }
 
 fn apply_delete_action(
-    stmts: &mut Vec<WrappedAstStatement>,
+    stmts: &mut Vec<Wrapped<AstStatement>>,
     matched: &AstPatternMatch,
     target: &AstPatternDeleteTarget,
 ) {
@@ -1079,7 +1075,7 @@ fn apply_delete_action(
     }
 }
 
-fn apply_splice_block(stmts: &mut Vec<WrappedAstStatement>, matched: &AstPatternMatch) {
+fn apply_splice_block(stmts: &mut Vec<Wrapped<AstStatement>>, matched: &AstPatternMatch) {
     let Some((start, end)) = matched.ast_statement_range else {
         return;
     };
@@ -1088,7 +1084,7 @@ fn apply_splice_block(stmts: &mut Vec<WrappedAstStatement>, matched: &AstPattern
     }
 
     let removed = stmts.remove(start);
-    if let AstStatement::Block(inner) = removed.statement {
+    if let AstStatement::Block(inner) = removed.item {
         stmts.splice(start..start, inner);
     } else {
         stmts.insert(start, removed);
@@ -1119,14 +1115,14 @@ fn resolve_delete_anchor_index(
     }
 }
 
-fn prune_empty_else_recursive(stmts: &mut [WrappedAstStatement]) {
+fn prune_empty_else_recursive(stmts: &mut [Wrapped<AstStatement>]) {
     for stmt in stmts.iter_mut() {
         prune_empty_else_statement_recursive(stmt);
     }
 }
 
-fn prune_empty_else_statement_recursive(stmt: &mut WrappedAstStatement) {
-    match &mut stmt.statement {
+fn prune_empty_else_statement_recursive(stmt: &mut Wrapped<AstStatement>) {
+    match &mut stmt.item {
         AstStatement::If(_, branch_true, branch_false) => {
             prune_empty_else_recursive(branch_true);
             if let Some(branch_false) = branch_false {
@@ -1173,8 +1169,8 @@ fn prune_empty_else_statement_recursive(stmt: &mut WrappedAstStatement) {
     }
 }
 
-fn collect_ast_statements(stmts: &[WrappedAstStatement]) -> Vec<AstStatement> {
-    stmts.iter().map(|stmt| stmt.statement.clone()).collect()
+fn collect_ast_statements(stmts: &[Wrapped<AstStatement>]) -> Vec<AstStatement> {
+    stmts.iter().map(|stmt| stmt.item.clone()).collect()
 }
 
 fn collect_function_ir_statements(function_ir: &[crate::ir::Ir]) -> Vec<IrStatement> {
@@ -1189,24 +1185,23 @@ fn collect_function_ir_statements(function_ir: &[crate::ir::Ir]) -> Vec<IrStatem
 
 fn collect_ir_statements(
     function_ir_statements: &[IrStatement],
-    stmts: &[WrappedAstStatement],
+    stmts: &[Wrapped<AstStatement>],
 ) -> Vec<IrStatement> {
     let mut statements = Vec::with_capacity(function_ir_statements.len() + stmts.len());
     statements.extend(function_ir_statements.iter().cloned());
     for stmt in stmts {
-        if let AstStatement::Ir(ir_stmt) = &stmt.statement {
-            statements.push((**ir_stmt).clone());
+        if let AstStatement::Ir(ir_stmt) = &stmt.item {
+            statements.push(ir_stmt.1.clone());
         }
     }
     statements
 }
 
-fn collect_asm_lines(stmts: &[WrappedAstStatement]) -> Vec<AstPatternNormalizedAsmLine> {
+fn collect_asm_lines(stmts: &[Wrapped<AstStatement>]) -> Vec<AstPatternNormalizedAsmLine> {
     let mut lines = Vec::new();
-    let mut seen_ir_indices = HashSet::new();
 
     for (idx, stmt) in stmts.iter().enumerate() {
-        if let AstStatement::Assembly(text) = &stmt.statement {
+        if let AstStatement::Assembly(text) = &stmt.item {
             let line = normalize_for_match(text);
             if !line.is_empty() {
                 lines.push(AstPatternNormalizedAsmLine {
@@ -1217,31 +1212,14 @@ fn collect_asm_lines(stmts: &[WrappedAstStatement]) -> Vec<AstPatternNormalizedA
             continue;
         }
 
-        let AstStatementOrigin::Ir(desc) = &stmt.origin else {
-            if let AstStatement::Ir(ir_stmt) = &stmt.statement {
-                let line = normalize_for_match(&format!("{}", ir_stmt));
-                if !line.is_empty() {
-                    lines.push(AstPatternNormalizedAsmLine {
-                        stmt_index: idx,
-                        line,
-                    });
-                }
+        if let AstStatement::Ir(ir_stmt) = &stmt.item {
+            let line = normalize_for_match(&format!("{}", ir_stmt.1));
+            if !line.is_empty() {
+                lines.push(AstPatternNormalizedAsmLine {
+                    stmt_index: idx,
+                    line,
+                });
             }
-            continue;
-        };
-        let ir_index = desc.descriptor().ir_index();
-        if !seen_ir_indices.insert(ir_index) {
-            continue;
-        }
-        let Some(instruction) = desc.ir().get_instructions().get(ir_index as usize) else {
-            continue;
-        };
-        let line = normalize_for_match(&instruction.inner().to_string());
-        if !line.is_empty() {
-            lines.push(AstPatternNormalizedAsmLine {
-                stmt_index: idx,
-                line,
-            });
         }
     }
 
@@ -1303,7 +1281,7 @@ fn build_rhai_scope(context: &AstPatternScriptContext<'_>) -> Scope<'static> {
         context
             .wrapped_statements
             .iter()
-            .filter(|s| matches!(s.statement, AstStatement::Comment(_)))
+            .filter(|s| matches!(s.item, AstStatement::Comment(_)))
             .count() as i64,
     );
     scope.push(

@@ -6,7 +6,7 @@ use super::{
 };
 use crate::abstract_syntax_tree::{
     AstBinaryOperator, AstBuiltinFunctionArgument, AstCall, AstExpression, AstLiteral,
-    AstStatement, Wrapped, WrappedAstStatement,
+    AstStatement, Wrapped,
 };
 
 // ---------------------------------------------------------------------------
@@ -17,7 +17,7 @@ use crate::abstract_syntax_tree::{
 /// `match_pat` with `predicates`. If matched, construct the replacement from
 /// `replace_pat` and swap it in-place. Returns `true` if any replacement was made.
 pub fn transform_expressions_in_stmts(
-    stmts: &mut [WrappedAstStatement],
+    stmts: &mut [Wrapped<AstStatement>],
     match_pat: &PatTree,
     predicates: &[WherePredicate],
     replace_pat: &PatTree,
@@ -30,12 +30,12 @@ pub fn transform_expressions_in_stmts(
 }
 
 fn transform_expressions_in_statement(
-    stmt: &mut WrappedAstStatement,
+    stmt: &mut Wrapped<AstStatement>,
     match_pat: &PatTree,
     predicates: &[WherePredicate],
     replace_pat: &PatTree,
 ) -> bool {
-    match &mut stmt.statement {
+    match &mut stmt.item {
         AstStatement::Declaration(_lhs, rhs) => {
             if let Some(rhs) = rhs {
                 transform_expression(rhs, match_pat, predicates, replace_pat)
@@ -227,7 +227,7 @@ fn transform_expression(
 /// `match_pat` with `predicates`. If matched, call the builtin function with captured
 /// args to produce the replacement. Returns `true` if any replacement was made.
 pub fn transform_expressions_in_stmts_builtin(
-    stmts: &mut [WrappedAstStatement],
+    stmts: &mut [Wrapped<AstStatement>],
     match_pat: &PatTree,
     predicates: &[WherePredicate],
     func: &str,
@@ -243,13 +243,13 @@ pub fn transform_expressions_in_stmts_builtin(
 }
 
 fn transform_expressions_in_statement_builtin(
-    stmt: &mut WrappedAstStatement,
+    stmt: &mut Wrapped<AstStatement>,
     match_pat: &PatTree,
     predicates: &[WherePredicate],
     func: &str,
     arg_names: &[String],
 ) -> bool {
-    match &mut stmt.statement {
+    match &mut stmt.item {
         AstStatement::Declaration(_lhs, rhs) => {
             if let Some(rhs) = rhs {
                 transform_expression_builtin(rhs, match_pat, predicates, func, arg_names)
@@ -468,8 +468,6 @@ fn transform_expression_builtin(
 /// Supported builtins:
 ///   - `eval_binop($op, $a, $b)` — evaluate binary op on two literals
 ///   - `eval_unary($op, $a)` — evaluate unary op on one literal
-///   - `eval_reassociate($op, $x, $c1, $c2)` — `(x op c1) op c2` → `x op (c1 op c2)`
-///   - `eval_reassociate_left($op, $x, $c1, $c2)` — `c1 op (c2 op x)` → `(c1 op c2) op x`
 fn eval_builtin_fn(
     func: &str,
     arg_names: &[String],
@@ -498,7 +496,6 @@ fn eval_builtin_fn(
             let result = opt_utils::eval_binary(op, lhs, rhs)?;
             Some(Wrapped {
                 item: AstExpression::Literal(result),
-                origin: source.origin.clone(),
                 comment: source.comment.clone(),
             })
         }
@@ -517,230 +514,6 @@ fn eval_builtin_fn(
             let result = opt_utils::eval_unary(op, val)?;
             Some(Wrapped {
                 item: AstExpression::Literal(result),
-                origin: source.origin.clone(),
-                comment: source.comment.clone(),
-            })
-        }
-        // eval_reassociate($op, $x, $c1, $c2): (x op c1) op c2 → x op (c1 op c2)
-        "eval_reassociate" => {
-            if arg_names.len() != 4 {
-                return None;
-            }
-            let op = caps.get(&arg_names[0]).and_then(|c| match c {
-                Captured::BinaryOp(op) => Some(op),
-                _ => None,
-            })?;
-            if !is_reassociable_op(op) {
-                return None;
-            }
-            let x = extract_expr_from_captured(caps.get(&arg_names[1])?)?;
-            let c1 = caps.get(&arg_names[2]).and_then(|c| match c {
-                Captured::Literal(lit) => Some(lit),
-                _ => None,
-            })?;
-            let c2 = caps.get(&arg_names[3]).and_then(|c| match c {
-                Captured::Literal(lit) => Some(lit),
-                _ => None,
-            })?;
-            let folded = opt_utils::eval_binary(op, c1, c2)?;
-            Some(Wrapped {
-                item: AstExpression::BinaryOp(
-                    op.clone(),
-                    Box::new(x.clone()),
-                    Box::new(Wrapped {
-                        item: AstExpression::Literal(folded),
-                        origin: source.origin.clone(),
-                        comment: None,
-                    }),
-                ),
-                origin: source.origin.clone(),
-                comment: source.comment.clone(),
-            })
-        }
-        // eval_reassociate_left($op, $x, $c1, $c2): c1 op (c2 op x) → (c1 op c2) op x
-        "eval_reassociate_left" => {
-            if arg_names.len() != 4 {
-                return None;
-            }
-            let op = caps.get(&arg_names[0]).and_then(|c| match c {
-                Captured::BinaryOp(op) => Some(op),
-                _ => None,
-            })?;
-            if !is_reassociable_op(op) {
-                return None;
-            }
-            let x = extract_expr_from_captured(caps.get(&arg_names[1])?)?;
-            let c1 = caps.get(&arg_names[2]).and_then(|c| match c {
-                Captured::Literal(lit) => Some(lit),
-                _ => None,
-            })?;
-            let c2 = caps.get(&arg_names[3]).and_then(|c| match c {
-                Captured::Literal(lit) => Some(lit),
-                _ => None,
-            })?;
-            let folded = opt_utils::eval_binary(op, c1, c2)?;
-            Some(Wrapped {
-                item: AstExpression::BinaryOp(
-                    op.clone(),
-                    Box::new(Wrapped {
-                        item: AstExpression::Literal(folded),
-                        origin: source.origin.clone(),
-                        comment: None,
-                    }),
-                    Box::new(x.clone()),
-                ),
-                origin: source.origin.clone(),
-                comment: source.comment.clone(),
-            })
-        }
-        "eval_rotate_right" | "eval_rotate_left" => {
-            if arg_names.len() != 2 {
-                return None;
-            }
-            let x = extract_expr_from_captured(caps.get(&arg_names[0])?)?;
-            let n = extract_expr_from_captured(caps.get(&arg_names[1])?)?;
-            let name = if func == "eval_rotate_right" {
-                "__builtin_rotate_right"
-            } else {
-                "__builtin_rotate_left"
-            };
-            Some(Wrapped {
-                item: AstExpression::Call(AstCall::Unknown(
-                    name.to_string(),
-                    vec![x.clone(), n.clone()],
-                )),
-                origin: source.origin.clone(),
-                comment: source.comment.clone(),
-            })
-        }
-        "eval_strength_reduce_add" | "eval_strength_reduce_sub" => {
-            if arg_names.len() != 2 {
-                return None;
-            }
-            let x = extract_expr_from_captured(caps.get(&arg_names[0])?)?;
-            let n_val = extract_int_from_captured(caps.get(&arg_names[1])?)?;
-            if n_val < 1 || n_val >= 64 {
-                return None;
-            }
-            let multiplier = if func == "eval_strength_reduce_add" {
-                (1i64 << n_val) + 1
-            } else {
-                (1i64 << n_val) - 1
-            };
-            if multiplier <= 1 {
-                return None;
-            }
-            Some(Wrapped {
-                item: AstExpression::BinaryOp(
-                    AstBinaryOperator::Mul,
-                    Box::new(x.clone()),
-                    Box::new(Wrapped {
-                        item: AstExpression::Literal(AstLiteral::Int(multiplier)),
-                        origin: source.origin.clone(),
-                        comment: None,
-                    }),
-                ),
-                origin: source.origin.clone(),
-                comment: source.comment.clone(),
-            })
-        }
-        // eval_magic_division($x, $magic, $shift): (x * magic) >> shift → x / divisor
-        "eval_magic_division" => {
-            if arg_names.len() != 3 {
-                return None;
-            }
-            let x = extract_expr_from_captured(caps.get(&arg_names[0])?)?;
-            let magic_captured = caps.get(&arg_names[1])?;
-            let shift_captured = caps.get(&arg_names[2])?;
-
-            // Extract the magic constant (supports signed via Int negative)
-            let magic_expr = match magic_captured {
-                Captured::Expression(e) => &e.item,
-                Captured::ExpressionBox(e) => &e.item,
-                Captured::Literal(lit) => {
-                    // Build a temporary expression to reuse extract_magic_constant
-                    let tmp = AstExpression::Literal(lit.clone());
-                    let (magic_val, is_signed) =
-                        crate::abstract_syntax_tree::optimize::magic_division_recovery::extract_magic_constant(&tmp)?;
-                    let shift_val = extract_uint_from_captured(shift_captured)?;
-                    let divisor =
-                        crate::abstract_syntax_tree::optimize::magic_division_recovery::try_recover_division(
-                            if is_signed { magic_val as u64 } else { magic_val },
-                            shift_val,
-                        )?;
-                    let lit = if is_signed {
-                        AstLiteral::Int(divisor as i64)
-                    } else {
-                        AstLiteral::UInt(divisor)
-                    };
-                    return Some(Wrapped {
-                        item: AstExpression::BinaryOp(
-                            AstBinaryOperator::Div,
-                            Box::new(x.clone()),
-                            Box::new(Wrapped {
-                                item: AstExpression::Literal(lit),
-                                origin: source.origin.clone(),
-                                comment: None,
-                            }),
-                        ),
-                        origin: source.origin.clone(),
-                        comment: source.comment.clone(),
-                    });
-                }
-                _ => return None,
-            };
-            let (magic_val, is_signed) =
-                crate::abstract_syntax_tree::optimize::magic_division_recovery::extract_magic_constant(magic_expr)?;
-            let shift_val = extract_uint_from_captured(shift_captured)?;
-            let divisor =
-                crate::abstract_syntax_tree::optimize::magic_division_recovery::try_recover_division(
-                    if is_signed { magic_val as u64 } else { magic_val },
-                    shift_val,
-                )?;
-            let lit = if is_signed {
-                AstLiteral::Int(divisor as i64)
-            } else {
-                AstLiteral::UInt(divisor)
-            };
-            Some(Wrapped {
-                item: AstExpression::BinaryOp(
-                    AstBinaryOperator::Div,
-                    Box::new(x.clone()),
-                    Box::new(Wrapped {
-                        item: AstExpression::Literal(lit),
-                        origin: source.origin.clone(),
-                        comment: None,
-                    }),
-                ),
-                origin: source.origin.clone(),
-                comment: source.comment.clone(),
-            })
-        }
-        "eval_strength_reduce_dual" => {
-            if arg_names.len() != 3 {
-                return None;
-            }
-            let x = extract_expr_from_captured(caps.get(&arg_names[0])?)?;
-            let n_val = extract_int_from_captured(caps.get(&arg_names[1])?)?;
-            let m_val = extract_int_from_captured(caps.get(&arg_names[2])?)?;
-            if n_val < 1 || n_val >= 64 || m_val < 1 || m_val >= 64 {
-                return None;
-            }
-            let multiplier = (1i64 << n_val) + (1i64 << m_val);
-            if multiplier <= 1 {
-                return None;
-            }
-            Some(Wrapped {
-                item: AstExpression::BinaryOp(
-                    AstBinaryOperator::Mul,
-                    Box::new(x.clone()),
-                    Box::new(Wrapped {
-                        item: AstExpression::Literal(AstLiteral::Int(multiplier)),
-                        origin: source.origin.clone(),
-                        comment: None,
-                    }),
-                ),
-                origin: source.origin.clone(),
                 comment: source.comment.clone(),
             })
         }

@@ -1,80 +1,9 @@
 use super::*;
-use std::collections::HashSet;
 
-fn collect_statement_ir_origins<'a>(
-    origin: &'a AstStatementOrigin,
-    out: &mut Vec<&'a AstDescriptor>,
-) {
-    match origin {
-        AstStatementOrigin::Ir(descriptor) => out.push(descriptor),
-        AstStatementOrigin::Combination(origins) => {
-            for origin in origins {
-                collect_statement_ir_origins(origin, out);
-            }
-        }
-        _ => {}
-    }
-}
-
-fn descriptor_source_key(descriptor: &AstDescriptor) -> usize {
-    std::sync::Arc::as_ptr(descriptor.ir()) as usize
-}
-
-fn wrapped_statement_with_origin(stmt: &WrappedAstStatement, config: AstPrintConfig) -> String {
-    let statement_text = stmt.to_string_with_config(Some(config));
-    if statement_text.is_empty() {
-        return statement_text;
-    }
-
-    let mut origins = Vec::new();
-    collect_statement_ir_origins(&stmt.origin, &mut origins);
-
-    let mut origin_lines = Vec::new();
-    let mut printed_instruction = HashSet::new();
-    let mut printed_ir = HashSet::new();
-
-    for descriptor in origins {
-        let source_key = descriptor_source_key(descriptor);
-        if config.print_instruction {
-            let ir_key = (source_key, descriptor.descriptor().ir_index());
-            if printed_instruction.insert(ir_key)
-                && let Some(instruction) = descriptor
-                    .ir()
-                    .get_instructions()
-                    .get(descriptor.descriptor().ir_index() as usize)
-            {
-                origin_lines.push(format!("// {}", instruction));
-            }
-        }
-
-        if config.print_ir
-            && let Some(statement_index) = descriptor.descriptor().statement_index()
-        {
-            let descriptor_key = (source_key, *descriptor.descriptor());
-            if printed_ir.insert(descriptor_key)
-                && let Some(ir) = descriptor
-                    .ir()
-                    .get_ir()
-                    .get(descriptor.descriptor().ir_index() as usize)
-                && let Some(statements) = ir.statements.as_ref()
-                && let Some(ir_stmt) = statements.get(*statement_index as usize)
-            {
-                origin_lines.push(format!("/* {} */", ir_stmt));
-            }
-        }
-    }
-
-    if origin_lines.is_empty() {
-        statement_text
-    } else {
-        format!("{}\n{}", origin_lines.join("\n"), statement_text)
-    }
-}
-
-fn statement_body(stmts: &[WrappedAstStatement], config: AstPrintConfig) -> Vec<String> {
+fn statement_body(stmts: &[Wrapped<AstStatement>], config: AstPrintConfig) -> Vec<String> {
     stmts
         .iter()
-        .map(|stmt| wrapped_statement_with_origin(stmt, config))
+        .map(|stmt| stmt.to_string_with_config(Some(config)))
         .filter(|stmt| !stmt.is_empty())
         .collect()
 }
@@ -111,7 +40,7 @@ fn write_block_with_style(
 
 fn write_inline_block(
     f: &mut impl std::fmt::Write,
-    stmts: &[WrappedAstStatement],
+    stmts: &[Wrapped<AstStatement>],
     config: AstPrintConfig,
 ) -> std::fmt::Result {
     let body = statement_body(stmts, config);
@@ -130,8 +59,8 @@ fn trim_trailing_semicolon(text: &str) -> &str {
         .unwrap_or(trimmed)
 }
 
-fn render_for_header_statement(stmt: &WrappedAstStatement, config: AstPrintConfig) -> String {
-    let rendered = stmt.statement.to_string_with_config(Some(config));
+fn render_for_header_statement(stmt: &Wrapped<AstStatement>, config: AstPrintConfig) -> String {
+    let rendered = stmt.item.to_string_with_config(Some(config));
     trim_trailing_semicolon(&rendered).to_string()
 }
 
@@ -429,7 +358,7 @@ impl PrintWithConfig for AstStatement {
             AstStatement::Exception(e) => write!(f, "<EXCEPTION: {e}>"),
             AstStatement::Assembly(code) => write!(f, "<ASSEMBLY: {code}>"),
             AstStatement::Comment(comment) => write!(f, "/* {} */", comment),
-            AstStatement::Ir(ir) => write!(f, "<IR: {ir}>"),
+            AstStatement::Ir(ir) => write!(f, "<IR: {}>", ir.1),
             AstStatement::Break => write!(f, "break;"),
             AstStatement::Continue => write!(f, "continue;"),
             AstStatement::DoWhile(cond, body) => {
@@ -705,24 +634,6 @@ impl PrintWithConfig for AstVariable {
         }
     }
 }
-impl PrintWithConfig for WrappedAstStatement {
-    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
-        let mut output = String::new();
-        self.print(&mut output, option).unwrap();
-        output
-    }
-    fn print(
-        &self,
-        f: &mut impl std::fmt::Write,
-        config: Option<AstPrintConfig>,
-    ) -> std::fmt::Result {
-        let config = config.unwrap_or_default();
-        if let Some(comment) = &self.comment {
-            write!(f, "/** {} */", comment)?;
-        }
-        write!(f, "{}", self.statement.to_string_with_config(Some(config)))
-    }
-}
 impl<T: PrintWithConfig> PrintWithConfig for Wrapped<T> {
     fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
@@ -770,9 +681,6 @@ impl PrintWithConfig for AstJumpTarget {
                 write!(f, "{}", var.to_string_with_config(Some(config)))
             }
             AstJumpTarget::Function { target } => write!(f, "{}", target.get_default_name()),
-            AstJumpTarget::Instruction { target } => {
-                write!(f, "ir{}", target.descriptor().ir_index())
-            }
             AstJumpTarget::Unknown(name) => write!(f, "{}", name),
         }
     }
