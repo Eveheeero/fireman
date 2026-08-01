@@ -287,7 +287,6 @@ pub(super) fn convert_stmt(
     function_id: AstFunctionId,
     function_version: AstFunctionVersion,
     stmt: &IrStatement,
-    root_expr: Option<&Aos<IrData>>,
     var_map: &HashMap<Aos<IrData>, AstVariableId>,
     instruction_args: &[iceball::Argument],
 ) -> Result<Wrapped<AstStatement>, DecompileError> {
@@ -377,7 +376,6 @@ pub(super) fn convert_stmt(
                         function_id,
                         function_version,
                         s,
-                        root_expr,
                         var_map,
                         instruction_args,
                     )
@@ -391,7 +389,6 @@ pub(super) fn convert_stmt(
                         function_id,
                         function_version,
                         s,
-                        root_expr,
                         var_map,
                         instruction_args,
                     )
