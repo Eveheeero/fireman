@@ -85,7 +85,7 @@ pub(super) fn analyze_ir_function(
                     trace!(
                         "Constant value found in {}: {}",
                         position,
-                        c.to_string_with_config(None)
+                        c.to_string_with_config(ast, None)
                     );
                     if c_type == AstValueType::Unknown {
                         c_type = match &c.item {
@@ -105,23 +105,26 @@ pub(super) fn analyze_ir_function(
                         debug!(
                             "Constant value found in {}({}) but datatype not set. init datatype to {}",
                             position,
-                            c.to_string_with_config(None),
-                            c_type.to_string_with_config(None)
+                            c.to_string_with_config(ast, None),
+                            c_type.to_string_with_config(ast, None)
                         );
                     }
                     if const_value.is_some() && const_value.as_ref().unwrap() != &c {
                         warn!(
                             "Constant value mismatch in position {}: {} != {}",
                             position,
-                            const_value.as_ref().unwrap().to_string_with_config(None),
-                            c.to_string_with_config(None)
+                            const_value
+                                .as_ref()
+                                .unwrap()
+                                .to_string_with_config(ast, None),
+                            c.to_string_with_config(ast, None)
                         );
                         debug_assert!(
                             false,
                             "Constant value mismatch in position {}: {} != {}",
                             position,
-                            const_value.unwrap().to_string_with_config(None),
-                            c.to_string_with_config(None)
+                            const_value.unwrap().to_string_with_config(ast, None),
+                            c.to_string_with_config(ast, None)
                         );
                     }
                     const_value = Some(c);
@@ -161,7 +164,7 @@ pub(super) fn analyze_ir_function(
         let instruction = &map[usize::try_from(*ir_index).unwrap()];
         let instruction_args = &instruction.inner.arguments;
         /* analyze and turn into ast */
-        let mut stmt = convert_stmt(
+        let stmt = convert_stmt(
             ast,
             function_id,
             function_version,
@@ -169,7 +172,11 @@ pub(super) fn analyze_ir_function(
             &var_map,
             instruction_args,
         )?;
-        stmt.comment = ws.comment.clone();
+        let old_id = ws.id;
+        let new_id = stmt.id;
+        if let Some(origin) = ast.get_origin(&old_id) {
+            ast.set_origin(&new_id, origin.clone());
+        }
         *ws = stmt;
     }
 

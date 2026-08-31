@@ -121,6 +121,7 @@
 - `WrappedAstStatement`, `Wrapped<T>`, `AstDescriptor` - `fireball/src/abstract_syntax_tree/objects/wrapper.rs`
 - `AstPattern`, `AstPatternRule`, `AstPatternIrReplacement`, `AstPatternAsmData`, `AstPatternAstData`, `AstPatternIrData`, `AstPatternScript`, `AstPatternRange` - `fireball/src/abstract_syntax_tree/optimize/pattern_matching.rs`
 - `VersionMap<..>` - `fireball/src/utils/version_map.rs`
+- `AstFunction` - `fireball/src/abstract_syntax_tree/objects/function.rs`
 
 ### Entry points
 

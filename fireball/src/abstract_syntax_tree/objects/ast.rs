@@ -11,6 +11,8 @@ pub struct Ast {
     pub functions: ArcAstFunctionMap,
     pub last_variable_id: HashMap<AstFunctionId, u32>,
     pub pre_defined_symbols: HashMap<u64, String>,
+    pub origins: HashMap<AstNodeId, AstOrigin>,
+    pub comments: HashMap<AstNodeId, String>,
 }
 
 impl Ast {
@@ -20,6 +22,8 @@ impl Ast {
             functions: Arc::new(RwLock::new(HashMap::new())),
             last_variable_id: HashMap::new(),
             pre_defined_symbols: HashMap::new(),
+            origins: HashMap::new(),
+            comments: HashMap::new(),
         }
     }
 
@@ -56,14 +60,14 @@ impl Ast {
             if let Some(stmts) = ir.statements {
                 for stmt in stmts.iter() {
                     body.push(Wrapped {
+                        id: AstNodeId::new(),
                         item: AstStatement::Ir(Box::new((Some(ir_index), stmt.clone()))),
-                        comment: None,
                     });
                 }
             } else {
                 body.push(Wrapped {
+                    id: AstNodeId::new(),
                     item: AstStatement::Assembly(instruction.inner.to_string()),
-                    comment: None,
                 });
             }
         }
@@ -134,5 +138,17 @@ impl Ast {
         self.function_versions.shrink_to_fit();
         self.last_variable_id.shrink_to_fit();
         self.pre_defined_symbols.shrink_to_fit();
+    }
+    pub fn get_comment(&self, id: &AstNodeId) -> Option<&String> {
+        self.comments.get(id)
+    }
+    pub fn set_comment(&mut self, id: &AstNodeId, comment: String) {
+        self.comments.insert(*id, comment);
+    }
+    pub fn get_origin(&self, id: &AstNodeId) -> Option<&AstOrigin> {
+        self.origins.get(id)
+    }
+    pub fn set_origin(&mut self, id: &AstNodeId, origin: AstOrigin) {
+        self.origins.insert(*id, origin);
     }
 }

@@ -1,4 +1,7 @@
-use crate::{abstract_syntax_tree::objects::*, utils::version_map::VersionMap};
+use crate::{
+    abstract_syntax_tree::objects::*, ir::utils::IrStatementDescriptor,
+    utils::version_map::VersionMap,
+};
 use hashbrown::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -72,4 +75,11 @@ pub enum AstBuiltinFunction {
 
     BitOnes,
     BitZeros,
+}
+
+#[derive(Debug, Clone)]
+pub enum AstOrigin {
+    Ir(IrStatementDescriptor),
+    Derive(Box<[AstOrigin]>),
+    Synthetic,
 }

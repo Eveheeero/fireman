@@ -116,7 +116,7 @@ impl Ast {
             let func = version_map.get(version).unwrap();
             output.push_str(&format!(
                 "{} {}(",
-                func.return_type.to_string_with_config(Some(config)),
+                func.return_type.to_string_with_config(self, Some(config)),
                 func.name()
             ));
 
@@ -129,7 +129,7 @@ impl Ast {
                         let ty_str = param
                             .read_type(&func.variables)
                             .expect("invalid variable map")
-                            .to_string_with_config(Some(config));
+                            .to_string_with_config(self, Some(config));
                         let name_str = param.name(&func.variables).expect("invalid variable map");
                         let mut line = format!("{} {}", ty_str, name_str);
                         if config.parameter_usage_comment {
@@ -192,12 +192,12 @@ impl Ast {
                                 group_key,
                                 format!(
                                     "const {}",
-                                    var.var_type.to_string_with_config(Some(config))
+                                    var.var_type.to_string_with_config(self, Some(config))
                                 ),
                                 format!(
                                     "{} = {}",
                                     var.name(),
-                                    const_value.to_string_with_config(Some(config))
+                                    const_value.to_string_with_config(self, Some(config))
                                 ),
                                 config
                                     .variable_usage_comment
@@ -207,15 +207,15 @@ impl Ast {
                             debug!(
                                 function=?func.name(),
                                 "{} {} was replaced with constant value {}",
-                                var.var_type.to_string_with_config(Some(config)),
+                                var.var_type.to_string_with_config(self,Some(config)),
                                 var.name(),
-                                const_value.to_string_with_config(Some(config))
+                                const_value.to_string_with_config(self,Some(config))
                             );
                         }
                     } else {
                         decl_rows.push((
                             group_key,
-                            var.var_type.to_string_with_config(Some(config)),
+                            var.var_type.to_string_with_config(self, Some(config)),
                             var.name(),
                             config
                                 .variable_usage_comment
@@ -255,7 +255,7 @@ impl Ast {
 
             // Function body
             for stmt in &func.body {
-                let content = stmt.to_string_with_config(Some(config));
+                let content = stmt.to_string_with_config(self, Some(config));
                 if content.is_empty() {
                     continue;
                 }

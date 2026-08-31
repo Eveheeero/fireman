@@ -1,5 +1,5 @@
 use crate::{
-    abstract_syntax_tree::{AstCall, AstExpression, AstStatement, Wrapped},
+    abstract_syntax_tree::{AstCall, AstExpression, AstNodeId, AstStatement, Wrapped},
     ir::{
         data::{IrData, IrDataOperation, IrIntrinsic},
         statements::IrStatement,
@@ -55,10 +55,6 @@ impl RhaiAstStmt {
 
     fn to_str(&mut self) -> String {
         format!("{:?}", self.wrapped.item)
-    }
-
-    fn wrapper_comment(&mut self) -> String {
-        self.wrapped.comment.clone().unwrap_or_default()
     }
 
     fn is_call(&mut self) -> bool {
@@ -218,8 +214,8 @@ impl RhaiAstStmt {
             other => format!("{other:?}"),
         };
         let wrapped = Wrapped {
+            id: AstNodeId::new(),
             item: AstStatement::Comment(text),
-            comment: self.wrapped.comment.clone(),
         };
         RhaiAstStmt::from_wrapped(&wrapped)
     }

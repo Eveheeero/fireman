@@ -1,4 +1,5 @@
 use super::{fb_parser::parse_pattern_file, *};
+use crate::abstract_syntax_tree::AstNodeId;
 use std::{
     fs,
     path::PathBuf,
@@ -953,8 +954,8 @@ fn rhai_script_from_source_syntax_error() {
 fn rhai_ast_stmt_kind() {
     use crate::abstract_syntax_tree::Wrapped;
     let wrapped = Wrapped {
+        id: AstNodeId::new(),
         item: AstStatement::Comment("hello".to_string()),
-        comment: None,
     };
     let rhai_stmt = rhai_types::RhaiAstStmt::from_wrapped(&wrapped);
     assert_eq!(rhai_stmt.kind, "comment");
@@ -965,13 +966,13 @@ fn rhai_ast_stmt_all_kinds() {
     use crate::abstract_syntax_tree::{AstCall, AstExpression, Wrapped};
     let w = |s: AstStatement| -> Wrapped<AstStatement> {
         Wrapped {
+            id: AstNodeId::new(),
             item: s,
-            comment: None,
         }
     };
     let dummy_expr = || Wrapped {
+        id: AstNodeId::new(),
         item: AstExpression::Unknown,
-        comment: None,
     };
 
     let cases: Vec<(AstStatement, &str)> = vec![

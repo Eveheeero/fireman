@@ -2,8 +2,8 @@ use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstBinaryOperator, AstBuiltinFunction, AstBuiltinFunctionArgument,
         AstCall, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget, AstLiteral,
-        AstStatement, AstUnaryOperator, AstValue, AstValueType, AstVariableId, PrintWithConfig,
-        Wrapped,
+        AstNodeId, AstStatement, AstUnaryOperator, AstValue, AstValueType, AstVariableId,
+        PrintWithConfig, Wrapped,
     },
     core::Address,
     ir::{
@@ -21,8 +21,8 @@ use num_bigint::BigInt;
 /// Wrap
 pub(super) fn w<T>(item: T) -> Wrapped<T> {
     Wrapped {
+        id: AstNodeId::new(),
         item,
-        comment: None,
     }
 }
 
@@ -306,8 +306,8 @@ pub(super) fn convert_stmt(
                 AstStatement::Assignment(lhs, rhs)
             } else {
                 use crate::abstract_syntax_tree::PrintWithConfig;
-                let lhs_str = lhs.to_string_with_config(None);
-                let rhs_str = rhs.to_string_with_config(None);
+                let lhs_str = lhs.to_string_with_config(ast, None);
+                let rhs_str = rhs.to_string_with_config(ast, None);
                 AstStatement::Comment(format!("invalid assignment: {} = {}", lhs_str, rhs_str))
             }
         }
@@ -331,7 +331,7 @@ pub(super) fn convert_stmt(
                 }
                 (_, None) => {
                     warn!("Uncovered call target");
-                    let name = e.to_string_with_config(None);
+                    let name = e.to_string_with_config(ast, None);
                     AstStatement::Call(AstCall::Unknown(name, Vec::new()))
                 }
             }
@@ -352,7 +352,7 @@ pub(super) fn convert_stmt(
                 }
                 (_, None) => {
                     warn!("Uncovered jump target");
-                    let label = e.to_string_with_config(None);
+                    let label = e.to_string_with_config(ast, None);
                     AstStatement::Goto(AstJumpTarget::Unknown(label))
                 }
             }

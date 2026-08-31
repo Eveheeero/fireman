@@ -2,7 +2,7 @@ use clap::{Parser, ValueEnum};
 use fireball::{
     Fireball,
     abstract_syntax_tree::{
-        AstFunction, AstParameterLocation, AstPrintConfig, PrintWithConfig,
+        Ast, AstFunction, AstParameterLocation, AstPrintConfig, PrintWithConfig,
         pattern_matching::{
             AstPattern, FbzFunction, FbzParameter, FbzSymbol, FbzVariable, encode_fbz_functions,
         },
@@ -298,23 +298,15 @@ fn export_fb_inner(
 
     let encoded = match request.output_format {
         OutputFormat::FbGz => {
-            let output = render_all_rules(
-                &source_path_string,
-                &ast.pre_defined_symbols,
-                &ordered_functions,
-            )?;
+            let output = render_all_rules(&source_path_string, &ast, &ordered_functions)?;
             AstPattern::fb_gz_bytes_from_source(&output)?
         }
         OutputFormat::Fb => {
-            let output = render_all_rules(
-                &source_path_string,
-                &ast.pre_defined_symbols,
-                &ordered_functions,
-            )?;
+            let output = render_all_rules(&source_path_string, &ast, &ordered_functions)?;
             output.into_bytes()
         }
         OutputFormat::Fbz => {
-            let functions = build_fbz_functions(&ast.pre_defined_symbols, &ordered_functions)?;
+            let functions = build_fbz_functions(&ast, &ordered_functions)?;
             encode_fbz_functions(functions)?
         }
     };
@@ -330,30 +322,24 @@ fn export_fb_inner(
 
 fn render_all_rules(
     source_path: &str,
-    symbols: &hashbrown::HashMap<u64, String>,
+    ast: &Ast,
     functions: &[&AstFunction],
 ) -> Result<String, String> {
     let rendered = functions
         .iter()
-        .map(|f| render_function_rules(source_path, symbols, f))
+        .map(|f| render_function_rules(source_path, ast, f))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(rendered.join("\n\n"))
 }
 
-fn build_fbz_functions(
-    symbols: &hashbrown::HashMap<u64, String>,
-    functions: &[&AstFunction],
-) -> Result<Vec<FbzFunction>, String> {
+fn build_fbz_functions(ast: &Ast, functions: &[&AstFunction]) -> Result<Vec<FbzFunction>, String> {
     functions
         .iter()
-        .map(|f| build_fbz_function(symbols, f))
+        .map(|f| build_fbz_function(ast, f))
         .collect()
 }
 
-fn build_fbz_function(
-    symbols: &hashbrown::HashMap<u64, String>,
-    function: &AstFunction,
-) -> Result<FbzFunction, String> {
+fn build_fbz_function(ast: &Ast, function: &AstFunction) -> Result<FbzFunction, String> {
     let entry_ir = function
         .origin_ir
         .get_ir()
@@ -390,7 +376,7 @@ fn build_fbz_function(
             location: format_parameter_location(&p.location),
             value_type: p
                 .read_type(&function.variables)
-                .map(|v| v.to_string_with_config(None))
+                .map(|v| v.to_string_with_config(ast, None))
                 .unwrap_or_else(|_| "unknown".to_string()),
         })
         .collect::<Vec<_>>();
@@ -404,11 +390,11 @@ fn build_fbz_function(
         .values()
         .map(|v| FbzVariable {
             name: v.name(),
-            value_type: v.var_type.to_string_with_config(None),
+            value_type: v.var_type.to_string_with_config(ast, None),
             const_value: v
                 .const_value
                 .as_ref()
-                .map(|cv| cv.to_string_with_config(None)),
+                .map(|cv| cv.to_string_with_config(ast, None)),
         })
         .collect::<Vec<_>>();
     variables.sort_by(|a, b| a.name.cmp(&b.name));
@@ -421,7 +407,8 @@ fn build_fbz_function(
         .last()
         .map(|ir| ir.address.get_virtual_address())
         .unwrap_or(entry_va);
-    let mut syms = symbols
+    let mut syms = ast
+        .pre_defined_symbols
         .iter()
         .filter(|(addr, _)| **addr >= function_start && **addr <= function_end)
         .map(|(addr, name)| FbzSymbol {
@@ -432,10 +419,10 @@ fn build_fbz_function(
     syms.sort_by_key(|s| s.address);
 
     // AST text
-    let ast_text = render_function_ast(function).ok();
+    let ast_text = render_function_ast(ast, function).ok();
 
     // Return type
-    let return_type = Some(function.return_type.to_string_with_config(None));
+    let return_type = Some(function.return_type.to_string_with_config(ast, None));
 
     Ok(FbzFunction {
         name: function.name(),
@@ -456,7 +443,7 @@ fn build_fbz_function(
 /// Collect shared data for a function, then emit three phase-specific `if:do:` blocks.
 fn render_function_rules(
     source_path: &str,
-    symbols: &hashbrown::HashMap<u64, String>,
+    ast: &Ast,
     function: &AstFunction,
 ) -> Result<String, String> {
     let entry_ir = function
@@ -492,7 +479,7 @@ fn render_function_rules(
             location: format_parameter_location(&parameter.location),
             value_type: parameter
                 .read_type(&function.variables)
-                .map(|value| value.to_string_with_config(None))
+                .map(|value| value.to_string_with_config(ast, None))
                 .unwrap_or_else(|_| "unknown".to_string()),
         })
         .collect::<Vec<_>>();
@@ -505,11 +492,11 @@ fn render_function_rules(
         .values()
         .map(|variable| ExportedVariable {
             name: variable.name(),
-            value_type: variable.var_type.to_string_with_config(None),
+            value_type: variable.var_type.to_string_with_config(ast, None),
             const_value: variable
                 .const_value
                 .as_ref()
-                .map(|value| value.to_string_with_config(None)),
+                .map(|value| value.to_string_with_config(ast, None)),
         })
         .collect::<Vec<_>>();
     local_variables.sort_by(|left, right| left.name.cmp(&right.name));
@@ -521,7 +508,8 @@ fn render_function_rules(
         .last()
         .map(|ir| ir.address.get_virtual_address())
         .unwrap_or(entry_va);
-    let mut relevant_symbols = symbols
+    let mut relevant_symbols = ast
+        .pre_defined_symbols
         .iter()
         .filter(|(address, _)| **address >= function_start && **address <= function_end)
         .map(|(address, name): (&u64, &String)| ExportedSymbol {
@@ -560,6 +548,7 @@ fn render_function_rules(
     // Phase 3: afterOptimization — full metadata with AST
     let ast_rule = render_ast_rule(
         source_path,
+        ast,
         function,
         &assembly_seeds,
         &ir_seeds,
@@ -666,6 +655,7 @@ fn render_ir_rule(
 /// Phase 3: `afterOptimization` — full metadata including AST text.
 fn render_ast_rule(
     _source_path: &str,
+    ast: &Ast,
     function: &AstFunction,
     assembly_seeds: &[String],
     ir_seeds: &[String],
@@ -677,7 +667,7 @@ fn render_ast_rule(
     local_variables: &[ExportedVariable],
     symbols: &[ExportedSymbol],
 ) -> Result<String, String> {
-    let ast_text = render_function_ast(function)?;
+    let ast_text = render_function_ast(ast, function)?;
 
     let payload = PhasePayload {
         phase: "ast".to_string(),
@@ -685,7 +675,7 @@ fn render_ast_rule(
         function_default_name: func_default_name.to_string(),
         entry_virtual_address: entry_va.to_string(),
         entry_file_offset: entry_file_offset.clone(),
-        return_type: Some(function.return_type.to_string_with_config(None)),
+        return_type: Some(function.return_type.to_string_with_config(ast, None)),
         parameters: Some(parameters.to_vec()),
         local_variables: Some(local_variables.to_vec()),
         symbols: Some(symbols.to_vec()),
@@ -719,7 +709,7 @@ fn render_ast_rule(
     Ok(rule.trim_end().to_string())
 }
 
-fn render_function_ast(function: &AstFunction) -> Result<String, String> {
+fn render_function_ast(ast: &Ast, function: &AstFunction) -> Result<String, String> {
     let params = function
         .parameters
         .iter()
@@ -729,7 +719,7 @@ fn render_function_ast(function: &AstFunction) -> Result<String, String> {
                 .unwrap_or_else(|_| "unknown".to_string());
             let value_type = parameter
                 .read_type(&function.variables)
-                .map(|value| value.to_string_with_config(None))
+                .map(|value| value.to_string_with_config(ast, None))
                 .unwrap_or_else(|_| "unknown".to_string());
             format!("{value_type} {name}")
         })
@@ -740,14 +730,14 @@ fn render_function_ast(function: &AstFunction) -> Result<String, String> {
     let _ = writeln!(
         rendered,
         "{} {}({}) {{",
-        function.return_type.to_string_with_config(None),
+        function.return_type.to_string_with_config(ast, None),
         function.name(),
         params
     );
 
     for statement in function.body.iter() {
         for line in statement
-            .to_string_with_config(Some(AstPrintConfig::default()))
+            .to_string_with_config(ast, Some(AstPrintConfig::default()))
             .lines()
         {
             let _ = writeln!(rendered, "    {line}");

@@ -61,7 +61,8 @@ pub(super) fn collapse_unused_variables(
                 };
                 let overwritten = overwritten_locations.contains(&location);
                 if data_access_count == 1 && overwritten {
-                    trace!(?lhs,?stmt.comment, "Removing declaration of unused variable");
+                    let comment = ast.get_comment(&stmt.id);
+                    trace!(?lhs, ?comment, "Removing declaration of unused variable");
                     continue;
                 }
                 overwritten_locations.insert(location.clone());
@@ -88,7 +89,8 @@ pub(super) fn collapse_unused_variables(
                     .sum();
                 let overwritten = overwritten_locations.contains(&location);
                 if data_access_count == 1 && overwritten {
-                    trace!(?lhs,?stmt.comment, "Removing assignment of unused variable");
+                    let comment = ast.get_comment(&stmt.id);
+                    trace!(?lhs, ?comment, "Removing assignment of unused variable");
                     continue;
                 }
                 overwritten_locations.insert(location.clone());
@@ -258,7 +260,7 @@ fn collapse(
                     };
                     let overwritten = overwritten_locations.contains(&location);
                     if data_access_count == 1 && overwritten {
-                        trace!(?lhs,?stmt.comment, "Removing declaration of unused variable");
+                        trace!(?lhs, "Removing declaration of unused variable");
                         drop_needed = true;
                     } else {
                         overwritten_locations.insert(location.clone());
@@ -282,7 +284,7 @@ fn collapse(
                             .sum();
                         let overwritten = overwritten_locations.contains(&location);
                         if data_access_count == 1 && overwritten {
-                            trace!(?lhs,?stmt.comment, "Removing assignment of unused variable");
+                            trace!(?lhs, "Removing assignment of unused variable");
                             drop_needed = true;
                         } else {
                             overwritten_locations.insert(location.clone());

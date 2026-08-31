@@ -3,8 +3,8 @@ use super::{
     types::{Captured, Captures, PatTree},
 };
 use crate::abstract_syntax_tree::{
-    ArcAstVariableMap, AstBinaryOperator, AstCall, AstExpression, AstLiteral, AstStatement,
-    AstUnaryOperator, AstValueType, AstVariableId, Wrapped,
+    ArcAstVariableMap, AstBinaryOperator, AstCall, AstExpression, AstLiteral, AstNodeId,
+    AstStatement, AstUnaryOperator, AstValueType, AstVariableId, Wrapped,
 };
 
 // ---------------------------------------------------------------------------
@@ -144,8 +144,8 @@ pub(super) fn construct_wrapped_expr(
         PatTree::Node { name, children } => {
             let expr = construct_expr_node(*name, children, caps)?;
             Some(Wrapped {
+                id: AstNodeId::new(),
                 item: expr,
-                comment: None,
             })
         }
         _ => None,
@@ -401,16 +401,16 @@ fn construct_stmt_list(pat: &PatTree, caps: &Captures) -> Option<Vec<Wrapped<Ast
         PatTree::Capture(name) => match caps.get(name)? {
             Captured::StmtList(l) => Some(l.clone()),
             Captured::Statement(stmt) => Some(vec![Wrapped {
+                id: AstNodeId::new(),
                 item: stmt.clone(),
-                comment: None,
             }]),
             _ => None,
         },
         PatTree::Node { .. } => {
             let stmt = construct_statement(pat, caps)?;
             Some(vec![Wrapped {
+                id: AstNodeId::new(),
                 item: stmt,
-                comment: None,
             }])
         }
         PatTree::List(pats) => {
@@ -418,8 +418,8 @@ fn construct_stmt_list(pat: &PatTree, caps: &Captures) -> Option<Vec<Wrapped<Ast
             for p in pats {
                 let stmt = construct_statement(p, caps)?;
                 result.push(Wrapped {
+                    id: AstNodeId::new(),
                     item: stmt,
-                    comment: None,
                 });
             }
             Some(result)

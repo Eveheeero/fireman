@@ -1,5 +1,6 @@
 use super::hello_world_binary;
 use crate::{
+    abstract_syntax_tree::AstPrintConfig,
     core::{Address, FireRaw, RelationType},
     pe::Pe,
     prelude::*,
@@ -347,7 +348,7 @@ fn pe_hello_world_decom() {
         let ir_result = ast.print(None);
         println!("{}", ir_result);
         std::fs::write("logs/fireball_pe_hello_world_ir.log", ir_result).unwrap();
-        let ast_result = ast.optimize(None).unwrap().print(None);
+        let ast_result = ast.optimize(None).unwrap().print(Some(AstPrintConfig::ALL));
         println!("{}", ast_result);
         std::fs::write("logs/fireball_pe_hello_world_ast.log", ast_result).unwrap();
     });
