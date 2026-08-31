@@ -172,11 +172,6 @@ pub(super) fn analyze_ir_function(
             &var_map,
             instruction_args,
         )?;
-        let old_id = ws.id;
-        let new_id = stmt.id;
-        if let Some(origin) = ast.get_origin(&old_id) {
-            ast.set_origin(&new_id, origin.clone());
-        }
         *ws = stmt;
     }
 

@@ -11,7 +11,6 @@ pub struct Ast {
     pub functions: ArcAstFunctionMap,
     pub last_variable_id: HashMap<AstFunctionId, u32>,
     pub pre_defined_symbols: HashMap<u64, String>,
-    pub origins: HashMap<AstNodeId, AstOrigin>,
     pub comments: HashMap<AstNodeId, String>,
 }
 
@@ -22,7 +21,6 @@ impl Ast {
             functions: Arc::new(RwLock::new(HashMap::new())),
             last_variable_id: HashMap::new(),
             pre_defined_symbols: HashMap::new(),
-            origins: HashMap::new(),
             comments: HashMap::new(),
         }
     }
@@ -144,11 +142,5 @@ impl Ast {
     }
     pub fn set_comment(&mut self, id: &AstNodeId, comment: String) {
         self.comments.insert(*id, comment);
-    }
-    pub fn get_origin(&self, id: &AstNodeId) -> Option<&AstOrigin> {
-        self.origins.get(id)
-    }
-    pub fn set_origin(&mut self, id: &AstNodeId, origin: AstOrigin) {
-        self.origins.insert(*id, origin);
     }
 }
