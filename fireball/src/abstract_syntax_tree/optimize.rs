@@ -6,7 +6,6 @@ mod parameter_analyzation;
 pub mod pattern_matching;
 
 use super::*;
-use crate::pattern_matching::AstPatternApplyPhase;
 use std::hash::Hash;
 
 impl Ast {
@@ -82,13 +81,8 @@ impl Ast {
                         let pattern = *pattern.clone();
                         let pattern = &[pattern];
                         for target_function in target_functions {
-                            pattern_matching::apply_patterns(
-                                ast,
-                                *target_function,
-                                pattern,
-                                AstPatternApplyPhase::AfterIrAnalyzation,
-                            )
-                            .unwrap();
+                            pattern_matching::apply_patterns(ast, *target_function, pattern)
+                                .unwrap();
                         }
                     }
                 }
