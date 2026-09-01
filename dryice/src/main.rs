@@ -277,16 +277,8 @@ fn export_fb_inner(
 
     let source_path = absolute_path(&request.input_path)?;
     let source_path_string = source_path.display().to_string();
-    let functions = ast
-        .functions
-        .read()
-        .map_err(|_| "failed to read AST functions".to_string())?;
 
-    let mut ordered_functions = functions
-        .iter()
-        .map(|(_, version_map)| version_map.get_last_version())
-        .collect::<Vec<_>>();
-
+    let mut ordered_functions = ast.functions.values().collect::<Vec<_>>();
     ordered_functions.sort_by_key(|function| {
         function
             .origin_ir

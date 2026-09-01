@@ -12,9 +12,7 @@ use super::{
     infer_input_type_from_in_blocks, ir_parser::normalize_for_match, stmt_pattern,
 };
 use crate::{
-    abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement, Wrapped,
-    },
+    abstract_syntax_tree::{Ast, AstFunctionId, AstOptimizationKind, AstStatement, Wrapped},
     ir::statements::IrStatement,
     prelude::DecompileError,
 };
@@ -55,18 +53,13 @@ thread_local! {
 pub(in crate::abstract_syntax_tree::optimize) fn apply_patterns(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
     patterns: &[AstPattern],
     phase: AstPatternApplyPhase,
 ) -> Result<(), DecompileError> {
     let mut body;
     let function_ir_statements;
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
         function_ir_statements = collect_function_ir_statements(function.origin_ir.get_ir());
         body = std::mem::take(&mut function.body);
     }
@@ -77,11 +70,7 @@ pub(in crate::abstract_syntax_tree::optimize) fn apply_patterns(
     }
 
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
         function.body = body;
         for pattern in resolve_patterns(patterns) {
             function

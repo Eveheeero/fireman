@@ -2,8 +2,8 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstParameter,
-        AstVariableAccessType, AstVariableId, GetRelatedVariables,
+        Ast, AstFunctionId, AstOptimizationKind, AstParameter, AstVariableAccessType,
+        AstVariableId, GetRelatedVariables,
     },
     ir::{
         Register,
@@ -17,16 +17,11 @@ use hashbrown::{HashMap, HashSet};
 pub(super) fn analyze_parameters(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
 ) -> Result<(), DecompileError> {
     let variables;
     let body;
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
 
         body = std::mem::take(&mut function.body);
         variables = function.variables.clone();
@@ -143,11 +138,7 @@ pub(super) fn analyze_parameters(
     );
 
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
         function
             .processed_optimizations
             .push(AstOptimizationKind::ParameterAnalyzation);

@@ -97,23 +97,19 @@ impl Ast {
     pub fn print(&self, config: Option<AstPrintConfig>) -> String {
         let config = config.unwrap_or_default();
         let mut output = String::new();
-        let function_versions = &self.function_versions;
 
         // Functions
-        let functions = self.functions.read().unwrap();
+        let functions = &self.functions;
         let mut function_keys_sorted = functions.keys().collect::<Vec<_>>();
         function_keys_sorted.sort_by_cached_key(|key_ref| {
             let key = *key_ref;
-            let is_main = function_versions
+            let is_main = functions
                 .get(key)
-                .and_then(|version| functions.get(key).and_then(|m| m.get(version)))
                 .is_some_and(|function| function.name() == "main");
             (if is_main { 0u8 } else { 1u8 }, key.address)
         });
         for func_id in function_keys_sorted {
-            let version_map = functions.get(func_id).unwrap();
-            let version = function_versions.get(func_id).unwrap();
-            let func = version_map.get(version).unwrap();
+            let func = functions.get(func_id).unwrap();
             output.push_str(&format!(
                 "{} {}(",
                 func.return_type.to_string_with_config(self, Some(config)),

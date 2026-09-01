@@ -160,13 +160,6 @@ fn refresh_decompile(app: &mut TuiApp) {
                 let opt = select_optimization::selected_to_ast_optimization_kind(dat);
                 let previous = data.ast_and_tab_index.last().unwrap();
                 let mut ast = previous.0.clone();
-
-                let mut functions = Vec::new();
-                let function_versions = ast.function_versions.clone();
-                for (function_id, version) in &function_versions {
-                    let to_version = ast.clone_function(function_id, version).unwrap();
-                    functions.push((function_id, to_version));
-                }
                 if let Ok(()) = ast.optimize(Some(&[opt])) {
                     data.ast_and_tab_index.push((ast, current_tab));
                 }

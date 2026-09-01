@@ -2,8 +2,8 @@
 
 use crate::{
     abstract_syntax_tree::{
-        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstOptimizationKind, AstStatement, GetRelatedVariables, Wrapped,
+        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstOptimizationKind, AstStatement,
+        GetRelatedVariables, Wrapped,
     },
     ir::data::IrData,
     prelude::{DecompileError, *},
@@ -15,16 +15,11 @@ use hashbrown::HashSet;
 pub(super) fn collapse_unused_variables(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
 ) -> Result<(), DecompileError> {
     let body;
     let variables;
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
 
         body = std::mem::take(&mut function.body);
         variables = function.variables.clone();
@@ -207,11 +202,7 @@ pub(super) fn collapse_unused_variables(
     new_body.reverse();
 
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
         function
             .processed_optimizations
             .push(AstOptimizationKind::CollapseUnusedVariables);

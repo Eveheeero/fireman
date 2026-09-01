@@ -2,8 +2,8 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstNodeId, AstOptimizationKind, AstStatement, AstValue, AstVariableId, Wrapped,
+        Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstLiteral,
+        AstNodeId, AstOptimizationKind, AstStatement, AstValue, AstVariableId, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -12,15 +12,10 @@ use hashbrown::HashMap;
 pub(super) fn fold_constants(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
 ) -> Result<(), DecompileError> {
     let mut body;
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
         body = std::mem::take(&mut function.body);
     }
 
@@ -28,11 +23,7 @@ pub(super) fn fold_constants(
     fold_statement_list(&mut body, &mut const_env);
 
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
         function.body = body;
         function
             .processed_optimizations
