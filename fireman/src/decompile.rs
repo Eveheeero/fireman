@@ -1,5 +1,7 @@
-use crate::{DecompileArgs, JsonPreset};
-use fireball::{core::FireRaw, pattern_matching::AstPattern};
+use crate::{DecompileArgs, JsonPreset, JsonPresetOptimizationConfig};
+use fireball::{
+    abstract_syntax_tree::AstOptimizationKind, core::FireRaw, pattern_matching::AstPattern,
+};
 
 pub fn decompile(args: DecompileArgs) {
     let DecompileArgs {
@@ -21,9 +23,11 @@ pub fn decompile(args: DecompileArgs) {
     } else {
         Default::default()
     };
-    let mut optimization_config = json_preset
-        .optimization_config
-        .to_fireball_optimization_config();
+    let mut optimizations: Vec<_> = json_preset
+        .optimizations
+        .into_iter()
+        .map(JsonPresetOptimizationConfig::to_fireball_optimization)
+        .collect();
     for path in custom_script
         .into_iter()
         .chain(json_preset.custom_script.into_iter())
@@ -31,9 +35,9 @@ pub fn decompile(args: DecompileArgs) {
         let content = std::fs::read_to_string(&path);
         match content {
             Ok(content) => {
-                optimization_config
-                    .pattern_matching
-                    .push(AstPattern::new(path, content));
+                optimizations.push(AstOptimizationKind::PatternMatching(Box::new(
+                    AstPattern::new(path, content),
+                )));
             }
             Err(e) => {
                 eprintln!("Error reading file {}: {}", path, e);
@@ -45,11 +49,10 @@ pub fn decompile(args: DecompileArgs) {
     let fireball = fireball::Fireball::from_path(input.to_str().unwrap()).unwrap();
     let blocks = fireball.analyze_all().unwrap();
     let defined = fireball.get_defined();
-    let result = fireball::ir::analyze::generate_ast_with_pre_defined_symbols(blocks, defined)
-        .unwrap()
-        .optimize(Some(optimization_config))
-        .unwrap()
-        .print(Some(print_config));
+    let mut ast =
+        fireball::ir::analyze::generate_ast_with_pre_defined_symbols(blocks, defined).unwrap();
+    ast.optimize(Some(&optimizations)).unwrap();
+    let result = ast.print(Some(print_config));
     if let Some(out) = output {
         std::fs::write(out, result).unwrap();
     } else {

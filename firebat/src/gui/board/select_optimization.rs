@@ -82,6 +82,24 @@ pub fn window_with(id: impl Into<String>, pos: egui::Pos2, selected: usize) -> B
         }),
     )
 }
+pub fn window_custom_pattern(
+    id: impl Into<String>,
+    pos: egui::Pos2,
+    custom_path: String,
+) -> BoardWindow {
+    BoardWindow::new(
+        id,
+        "Select Optimization",
+        pos,
+        BoardWindowKind::SelectOptimization(SelectOptimizationData {
+            choice: SelectOptimizationChoice {
+                selected: CUSTOM_PATTERN_INDEX,
+                custom_path,
+                ..Default::default()
+            },
+        }),
+    )
+}
 
 pub fn ui(_app: &mut Firebat, id: &str, data: &mut SelectOptimizationData, ui: &mut egui::Ui) {
     ui.set_min_width(200.0);

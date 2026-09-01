@@ -139,67 +139,101 @@ fn resolve_args(args: ArgMatches) -> ResolvedArgs {
     }
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize)]
 struct JsonPreset {
     custom_script: Vec<String>,
-    optimization_config: JsonPresetOptimizationConfig,
+    optimizations: Vec<JsonPresetOptimizationConfig>,
     print_config: JsonPresetPrintConfig,
 }
 
-/// see [fireball::abstract_syntax_tree::AstOptimizationConfig]
+impl Default for JsonPreset {
+    fn default() -> Self {
+        Self {
+            custom_script: [].into(),
+            optimizations: fireball::abstract_syntax_tree::AstOptimizationKind::all()
+                .into_iter()
+                .map(crate::JsonPresetOptimizationConfig::from_fireball_optimization)
+                .collect(),
+            print_config: JsonPresetPrintConfig::default(),
+        }
+    }
+}
+
+/// see [fireball::abstract_syntax_tree::AstOptimizationKind]
 #[derive(Serialize, Deserialize)]
-struct JsonPresetOptimizationConfig {
-    ir_analyzation: bool,
-    parameter_analyzation: bool,
-    constant_folding: bool,
-    collapse_unused_variable: bool,
-    pattern_matching: Vec<String>, // if invalid name, ignore
-    max_pass_iterations: usize,
-    use_embedded_passes: bool,
+enum JsonPresetOptimizationConfig {
+    IrAnalyzation,
+    ParameterAnalyzation,
+    ConstantFolding,
+    CollapseUnusedVariables,
+    OptimizationLoop(Vec<JsonPresetOptimizationConfig>, u8),
+    PatternMatching(String),
 }
 
 impl JsonPresetOptimizationConfig {
-    fn to_fireball_optimization_config(
-        self,
-    ) -> fireball::abstract_syntax_tree::AstOptimizationConfig {
-        fireball::abstract_syntax_tree::AstOptimizationConfig {
-            ir_analyzation: self.ir_analyzation,
-            parameter_analyzation: self.parameter_analyzation,
-            constant_folding: self.constant_folding,
-            collapse_unused_variable: self.collapse_unused_variable,
-            pattern_matching: self
-                .pattern_matching
-                .iter()
-                .filter_map(|x| AstPattern::predefined_pattern(&x))
-                .collect(),
-            max_pass_iterations: self.max_pass_iterations,
-            use_embedded_passes: self.use_embedded_passes,
+    fn to_fireball_optimization(self) -> fireball::abstract_syntax_tree::AstOptimizationKind {
+        match self {
+            JsonPresetOptimizationConfig::IrAnalyzation => {
+                fireball::abstract_syntax_tree::AstOptimizationKind::IrAnalyzation
+            }
+            JsonPresetOptimizationConfig::ParameterAnalyzation => {
+                fireball::abstract_syntax_tree::AstOptimizationKind::ParameterAnalyzation
+            }
+            JsonPresetOptimizationConfig::ConstantFolding => {
+                fireball::abstract_syntax_tree::AstOptimizationKind::ConstantFolding
+            }
+            JsonPresetOptimizationConfig::CollapseUnusedVariables => {
+                fireball::abstract_syntax_tree::AstOptimizationKind::CollapseUnusedVariables
+            }
+            JsonPresetOptimizationConfig::OptimizationLoop(optimizations, loop_count) => {
+                fireball::abstract_syntax_tree::AstOptimizationKind::OptimizationLoop(
+                    optimizations
+                        .into_iter()
+                        .map(JsonPresetOptimizationConfig::to_fireball_optimization)
+                        .collect(),
+                    loop_count,
+                )
+            }
+            JsonPresetOptimizationConfig::PatternMatching(pattern) => {
+                let pattern = if let Some(pattern) = AstPattern::predefined_pattern(&pattern) {
+                    pattern
+                } else {
+                    AstPattern::from_file(pattern)
+                };
+                fireball::abstract_syntax_tree::AstOptimizationKind::PatternMatching(Box::new(
+                    pattern,
+                ))
+            }
         }
     }
-    fn from_fireball_optimization_config(
-        o: fireball::abstract_syntax_tree::AstOptimizationConfig,
-    ) -> Self {
-        Self {
-            ir_analyzation: o.ir_analyzation,
-            parameter_analyzation: o.parameter_analyzation,
-            constant_folding: o.constant_folding,
-            collapse_unused_variable: o.collapse_unused_variable,
-            pattern_matching: o
-                .pattern_matching
-                .iter()
-                .map(|x| x.name().to_string())
-                .collect(),
-            max_pass_iterations: o.max_pass_iterations,
-            use_embedded_passes: o.use_embedded_passes,
+    fn from_fireball_optimization(o: fireball::abstract_syntax_tree::AstOptimizationKind) -> Self {
+        match o {
+            fireball::abstract_syntax_tree::AstOptimizationKind::IrAnalyzation => {
+                Self::IrAnalyzation
+            }
+            fireball::abstract_syntax_tree::AstOptimizationKind::ParameterAnalyzation => {
+                Self::ParameterAnalyzation
+            }
+            fireball::abstract_syntax_tree::AstOptimizationKind::ConstantFolding => {
+                Self::ConstantFolding
+            }
+            fireball::abstract_syntax_tree::AstOptimizationKind::CollapseUnusedVariables => {
+                Self::CollapseUnusedVariables
+            }
+            fireball::abstract_syntax_tree::AstOptimizationKind::OptimizationLoop(
+                optimizations,
+                loop_count,
+            ) => Self::OptimizationLoop(
+                optimizations
+                    .into_iter()
+                    .map(Self::from_fireball_optimization)
+                    .collect(),
+                loop_count,
+            ),
+            fireball::abstract_syntax_tree::AstOptimizationKind::PatternMatching(pattern) => {
+                Self::PatternMatching(pattern.name().to_string())
+            }
         }
-    }
-}
-
-impl Default for JsonPresetOptimizationConfig {
-    fn default() -> Self {
-        Self::from_fireball_optimization_config(
-            fireball::abstract_syntax_tree::AstOptimizationConfig::default(),
-        )
     }
 }
 

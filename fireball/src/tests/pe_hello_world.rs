@@ -342,13 +342,14 @@ fn pe_hello_world_decom() {
         let binary = hello_world_binary();
         let pe = Pe::from_binary(binary.to_vec()).unwrap();
         let blocks = pe.analyze_all().unwrap();
-        let ast =
+        let mut ast =
             crate::ir::analyze::generate_ast_with_pre_defined_symbols(blocks, pe.get_defined())
                 .unwrap();
         let ir_result = ast.print(None);
         println!("{}", ir_result);
         std::fs::write("logs/fireball_pe_hello_world_ir.log", ir_result).unwrap();
-        let ast_result = ast.optimize(None).unwrap().print(Some(AstPrintConfig::ALL));
+        ast.optimize(None).unwrap();
+        let ast_result = ast.print(Some(AstPrintConfig::ALL));
         println!("{}", ast_result);
         std::fs::write("logs/fireball_pe_hello_world_ast.log", ast_result).unwrap();
     });

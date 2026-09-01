@@ -1,5 +1,6 @@
 use super::{BoardData, display_current_ast, select_optimization};
-use fireball::abstract_syntax_tree::AstOptimizationConfig;
+use crate::gui::board::select_optimization::{CUSTOM_PATTERN_INDEX, window_custom_pattern};
+use fireball::abstract_syntax_tree::AstOptimizationKind;
 
 /// Amount of windows placed on a single row before the chain folds back.
 const PER_ROW: usize = 8;
@@ -15,19 +16,30 @@ const ROW_OFFSET: egui::Vec2 = egui::vec2(0.0, 720.0);
 /// Every optimization of the default config becomes a Select Optimization window connected to the
 /// previous one, and the chain ends with a Display Current AST window.
 pub fn default_tabs(board: &mut BoardData, root: &str, root_pos: egui::Pos2) {
-    let names = default_optimizations(&AstOptimizationConfig::default());
+    let optimizations = AstOptimizationKind::all();
+    let flatten_optimizations = flatten_optimizations(optimizations);
 
     let mut parent = root.to_owned();
     let mut placed = 0;
-    for name in names {
-        let Some(selected) = select_optimization::index_of(name) else {
-            tracing::warn!("unknown optimization: {name}");
+    for optimization in flatten_optimizations {
+        let optimization_name = optimization_to_name(&optimization);
+        let Some(selected) = select_optimization::index_of(optimization_name) else {
+            tracing::warn!("unknown optimization: {optimization_name}");
             continue;
         };
         placed += 1;
         let id = board.pipeline.spawn_id(&parent, "optimization");
         let pos = position(root_pos, placed);
-        board.add_window(select_optimization::window_with(id.as_str(), pos, selected));
+        if selected == CUSTOM_PATTERN_INDEX {
+            let custom_path = if let AstOptimizationKind::PatternMatching(pattern) = optimization {
+                pattern.name().to_string()
+            } else {
+                panic!()
+            };
+            window_custom_pattern(id.as_str(), pos, custom_path);
+        } else {
+            board.add_window(select_optimization::window_with(id.as_str(), pos, selected));
+        }
         board.connect(&parent, &id);
         parent = id;
     }
@@ -53,26 +65,28 @@ fn position(root_pos: egui::Pos2, step: usize) -> egui::Pos2 {
     root_pos + COLUMN_OFFSET * column as f32 + ROW_OFFSET * row as f32
 }
 
-/// Optimizations the default chain applies, in the very order the tui applies them.
-fn default_optimizations(config: &AstOptimizationConfig) -> Vec<&'static str> {
-    let mut names = Vec::new();
-
-    if config.ir_analyzation {
-        names.push("Ir Analyzation");
-    }
-    if config.parameter_analyzation {
-        names.push("Parameter Analyzation");
-    }
-
-    let max_pass_iterations = config.max_pass_iterations.max(1);
-    for _ in 0..max_pass_iterations {
-        if config.constant_folding {
-            names.push("Constant Folding");
-        }
-        if config.collapse_unused_variable {
-            names.push("Collapse Unused Variables");
+/// flatten `OptimizationLoop` from optimization lists
+fn flatten_optimizations(optimizations: Vec<AstOptimizationKind>) -> Vec<AstOptimizationKind> {
+    let mut list = Vec::new();
+    for optimization in optimizations {
+        if let AstOptimizationKind::OptimizationLoop(optimizations, loop_count) = optimization {
+            for _ in 0..loop_count {
+                list.extend_from_slice(&optimizations);
+            }
+        } else {
+            list.push(optimization);
         }
     }
+    list
+}
 
-    names
+fn optimization_to_name(optimization: &AstOptimizationKind) -> &'static str {
+    match optimization {
+        AstOptimizationKind::IrAnalyzation => "Ir Analyzation",
+        AstOptimizationKind::ParameterAnalyzation => "Parameter Analyzation",
+        AstOptimizationKind::ConstantFolding => "Constant Folding",
+        AstOptimizationKind::CollapseUnusedVariables => "Collapse Unused Variables",
+        AstOptimizationKind::OptimizationLoop(_, _) => unreachable!(),
+        AstOptimizationKind::PatternMatching(_) => "Custom Pattern",
+    }
 }

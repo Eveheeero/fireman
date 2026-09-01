@@ -16,11 +16,11 @@ use select_target_block::SelectTargetBlockData;
 use std::{
     collections::{HashMap, HashSet, VecDeque, hash_map::DefaultHasher},
     hash::{Hash, Hasher},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 
 /// Ast owned by a window and reused by the ones connected to it.
-pub type SharedAst = Arc<Ast>;
+pub type SharedAst = Arc<Mutex<Ast>>;
 
 const ZOOM_RANGE: std::ops::RangeInclusive<f32> = 0.01..=4.0;
 
@@ -163,6 +163,7 @@ impl BoardPipeline {
             targets,
             fireball.get_defined(),
         )
+        .map(Mutex::new)
         .map(Arc::new)
         .map_err(|error| format!("ast generation failed: {error:?}"))
     }
@@ -175,9 +176,10 @@ impl BoardPipeline {
         ast: &SharedAst,
     ) -> Result<SharedAst, String> {
         let kind = select_optimization::choice_to_ast_optimization_kind(choice);
-        ast.optimize(Some(kind.into()))
-            .map(Arc::new)
-            .map_err(|error| format!("optimization of {id} failed: {error:?}"))
+        let mut ast = ast.lock().unwrap().clone();
+        ast.optimize(Some(&[kind]))
+            .map_err(|error| format!("optimization of {id} failed: {error:?}"))?;
+        Ok(Arc::new(Mutex::new(ast)))
     }
 }
 
@@ -267,7 +269,7 @@ impl BoardData {
                 },
                 BoardWindowKind::DisplayCurrentAst(data) => match &parent_ast {
                     Some(ast) => {
-                        data.set_ast(ast.print(None));
+                        data.set_ast(ast.lock().unwrap().print(None));
                         Ok(ast.clone())
                     }
                     None => {

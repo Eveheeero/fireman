@@ -24,38 +24,34 @@ impl Fire for Elf {
 
     fn decompile_all(&self) -> Result<String, DecompileError> {
         let blocks = self.analyze_all()?;
-        Ok(
-            crate::ir::analyze::generate_ast_with_pre_defined_symbols(blocks, self.get_defined())?
-                .optimize(None)?
-                .print(None),
-        )
+        let mut ast =
+            crate::ir::analyze::generate_ast_with_pre_defined_symbols(blocks, self.get_defined())?;
+        ast.optimize(None)?;
+        Ok(ast.print(None))
     }
 
     fn decompile_from_entry(&self) -> Result<String, DecompileError> {
         let block = self.analyze_from_entry()?;
-        Ok(
-            crate::ir::analyze::generate_ast_with_pre_defined_symbols([block], self.get_defined())?
-                .optimize(None)?
-                .print(None),
-        )
+        let mut ast =
+            crate::ir::analyze::generate_ast_with_pre_defined_symbols([block], self.get_defined())?;
+        ast.optimize(None)?;
+        Ok(ast.print(None))
     }
 
     fn decompile_from_file_offset(&self, address: u64) -> Result<String, DecompileError> {
         let block = self.analyze_from_file_offset(address)?;
-        Ok(
-            crate::ir::analyze::generate_ast_with_pre_defined_symbols([block], self.get_defined())?
-                .optimize(None)?
-                .print(None),
-        )
+        let mut ast =
+            crate::ir::analyze::generate_ast_with_pre_defined_symbols([block], self.get_defined())?;
+        ast.optimize(None)?;
+        Ok(ast.print(None))
     }
 
     fn decompile_from_virtual_address(&self, address: u64) -> Result<String, DecompileError> {
         let block = self.analyze_from_virtual_address(address)?;
-        Ok(
-            crate::ir::analyze::generate_ast_with_pre_defined_symbols([block], self.get_defined())?
-                .optimize(None)?
-                .print(None),
-        )
+        let mut ast =
+            crate::ir::analyze::generate_ast_with_pre_defined_symbols([block], self.get_defined())?;
+        ast.optimize(None)?;
+        Ok(ast.print(None))
     }
 }
 

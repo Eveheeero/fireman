@@ -273,7 +273,7 @@ fn export_fb_inner(
     let blocks = fireball.analyze_all().map_err(|err| err.to_string())?;
     let mut ast = generate_ast_with_pre_defined_symbols(blocks, fireball.get_defined())
         .map_err(|err| err.to_string())?;
-    ast = ast.optimize(None).map_err(|err| err.to_string())?;
+    ast.optimize(None).map_err(|err| err.to_string())?;
 
     let source_path = absolute_path(&request.input_path)?;
     let source_path_string = source_path.display().to_string();
