@@ -6,173 +6,105 @@ mod parameter_analyzation;
 pub mod pattern_matching;
 
 use super::*;
-use crate::pattern_matching::{AstPattern, AstPatternApplyPhase};
 use std::hash::Hash;
 
 impl Ast {
-    pub fn optimize(&self, config: Option<AstOptimizationConfig>) -> Result<Self, DecompileError> {
-        let function_ids: Vec<_> = self.function_versions.keys().cloned().collect();
-        self.optimize_functions(&function_ids, config)
+    pub fn optimize(
+        &mut self,
+        optimizations: Option<&[AstOptimizationKind]>,
+    ) -> Result<(), DecompileError> {
+        let function_ids: Vec<_> = self.functions.keys().cloned().collect();
+        self.optimize_functions(&function_ids, optimizations)
     }
 
     pub fn optimize_function(
-        &self,
+        &mut self,
         function_id: AstFunctionId,
-        config: Option<AstOptimizationConfig>,
-    ) -> Result<Self, DecompileError> {
-        self.optimize_functions(&[function_id], config)
+        optimizations: Option<&[AstOptimizationKind]>,
+    ) -> Result<(), DecompileError> {
+        self.optimize_functions(&[function_id], optimizations)
     }
 
     pub fn optimize_functions(
-        &self,
+        &mut self,
         function_ids: &[AstFunctionId],
-        config: Option<AstOptimizationConfig>,
-    ) -> Result<Self, DecompileError> {
-        let mut ast = self.clone();
-        let config = config.unwrap_or_default();
+        optimizations: Option<&[AstOptimizationKind]>,
+    ) -> Result<(), DecompileError> {
+        let default = AstOptimizationKind::all();
+        let optimizations = optimizations.unwrap_or_else(|| default.as_slice());
         let mut ordered_function_ids = function_ids.to_vec();
         ordered_function_ids.sort_unstable();
-
-        // Clone all target functions up front so later passes can query each other.
-        let mut versions: Vec<(AstFunctionId, AstFunctionVersion)> = Vec::new();
-        for function_id in ordered_function_ids.into_iter() {
-            let from_version = *ast.function_versions.get(&function_id).unwrap();
-            let to_version = ast.clone_function(&function_id, &from_version).unwrap();
-            versions.push((function_id, to_version));
-        }
-
-        apply_custom_patterns(
-            &mut ast,
-            &versions,
-            &config.pattern_matching,
-            AstPatternApplyPhase::BeforeIrAnalyzation,
-        )?;
-
-        if config.ir_analyzation {
-            for (function_id, to_version) in versions.iter().copied() {
-                if !has_function_version(&ast, function_id, to_version) {
-                    continue;
-                }
-                ir_analyzation::analyze_ir_function(&mut ast, function_id, to_version)?;
-            }
-            apply_custom_patterns(
-                &mut ast,
-                &versions,
-                &config.pattern_matching,
-                AstPatternApplyPhase::AfterIrAnalyzation,
-            )?;
-        }
-        if config.parameter_analyzation {
-            for (function_id, to_version) in versions.iter().copied() {
-                if !has_function_version(&ast, function_id, to_version) {
-                    continue;
-                }
-                parameter_analyzation::analyze_parameters(&mut ast, function_id, to_version)?;
-            }
-            apply_custom_patterns(
-                &mut ast,
-                &versions,
-                &config.pattern_matching,
-                AstPatternApplyPhase::AfterParameterAnalyzation,
-            )?;
-        }
-
-        let max_pass_iterations = config.max_pass_iterations.max(1);
-        for _ in 0..max_pass_iterations {
-            let before = snapshot_optimized_functions(&ast, &versions);
-
-            if config.constant_folding {
-                for (function_id, to_version) in versions.iter().copied() {
-                    if !has_function_version(&ast, function_id, to_version) {
-                        continue;
+        fn optimize_function_inner(
+            ast: &mut Ast,
+            target_functions: &[AstFunctionId],
+            optimizations: &[AstOptimizationKind],
+        ) {
+            for optimization in optimizations {
+                match optimization {
+                    AstOptimizationKind::IrAnalyzation => {
+                        for target_function in target_functions {
+                            ir_analyzation::analyze_ir_function(ast, *target_function).unwrap();
+                        }
                     }
-                    constant_folding::fold_constants(&mut ast, function_id, to_version)?;
-                }
-            }
-
-            if config.collapse_unused_variable {
-                for (function_id, to_version) in versions.iter().copied() {
-                    if !has_function_version(&ast, function_id, to_version) {
-                        continue;
+                    AstOptimizationKind::ParameterAnalyzation => {
+                        for target_function in target_functions {
+                            parameter_analyzation::analyze_parameters(ast, *target_function)
+                                .unwrap();
+                        }
                     }
-                    collapse_unused_variable::collapse_unused_variables(
-                        &mut ast,
-                        function_id,
-                        to_version,
-                    )?;
+                    AstOptimizationKind::ConstantFolding => {
+                        for target_function in target_functions {
+                            constant_folding::fold_constants(ast, *target_function).unwrap();
+                        }
+                    }
+                    AstOptimizationKind::CollapseUnusedVariables => {
+                        for target_function in target_functions {
+                            collapse_unused_variable::collapse_unused_variables(
+                                ast,
+                                *target_function,
+                            )
+                            .unwrap();
+                        }
+                    }
+                    AstOptimizationKind::OptimizationLoop(optimizations, loop_count) => {
+                        let mut before_hash = snapshot_optimized_functions(ast, target_functions);
+                        for _ in 0..*loop_count {
+                            optimize_function_inner(ast, target_functions, optimizations);
+                            let after_hash = snapshot_optimized_functions(ast, target_functions);
+                            if before_hash == after_hash {
+                                break;
+                            }
+                            before_hash = after_hash;
+                        }
+                    }
+                    AstOptimizationKind::PatternMatching(pattern) => {
+                        let pattern = *pattern.clone();
+                        let pattern = &[pattern];
+                        for target_function in target_functions {
+                            pattern_matching::apply_patterns(ast, *target_function, pattern)
+                                .unwrap();
+                        }
+                    }
                 }
-            }
-            apply_custom_patterns(
-                &mut ast,
-                &versions,
-                &config.pattern_matching,
-                AstPatternApplyPhase::AfterIteration,
-            )?;
-
-            let after = snapshot_optimized_functions(&ast, &versions);
-            if before == after {
-                break;
             }
         }
+        optimize_function_inner(self, ordered_function_ids.as_slice(), optimizations);
 
-        apply_custom_patterns(
-            &mut ast,
-            &versions,
-            &config.pattern_matching,
-            AstPatternApplyPhase::AfterOptimization,
-        )?;
-
-        ast.shrink();
-        Ok(ast)
+        self.shrink();
+        Ok(())
     }
 }
 
-fn snapshot_optimized_functions(
-    ast: &Ast,
-    versions: &[(AstFunctionId, AstFunctionVersion)],
-) -> u64 {
-    let functions = ast.functions.read().unwrap();
+fn snapshot_optimized_functions(ast: &Ast, versions: &[AstFunctionId]) -> u64 {
     let mut hasher = pattern_matching::Blake3StdHasher::new();
-    for (function_id, function_version) in versions.iter().copied() {
-        let Some(function) = functions
-            .get(&function_id)
-            .and_then(|version_map| version_map.get(&function_version))
-        else {
+    for function_id in versions.iter().copied() {
+        let Some(function) = ast.functions.get(&function_id) else {
             continue;
         };
         function_id.hash(&mut hasher);
-        function_version.hash(&mut hasher);
         function.name.hash(&mut hasher);
         function.parameters.len().hash(&mut hasher);
         pattern_matching::hash_statement_list(&mut hasher, &function.body);
     }
     hasher.finish64()
-}
-
-fn apply_custom_patterns(
-    ast: &mut Ast,
-    versions: &[(AstFunctionId, AstFunctionVersion)],
-    patterns: &[AstPattern],
-    phase: AstPatternApplyPhase,
-) -> Result<(), DecompileError> {
-    for (function_id, to_version) in versions.iter().copied() {
-        if !has_function_version(&ast, function_id, to_version) {
-            continue;
-        }
-        pattern_matching::apply_patterns(ast, function_id, to_version, patterns, phase)?
-    }
-    Ok(())
-}
-
-fn has_function_version(
-    ast: &Ast,
-    function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
-) -> bool {
-    ast.functions
-        .read()
-        .unwrap()
-        .get(&function_id)
-        .and_then(|version_map| version_map.get(&function_version))
-        .is_some()
 }

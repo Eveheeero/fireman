@@ -52,7 +52,6 @@ fireman --tui --json preset.json -i example.exe
 
 ### TUI known issues
 
-- Multi tabs take too much memory
 - No help text for optimizations
 - Custom script and pattern matching from args doesn't work
 - Crashes sometimes...

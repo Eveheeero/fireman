@@ -230,22 +230,6 @@ struct AstPatternSkippedMatch {
     matched: AstPatternMatch,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum AstPatternApplyPhase {
-    BeforeIrAnalyzation,
-    AfterIrAnalyzation,
-    AfterParameterAnalyzation,
-    AfterCallArgumentAnalyzation,
-    AfterIteration,
-    AfterOptimization,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum AstPatternApplyAt {
-    Any,
-    Phase(AstPatternApplyPhase),
-}
-
 #[derive(Debug, Clone, Default)]
 pub struct AstPatternRule {
     pub source: String,
@@ -274,7 +258,6 @@ impl AstPatternRule {
 
 #[derive(Debug, Clone)]
 pub enum AstPatternInBlock {
-    At(AstPatternApplyAt),
     Asm(AstPatternAsmData),
     AsmContains(String),
     Ast(AstPatternAstData),
@@ -299,7 +282,6 @@ pub enum AstPatternInBlock {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AstPatternInBlockKind {
-    At,
     Asm,
     AsmContains,
     Ast,
@@ -321,7 +303,6 @@ enum AstPatternInBlockKind {
 impl AstPatternInBlock {
     fn kind(&self) -> AstPatternInBlockKind {
         match self {
-            Self::At(_) => AstPatternInBlockKind::At,
             Self::Asm(_) => AstPatternInBlockKind::Asm,
             Self::AsmContains(_) => AstPatternInBlockKind::AsmContains,
             Self::Ast(_) => AstPatternInBlockKind::Ast,
@@ -349,16 +330,6 @@ fn set_clause(clauses: &mut Vec<AstPatternInBlock>, clause: AstPatternInBlock) {
     clauses.push(clause);
 }
 
-fn add_at_clause(clauses: &mut Vec<AstPatternInBlock>, at: AstPatternApplyAt) {
-    if clauses
-        .iter()
-        .any(|old| matches!(old, AstPatternInBlock::At(existing) if *existing == at))
-    {
-        return;
-    }
-    clauses.push(AstPatternInBlock::At(at));
-}
-
 fn has_kind(clauses: &[AstPatternInBlock], expected: AstPatternInBlockKind) -> bool {
     clauses.iter().any(|clause| clause.kind() == expected)
 }
@@ -370,7 +341,6 @@ fn infer_input_type_from_in_blocks(in_blocks: &[Vec<AstPatternInBlock>]) -> AstP
     let mut has_script = false;
     for clause in in_blocks.iter().flatten() {
         match clause {
-            AstPatternInBlock::At(_) => {}
             AstPatternInBlock::Asm(_) | AstPatternInBlock::AsmContains(_) => has_asm = true,
             AstPatternInBlock::Ast(_)
             | AstPatternInBlock::AstSequence(_)
@@ -422,31 +392,6 @@ fn block_asm_contains(clauses: &[AstPatternInBlock]) -> Option<&str> {
         AstPatternInBlock::AsmContains(value) => Some(value.as_str()),
         _ => None,
     })
-}
-
-fn block_at_matches_phase(
-    clauses: &[AstPatternInBlock],
-    phase: AstPatternApplyPhase,
-) -> (bool, bool) {
-    let mut has_at = false;
-    let mut matched = false;
-    for clause in clauses {
-        let AstPatternInBlock::At(value) = clause else {
-            continue;
-        };
-        has_at = true;
-        match value {
-            AstPatternApplyAt::Any => {
-                matched = true;
-                break;
-            }
-            AstPatternApplyAt::Phase(expected) if *expected == phase => {
-                matched = true;
-            }
-            AstPatternApplyAt::Phase(_) => {}
-        }
-    }
-    (has_at, matched)
 }
 
 fn block_ast(clauses: &[AstPatternInBlock]) -> Option<&AstPatternAstData> {

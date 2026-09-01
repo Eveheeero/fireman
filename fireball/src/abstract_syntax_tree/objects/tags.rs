@@ -8,9 +8,6 @@ pub struct AstVariableId {
 pub struct AstFunctionId {
     pub(crate) address: u64,
 }
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy, Hash)]
-pub struct AstFunctionVersion(pub usize);
-
 impl AstVariableId {
     pub fn get_default_name(&self) -> String {
         if self.parent.is_some() {

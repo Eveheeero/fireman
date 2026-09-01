@@ -97,26 +97,22 @@ impl Ast {
     pub fn print(&self, config: Option<AstPrintConfig>) -> String {
         let config = config.unwrap_or_default();
         let mut output = String::new();
-        let function_versions = &self.function_versions;
 
         // Functions
-        let functions = self.functions.read().unwrap();
+        let functions = &self.functions;
         let mut function_keys_sorted = functions.keys().collect::<Vec<_>>();
         function_keys_sorted.sort_by_cached_key(|key_ref| {
             let key = *key_ref;
-            let is_main = function_versions
+            let is_main = functions
                 .get(key)
-                .and_then(|version| functions.get(key).and_then(|m| m.get(version)))
                 .is_some_and(|function| function.name() == "main");
             (if is_main { 0u8 } else { 1u8 }, key.address)
         });
         for func_id in function_keys_sorted {
-            let version_map = functions.get(func_id).unwrap();
-            let version = function_versions.get(func_id).unwrap();
-            let func = version_map.get(version).unwrap();
+            let func = functions.get(func_id).unwrap();
             output.push_str(&format!(
                 "{} {}(",
-                func.return_type.to_string_with_config(Some(config)),
+                func.return_type.to_string_with_config(self, Some(config)),
                 func.name()
             ));
 
@@ -129,7 +125,7 @@ impl Ast {
                         let ty_str = param
                             .read_type(&func.variables)
                             .expect("invalid variable map")
-                            .to_string_with_config(Some(config));
+                            .to_string_with_config(self, Some(config));
                         let name_str = param.name(&func.variables).expect("invalid variable map");
                         let mut line = format!("{} {}", ty_str, name_str);
                         if config.parameter_usage_comment {
@@ -192,12 +188,12 @@ impl Ast {
                                 group_key,
                                 format!(
                                     "const {}",
-                                    var.var_type.to_string_with_config(Some(config))
+                                    var.var_type.to_string_with_config(self, Some(config))
                                 ),
                                 format!(
                                     "{} = {}",
                                     var.name(),
-                                    const_value.to_string_with_config(Some(config))
+                                    const_value.to_string_with_config(self, Some(config))
                                 ),
                                 config
                                     .variable_usage_comment
@@ -207,15 +203,15 @@ impl Ast {
                             debug!(
                                 function=?func.name(),
                                 "{} {} was replaced with constant value {}",
-                                var.var_type.to_string_with_config(Some(config)),
+                                var.var_type.to_string_with_config(self,Some(config)),
                                 var.name(),
-                                const_value.to_string_with_config(Some(config))
+                                const_value.to_string_with_config(self,Some(config))
                             );
                         }
                     } else {
                         decl_rows.push((
                             group_key,
-                            var.var_type.to_string_with_config(Some(config)),
+                            var.var_type.to_string_with_config(self, Some(config)),
                             var.name(),
                             config
                                 .variable_usage_comment
@@ -255,7 +251,7 @@ impl Ast {
 
             // Function body
             for stmt in &func.body {
-                let content = stmt.to_string_with_config(Some(config));
+                let content = stmt.to_string_with_config(self, Some(config));
                 if content.is_empty() {
                     continue;
                 }

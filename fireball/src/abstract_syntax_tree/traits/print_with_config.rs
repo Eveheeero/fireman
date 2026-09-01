@@ -1,9 +1,13 @@
 use super::*;
 
-fn statement_body(stmts: &[Wrapped<AstStatement>], config: AstPrintConfig) -> Vec<String> {
+fn statement_body(
+    ast: &Ast,
+    stmts: &[Wrapped<AstStatement>],
+    config: AstPrintConfig,
+) -> Vec<String> {
     stmts
         .iter()
-        .map(|stmt| stmt.to_string_with_config(Some(config)))
+        .map(|stmt| stmt.to_string_with_config(ast, Some(config)))
         .filter(|stmt| !stmt.is_empty())
         .collect()
 }
@@ -40,10 +44,11 @@ fn write_block_with_style(
 
 fn write_inline_block(
     f: &mut impl std::fmt::Write,
+    ast: &Ast,
     stmts: &[Wrapped<AstStatement>],
     config: AstPrintConfig,
 ) -> std::fmt::Result {
-    let body = statement_body(stmts, config);
+    let body = statement_body(ast, stmts, config);
     if body.is_empty() {
         write!(f, "{{ }}")
     } else {
@@ -59,8 +64,12 @@ fn trim_trailing_semicolon(text: &str) -> &str {
         .unwrap_or(trimmed)
 }
 
-fn render_for_header_statement(stmt: &Wrapped<AstStatement>, config: AstPrintConfig) -> String {
-    let rendered = stmt.item.to_string_with_config(Some(config));
+fn render_for_header_statement(
+    ast: &Ast,
+    stmt: &Wrapped<AstStatement>,
+    config: AstPrintConfig,
+) -> String {
+    let rendered = stmt.item.to_string_with_config(ast, Some(config));
     trim_trailing_semicolon(&rendered).to_string()
 }
 
@@ -83,12 +92,13 @@ fn binary_operator_precedence(op: &AstBinaryOperator) -> u8 {
 }
 
 fn render_binary_operand(
+    ast: &Ast,
     expr: &Wrapped<AstExpression>,
     parent_op: &AstBinaryOperator,
     is_right_operand: bool,
     config: AstPrintConfig,
 ) -> String {
-    let rendered = expr.to_string_with_config(Some(config));
+    let rendered = expr.to_string_with_config(ast, Some(config));
     if let AstExpression::BinaryOp(child_op, _, _) = expr.as_ref() {
         let parent_precedence = binary_operator_precedence(parent_op);
         let child_precedence = binary_operator_precedence(child_op);
@@ -104,8 +114,12 @@ fn render_binary_operand(
     }
 }
 
-fn render_prefixed_operand(expr: &Wrapped<AstExpression>, config: AstPrintConfig) -> String {
-    let rendered = expr.to_string_with_config(Some(config));
+fn render_prefixed_operand(
+    ast: &Ast,
+    expr: &Wrapped<AstExpression>,
+    config: AstPrintConfig,
+) -> String {
+    let rendered = expr.to_string_with_config(ast, Some(config));
     if matches!(expr.as_ref(), AstExpression::BinaryOp(_, _, _)) {
         format!("({rendered})")
     } else {
@@ -114,14 +128,15 @@ fn render_prefixed_operand(expr: &Wrapped<AstExpression>, config: AstPrintConfig
 }
 
 impl PrintWithConfig for AstValueType {
-    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
+    fn to_string_with_config(&self, ast: &Ast, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
-        self.print(&mut output, option).unwrap();
+        self.print(&mut output, ast, option).unwrap();
         output
     }
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
+        ast: &Ast,
         config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
@@ -142,9 +157,16 @@ impl PrintWithConfig for AstValueType {
             AstValueType::Float => write!(f, "float"),
             AstValueType::Double => write!(f, "double"),
             AstValueType::Bool => write!(f, "bool"),
-            AstValueType::Pointer(t) => write!(f, "{}*", t.to_string_with_config(Some(config))),
+            AstValueType::Pointer(t) => {
+                write!(f, "{}*", t.to_string_with_config(ast, Some(config)))
+            }
             AstValueType::Array(t, size) => {
-                write!(f, "{}[{}]", t.to_string_with_config(Some(config)), size)
+                write!(
+                    f,
+                    "{}[{}]",
+                    t.to_string_with_config(ast, Some(config)),
+                    size
+                )
             }
             AstValueType::Struct(name, _) => write!(f, "struct {}", name),
             AstValueType::Union(name, _) => write!(f, "union {}", name),
@@ -153,14 +175,15 @@ impl PrintWithConfig for AstValueType {
 }
 
 impl PrintWithConfig for AstStatement {
-    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
+    fn to_string_with_config(&self, ast: &Ast, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
-        self.print(&mut output, option).unwrap();
+        self.print(&mut output, ast, option).unwrap();
         output
     }
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
+        ast: &Ast,
         config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
@@ -168,34 +191,36 @@ impl PrintWithConfig for AstStatement {
             AstStatement::Declaration(var, None) => write!(
                 f,
                 "{} {};",
-                var.var_type.to_string_with_config(Some(config)),
+                var.var_type.to_string_with_config(ast, Some(config)),
                 var.name()
             ),
             AstStatement::Declaration(var, Some(expr)) => {
                 write!(
                     f,
                     "{} {} = {};",
-                    var.var_type.to_string_with_config(Some(config)),
+                    var.var_type.to_string_with_config(ast, Some(config)),
                     var.name(),
-                    expr.to_string_with_config(Some(config))
+                    expr.to_string_with_config(ast, Some(config))
                 )
             }
             AstStatement::Assignment(left, right) => write!(
                 f,
                 "{} = {};",
-                left.to_string_with_config(Some(config)),
-                right.to_string_with_config(Some(config))
+                left.to_string_with_config(ast, Some(config)),
+                right.to_string_with_config(ast, Some(config))
             ),
             AstStatement::If(cond, then_body, else_body) => {
-                let then_stmts = statement_body(then_body, config);
-                let else_stmts = else_body.as_ref().map(|body| statement_body(body, config));
+                let then_stmts = statement_body(ast, then_body, config);
+                let else_stmts = else_body
+                    .as_ref()
+                    .map(|body| statement_body(ast, body, config));
                 if then_stmts.is_empty() && !config.print_empty_statement {
                     if else_stmts.as_ref().is_none_or(|body| body.is_empty()) {
                         return Ok(());
                     }
                 }
 
-                write!(f, "if ({}) ", cond.to_string_with_config(Some(config)))?;
+                write!(f, "if ({}) ", cond.to_string_with_config(ast, Some(config)))?;
                 let then_multiline =
                     then_stmts.len() > 1 || then_stmts.iter().any(|stmt| stmt.contains('\n'));
                 write_block_with_style(f, &then_stmts, then_multiline)?;
@@ -212,23 +237,31 @@ impl PrintWithConfig for AstStatement {
                     return Ok(());
                 }
 
-                write!(f, "while ({}) ", cond.to_string_with_config(Some(config)))?;
-                write_inline_block(f, body, config)
+                write!(
+                    f,
+                    "while ({}) ",
+                    cond.to_string_with_config(ast, Some(config))
+                )?;
+                write_inline_block(f, ast, body, config)
             }
             AstStatement::For(init, cond, update, body) => {
                 if body.is_empty() && !config.print_empty_statement {
                     return Ok(());
                 }
 
-                let init_text = render_for_header_statement(init.as_ref(), config);
-                let cond_text = cond.to_string_with_config(Some(config));
-                let update_text = render_for_header_statement(update.as_ref(), config);
+                let init_text = render_for_header_statement(ast, init.as_ref(), config);
+                let cond_text = cond.to_string_with_config(ast, Some(config));
+                let update_text = render_for_header_statement(ast, update.as_ref(), config);
                 write!(f, "for ({}; {}; {}) ", init_text, cond_text, update_text)?;
-                write_inline_block(f, body, config)
+                write_inline_block(f, ast, body, config)
             }
             AstStatement::Return(expr) => {
                 if let Some(expr) = expr {
-                    write!(f, "return {};", expr.to_string_with_config(Some(config)))
+                    write!(
+                        f,
+                        "return {};",
+                        expr.to_string_with_config(ast, Some(config))
+                    )
                 } else {
                     write!(f, "return;")
                 }
@@ -247,7 +280,7 @@ impl PrintWithConfig for AstStatement {
                         if i > 0 {
                             write!(f, ", ")?;
                         }
-                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                        write!(f, "{}", arg.to_string_with_config(ast, Some(config)))?;
                     }
                     write!(f, ");")
                 }
@@ -257,7 +290,7 @@ impl PrintWithConfig for AstStatement {
                         if i > 0 {
                             write!(f, ", ")?;
                         }
-                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                        write!(f, "{}", arg.to_string_with_config(ast, Some(config)))?;
                     }
                     write!(f, ");")
                 }
@@ -298,7 +331,7 @@ impl PrintWithConfig for AstStatement {
                         if i > 0 {
                             write!(f, ", ")?;
                         }
-                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                        write!(f, "{}", arg.to_string_with_config(ast, Some(config)))?;
                     }
                     write!(f, ");")
                 }
@@ -308,7 +341,7 @@ impl PrintWithConfig for AstStatement {
                         if i > 0 {
                             write!(f, ", ")?;
                         }
-                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                        write!(f, "{}", arg.to_string_with_config(ast, Some(config)))?;
                     }
                     write!(f, ");")
                 }
@@ -317,18 +350,22 @@ impl PrintWithConfig for AstStatement {
                 write!(
                     f,
                     "switch ({}) ",
-                    discrim.to_string_with_config(Some(config))
+                    discrim.to_string_with_config(ast, Some(config))
                 )?;
                 write!(f, "{{\n")?;
                 for (lit, case_body) in cases {
-                    let body_strs = statement_body(case_body, config);
-                    write!(f, "    case {}:\n", lit.to_string_with_config(Some(config)))?;
+                    let body_strs = statement_body(ast, case_body, config);
+                    write!(
+                        f,
+                        "    case {}:\n",
+                        lit.to_string_with_config(ast, Some(config))
+                    )?;
                     for s in &body_strs {
                         write!(f, "{}\n", indent_multiline(s, "        "))?;
                     }
                 }
                 if let Some(default_body) = default {
-                    let body_strs = statement_body(default_body, config);
+                    let body_strs = statement_body(ast, default_body, config);
                     write!(f, "    default:\n")?;
                     for s in &body_strs {
                         write!(f, "{}\n", indent_multiline(s, "        "))?;
@@ -338,14 +375,14 @@ impl PrintWithConfig for AstStatement {
             }
             AstStatement::Label(name) => write!(f, "{}:", name),
             AstStatement::Goto(name) => {
-                write!(f, "goto {};", name.to_string_with_config(Some(config)))
+                write!(f, "goto {};", name.to_string_with_config(ast, Some(config)))
             }
             AstStatement::Block(stmts) => {
                 if stmts.is_empty() && !config.print_empty_statement {
                     return Ok(());
                 }
 
-                write_inline_block(f, stmts, config)
+                write_inline_block(f, ast, stmts, config)
             }
             AstStatement::Empty => {
                 if config.print_empty_statement {
@@ -363,50 +400,61 @@ impl PrintWithConfig for AstStatement {
             AstStatement::Continue => write!(f, "continue;"),
             AstStatement::DoWhile(cond, body) => {
                 write!(f, "do ")?;
-                write_inline_block(f, body, config)?;
-                write!(f, " while ({});", cond.to_string_with_config(Some(config)))
+                write_inline_block(f, ast, body, config)?;
+                write!(
+                    f,
+                    " while ({});",
+                    cond.to_string_with_config(ast, Some(config))
+                )
             }
         }
     }
 }
 
 impl PrintWithConfig for AstExpression {
-    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
+    fn to_string_with_config(&self, ast: &Ast, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
-        self.print(&mut output, option).unwrap();
+        self.print(&mut output, ast, option).unwrap();
         output
     }
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
+        ast: &Ast,
         config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
         match self {
-            AstExpression::Literal(lit) => write!(f, "{}", lit.to_string_with_config(Some(config))),
+            AstExpression::Literal(lit) => {
+                write!(f, "{}", lit.to_string_with_config(ast, Some(config)))
+            }
             AstExpression::Variable(var_map, id) => {
                 let var_map = var_map.read().unwrap();
                 let var = var_map.get(id).unwrap();
                 if config.replace_constant
                     && let Some(const_value) = &var.const_value
                 {
-                    write!(f, "{}", const_value.to_string_with_config(Some(config)))
+                    write!(
+                        f,
+                        "{}",
+                        const_value.to_string_with_config(ast, Some(config))
+                    )
                 } else {
                     write!(f, "{}", var.name())
                 }
             }
             AstExpression::UnaryOp(op, expr) => {
-                let expr = render_prefixed_operand(expr, config);
-                write!(f, "{}{}", op.to_string_with_config(Some(config)), expr)
+                let expr = render_prefixed_operand(ast, expr, config);
+                write!(f, "{}{}", op.to_string_with_config(ast, Some(config)), expr)
             }
             AstExpression::BinaryOp(op, left, right) => {
-                let left_text = render_binary_operand(left, op, false, config);
-                let right_text = render_binary_operand(right, op, true, config);
+                let left_text = render_binary_operand(ast, left, op, false, config);
+                let right_text = render_binary_operand(ast, right, op, true, config);
                 write!(
                     f,
                     "{} {} {}",
                     left_text,
-                    op.to_string_with_config(Some(config)),
+                    op.to_string_with_config(ast, Some(config)),
                     right_text
                 )
             }
@@ -424,7 +472,7 @@ impl PrintWithConfig for AstExpression {
                         if i > 0 {
                             write!(f, ", ")?;
                         }
-                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                        write!(f, "{}", arg.to_string_with_config(ast, Some(config)))?;
                     }
                     write!(f, ")")
                 }
@@ -434,7 +482,7 @@ impl PrintWithConfig for AstExpression {
                         if i > 0 {
                             write!(f, ", ")?;
                         }
-                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                        write!(f, "{}", arg.to_string_with_config(ast, Some(config)))?;
                     }
                     write!(f, ")")
                 }
@@ -475,7 +523,7 @@ impl PrintWithConfig for AstExpression {
                         if i > 0 {
                             write!(f, ", ")?;
                         }
-                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                        write!(f, "{}", arg.to_string_with_config(ast, Some(config)))?;
                     }
                     write!(f, ")")
                 }
@@ -485,7 +533,7 @@ impl PrintWithConfig for AstExpression {
                         if i > 0 {
                             write!(f, ", ")?;
                         }
-                        write!(f, "{}", arg.to_string_with_config(Some(config)))?;
+                        write!(f, "{}", arg.to_string_with_config(ast, Some(config)))?;
                     }
                     write!(f, ")")
                 }
@@ -495,36 +543,36 @@ impl PrintWithConfig for AstExpression {
             AstExpression::Cast(ctype, expression) => write!(
                 f,
                 "({}){}",
-                ctype.to_string_with_config(Some(config)),
-                render_prefixed_operand(expression, config)
+                ctype.to_string_with_config(ast, Some(config)),
+                render_prefixed_operand(ast, expression, config)
             ),
             AstExpression::Deref(expression) => {
-                write!(f, "*{}", render_prefixed_operand(expression, config))
+                write!(f, "*{}", render_prefixed_operand(ast, expression, config))
             }
             AstExpression::AddressOf(expression) => {
-                write!(f, "&{}", render_prefixed_operand(expression, config))
+                write!(f, "&{}", render_prefixed_operand(ast, expression, config))
             }
             AstExpression::ArrayAccess(expression, expression1) => {
                 write!(
                     f,
                     "{}[{}]",
-                    render_prefixed_operand(expression, config),
-                    expression1.to_string_with_config(Some(config))
+                    render_prefixed_operand(ast, expression, config),
+                    expression1.to_string_with_config(ast, Some(config))
                 )
             }
             AstExpression::MemberAccess(expression, member) => write!(
                 f,
                 "{}.{}",
-                render_prefixed_operand(expression, config),
+                render_prefixed_operand(ast, expression, config),
                 member
             ),
             AstExpression::Ternary(cond, true_expr, false_expr) => {
                 write!(
                     f,
                     "{} ? {} : {}",
-                    render_prefixed_operand(cond, config),
-                    true_expr.to_string_with_config(Some(config)),
-                    false_expr.to_string_with_config(Some(config))
+                    render_prefixed_operand(ast, cond, config),
+                    true_expr.to_string_with_config(ast, Some(config)),
+                    false_expr.to_string_with_config(ast, Some(config))
                 )
             }
             AstExpression::ArchitectureBitSize => write!(f, "ARCH_BIT_SIZE"),
@@ -533,14 +581,15 @@ impl PrintWithConfig for AstExpression {
     }
 }
 impl PrintWithConfig for AstLiteral {
-    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
+    fn to_string_with_config(&self, ast: &Ast, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
-        self.print(&mut output, option).unwrap();
+        self.print(&mut output, ast, option).unwrap();
         output
     }
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
+        _ast: &Ast,
         config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
@@ -555,14 +604,15 @@ impl PrintWithConfig for AstLiteral {
     }
 }
 impl PrintWithConfig for AstUnaryOperator {
-    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
+    fn to_string_with_config(&self, ast: &Ast, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
-        self.print(&mut output, option).unwrap();
+        self.print(&mut output, ast, option).unwrap();
         output
     }
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
+        _ast: &Ast,
         config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
@@ -580,14 +630,15 @@ impl PrintWithConfig for AstUnaryOperator {
     }
 }
 impl PrintWithConfig for AstBinaryOperator {
-    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
+    fn to_string_with_config(&self, ast: &Ast, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
-        self.print(&mut output, option).unwrap();
+        self.print(&mut output, ast, option).unwrap();
         output
     }
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
+        _ast: &Ast,
         config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let _config = config.unwrap_or_default();
@@ -614,59 +665,67 @@ impl PrintWithConfig for AstBinaryOperator {
     }
 }
 impl PrintWithConfig for AstVariable {
-    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
+    fn to_string_with_config(&self, ast: &Ast, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
-        self.print(&mut output, option).unwrap();
+        self.print(&mut output, ast, option).unwrap();
         output
     }
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
+        ast: &Ast,
         config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
         if config.replace_constant
             && let Some(const_value) = &self.const_value
         {
-            write!(f, "{}", const_value.to_string_with_config(Some(config)))
+            write!(
+                f,
+                "{}",
+                const_value.to_string_with_config(ast, Some(config))
+            )
         } else {
             write!(f, "{}", self.name())
         }
     }
 }
 impl<T: PrintWithConfig> PrintWithConfig for Wrapped<T> {
-    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
+    fn to_string_with_config(&self, ast: &Ast, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
-        self.print(&mut output, option).unwrap();
+        self.print(&mut output, ast, option).unwrap();
         output
     }
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
+        ast: &Ast,
         config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
-        match self.comment {
+        let comment = ast.get_comment(&self.id);
+        match comment {
             Some(ref comment) => write!(
                 f,
                 "{} /* {} */",
-                self.item.to_string_with_config(Some(config)),
+                self.item.to_string_with_config(ast, Some(config)),
                 comment
             ),
-            None => write!(f, "{}", self.item.to_string_with_config(Some(config))),
+            None => write!(f, "{}", self.item.to_string_with_config(ast, Some(config))),
         }
     }
 }
 
 impl PrintWithConfig for AstJumpTarget {
-    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
+    fn to_string_with_config(&self, ast: &Ast, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
-        self.print(&mut output, option).unwrap();
+        self.print(&mut output, ast, option).unwrap();
         output
     }
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
+        ast: &Ast,
         config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
@@ -678,7 +737,7 @@ impl PrintWithConfig for AstJumpTarget {
             } => {
                 let var_map = var_map.read().unwrap();
                 let var = var_map.get(var_id).unwrap();
-                write!(f, "{}", var.to_string_with_config(Some(config)))
+                write!(f, "{}", var.to_string_with_config(ast, Some(config)))
             }
             AstJumpTarget::Function { target } => write!(f, "{}", target.get_default_name()),
             AstJumpTarget::Unknown(name) => write!(f, "{}", name),
@@ -686,14 +745,15 @@ impl PrintWithConfig for AstJumpTarget {
     }
 }
 impl PrintWithConfig for AstValue {
-    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String {
+    fn to_string_with_config(&self, ast: &Ast, option: Option<AstPrintConfig>) -> String {
         let mut output = String::new();
-        self.print(&mut output, option).unwrap();
+        self.print(&mut output, ast, option).unwrap();
         output
     }
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
+        ast: &Ast,
         config: Option<AstPrintConfig>,
     ) -> std::fmt::Result {
         let config = config.unwrap_or_default();
@@ -714,11 +774,11 @@ impl PrintWithConfig for AstValue {
             AstValue::Char(c) => write!(f, "'{}'", c),
             AstValue::Double(d) => write!(f, "{}", d),
             AstValue::Bool(b) => write!(f, "{}", b),
-            AstValue::Pointer(p) => write!(f, "*{}", p.to_string_with_config(Some(config))),
+            AstValue::Pointer(p) => write!(f, "*{}", p.to_string_with_config(ast, Some(config))),
             AstValue::Array(arr) => {
                 let arr_str: Vec<String> = arr
                     .iter()
-                    .map(|v| v.to_string_with_config(Some(config)))
+                    .map(|v| v.to_string_with_config(ast, Some(config)))
                     .collect();
                 write!(f, "[{}]", arr_str.join(", "))
             }

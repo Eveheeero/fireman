@@ -7,4 +7,3 @@
 ### GUI known issues
 
 - Poor design
-- MUlti tabs take too much memory

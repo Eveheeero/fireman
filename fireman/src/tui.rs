@@ -2,7 +2,7 @@ mod help;
 mod navigate_input;
 mod tab;
 
-use crate::{JsonPreset, TuiArgs};
+use crate::{JsonPreset, JsonPresetOptimizationConfig, TuiArgs};
 use crossterm::{
     event,
     event::{KeyCode, KeyModifiers},
@@ -22,7 +22,7 @@ pub fn tui(args: TuiArgs) {
 struct TuiApp {
     state: TuiState,
     fireball: Option<Fireball>,
-    optimization_config: fireball::abstract_syntax_tree::AstOptimizationConfig,
+    optimizations: Vec<fireball::abstract_syntax_tree::AstOptimizationKind>,
     print_config: fireball::abstract_syntax_tree::AstPrintConfig,
     data: TuiData<'static>,
 }
@@ -47,7 +47,7 @@ impl TuiApp {
         Self {
             state: TuiState::Init,
             fireball: None,
-            optimization_config: Default::default(),
+            optimizations: Default::default(),
             print_config: Default::default(),
             data: Default::default(),
         }
@@ -83,9 +83,11 @@ impl TuiApp {
         } else {
             Default::default()
         };
-        let mut optimization_config = json_preset
-            .optimization_config
-            .to_fireball_optimization_config();
+        let mut optimizations: Vec<_> = json_preset
+            .optimizations
+            .into_iter()
+            .map(JsonPresetOptimizationConfig::to_fireball_optimization)
+            .collect();
         for path in custom_script
             .into_iter()
             .chain(json_preset.custom_script.into_iter())
@@ -93,15 +95,17 @@ impl TuiApp {
             let content = std::fs::read_to_string(&path);
             match content {
                 Ok(content) => {
-                    optimization_config
-                        .pattern_matching
-                        .push(AstPattern::new(path, content));
+                    optimizations.push(
+                        fireball::abstract_syntax_tree::AstOptimizationKind::PatternMatching(
+                            Box::new(AstPattern::new(path, content)),
+                        ),
+                    );
                 }
                 Err(_) => {}
             }
         }
         let print_config = json_preset.print_config.to_fireball_print_config();
-        self.optimization_config = optimization_config;
+        self.optimizations = optimizations;
         self.print_config = print_config;
     }
     fn run(&mut self, terminal: &mut ratatui::DefaultTerminal) -> std::io::Result<()> {

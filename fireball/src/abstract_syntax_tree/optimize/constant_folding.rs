@@ -2,8 +2,8 @@
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstLiteral, AstOptimizationKind, AstStatement, AstValue, AstVariableId, Wrapped,
+        Ast, AstBuiltinFunctionArgument, AstCall, AstExpression, AstFunctionId, AstLiteral,
+        AstNodeId, AstOptimizationKind, AstStatement, AstValue, AstVariableId, Wrapped,
     },
     prelude::DecompileError,
 };
@@ -12,15 +12,10 @@ use hashbrown::HashMap;
 pub(super) fn fold_constants(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
 ) -> Result<(), DecompileError> {
     let mut body;
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
         body = std::mem::take(&mut function.body);
     }
 
@@ -28,11 +23,7 @@ pub(super) fn fold_constants(
     fold_statement_list(&mut body, &mut const_env);
 
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
         function.body = body;
         function
             .processed_optimizations
@@ -289,16 +280,20 @@ fn fold_current(
     replace_root_variable: bool,
 ) -> Option<Wrapped<AstExpression>> {
     match &expression.item {
-        AstExpression::Variable(_, var_id) if replace_root_variable => const_env
-            .get(var_id)
-            .cloned()
-            .map(|literal| wrap_with_source(expression, AstExpression::Literal(literal))),
+        AstExpression::Variable(_, var_id) if replace_root_variable => {
+            const_env.get(var_id).cloned().map(|literal| Wrapped {
+                id: AstNodeId::new(),
+                item: AstExpression::Literal(literal),
+            })
+        }
         AstExpression::UnaryOp(operator, arg) => {
             // Double-unary cancellation (~~x, --x, !!x) is now handled by
             // identity-simplification.fb and operator-canonicalization.fb.
             if let AstExpression::Literal(literal) = &arg.item {
-                return eval_unary(operator, literal)
-                    .map(|literal| wrap_with_source(expression, AstExpression::Literal(literal)));
+                return eval_unary(operator, literal).map(|literal| Wrapped {
+                    id: AstNodeId::new(),
+                    item: AstExpression::Literal(literal),
+                });
             }
             None
         }
@@ -307,10 +302,10 @@ fn fold_current(
                 (&left.item, &right.item)
             {
                 if let Some(literal) = eval_binary(operator, lhs, rhs) {
-                    return Some(wrap_with_source(
-                        expression,
-                        AstExpression::Literal(literal),
-                    ));
+                    return Some(Wrapped {
+                        id: AstNodeId::new(),
+                        item: AstExpression::Literal(literal),
+                    });
                 }
             }
             // Identity/absorbing/same-operand rules are in identity-simplification.fb.
@@ -348,14 +343,4 @@ fn intersect_envs(
                 .map(|_| (*var_id, lhs_literal.clone()))
         })
         .collect()
-}
-
-fn wrap_with_source(
-    source: &Wrapped<AstExpression>,
-    item: AstExpression,
-) -> Wrapped<AstExpression> {
-    Wrapped {
-        item,
-        comment: source.comment.clone(),
-    }
 }

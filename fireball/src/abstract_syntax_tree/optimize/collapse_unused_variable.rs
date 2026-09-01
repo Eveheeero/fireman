@@ -2,8 +2,8 @@
 
 use crate::{
     abstract_syntax_tree::{
-        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstFunctionVersion,
-        AstOptimizationKind, AstStatement, GetRelatedVariables, Wrapped,
+        ArcAstVariableMap, Ast, AstExpression, AstFunctionId, AstOptimizationKind, AstStatement,
+        GetRelatedVariables, Wrapped,
     },
     ir::data::IrData,
     prelude::{DecompileError, *},
@@ -15,16 +15,11 @@ use hashbrown::HashSet;
 pub(super) fn collapse_unused_variables(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
 ) -> Result<(), DecompileError> {
     let body;
     let variables;
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
 
         body = std::mem::take(&mut function.body);
         variables = function.variables.clone();
@@ -61,7 +56,8 @@ pub(super) fn collapse_unused_variables(
                 };
                 let overwritten = overwritten_locations.contains(&location);
                 if data_access_count == 1 && overwritten {
-                    trace!(?lhs,?stmt.comment, "Removing declaration of unused variable");
+                    let comment = ast.get_comment(&stmt.id);
+                    trace!(?lhs, ?comment, "Removing declaration of unused variable");
                     continue;
                 }
                 overwritten_locations.insert(location.clone());
@@ -88,7 +84,8 @@ pub(super) fn collapse_unused_variables(
                     .sum();
                 let overwritten = overwritten_locations.contains(&location);
                 if data_access_count == 1 && overwritten {
-                    trace!(?lhs,?stmt.comment, "Removing assignment of unused variable");
+                    let comment = ast.get_comment(&stmt.id);
+                    trace!(?lhs, ?comment, "Removing assignment of unused variable");
                     continue;
                 }
                 overwritten_locations.insert(location.clone());
@@ -205,11 +202,7 @@ pub(super) fn collapse_unused_variables(
     new_body.reverse();
 
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
         function
             .processed_optimizations
             .push(AstOptimizationKind::CollapseUnusedVariables);
@@ -258,7 +251,7 @@ fn collapse(
                     };
                     let overwritten = overwritten_locations.contains(&location);
                     if data_access_count == 1 && overwritten {
-                        trace!(?lhs,?stmt.comment, "Removing declaration of unused variable");
+                        trace!(?lhs, "Removing declaration of unused variable");
                         drop_needed = true;
                     } else {
                         overwritten_locations.insert(location.clone());
@@ -282,7 +275,7 @@ fn collapse(
                             .sum();
                         let overwritten = overwritten_locations.contains(&location);
                         if data_access_count == 1 && overwritten {
-                            trace!(?lhs,?stmt.comment, "Removing assignment of unused variable");
+                            trace!(?lhs, "Removing assignment of unused variable");
                             drop_needed = true;
                         } else {
                             overwritten_locations.insert(location.clone());

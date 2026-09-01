@@ -1,20 +1,18 @@
 use super::{
-    AstPattern, AstPatternApplyPhase, AstPatternAsmData, AstPatternAstData, AstPatternDeleteAnchor,
+    AstPattern, AstPatternAsmData, AstPatternAstData, AstPatternDeleteAnchor,
     AstPatternDeleteTarget, AstPatternInBlock, AstPatternInBlockKind, AstPatternInputType,
     AstPatternIrData, AstPatternIrReplacement, AstPatternLogLevel, AstPatternMatch,
     AstPatternOrigin, AstPatternOutAction, AstPatternParsed, AstPatternRange, AstPatternRule,
     AstPatternScript, AstPatternSkippedMatch, IgnoreCommentFilter, block_asm, block_asm_contains,
-    block_ast, block_ast_sequence, block_at_matches_phase, block_expr, block_ignore_asm_filters,
-    block_ignore_ast_filters, block_ignore_comment_filters, block_ignore_ir_filters, block_ir,
-    block_script, block_skip_asm_range, block_skip_ast_range, block_skip_ir_range,
-    block_skip_range, block_stmt, block_stmt_seq, fb_parser::load_file_pattern_rule_cached,
-    has_kind, has_script_in_blocks, hashing::structural_statement_hash,
-    infer_input_type_from_in_blocks, ir_parser::normalize_for_match, stmt_pattern,
+    block_ast, block_ast_sequence, block_expr, block_ignore_asm_filters, block_ignore_ast_filters,
+    block_ignore_comment_filters, block_ignore_ir_filters, block_ir, block_script,
+    block_skip_asm_range, block_skip_ast_range, block_skip_ir_range, block_skip_range, block_stmt,
+    block_stmt_seq, fb_parser::load_file_pattern_rule_cached, has_kind, has_script_in_blocks,
+    hashing::structural_statement_hash, infer_input_type_from_in_blocks,
+    ir_parser::normalize_for_match, stmt_pattern,
 };
 use crate::{
-    abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement, Wrapped,
-    },
+    abstract_syntax_tree::{Ast, AstFunctionId, AstOptimizationKind, AstStatement, Wrapped},
     ir::statements::IrStatement,
     prelude::DecompileError,
 };
@@ -55,33 +53,23 @@ thread_local! {
 pub(in crate::abstract_syntax_tree::optimize) fn apply_patterns(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
     patterns: &[AstPattern],
-    phase: AstPatternApplyPhase,
 ) -> Result<(), DecompileError> {
     let mut body;
     let function_ir_statements;
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
         function_ir_statements = collect_function_ir_statements(function.origin_ir.get_ir());
         body = std::mem::take(&mut function.body);
     }
 
     let file_rules = load_file_pattern_rules(patterns)?;
     if !file_rules.is_empty() {
-        apply_file_pattern_rules_recursive(&mut body, &file_rules, &function_ir_statements, phase);
+        apply_file_pattern_rules_recursive(&mut body, &file_rules, &function_ir_statements);
     }
 
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
         function.body = body;
         for pattern in resolve_patterns(patterns) {
             function
@@ -173,7 +161,6 @@ fn apply_file_pattern_rules_recursive(
     stmts: &mut Vec<Wrapped<AstStatement>>,
     rules: &[AstPatternLoadedRule],
     function_ir_statements: &[IrStatement],
-    phase: AstPatternApplyPhase,
 ) -> bool {
     let mut changed = false;
     let mut seen_states = HashSet::new();
@@ -192,7 +179,6 @@ fn apply_file_pattern_rules_recursive(
                 &loaded_rule.rule,
                 loaded_rule.input_type,
                 function_ir_statements,
-                phase,
             );
         }
 
@@ -203,24 +189,18 @@ fn apply_file_pattern_rules_recursive(
                         branch_true,
                         rules,
                         function_ir_statements,
-                        phase,
                     );
                     if let Some(branch_false) = branch_false {
                         pass_changed |= apply_file_pattern_rules_recursive(
                             branch_false,
                             rules,
                             function_ir_statements,
-                            phase,
                         );
                     }
                 }
                 AstStatement::While(_, body) | AstStatement::DoWhile(_, body) => {
-                    pass_changed |= apply_file_pattern_rules_recursive(
-                        body,
-                        rules,
-                        function_ir_statements,
-                        phase,
-                    );
+                    pass_changed |=
+                        apply_file_pattern_rules_recursive(body, rules, function_ir_statements);
                 }
                 AstStatement::For(init, _, update, body) => {
                     let mut init_vec = vec![(**init).clone()];
@@ -228,7 +208,6 @@ fn apply_file_pattern_rules_recursive(
                         &mut init_vec,
                         rules,
                         function_ir_statements,
-                        phase,
                     );
                     if let Some(next_init) = init_vec.into_iter().next() {
                         **init = next_init;
@@ -239,18 +218,13 @@ fn apply_file_pattern_rules_recursive(
                         &mut update_vec,
                         rules,
                         function_ir_statements,
-                        phase,
                     );
                     if let Some(next_update) = update_vec.into_iter().next() {
                         **update = next_update;
                     }
 
-                    pass_changed |= apply_file_pattern_rules_recursive(
-                        body,
-                        rules,
-                        function_ir_statements,
-                        phase,
-                    );
+                    pass_changed |=
+                        apply_file_pattern_rules_recursive(body, rules, function_ir_statements);
                 }
                 AstStatement::Switch(_, cases, default) => {
                     for (_lit, case_body) in cases.iter_mut() {
@@ -258,7 +232,6 @@ fn apply_file_pattern_rules_recursive(
                             case_body,
                             rules,
                             function_ir_statements,
-                            phase,
                         );
                     }
                     if let Some(default_body) = default {
@@ -266,17 +239,12 @@ fn apply_file_pattern_rules_recursive(
                             default_body,
                             rules,
                             function_ir_statements,
-                            phase,
                         );
                     }
                 }
                 AstStatement::Block(body) => {
-                    pass_changed |= apply_file_pattern_rules_recursive(
-                        body,
-                        rules,
-                        function_ir_statements,
-                        phase,
-                    );
+                    pass_changed |=
+                        apply_file_pattern_rules_recursive(body, rules, function_ir_statements);
                 }
                 AstStatement::Declaration(_, _)
                 | AstStatement::Assignment(_, _)
@@ -314,7 +282,6 @@ fn apply_single_file_rule(
     rule: &AstPatternRule,
     input_type: AstPatternInputType,
     function_ir_statements: &[IrStatement],
-    phase: AstPatternApplyPhase,
 ) -> bool {
     if stmts.is_empty() {
         return false;
@@ -341,14 +308,6 @@ fn apply_single_file_rule(
         let Some((match_pat, predicates)) = expr_match else {
             continue;
         };
-        // Check phase constraint
-        let at_ok = group.in_blocks.iter().all(|block| {
-            let (has_at, at_matched) = block_at_matches_phase(block, phase);
-            !has_at || at_matched
-        });
-        if !at_ok {
-            continue;
-        }
         for action in &group.out_actions {
             match action {
                 AstPatternOutAction::ReplaceExpr(replace_pat) => {
@@ -429,7 +388,6 @@ fn apply_single_file_rule(
                         &asm_lines,
                         &ast_statements,
                         &ir_statements,
-                        phase,
                     )?;
                     let skipped = AstPatternSkippedMatch {
                         clause_group_index,
@@ -609,7 +567,6 @@ fn match_if_block(
     asm_lines: &[AstPatternNormalizedAsmLine],
     ast_statements: &[AstStatement],
     ir_statements: &[IrStatement],
-    phase: AstPatternApplyPhase,
 ) -> Option<(AstPatternMatch, Option<stmt_pattern::Captures>)> {
     let mut has_condition = false;
     let mut matched = AstPatternMatch::default();
@@ -651,14 +608,6 @@ fn match_if_block(
         ast_index_map = index_map;
         (filtered_ast.as_slice(), Some(&ast_index_map))
     };
-
-    let (has_at, at_matched) = block_at_matches_phase(block, phase);
-    if has_at {
-        has_condition = true;
-        if !at_matched {
-            return None;
-        }
-    }
 
     if let Some(asm) = block_asm(block) {
         has_condition = true;

@@ -159,8 +159,8 @@ fn refresh_decompile(app: &mut TuiApp) {
             TuiTab::SelectOptimization(dat) => {
                 let opt = select_optimization::selected_to_ast_optimization_kind(dat);
                 let previous = data.ast_and_tab_index.last().unwrap();
-                let ast = previous.0.optimize(Some(opt.into()));
-                if let Ok(ast) = ast {
+                let mut ast = previous.0.clone();
+                if let Ok(()) = ast.optimize(Some(&[opt])) {
                     data.ast_and_tab_index.push((ast, current_tab));
                 }
             }

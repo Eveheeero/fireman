@@ -1,9 +1,8 @@
 use crate::{
     abstract_syntax_tree::{
         ArcAstVariableMap, Ast, AstBinaryOperator, AstBuiltinFunction, AstBuiltinFunctionArgument,
-        AstCall, AstExpression, AstFunctionId, AstFunctionVersion, AstJumpTarget, AstLiteral,
-        AstStatement, AstUnaryOperator, AstValue, AstValueType, AstVariableId, PrintWithConfig,
-        Wrapped,
+        AstCall, AstExpression, AstFunctionId, AstJumpTarget, AstLiteral, AstNodeId, AstStatement,
+        AstUnaryOperator, AstValue, AstValueType, AstVariableId, PrintWithConfig, Wrapped,
     },
     core::Address,
     ir::{
@@ -21,8 +20,8 @@ use num_bigint::BigInt;
 /// Wrap
 pub(super) fn w<T>(item: T) -> Wrapped<T> {
     Wrapped {
+        id: AstNodeId::new(),
         item,
-        comment: None,
     }
 }
 
@@ -60,7 +59,7 @@ fn ast_value_constant_address(value: &AstValue) -> Option<u64> {
 
 fn resolve_function_id_by_address(ast: &Ast, addr: u64) -> Option<AstFunctionId> {
     let exact = AstFunctionId { address: addr };
-    if ast.functions.read().ok()?.contains_key(&exact) {
+    if ast.functions.contains_key(&exact) {
         Some(exact)
     } else {
         None
@@ -70,26 +69,21 @@ fn resolve_function_id_by_address(ast: &Ast, addr: u64) -> Option<AstFunctionId>
 pub(super) fn convert_expr(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
     data: &Aos<IrData>,
     var_map: &HashMap<Aos<IrData>, AstVariableId>,
 ) -> Result<Wrapped<AstExpression>, DecompileError> {
     let w = |x: AstExpression| w(x);
 
     if let Some(&vid) = var_map.get(data) {
-        let vars = ast.get_variables(&function_id, &function_version).unwrap();
+        let vars = ast.get_variables(&function_id).unwrap();
         return Ok(w(AstExpression::Variable(vars, vid)));
     }
 
     let result = match data.as_ref() {
         IrData::Constant(c) => AstExpression::Literal(AstLiteral::Int(*c as i64)),
-        IrData::Dereference(inner) => AstExpression::Deref(Box::new(convert_expr(
-            ast,
-            function_id,
-            function_version,
-            inner,
-            var_map,
-        )?)),
+        IrData::Dereference(inner) => {
+            AstExpression::Deref(Box::new(convert_expr(ast, function_id, inner, var_map)?))
+        }
         IrData::Intrinsic(intr) => match intr {
             IrIntrinsic::ArchitectureByteSize => AstExpression::ArchitectureByteSize,
             IrIntrinsic::ArchitectureBitSize => AstExpression::ArchitectureBitSize,
@@ -102,22 +96,22 @@ pub(super) fn convert_expr(
                 Box::new(AstBuiltinFunctionArgument::None),
             )),
             IrIntrinsic::ByteSizeOf(inner) => {
-                let inner = convert_expr(ast, function_id, function_version, inner, var_map)?;
+                let inner = convert_expr(ast, function_id, inner, var_map)?;
                 AstExpression::Call(AstCall::Builtin(
                     AstBuiltinFunction::ByteSizeOf,
                     Box::new(AstBuiltinFunctionArgument::ByteSizeOf(inner)),
                 ))
             }
             IrIntrinsic::BitSizeOf(inner) => {
-                let inner = convert_expr(ast, function_id, function_version, inner, var_map)?;
+                let inner = convert_expr(ast, function_id, inner, var_map)?;
                 AstExpression::Call(AstCall::Builtin(
                     AstBuiltinFunction::BitSizeOf,
                     Box::new(AstBuiltinFunctionArgument::BitSizeOf(inner)),
                 ))
             }
             IrIntrinsic::Sized(inner, size) => {
-                let arg = convert_expr(ast, function_id, function_version, inner, var_map)?;
-                let sz = convert_size(ast, function_id, function_version, size, var_map)?;
+                let arg = convert_expr(ast, function_id, inner, var_map)?;
+                let sz = convert_size(ast, function_id, size, var_map)?;
                 AstExpression::Call(AstCall::Builtin(
                     AstBuiltinFunction::Sized,
                     Box::new(AstBuiltinFunctionArgument::Sized(arg, sz)),
@@ -133,42 +127,42 @@ pub(super) fn convert_expr(
             IrIntrinsic::Unknown => AstExpression::Unknown,
             IrIntrinsic::Undefined => AstExpression::Undefined,
             IrIntrinsic::SignedMax(size) => {
-                let sz = convert_size(ast, function_id, function_version, size, var_map)?;
+                let sz = convert_size(ast, function_id, size, var_map)?;
                 AstExpression::Call(AstCall::Builtin(
                     AstBuiltinFunction::SignedMax,
                     Box::new(AstBuiltinFunctionArgument::SignedMax(sz)),
                 ))
             }
             IrIntrinsic::SignedMin(size) => {
-                let sz = convert_size(ast, function_id, function_version, size, var_map)?;
+                let sz = convert_size(ast, function_id, size, var_map)?;
                 AstExpression::Call(AstCall::Builtin(
                     AstBuiltinFunction::SignedMin,
                     Box::new(AstBuiltinFunctionArgument::SignedMin(sz)),
                 ))
             }
             IrIntrinsic::UnsignedMax(size) => {
-                let sz = convert_size(ast, function_id, function_version, size, var_map)?;
+                let sz = convert_size(ast, function_id, size, var_map)?;
                 AstExpression::Call(AstCall::Builtin(
                     AstBuiltinFunction::UnsignedMax,
                     Box::new(AstBuiltinFunctionArgument::UnsignedMax(sz)),
                 ))
             }
             IrIntrinsic::UnsignedMin(size) => {
-                let sz = convert_size(ast, function_id, function_version, size, var_map)?;
+                let sz = convert_size(ast, function_id, size, var_map)?;
                 AstExpression::Call(AstCall::Builtin(
                     AstBuiltinFunction::UnsignedMin,
                     Box::new(AstBuiltinFunctionArgument::UnsignedMin(sz)),
                 ))
             }
             IrIntrinsic::BitOnes(size) => {
-                let sz = convert_size(ast, function_id, function_version, size, var_map)?;
+                let sz = convert_size(ast, function_id, size, var_map)?;
                 AstExpression::Call(AstCall::Builtin(
                     AstBuiltinFunction::BitOnes,
                     Box::new(AstBuiltinFunctionArgument::BitOnes(sz)),
                 ))
             }
             IrIntrinsic::BitZeros(size) => {
-                let sz = convert_size(ast, function_id, function_version, size, var_map)?;
+                let sz = convert_size(ast, function_id, size, var_map)?;
                 AstExpression::Call(AstCall::Builtin(
                     AstBuiltinFunction::BitZeros,
                     Box::new(AstBuiltinFunctionArgument::BitZeros(sz)),
@@ -259,22 +253,14 @@ pub(super) fn convert_expr(
         },
         IrData::Operation(op) => match op {
             IrDataOperation::Unary { operator, arg } => {
-                return convert_unary(ast, function_id, function_version, operator, arg, var_map);
+                return convert_unary(ast, function_id, operator, arg, var_map);
             }
             IrDataOperation::Binary {
                 operator,
                 arg1,
                 arg2,
             } => {
-                return convert_binary(
-                    ast,
-                    function_id,
-                    function_version,
-                    operator,
-                    arg1,
-                    arg2,
-                    var_map,
-                );
+                return convert_binary(ast, function_id, operator, arg1, arg2, var_map);
             }
         },
         IrData::Register(_) | IrData::Operand(_) => AstExpression::Unknown,
@@ -285,7 +271,6 @@ pub(super) fn convert_expr(
 pub(super) fn convert_stmt(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
     stmt: &IrStatement,
     var_map: &HashMap<Aos<IrData>, AstVariableId>,
     instruction_args: &[iceball::Argument],
@@ -294,8 +279,8 @@ pub(super) fn convert_stmt(
         IrStatement::Assignment { from, to, size } => {
             let from = &resolve_operand(from, instruction_args);
             let to = &resolve_operand(to, instruction_args);
-            let lhs = convert_expr(ast, function_id, function_version, to, var_map)?;
-            let mut rhs = convert_expr(ast, function_id, function_version, from, var_map)?;
+            let lhs = convert_expr(ast, function_id, to, var_map)?;
+            let mut rhs = convert_expr(ast, function_id, from, var_map)?;
             // Refine unsized CastSigned/CastUnsigned into explicit typed casts
             // using the assignment's target size.
             refine_extend_cast(&mut rhs, size, instruction_args);
@@ -306,14 +291,14 @@ pub(super) fn convert_stmt(
                 AstStatement::Assignment(lhs, rhs)
             } else {
                 use crate::abstract_syntax_tree::PrintWithConfig;
-                let lhs_str = lhs.to_string_with_config(None);
-                let rhs_str = rhs.to_string_with_config(None);
+                let lhs_str = lhs.to_string_with_config(ast, None);
+                let rhs_str = rhs.to_string_with_config(ast, None);
                 AstStatement::Comment(format!("invalid assignment: {} = {}", lhs_str, rhs_str))
             }
         }
         IrStatement::JumpByCall { target } => {
             let target = &resolve_operand(target, instruction_args);
-            let e = convert_expr(ast, function_id, function_version, target, var_map)?;
+            let e = convert_expr(ast, function_id, target, var_map)?;
             let exact_target = expr_constant_address(e.as_ref())
                 .and_then(|addr| resolve_function_id_by_address(ast, addr));
             match (e.as_ref(), exact_target) {
@@ -331,14 +316,14 @@ pub(super) fn convert_stmt(
                 }
                 (_, None) => {
                     warn!("Uncovered call target");
-                    let name = e.to_string_with_config(None);
+                    let name = e.to_string_with_config(ast, None);
                     AstStatement::Call(AstCall::Unknown(name, Vec::new()))
                 }
             }
         }
         IrStatement::Jump { target } => {
             let target = &resolve_operand(target, instruction_args);
-            let e = convert_expr(ast, function_id, function_version, target, var_map)?;
+            let e = convert_expr(ast, function_id, target, var_map)?;
             let exact_target = expr_constant_address(e.as_ref())
                 .and_then(|addr| resolve_function_id_by_address(ast, addr));
             match (e.as_ref(), exact_target) {
@@ -352,7 +337,7 @@ pub(super) fn convert_stmt(
                 }
                 (_, None) => {
                     warn!("Uncovered jump target");
-                    let label = e.to_string_with_config(None);
+                    let label = e.to_string_with_config(ast, None);
                     AstStatement::Goto(AstJumpTarget::Unknown(label))
                 }
             }
@@ -363,36 +348,18 @@ pub(super) fn convert_stmt(
             false_branch,
         } => {
             let condition = &resolve_operand(condition, instruction_args);
-            let mut cond = convert_expr(ast, function_id, function_version, condition, var_map)?;
+            let mut cond = convert_expr(ast, function_id, condition, var_map)?;
             // Evaluate OperandExists at conversion time since we have instruction arg count
             try_fold_operand_exists(&mut cond, instruction_args.len() as u8);
             // If the condition resolved to a variable with a boolean const_value, use it
-            try_fold_bool_const_var(ast, function_id, function_version, &mut cond);
+            try_fold_bool_const_var(ast, function_id, &mut cond);
             let then_b = true_branch
                 .iter()
-                .map(|s| {
-                    convert_stmt(
-                        ast,
-                        function_id,
-                        function_version,
-                        s,
-                        var_map,
-                        instruction_args,
-                    )
-                })
+                .map(|s| convert_stmt(ast, function_id, s, var_map, instruction_args))
                 .collect::<Result<_, _>>()?;
             let else_b = false_branch
                 .iter()
-                .map(|s| {
-                    convert_stmt(
-                        ast,
-                        function_id,
-                        function_version,
-                        s,
-                        var_map,
-                        instruction_args,
-                    )
-                })
+                .map(|s| convert_stmt(ast, function_id, s, var_map, instruction_args))
                 .collect::<Result<_, _>>()?;
             AstStatement::If(cond, then_b, Some(else_b))
         }
@@ -407,14 +374,7 @@ pub(super) fn convert_stmt(
                 flags,
             } => {
                 let operation = &resolve_operand(operation, instruction_args);
-                let stmts = calc_flags_automatically(
-                    ast,
-                    function_id,
-                    function_version,
-                    operation,
-                    flags,
-                    var_map,
-                )?;
+                let stmts = calc_flags_automatically(ast, function_id, operation, flags, var_map)?;
                 AstStatement::Block(stmts)
             }
             IrStatementSpecial::TypeSpecified {
@@ -430,14 +390,13 @@ pub(super) fn convert_stmt(
 pub(super) fn convert_unary(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
     operator: &IrUnaryOp,
     arg: &Aos<IrData>,
     var_map: &HashMap<Aos<IrData>, AstVariableId>,
 ) -> Result<Wrapped<AstExpression>, DecompileError> {
     let w = |x: AstExpression| w(x);
 
-    let expr = convert_expr(ast, function_id, function_version, arg, var_map)?;
+    let expr = convert_expr(ast, function_id, arg, var_map)?;
     let op = match operator {
         IrUnaryOp::Not => AstUnaryOperator::Not,
         IrUnaryOp::Negation => AstUnaryOperator::Negate,
@@ -450,7 +409,6 @@ pub(super) fn convert_unary(
 pub(super) fn convert_binary(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
     operator: &IrBinaryOp,
     arg1: &Aos<IrData>,
     arg2: &Aos<IrData>,
@@ -458,8 +416,8 @@ pub(super) fn convert_binary(
 ) -> Result<Wrapped<AstExpression>, DecompileError> {
     let w = |x: AstExpression| w(x);
 
-    let lhs = convert_expr(ast, function_id, function_version, arg1, var_map)?;
-    let rhs = convert_expr(ast, function_id, function_version, arg2, var_map)?;
+    let lhs = convert_expr(ast, function_id, arg1, var_map)?;
+    let rhs = convert_expr(ast, function_id, arg2, var_map)?;
 
     let result = match operator {
         IrBinaryOp::Add => {
@@ -519,7 +477,7 @@ pub(super) fn convert_binary(
             AstExpression::BinaryOp(AstBinaryOperator::RightShift, Box::new(lhs), Box::new(rhs))
         }
         IrBinaryOp::Equal(size) => {
-            let sz = convert_size(ast, function_id, function_version, size, var_map)?;
+            let sz = convert_size(ast, function_id, size, var_map)?;
             let lhs_s = AstExpression::Call(AstCall::Builtin(
                 AstBuiltinFunction::Sized,
                 Box::new(AstBuiltinFunctionArgument::Sized(lhs.clone(), sz.clone())),
@@ -535,7 +493,7 @@ pub(super) fn convert_binary(
             )
         }
         IrBinaryOp::SignedLess(size) => {
-            let sz = convert_size(ast, function_id, function_version, size, var_map)?;
+            let sz = convert_size(ast, function_id, size, var_map)?;
             let lhs_s = AstExpression::Call(AstCall::Builtin(
                 AstBuiltinFunction::Sized,
                 Box::new(AstBuiltinFunctionArgument::Sized(lhs.clone(), sz.clone())),
@@ -551,7 +509,7 @@ pub(super) fn convert_binary(
             )
         }
         IrBinaryOp::UnsignedLess(size) => {
-            let sz = convert_size(ast, function_id, function_version, size, var_map)?;
+            let sz = convert_size(ast, function_id, size, var_map)?;
             let lhs_s = AstExpression::Call(AstCall::Builtin(
                 AstBuiltinFunction::Sized,
                 Box::new(AstBuiltinFunctionArgument::Sized(lhs.clone(), sz.clone())),
@@ -568,7 +526,7 @@ pub(super) fn convert_binary(
             )
         }
         IrBinaryOp::SignedLessOrEqual(size) => {
-            let sz = convert_size(ast, function_id, function_version, size, var_map)?;
+            let sz = convert_size(ast, function_id, size, var_map)?;
             let lhs_s = AstExpression::Call(AstCall::Builtin(
                 AstBuiltinFunction::Sized,
                 Box::new(AstBuiltinFunctionArgument::Sized(lhs.clone(), sz.clone())),
@@ -584,7 +542,7 @@ pub(super) fn convert_binary(
             )
         }
         IrBinaryOp::UnsignedLessOrEqual(size) => {
-            let sz = convert_size(ast, function_id, function_version, size, var_map)?;
+            let sz = convert_size(ast, function_id, size, var_map)?;
             let lhs_s = AstExpression::Call(AstCall::Builtin(
                 AstBuiltinFunction::Sized,
                 Box::new(AstBuiltinFunctionArgument::Sized(lhs.clone(), sz.clone())),
@@ -607,7 +565,6 @@ pub(super) fn convert_binary(
 pub(super) fn convert_size(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
     size: &IrAccessSize,
     var_map: &HashMap<Aos<IrData>, AstVariableId>,
 ) -> Result<Wrapped<AstExpression>, DecompileError> {
@@ -615,7 +572,7 @@ pub(super) fn convert_size(
         IrAccessSize::ResultOfBit(d)
         | IrAccessSize::ResultOfByte(d)
         | IrAccessSize::RelativeWith(d) => {
-            return convert_expr(ast, function_id, function_version, d, var_map);
+            return convert_expr(ast, function_id, d, var_map);
         }
         IrAccessSize::ArchitectureSize => AstExpression::ArchitectureByteSize,
         IrAccessSize::Unlimited => AstExpression::Unknown,
@@ -626,14 +583,13 @@ pub(super) fn convert_size(
 pub(super) fn calc_flags_automatically(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
     operation: &Aos<IrData>,
     affected_registers: &[Aos<IrData>],
     var_map: &HashMap<Aos<IrData>, AstVariableId>,
 ) -> Result<Vec<Wrapped<AstStatement>>, DecompileError> {
     // TODO INVALID
-    let val = convert_expr(ast, function_id, function_version, operation, var_map)?;
-    let vars = ast.get_variables(&function_id, &function_version).unwrap();
+    let val = convert_expr(ast, function_id, operation, var_map)?;
+    let vars = ast.get_variables(&function_id).unwrap();
     let result = affected_registers
         .iter()
         .filter_map(|reg| {
@@ -919,11 +875,10 @@ pub(super) fn resolve_constant(
 fn try_fold_bool_const_var(
     ast: &Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
     expr: &mut Wrapped<AstExpression>,
 ) {
     if let AstExpression::Variable(_, var_id) = &expr.item {
-        let Ok(vars) = ast.get_variables(&function_id, &function_version) else {
+        let Ok(vars) = ast.get_variables(&function_id) else {
             return;
         };
         let vars = vars.read().unwrap();

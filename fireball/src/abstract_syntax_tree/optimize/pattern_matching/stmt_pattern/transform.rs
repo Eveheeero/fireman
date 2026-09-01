@@ -5,7 +5,7 @@ use super::{
     types::{Captured, Captures, PatTree, WherePredicate},
 };
 use crate::abstract_syntax_tree::{
-    AstBinaryOperator, AstBuiltinFunctionArgument, AstCall, AstExpression, AstLiteral,
+    AstBinaryOperator, AstBuiltinFunctionArgument, AstCall, AstExpression, AstLiteral, AstNodeId,
     AstStatement, Wrapped,
 };
 
@@ -453,7 +453,7 @@ fn transform_expression_builtin(
         if !preds_ok {
             break;
         }
-        if let Some(replacement) = eval_builtin_fn(func, arg_names, &caps, expr) {
+        if let Some(replacement) = eval_builtin_fn(func, arg_names, &caps) {
             expr.item = replacement.item;
             changed = true;
         } else {
@@ -472,7 +472,6 @@ fn eval_builtin_fn(
     func: &str,
     arg_names: &[String],
     caps: &Captures,
-    source: &Wrapped<AstExpression>,
 ) -> Option<Wrapped<AstExpression>> {
     use crate::abstract_syntax_tree::optimize::opt_utils;
 
@@ -495,8 +494,8 @@ fn eval_builtin_fn(
             })?;
             let result = opt_utils::eval_binary(op, lhs, rhs)?;
             Some(Wrapped {
+                id: AstNodeId::new(),
                 item: AstExpression::Literal(result),
-                comment: source.comment.clone(),
             })
         }
         "eval_unary" => {
@@ -513,8 +512,8 @@ fn eval_builtin_fn(
             })?;
             let result = opt_utils::eval_unary(op, val)?;
             Some(Wrapped {
+                id: AstNodeId::new(),
                 item: AstExpression::Literal(result),
-                comment: source.comment.clone(),
             })
         }
         _ => None,

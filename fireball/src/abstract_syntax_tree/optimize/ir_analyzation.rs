@@ -4,8 +4,8 @@ mod convert;
 
 use crate::{
     abstract_syntax_tree::{
-        Ast, AstFunctionId, AstFunctionVersion, AstOptimizationKind, AstStatement, AstValue,
-        AstValueType, AstVariable, AstVariableId, PrintWithConfig, Wrapped,
+        Ast, AstFunctionId, AstOptimizationKind, AstStatement, AstValue, AstValueType, AstVariable,
+        AstVariableId, PrintWithConfig, Wrapped,
         optimize::ir_analyzation::convert::{convert_stmt, resolve_constant},
     },
     ir::{analyze::DataType, data::IrData},
@@ -19,16 +19,11 @@ use std::sync::{Arc, RwLock};
 pub(super) fn analyze_ir_function(
     ast: &mut Ast,
     function_id: AstFunctionId,
-    function_version: AstFunctionVersion,
 ) -> Result<(), DecompileError> {
     let ir_function;
     let mut body;
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
 
         // if analyzed, pass
         if function
@@ -85,7 +80,7 @@ pub(super) fn analyze_ir_function(
                     trace!(
                         "Constant value found in {}: {}",
                         position,
-                        c.to_string_with_config(None)
+                        c.to_string_with_config(ast, None)
                     );
                     if c_type == AstValueType::Unknown {
                         c_type = match &c.item {
@@ -105,23 +100,26 @@ pub(super) fn analyze_ir_function(
                         debug!(
                             "Constant value found in {}({}) but datatype not set. init datatype to {}",
                             position,
-                            c.to_string_with_config(None),
-                            c_type.to_string_with_config(None)
+                            c.to_string_with_config(ast, None),
+                            c_type.to_string_with_config(ast, None)
                         );
                     }
                     if const_value.is_some() && const_value.as_ref().unwrap() != &c {
                         warn!(
                             "Constant value mismatch in position {}: {} != {}",
                             position,
-                            const_value.as_ref().unwrap().to_string_with_config(None),
-                            c.to_string_with_config(None)
+                            const_value
+                                .as_ref()
+                                .unwrap()
+                                .to_string_with_config(ast, None),
+                            c.to_string_with_config(ast, None)
                         );
                         debug_assert!(
                             false,
                             "Constant value mismatch in position {}: {} != {}",
                             position,
-                            const_value.unwrap().to_string_with_config(None),
-                            c.to_string_with_config(None)
+                            const_value.unwrap().to_string_with_config(ast, None),
+                            c.to_string_with_config(ast, None)
                         );
                     }
                     const_value = Some(c);
@@ -139,13 +137,7 @@ pub(super) fn analyze_ir_function(
             },
         );
     }
-    ast.functions
-        .write()
-        .unwrap()
-        .get_mut(&function_id)
-        .and_then(|x| x.get_mut(&function_version))
-        .unwrap()
-        .variables = Arc::new(RwLock::new(locals));
+    ast.functions.get_mut(&function_id).unwrap().variables = Arc::new(RwLock::new(locals));
 
     let map = ir_function.get_instructions().as_ref();
     for ws in &mut body {
@@ -161,24 +153,12 @@ pub(super) fn analyze_ir_function(
         let instruction = &map[usize::try_from(*ir_index).unwrap()];
         let instruction_args = &instruction.inner.arguments;
         /* analyze and turn into ast */
-        let mut stmt = convert_stmt(
-            ast,
-            function_id,
-            function_version,
-            &stmt.1,
-            &var_map,
-            instruction_args,
-        )?;
-        stmt.comment = ws.comment.clone();
+        let stmt = convert_stmt(ast, function_id, &stmt.1, &var_map, instruction_args)?;
         *ws = stmt;
     }
 
     {
-        let mut functions = ast.functions.write().unwrap();
-        let function = functions
-            .get_mut(&function_id)
-            .and_then(|x| x.get_mut(&function_version))
-            .unwrap();
+        let function = ast.functions.get_mut(&function_id).unwrap();
         function.body = body;
         function
             .processed_optimizations

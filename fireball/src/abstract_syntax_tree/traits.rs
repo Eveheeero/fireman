@@ -4,10 +4,11 @@ mod print_with_config;
 use super::*;
 
 pub trait PrintWithConfig {
-    fn to_string_with_config(&self, option: Option<AstPrintConfig>) -> String;
+    fn to_string_with_config(&self, ast: &Ast, option: Option<AstPrintConfig>) -> String;
     fn print(
         &self,
         f: &mut impl std::fmt::Write,
+        ast: &Ast,
         config: Option<AstPrintConfig>,
     ) -> std::fmt::Result;
 }

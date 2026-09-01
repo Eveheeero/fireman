@@ -10,10 +10,7 @@ pub enum DecompileError {
     /// RwLock was poisoned during an operation.
     LockPoisoned(String),
     /// Function with given ID and version was not found.
-    FunctionNotFound(
-        crate::abstract_syntax_tree::AstFunctionId,
-        crate::abstract_syntax_tree::AstFunctionVersion,
-    ),
+    FunctionNotFound(crate::abstract_syntax_tree::AstFunctionId),
     /// IR analysis assertion failure.
     IrAnalyzeAssertionFailure(super::ir_analyze_assertion_error::IrAnalyzeAssertionFailure),
 }
@@ -43,8 +40,8 @@ impl std::fmt::Display for DecompileError {
                 msg.as_deref().unwrap_or("")
             ),
             Self::LockPoisoned(context) => write!(f, "Lock poisoned: {}", context),
-            Self::FunctionNotFound(id, version) => {
-                write!(f, "Function not found: id={:?}, version={:?}", id, version)
+            Self::FunctionNotFound(id) => {
+                write!(f, "Function not found: id={:?}", id)
             }
             Self::IrAnalyzeAssertionFailure(err) => {
                 write!(f, "IR analysis assertion failed: {:?}", err)

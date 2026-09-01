@@ -1,9 +1,8 @@
 use super::{
-    AstPatternApplyAt, AstPatternApplyPhase, AstPatternAsmData, AstPatternAstData,
-    AstPatternClauseGroup, AstPatternDeleteAnchor, AstPatternDeleteTarget, AstPatternInBlock,
-    AstPatternInBlockKind, AstPatternIrData, AstPatternIrReplacement, AstPatternLogLevel,
-    AstPatternOutAction, AstPatternRange, AstPatternRule, AstPatternScript, ClearIgnoreTarget,
-    IgnoreCommentFilter, add_at_clause, fb_gz, fbz, has_kind,
+    AstPatternAsmData, AstPatternAstData, AstPatternClauseGroup, AstPatternDeleteAnchor,
+    AstPatternDeleteTarget, AstPatternInBlock, AstPatternInBlockKind, AstPatternIrData,
+    AstPatternIrReplacement, AstPatternLogLevel, AstPatternOutAction, AstPatternRange,
+    AstPatternRule, AstPatternScript, ClearIgnoreTarget, IgnoreCommentFilter, fb_gz, fbz, has_kind,
     ir_parser::{
         find_matching_delimiter, parse_asm_arguments, parse_asm_statement, parse_ir_statement,
     },
@@ -421,14 +420,6 @@ pub(super) fn parse_pattern_file(path: &str, content: &str) -> Result<AstPattern
                         parse_multiline_value(line.trim_start(), "script ", &lines, &mut idx)?;
                     let script = parse_rhai_script(&value)?;
                     expand_in_blocks_for_script(&mut current_in_blocks, &script);
-                } else if line.trim_start().starts_with("at ") {
-                    let value = parse_multiline_value(line.trim_start(), "at ", &lines, &mut idx)?;
-                    let phases = parse_apply_phases(&value)?;
-                    update_all_in_blocks(&mut current_in_blocks, |block| {
-                        for phase in phases.iter().copied() {
-                            add_at_clause(block, phase);
-                        }
-                    });
                 } else if line.trim_start().starts_with("skip asm ") {
                     let value =
                         parse_multiline_value(line.trim_start(), "skip asm ", &lines, &mut idx)?;
@@ -978,57 +969,6 @@ pub(super) fn parse_skip_range(value: &str) -> Result<AstPatternRange, String> {
 
 pub(super) fn parse_rhai_script(script: &str) -> Result<AstPatternScript, String> {
     AstPatternScript::from_source(script)
-}
-
-pub(super) fn parse_apply_phases(value: &str) -> Result<Vec<AstPatternApplyAt>, String> {
-    let mut phases = Vec::new();
-    for token in value.lines().flat_map(|line| line.split([';', ','])) {
-        let token = token.trim();
-        if token.is_empty() {
-            continue;
-        }
-        let phase = parse_apply_phase(token)?;
-        if !phases.contains(&phase) {
-            phases.push(phase);
-        }
-    }
-    if phases.is_empty() {
-        return Err(
-            "invalid `at` phase: use one of any, beforeIrAnalyzation, afterIrAnalyzation, afterParameterAnalyzation, afterCallArgumentAnalyzation, afterIteration, afterOptimization".to_string(),
-        );
-    }
-    Ok(phases)
-}
-
-pub(super) fn parse_apply_phase(value: &str) -> Result<AstPatternApplyAt, String> {
-    let normalized = value
-        .trim()
-        .chars()
-        .filter(|ch| !matches!(ch, '_' | '-' | ' '))
-        .collect::<String>()
-        .to_ascii_lowercase();
-    let at = match normalized.as_str() {
-        "any" => AstPatternApplyAt::Any,
-        "beforeiranalyzation" => {
-            AstPatternApplyAt::Phase(AstPatternApplyPhase::BeforeIrAnalyzation)
-        }
-        "afteriranalyzation" => AstPatternApplyAt::Phase(AstPatternApplyPhase::AfterIrAnalyzation),
-        "afterparameteranalyzation" => {
-            AstPatternApplyAt::Phase(AstPatternApplyPhase::AfterParameterAnalyzation)
-        }
-        "aftercallargumentanalyzation" => {
-            AstPatternApplyAt::Phase(AstPatternApplyPhase::AfterCallArgumentAnalyzation)
-        }
-        "afteriteration" => AstPatternApplyAt::Phase(AstPatternApplyPhase::AfterIteration),
-        "afteroptimization" => AstPatternApplyAt::Phase(AstPatternApplyPhase::AfterOptimization),
-        _ => {
-            return Err(format!(
-                "invalid `at` phase `{}`: use one of any, beforeIrAnalyzation, afterIrAnalyzation, afterParameterAnalyzation, afterCallArgumentAnalyzation, afterIteration, afterOptimization",
-                value.trim()
-            ));
-        }
-    };
-    Ok(at)
 }
 
 pub(super) fn parse_do_delete_target(value: &str) -> Result<AstPatternDeleteTarget, String> {

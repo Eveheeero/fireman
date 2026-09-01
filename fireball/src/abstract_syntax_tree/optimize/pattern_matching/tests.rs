@@ -1,4 +1,5 @@
 use super::{fb_parser::parse_pattern_file, *};
+use crate::abstract_syntax_tree::AstNodeId;
 use std::{
     fs,
     path::PathBuf,
@@ -59,80 +60,18 @@ fn temp_fb_gz_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("{name}-{suffix}.fb.gz"))
 }
 
-// ── Phase targeting (at) ──
-
-#[test]
-fn parse_at_before_ir_analyzation() {
-    let rule = parse("if:\n  at beforeIrAnalyzation\n  ast return\ndo:\n  info(\"ok\")");
-    let blocks = first_in_block(&rule);
-    assert!(blocks.iter().any(|b| matches!(
-        b,
-        AstPatternInBlock::At(AstPatternApplyAt::Phase(
-            AstPatternApplyPhase::BeforeIrAnalyzation
-        ))
-    )));
-}
-
-#[test]
-fn parse_at_after_iteration() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  info(\"ok\")");
-    let blocks = first_in_block(&rule);
-    assert!(blocks.iter().any(|b| matches!(
-        b,
-        AstPatternInBlock::At(AstPatternApplyAt::Phase(
-            AstPatternApplyPhase::AfterIteration
-        ))
-    )));
-}
-
-#[test]
-fn parse_at_after_optimization() {
-    let rule = parse("if:\n  at afterOptimization\n  ast return\ndo:\n  info(\"ok\")");
-    let blocks = first_in_block(&rule);
-    assert!(blocks.iter().any(|b| matches!(
-        b,
-        AstPatternInBlock::At(AstPatternApplyAt::Phase(
-            AstPatternApplyPhase::AfterOptimization
-        ))
-    )));
-}
-
-#[test]
-fn parse_at_after_ir_analyzation() {
-    let rule = parse("if:\n  at afterIrAnalyzation\n  ast return\ndo:\n  info(\"ok\")");
-    let blocks = first_in_block(&rule);
-    assert!(blocks.iter().any(|b| matches!(
-        b,
-        AstPatternInBlock::At(AstPatternApplyAt::Phase(
-            AstPatternApplyPhase::AfterIrAnalyzation
-        ))
-    )));
-}
-
-#[test]
-fn parse_at_after_parameter_analyzation() {
-    let rule = parse("if:\n  at afterParameterAnalyzation\n  ast return\ndo:\n  info(\"ok\")");
-    let blocks = first_in_block(&rule);
-    assert!(blocks.iter().any(|b| matches!(
-        b,
-        AstPatternInBlock::At(AstPatternApplyAt::Phase(
-            AstPatternApplyPhase::AfterParameterAnalyzation
-        ))
-    )));
-}
-
 // ── asm ──
 
 #[test]
 fn parse_asm_condition() {
-    let rule = parse("if:\n  at afterIteration\n  asm push rbp\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  asm push rbp\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::Asm));
 }
 
 #[test]
 fn parse_asm_backtick_multiline() {
-    let rule = parse("if:\n  at afterIteration\n  asm `mov rsp, 8; push rbp`\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  asm `mov rsp, 8; push rbp`\ndo:\n  info(\"ok\")");
     assert!(!rule.in_blocks.is_empty());
 }
 
@@ -140,8 +79,7 @@ fn parse_asm_backtick_multiline() {
 
 #[test]
 fn parse_asm_contains() {
-    let rule =
-        parse("if:\n  at afterIteration\n  asm_contains __stack_chk_fail\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  asm_contains __stack_chk_fail\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(
         blocks
@@ -154,63 +92,63 @@ fn parse_asm_contains() {
 
 #[test]
 fn parse_ast_return() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::Ast));
 }
 
 #[test]
 fn parse_ast_comment() {
-    let rule = parse("if:\n  at afterIteration\n  ast comment test-marker\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ast comment test-marker\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::Ast));
 }
 
 #[test]
 fn parse_ast_empty() {
-    let rule = parse("if:\n  at afterIteration\n  ast empty\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ast empty\ndo:\n  info(\"ok\")");
     assert!(!rule.in_blocks.is_empty());
 }
 
 #[test]
 fn parse_ast_undefined() {
-    let rule = parse("if:\n  at afterIteration\n  ast undefined\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ast undefined\ndo:\n  info(\"ok\")");
     assert!(!rule.in_blocks.is_empty());
 }
 
 #[test]
 fn parse_ast_label() {
-    let rule = parse("if:\n  at afterIteration\n  ast label\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ast label\ndo:\n  info(\"ok\")");
     assert!(!rule.in_blocks.is_empty());
 }
 
 #[test]
 fn parse_ast_label_text() {
-    let rule = parse("if:\n  at afterIteration\n  ast label test_label\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ast label test_label\ndo:\n  info(\"ok\")");
     assert!(!rule.in_blocks.is_empty());
 }
 
 #[test]
 fn parse_ast_block_wildcard() {
-    let rule = parse("if:\n  at afterIteration\n  ast Block(...)\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ast Block(...)\ndo:\n  info(\"ok\")");
     assert!(!rule.in_blocks.is_empty());
 }
 
 #[test]
 fn parse_ast_block_empty() {
-    let rule = parse("if:\n  at afterIteration\n  ast Block([])\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ast Block([])\ndo:\n  info(\"ok\")");
     assert!(!rule.in_blocks.is_empty());
 }
 
 #[test]
 fn parse_ast_some_empty() {
-    let rule = parse("if:\n  at afterIteration\n  ast Some([])\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ast Some([])\ndo:\n  info(\"ok\")");
     assert!(!rule.in_blocks.is_empty());
 }
 
 #[test]
 fn parse_ast_if_wildcard() {
-    let rule = parse("if:\n  at afterIteration\n  ast If(...)\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ast If(...)\ndo:\n  info(\"ok\")");
     assert!(!rule.in_blocks.is_empty());
 }
 
@@ -218,14 +156,14 @@ fn parse_ast_if_wildcard() {
 
 #[test]
 fn parse_ir_undefined() {
-    let rule = parse("if:\n  at afterIteration\n  ir undefined\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ir undefined\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::Ir));
 }
 
 #[test]
 fn parse_ir_halt() {
-    let rule = parse("if:\n  at afterIteration\n  ir halt\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ir halt\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::Ir));
 }
@@ -234,16 +172,14 @@ fn parse_ir_halt() {
 
 #[test]
 fn parse_script_inline() {
-    let rule = parse("if:\n  at afterIteration\n  script `stmt_count >= 1`\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  script `stmt_count >= 1`\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::Script));
 }
 
 #[test]
 fn parse_script_multiline() {
-    let rule = parse(
-        "if:\n  at afterIteration\n  script `\nstmt_count >= 1 && asm_count >= 0\n`\ndo:\n  info(\"ok\")",
-    );
+    let rule = parse("if:\n  script `\nstmt_count >= 1 && asm_count >= 0\n`\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::Script));
 }
@@ -259,7 +195,7 @@ fn parse_script_precompiled_no_source() {
 
 #[test]
 fn parse_stmt_pattern() {
-    let rule = parse("if:\n  at afterIteration\n  stmt Return\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  stmt Return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::Stmt));
 }
@@ -267,7 +203,7 @@ fn parse_stmt_pattern() {
 #[test]
 fn parse_stmt_with_capture() {
     let rule = parse(
-        "if:\n  at afterIteration\n  stmt If(UnaryOp(Not, $cond), $then, Some($else))\ndo:\n  emit If($cond, $else, Some($then))",
+        "if:\n  stmt If(UnaryOp(Not, $cond), $then, Some($else))\ndo:\n  emit If($cond, $else, Some($then))",
     );
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::Stmt));
@@ -278,7 +214,7 @@ fn parse_stmt_with_capture() {
 #[test]
 fn parse_stmt_where_greater_count() {
     let rule = parse(
-        "if:\n  at afterIteration\n  stmt If(UnaryOp(Not, $cond), $then, Some($else))\n  where greater_count($else, $then)\ndo:\n  emit If($cond, $else, Some($then))",
+        "if:\n  stmt If(UnaryOp(Not, $cond), $then, Some($else))\n  where greater_count($else, $then)\ndo:\n  emit If($cond, $else, Some($then))",
     );
     let blocks = first_in_block(&rule);
     let stmt_block = blocks
@@ -294,7 +230,7 @@ fn parse_stmt_where_greater_count() {
 #[test]
 fn parse_stmt_where_stmt_list_helpers() {
     let rule = parse(
-        "if:\n  at afterIteration\n  stmt Block($body)\n  where is_empty_stmt_list($body)\n  where is_nonempty_stmt_list($body)\n  where ends_with_break($body)\n  where ends_with_return($body)\ndo:\n  emit Block($body)",
+        "if:\n  stmt Block($body)\n  where is_empty_stmt_list($body)\n  where is_nonempty_stmt_list($body)\n  where ends_with_break($body)\n  where ends_with_return($body)\ndo:\n  emit Block($body)",
     );
     let blocks = first_in_block(&rule);
     let stmt_block = blocks
@@ -310,7 +246,7 @@ fn parse_stmt_where_stmt_list_helpers() {
 #[test]
 fn parse_stmt_where_tail_shape_helpers() {
     let rule = parse(
-        "if:\n  at afterIteration\n  stmt While($cond, $body)\n  where ends_with_continue($body)\n  where is_end_if_not_cond_break($body)\n  where is_end_if_cond_else_break($body)\ndo:\n  emit While($cond, $body)",
+        "if:\n  stmt While($cond, $body)\n  where ends_with_continue($body)\n  where is_end_if_not_cond_break($body)\n  where is_end_if_cond_else_break($body)\ndo:\n  emit While($cond, $body)",
     );
     let blocks = first_in_block(&rule);
     let stmt_block = blocks
@@ -326,7 +262,7 @@ fn parse_stmt_where_tail_shape_helpers() {
 #[test]
 fn parse_stmt_multiple_where() {
     let rule = parse(
-        "if:\n  at afterIteration\n  expr BinaryOp(BitOr, $x, $y)\n  where structurally_equal($x, $y)\n  where is_nonzero($x)\ndo:\n  info(\"ok\")",
+        "if:\n  expr BinaryOp(BitOr, $x, $y)\n  where structurally_equal($x, $y)\n  where is_nonzero($x)\ndo:\n  info(\"ok\")",
     );
     let blocks = first_in_block(&rule);
     let expr_block = blocks
@@ -343,9 +279,7 @@ fn parse_stmt_multiple_where() {
 
 #[test]
 fn parse_expr_pattern() {
-    let rule = parse(
-        "if:\n  at afterIteration\n  expr BinaryOp(Add, $x, Literal(Int(0)))\ndo:\n  replace_expr $x",
-    );
+    let rule = parse("if:\n  expr BinaryOp(Add, $x, Literal(Int(0)))\ndo:\n  replace_expr $x");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::Expr));
 }
@@ -354,9 +288,8 @@ fn parse_expr_pattern() {
 
 #[test]
 fn parse_stmt_seq() {
-    let rule = parse(
-        "if:\n  at afterIteration\n  stmt_seq [Call($f), Return(None)]\ndo:\n  emit Return(Some(Call($f)))",
-    );
+    let rule =
+        parse("if:\n  stmt_seq [Call($f), Return(None)]\ndo:\n  emit Return(Some(Call($f)))");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::StmtSeq));
 }
@@ -365,7 +298,7 @@ fn parse_stmt_seq() {
 
 #[test]
 fn parse_skip_alias_global() {
-    let rule = parse("if:\n  at afterIteration\n  skip 0..8\n  ast return\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  skip 0..8\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     let skip = blocks
         .iter()
@@ -381,23 +314,21 @@ fn parse_skip_alias_global() {
 }
 
 fn parse_skip_asm_alias() {
-    let rule =
-        parse("if:\n  at afterIteration\n  skip asm 0..8\n  ast return\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  skip asm 0..8\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::SkipAsmRange));
 }
 
 #[test]
 fn parse_skip_ast_alias() {
-    let rule =
-        parse("if:\n  at afterIteration\n  skip ast 0..8\n  ast return\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  skip ast 0..8\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::SkipAstRange));
 }
 
 #[test]
 fn parse_skip_ir_alias() {
-    let rule = parse("if:\n  at afterIteration\n  skip ir 0..8\n  ast return\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  skip ir 0..8\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::SkipIrRange));
 }
@@ -406,7 +337,7 @@ fn parse_skip_ir_alias() {
 
 #[test]
 fn parse_ignore_asm_all() {
-    let rule = parse("if:\n  at afterIteration\n  ignore asm\n  ast return\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ignore asm\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(
         blocks
@@ -417,8 +348,7 @@ fn parse_ignore_asm_all() {
 
 #[test]
 fn parse_ignore_asm_specific() {
-    let rule =
-        parse("if:\n  at afterIteration\n  ignore asm push rbp\n  ast return\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ignore asm push rbp\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(
         blocks
@@ -431,7 +361,7 @@ fn parse_ignore_asm_specific() {
 
 #[test]
 fn parse_ignore_ir_all() {
-    let rule = parse("if:\n  at afterIteration\n  ignore ir\n  ast return\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ignore ir\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(
         blocks
@@ -444,7 +374,7 @@ fn parse_ignore_ir_all() {
 
 #[test]
 fn parse_ignore_ast_all() {
-    let rule = parse("if:\n  at afterIteration\n  ignore ast\n  ast return\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ignore ast\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(
         blocks
@@ -457,8 +387,7 @@ fn parse_ignore_ast_all() {
 
 #[test]
 fn parse_ignore_comment_all() {
-    let rule =
-        parse("if:\n  at afterIteration\n  ignore comment\n  ast return\ndo:\n  info(\"ok\")");
+    let rule = parse("if:\n  ignore comment\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(blocks.iter().any(|b| matches!(
         b,
@@ -468,27 +397,21 @@ fn parse_ignore_comment_all() {
 
 #[test]
 fn parse_ignore_commentstart() {
-    let rule = parse(
-        "if:\n  at afterIteration\n  ignore commentstart prefix_text\n  ast return\ndo:\n  info(\"ok\")",
-    );
+    let rule = parse("if:\n  ignore commentstart prefix_text\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(blocks.iter().any(|b| matches!(b, AstPatternInBlock::IgnoreComment(IgnoreCommentFilter::StartsWith(s)) if s == "prefix_text")));
 }
 
 #[test]
 fn parse_ignore_commentend() {
-    let rule = parse(
-        "if:\n  at afterIteration\n  ignore commentend suffix_text\n  ast return\ndo:\n  info(\"ok\")",
-    );
+    let rule = parse("if:\n  ignore commentend suffix_text\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(blocks.iter().any(|b| matches!(b, AstPatternInBlock::IgnoreComment(IgnoreCommentFilter::EndsWith(s)) if s == "suffix_text")));
 }
 
 #[test]
 fn parse_ignore_commentcontains() {
-    let rule = parse(
-        "if:\n  at afterIteration\n  ignore commentcontains needle\n  ast return\ndo:\n  info(\"ok\")",
-    );
+    let rule = parse("if:\n  ignore commentcontains needle\n  ast return\ndo:\n  info(\"ok\")");
     let blocks = first_in_block(&rule);
     assert!(blocks.iter().any(|b| matches!(b, AstPatternInBlock::IgnoreComment(IgnoreCommentFilter::Contains(s)) if s == "needle")));
 }
@@ -527,7 +450,7 @@ fn ignore_comment_filter_contains() {
 
 #[test]
 fn parse_do_asm() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  asm mov esp, 8");
+    let rule = parse("if:\n  ast return\ndo:\n  asm mov esp, 8");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -540,7 +463,7 @@ fn parse_do_asm() {
 
 #[test]
 fn parse_do_ir() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  ir halt");
+    let rule = parse("if:\n  ast return\ndo:\n  ir halt");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -553,7 +476,7 @@ fn parse_do_ir() {
 
 #[test]
 fn parse_do_ast() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  ast asm push rbp");
+    let rule = parse("if:\n  ast return\ndo:\n  ast asm push rbp");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -564,7 +487,7 @@ fn parse_do_ast() {
 
 #[test]
 fn parse_do_ast_comment() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  ast comment test");
+    let rule = parse("if:\n  ast return\ndo:\n  ast comment test");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -577,7 +500,7 @@ fn parse_do_ast_comment() {
 
 #[test]
 fn parse_do_emit() {
-    let rule = parse("if:\n  at afterIteration\n  stmt Return\ndo:\n  emit Comment(test)");
+    let rule = parse("if:\n  stmt Return\ndo:\n  emit Comment(test)");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -588,7 +511,7 @@ fn parse_do_emit() {
 
 #[test]
 fn parse_do_emit_before() {
-    let rule = parse("if:\n  at afterIteration\n  stmt Return\ndo:\n  emit_before Comment(seed)");
+    let rule = parse("if:\n  stmt Return\ndo:\n  emit_before Comment(seed)");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -599,7 +522,7 @@ fn parse_do_emit_before() {
 
 #[test]
 fn parse_do_emit_after() {
-    let rule = parse("if:\n  at afterIteration\n  stmt Return\ndo:\n  emit_after Comment(seed)");
+    let rule = parse("if:\n  stmt Return\ndo:\n  emit_after Comment(seed)");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -612,9 +535,7 @@ fn parse_do_emit_after() {
 
 #[test]
 fn parse_do_replace_expr() {
-    let rule = parse(
-        "if:\n  at afterIteration\n  expr BinaryOp(Add, $x, Literal(Int(0)))\ndo:\n  replace_expr $x",
-    );
+    let rule = parse("if:\n  expr BinaryOp(Add, $x, Literal(Int(0)))\ndo:\n  replace_expr $x");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -628,7 +549,7 @@ fn parse_do_replace_expr() {
 #[test]
 fn parse_do_replace_expr_fn() {
     let rule = parse(
-        "if:\n  at afterIteration\n  expr BinaryOp(BitOr, $x, $y)\ndo:\n  replace_expr_fn eval_rotate_right($x, $n)",
+        "if:\n  expr BinaryOp(BitOr, $x, $y)\ndo:\n  replace_expr_fn eval_rotate_right($x, $n)",
     );
     let actions = first_group(&rule).out_actions();
     assert!(actions.iter().any(|a| matches!(a, AstPatternOutAction::ReplaceExprBuiltin { func, args } if func == "eval_rotate_right" && args.len() == 2)));
@@ -638,7 +559,7 @@ fn parse_do_replace_expr_fn() {
 
 #[test]
 fn parse_do_script() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  script `true`");
+    let rule = parse("if:\n  ast return\ndo:\n  script `true`");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -651,7 +572,7 @@ fn parse_do_script() {
 
 #[test]
 fn parse_do_splice_block() {
-    let rule = parse("if:\n  at afterIteration\n  ast Block(...)\ndo:\n  splice-block");
+    let rule = parse("if:\n  ast Block(...)\ndo:\n  splice-block");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -664,7 +585,7 @@ fn parse_do_splice_block() {
 
 #[test]
 fn parse_do_prune_empty_else() {
-    let rule = parse("if:\n  at afterOptimization\n  ast Some([])\ndo:\n  prune-empty-else");
+    let rule = parse("if:\n  ast Some([])\ndo:\n  prune-empty-else");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -677,8 +598,7 @@ fn parse_do_prune_empty_else() {
 
 #[test]
 fn parse_do_del_index() {
-    let rule =
-        parse("if:\n  at afterIteration\n  stmt_seq [Comment($x), Return]\ndo:\n  del start[0]");
+    let rule = parse("if:\n  stmt_seq [Comment($x), Return]\ndo:\n  del start[0]");
     let actions = first_group(&rule).out_actions();
     assert!(actions.iter().any(|a| matches!(
         a,
@@ -691,8 +611,7 @@ fn parse_do_del_index() {
 
 #[test]
 fn parse_do_del_range() {
-    let rule =
-        parse("if:\n  at afterIteration\n  stmt_seq [Comment($x), Return]\ndo:\n  del start[0..2]");
+    let rule = parse("if:\n  stmt_seq [Comment($x), Return]\ndo:\n  del start[0..2]");
     let actions = first_group(&rule).out_actions();
     assert!(actions.iter().any(|a| matches!(
         a,
@@ -706,8 +625,7 @@ fn parse_do_del_range() {
 
 #[test]
 fn parse_do_del_end_anchor() {
-    let rule =
-        parse("if:\n  at afterIteration\n  stmt_seq [Comment($x), Return]\ndo:\n  del end[0]");
+    let rule = parse("if:\n  stmt_seq [Comment($x), Return]\ndo:\n  del end[0]");
     let actions = first_group(&rule).out_actions();
     assert!(actions.iter().any(|a| matches!(
         a,
@@ -722,7 +640,7 @@ fn parse_do_del_end_anchor() {
 
 #[test]
 fn parse_do_log_info() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  info(\"hello\")");
+    let rule = parse("if:\n  ast return\ndo:\n  info(\"hello\")");
     let actions = first_group(&rule).out_actions();
     assert!(actions.iter().any(
         |a| matches!(a, AstPatternOutAction::Log(AstPatternLogLevel::Info, msg) if msg == "hello")
@@ -731,7 +649,7 @@ fn parse_do_log_info() {
 
 #[test]
 fn parse_do_log_warn() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  warn(\"hello\")");
+    let rule = parse("if:\n  ast return\ndo:\n  warn(\"hello\")");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -742,7 +660,7 @@ fn parse_do_log_warn() {
 
 #[test]
 fn parse_do_log_error() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  error(\"hello\")");
+    let rule = parse("if:\n  ast return\ndo:\n  error(\"hello\")");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -753,7 +671,7 @@ fn parse_do_log_error() {
 
 #[test]
 fn parse_do_log_debug() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  debug(\"hello\")");
+    let rule = parse("if:\n  ast return\ndo:\n  debug(\"hello\")");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -764,7 +682,7 @@ fn parse_do_log_debug() {
 
 #[test]
 fn parse_do_log_trace() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  trace(\"hello\")");
+    let rule = parse("if:\n  ast return\ndo:\n  trace(\"hello\")");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -777,7 +695,7 @@ fn parse_do_log_trace() {
 
 #[test]
 fn parse_do_clear_ignore_all() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  !ignore\n  info(\"ok\")");
+    let rule = parse("if:\n  ast return\ndo:\n  !ignore\n  info(\"ok\")");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -788,7 +706,7 @@ fn parse_do_clear_ignore_all() {
 
 #[test]
 fn parse_do_clear_ignore_asm() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  !ignore asm\n  info(\"ok\")");
+    let rule = parse("if:\n  ast return\ndo:\n  !ignore asm\n  info(\"ok\")");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -799,7 +717,7 @@ fn parse_do_clear_ignore_asm() {
 
 #[test]
 fn parse_do_clear_ignore_ir() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  !ignore ir\n  info(\"ok\")");
+    let rule = parse("if:\n  ast return\ndo:\n  !ignore ir\n  info(\"ok\")");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -810,7 +728,7 @@ fn parse_do_clear_ignore_ir() {
 
 #[test]
 fn parse_do_clear_ignore_ast() {
-    let rule = parse("if:\n  at afterIteration\n  ast return\ndo:\n  !ignore ast\n  info(\"ok\")");
+    let rule = parse("if:\n  ast return\ndo:\n  !ignore ast\n  info(\"ok\")");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -821,8 +739,7 @@ fn parse_do_clear_ignore_ast() {
 
 #[test]
 fn parse_do_clear_ignore_comment() {
-    let rule =
-        parse("if:\n  at afterIteration\n  ast return\ndo:\n  !ignore comment\n  info(\"ok\")");
+    let rule = parse("if:\n  ast return\ndo:\n  !ignore comment\n  info(\"ok\")");
     let actions = first_group(&rule).out_actions();
     assert!(actions.iter().any(|a| matches!(
         a,
@@ -836,10 +753,8 @@ fn parse_do_clear_ignore_comment() {
 fn parse_multi_clause() {
     let content = "\
 if:
-  at afterIteration
   asm push rbp
 if:
-  at afterOptimization
   asm_contains __stack_chk_fail
 do:
   info(\"multi\")";
@@ -854,12 +769,10 @@ do:
 fn parse_multiple_clause_groups() {
     let content = "\
 if:
-  at afterIteration
   ast return
 do:
   info(\"first\")
 if:
-  at afterOptimization
   ast comment marker
 do:
   info(\"second\")";
@@ -874,7 +787,6 @@ fn parse_comments_ignored() {
     let content = "\
 # This is a comment
 if:
-  at afterIteration
   # another comment
   ast return
 do:
@@ -899,25 +811,19 @@ fn parse_err_empty_content() {
 
 #[test]
 fn parse_err_unknown_if_directive() {
-    let err = parse_err("if:\n  at afterIteration\n  unknown_directive value\ndo:\n  info(\"ok\")");
+    let err = parse_err("if:\n  unknown_directive value\ndo:\n  info(\"ok\")");
     assert!(err.contains("unknown"));
 }
 
 #[test]
 fn parse_err_unknown_do_directive() {
-    let err = parse_err("if:\n  at afterIteration\n  ast return\ndo:\n  unknown_action value");
+    let err = parse_err("if:\n  ast return\ndo:\n  unknown_action value");
     assert!(err.contains("unknown"));
 }
 
 #[test]
-fn parse_err_invalid_phase() {
-    let err = parse_err("if:\n  at badPhase\n  ast return\ndo:\n  info(\"ok\")");
-    assert!(err.contains("invalid"));
-}
-
-#[test]
 fn parse_err_empty_asm_contains() {
-    let err = parse_err("if:\n  at afterIteration\n  asm_contains \ndo:\n  info(\"ok\")");
+    let err = parse_err("if:\n  asm_contains \ndo:\n  info(\"ok\")");
     assert!(err.contains("empty") || err.contains("must not"));
 }
 
@@ -953,8 +859,8 @@ fn rhai_script_from_source_syntax_error() {
 fn rhai_ast_stmt_kind() {
     use crate::abstract_syntax_tree::Wrapped;
     let wrapped = Wrapped {
+        id: AstNodeId::new(),
         item: AstStatement::Comment("hello".to_string()),
-        comment: None,
     };
     let rhai_stmt = rhai_types::RhaiAstStmt::from_wrapped(&wrapped);
     assert_eq!(rhai_stmt.kind, "comment");
@@ -965,13 +871,13 @@ fn rhai_ast_stmt_all_kinds() {
     use crate::abstract_syntax_tree::{AstCall, AstExpression, Wrapped};
     let w = |s: AstStatement| -> Wrapped<AstStatement> {
         Wrapped {
+            id: AstNodeId::new(),
             item: s,
-            comment: None,
         }
     };
     let dummy_expr = || Wrapped {
+        id: AstNodeId::new(),
         item: AstExpression::Unknown,
-        comment: None,
     };
 
     let cases: Vec<(AstStatement, &str)> = vec![
@@ -1147,7 +1053,7 @@ fn parse_builtin_call_three_args() {
 #[test]
 fn parse_quoted_string_in_pattern() {
     let rule = parse(
-        "if:\n  at afterIteration\n  stmt If(UnaryOp(Not, $cond), [Call($f)], None)\n  where call_name_matches($f, \"abort\")\ndo:\n  emit Call(\"assert\", [$cond])",
+        "if:\n  stmt If(UnaryOp(Not, $cond), [Call($f)], None)\n  where call_name_matches($f, \"abort\")\ndo:\n  emit Call(\"assert\", [$cond])",
     );
     let actions = first_group(&rule).out_actions();
     assert!(
@@ -1160,7 +1066,7 @@ fn parse_quoted_string_in_pattern() {
 #[test]
 fn parse_replace_expr_call_with_string_name() {
     let rule = parse(
-        "if:\n  at afterIteration\n  expr Ternary(BinaryOp(Less, $a, $b), $a2, $b2)\n  where structurally_equal($a, $a2)\n  where structurally_equal($b, $b2)\ndo:\n  replace_expr Call(\"min\", [$a, $b])",
+        "if:\n  expr Ternary(BinaryOp(Less, $a, $b), $a2, $b2)\n  where structurally_equal($a, $a2)\n  where structurally_equal($b, $b2)\ndo:\n  replace_expr Call(\"min\", [$a, $b])",
     );
     let actions = first_group(&rule).out_actions();
     assert!(
@@ -1174,14 +1080,13 @@ fn parse_replace_expr_call_with_string_name() {
 
 #[test]
 fn parse_register_spill_suppression() {
-    let rule =
-        parse("if:\n  at beforeIrAnalyzation\n  asm `push rbx; pop rbx`\ndo:\n  del start[0..2]");
+    let rule = parse("if:\n  asm `push rbx; pop rbx`\ndo:\n  del start[0..2]");
     assert!(!rule.in_blocks.is_empty());
 }
 
 #[test]
 fn parse_sanitizer_suppression() {
-    let rule = parse("if:\n  at beforeIrAnalyzation\n  asm_contains __asan_\ndo:\n  del start[0]");
+    let rule = parse("if:\n  asm_contains __asan_\ndo:\n  del start[0]");
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::AsmContains));
 }
@@ -1191,7 +1096,7 @@ fn parse_sanitizer_suppression() {
 #[test]
 fn parse_redundant_return_elimination() {
     let rule = parse(
-        "if:\n  at afterOptimization\n  script `\nlet n = ast_stmts.len();\nn > 0 && ast_stmts[n - 1].is_return() && ast_stmts[n - 1].return_expr() == \"\"\n`\ndo:\n  del end[0]",
+        "if:\n  script `\nlet n = ast_stmts.len();\nn > 0 && ast_stmts[n - 1].is_return() && ast_stmts[n - 1].return_expr() == \"\"\n`\ndo:\n  del end[0]",
     );
     let blocks = first_in_block(&rule);
     assert!(find_kind(blocks, AstPatternInBlockKind::Script));
@@ -1199,9 +1104,7 @@ fn parse_redundant_return_elimination() {
 
 #[test]
 fn parse_single_arm_if_cleanup() {
-    let rule = parse(
-        "if:\n  at afterOptimization\n  stmt If($cond, [], None)\n  where is_pure($cond)\ndo:\n  emit Empty",
-    );
+    let rule = parse("if:\n  stmt If($cond, [], None)\n  where is_pure($cond)\ndo:\n  emit Empty");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -1213,7 +1116,7 @@ fn parse_single_arm_if_cleanup() {
 #[test]
 fn parse_redundant_block_unwrap() {
     let rule = parse(
-        "if:\n  at afterOptimization\n  stmt If($cond, [Block($inner)], $else)\ndo:\n  emit If($cond, $inner, $else)",
+        "if:\n  stmt If($cond, [Block($inner)], $else)\ndo:\n  emit If($cond, $inner, $else)",
     );
     let actions = first_group(&rule).out_actions();
     assert!(
@@ -1227,9 +1130,8 @@ fn parse_redundant_block_unwrap() {
 
 #[test]
 fn parse_redundant_cast_elimination() {
-    let rule = parse(
-        "if:\n  at afterIteration\n  expr Cast($t, UnaryOp(CastSigned, $x))\ndo:\n  replace_expr Cast($t, $x)",
-    );
+    let rule =
+        parse("if:\n  expr Cast($t, UnaryOp(CastSigned, $x))\ndo:\n  replace_expr Cast($t, $x)");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions
@@ -1241,7 +1143,7 @@ fn parse_redundant_cast_elimination() {
 #[test]
 fn parse_null_check_canonicalization() {
     let rule = parse(
-        "if:\n  at afterIteration\n  expr BinaryOp(NotEqual, $x, Literal(Int(0)))\n  where is_variable($x)\ndo:\n  replace_expr $x",
+        "if:\n  expr BinaryOp(NotEqual, $x, Literal(Int(0)))\n  where is_variable($x)\ndo:\n  replace_expr $x",
     );
     let actions = first_group(&rule).out_actions();
     assert!(
@@ -1255,8 +1157,7 @@ fn parse_null_check_canonicalization() {
 
 #[test]
 fn parse_deref_addressof_cleanup() {
-    let rule =
-        parse("if:\n  at afterIteration\n  expr Deref(AddressOf($x))\ndo:\n  replace_expr $x");
+    let rule = parse("if:\n  expr Deref(AddressOf($x))\ndo:\n  replace_expr $x");
     let actions = first_group(&rule).out_actions();
     assert!(
         actions

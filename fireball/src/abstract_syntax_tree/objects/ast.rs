@@ -1,25 +1,24 @@
 use crate::{
     abstract_syntax_tree::objects::*, core::PreDefinedOffsets, ir::analyze::IrFunction, prelude::*,
-    utils::version_map::VersionMap,
 };
 use hashbrown::HashMap;
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone)]
 pub struct Ast {
-    pub function_versions: HashMap<AstFunctionId, AstFunctionVersion>,
-    pub functions: ArcAstFunctionMap,
+    pub functions: AstFunctionMap,
     pub last_variable_id: HashMap<AstFunctionId, u32>,
     pub pre_defined_symbols: HashMap<u64, String>,
+    pub comments: HashMap<AstNodeId, String>,
 }
 
 impl Ast {
     pub fn new() -> Self {
         Self {
-            function_versions: HashMap::new(),
-            functions: Arc::new(RwLock::new(HashMap::new())),
+            functions: HashMap::new(),
             last_variable_id: HashMap::new(),
             pre_defined_symbols: HashMap::new(),
+            comments: HashMap::new(),
         }
     }
 
@@ -56,14 +55,14 @@ impl Ast {
             if let Some(stmts) = ir.statements {
                 for stmt in stmts.iter() {
                     body.push(Wrapped {
+                        id: AstNodeId::new(),
                         item: AstStatement::Ir(Box::new((Some(ir_index), stmt.clone()))),
-                        comment: None,
                     });
                 }
             } else {
                 body.push(Wrapped {
+                    id: AstNodeId::new(),
                     item: AstStatement::Assembly(instruction.inner.to_string()),
-                    comment: None,
                 });
             }
         }
@@ -78,30 +77,8 @@ impl Ast {
 
             processed_optimizations: Vec::new(),
         };
-        self.functions
-            .write()
-            .unwrap()
-            .insert(id, VersionMap::new(AstFunctionVersion(1), func));
-        self.function_versions.insert(id, AstFunctionVersion(1));
+        self.functions.insert(id, func);
         id
-    }
-    /// clone function and get cloned function version
-    pub fn clone_function(
-        &mut self,
-        id: &AstFunctionId,
-        from_version: &AstFunctionVersion,
-    ) -> Option<AstFunctionVersion> {
-        let mut functions = self.functions.write().unwrap();
-        let function = functions
-            .get(id)
-            .and_then(|x| x.get(from_version))
-            .cloned()?;
-        let version_map = functions.get_mut(&function.id).unwrap();
-        let new_version = AstFunctionVersion(version_map.last_version().0 + 1);
-
-        self.function_versions.insert(function.id, new_version);
-        version_map.insert(new_version, function).unwrap();
-        Some(new_version)
     }
     pub fn new_variable_id(&mut self, current_function: &AstFunctionId) -> AstVariableId {
         let last_index = self.last_variable_id.entry(*current_function).or_insert(0);
@@ -114,12 +91,9 @@ impl Ast {
     pub fn get_variables(
         &self,
         function_id: &AstFunctionId,
-        _function_version: &AstFunctionVersion,
     ) -> Result<ArcAstVariableMap, DecompileError> {
-        if let Some(version_map) = self.functions.read().unwrap().get(function_id) {
-            // get any version of function because all function with same id has same variable map
-            let func = version_map.get_last_version();
-            Ok(func.variables.clone())
+        if let Some(function) = self.functions.get(function_id) {
+            Ok(function.variables.clone())
         } else {
             error!(
                 "Tried to get variables from a non-existing function: {:?}",
@@ -131,8 +105,13 @@ impl Ast {
         }
     }
     pub fn shrink(&mut self) {
-        self.function_versions.shrink_to_fit();
         self.last_variable_id.shrink_to_fit();
         self.pre_defined_symbols.shrink_to_fit();
+    }
+    pub fn get_comment(&self, id: &AstNodeId) -> Option<&String> {
+        self.comments.get(id)
+    }
+    pub fn set_comment(&mut self, id: &AstNodeId, comment: String) {
+        self.comments.insert(*id, comment);
     }
 }
